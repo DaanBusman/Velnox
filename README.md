@@ -22,9 +22,12 @@ or runnable at this point. Implementation begins at Phase 1 after the architectu
 | [docs/tech-decisions.md](docs/tech-decisions.md) | ADR log — every stack choice with the alternatives and why they lost |
 | [docs/database-schema.md](docs/database-schema.md) | Entity model, key columns, tenancy and security constraints |
 | [docs/service-diagram.md](docs/service-diagram.md) | Container topology, startup ordering, health checks, trust boundaries |
-| [docs/risks.md](docs/risks.md) | Ranked technical risk register with mitigations, plus open questions |
-| [docs/roadmap.md](docs/roadmap.md) | Phases 1–15 with per-phase acceptance criteria |
+| [docs/i18n.md](docs/i18n.md) | Localization architecture: glossary, catalogues, error codes, what stays untranslated |
+| [docs/risks.md](docs/risks.md) | Ranked technical risk register with mitigations, decisions taken, open questions |
+| [docs/roadmap.md](docs/roadmap.md) | Phases 1–15 (9 split into 9A/9B) with per-phase acceptance criteria |
 | [docs/known-gaps.md](docs/known-gaps.md) | What is deliberately not built, and what is not built *yet* |
+
+Nederlandse vertalingen: [docs/nl/](docs/nl/). English is canonical.
 
 Documents planned per the brief and written during the phase that implements them:
 `security.md`, `rbac.md`, `multi-tenancy.md`, `proxmox-integration.md`, `update-engine.md`,
@@ -43,6 +46,7 @@ Documents planned per the brief and written during the phase that implements the
 | Queue / cache | Redis 7 |
 | Reverse proxy | Caddy 2 |
 | Deployment | Docker Compose on Debian 12/13 |
+| Localization | English + Dutch, ICU catalogues over a controlled vocabulary |
 
 Rationale for each: [docs/tech-decisions.md](docs/tech-decisions.md).
 
@@ -79,11 +83,25 @@ sudo ./install.sh
 
 ---
 
-## Licence and trademarks
+## Licence
 
-Licence: to be decided before Phase 1.
+Velnox is free software, licensed under the **GNU Affero General Public License, version 3 or later**
+([LICENSE](LICENSE)).
 
-Velnox™ and the Velnox logo are trademarks of **The Velnox Foundation**.
+You may run it commercially, modify it and redistribute it. Because Velnox is accessed over a
+network, AGPL **section 13** applies: anyone using a *modified* version over a network must be
+offered that version's source. Velnox implements this in the product — **Settings → About** and
+`GET /api/v1/system/source` show the version, build commit and a source link, driven by the
+build-time `VELNOX_SOURCE_URL`. If you run a modified build, point that at your own source.
+
+See [NOTICE](NOTICE) for the copyright notice and the §13 statement.
+
+## Trademarks
+
+Velnox™ and the Velnox logo are trademarks of **The Velnox Foundation**. The AGPLv3 grants no
+trademark rights — see [TRADEMARK.md](TRADEMARK.md). You are free to fork; please give your fork its
+own name. Velnox is built to make that easy: the product name comes from
+`system_settings.product_name`, not from hardcoded strings.
 Proxmox® and Proxmox VE® are registered trademarks of Proxmox Server Solutions GmbH.
 VMware®, ESXi™ and vSphere® are trademarks of Broadcom Inc.
 Microsoft®, Hyper-V®, Azure® and Entra ID™ are trademarks of Microsoft Corporation.

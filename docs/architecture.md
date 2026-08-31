@@ -28,10 +28,15 @@ Velnox centrally manages many *independent* Proxmox VE environments belonging to
 - Velnox is **not** a monitoring/metrics TSDB. It records point-in-time inventory and health,
   not high-resolution time series. Long-term metrics remain a future Prometheus integration.
 - Velnox does **not** replace Proxmox Backup Server. It orchestrates; it does not store VM data.
-- Velnox does **not** perform Ceph major-version upgrades in v1. The upgrade framework is built
-  generically so a Ceph playbook can be added later, but no Ceph upgrade playbook ships in v1.
+  PBS instances are **not** first-class inventory in v1 (deferred by decision, see
+  [known-gaps.md](known-gaps.md)) — the upgrade framework is built so a PBS playbook slots in later.
 - Velnox does **not** provide a customer-facing self-service portal in v1. Tenant users are
   operators, not end customers.
+
+**In scope by decision (2026-08-31):** Ceph major-version upgrades (§10.1), optional-but-recommended
+multi-factor authentication (§5), English + Dutch localization with a translation-ready controlled
+vocabulary ([i18n.md](i18n.md)), and air-gapped installation from a self-contained artifact (§13).
+The project is licensed **AGPLv3**, which imposes a concrete product requirement — see §15.
 
 ---
 
@@ -117,6 +122,7 @@ velnox/
 │  ├─ remote-exec/             # SSH (ssh2) + WinRM executors, CommandSpec registry
 │  ├─ automation/              # playbook engine, step registry, guards, remediations
 │  ├─ providers-virt/          # migration source adapters: vmware, hyperv
+│  ├─ i18n/                    # glossary.csv, locales/{en,nl}.json, loader, CI validators
 │  └─ config/                  # env schema + typed config loader (zod), shared by all apps
 ├─ deploy/
 │  ├─ compose/                 # docker-compose.yml, .prod.yml, .dev.yml
@@ -187,7 +193,10 @@ skipped.
 | Refresh token | Opaque 256-bit random, stored **hashed** (SHA-256) in `sessions`, TTL 8 h sliding, rotated on every use, **reuse detection** revokes the whole session family |
 | Revocation | `sessions.revoked_at` plus a `ver` counter on the user; a JWT with a stale `ver` is rejected |
 | CSRF | Double-submit token in a non-`HttpOnly` cookie plus `X-Velnox-CSRF` header, required on all non-GET requests |
-| Brute force | Per-account and per-IP rate limits with exponential backoff; lockout is *soft* (delay) to avoid a trivial account-DoS |
+| MFA | **Optional, recommended, off by default.** TOTP (RFC 6238, 30 s, SHA-1 for authenticator compatibility, ±1 window drift) plus 10 single-use recovery codes stored Argon2id-hashed. The TOTP seed lives in the credential store, never as a plain column. WebAuthn is designed for and deferred. |
+| MFA policy | Per-installation and per-tenant: `OPTIONAL` (default) \| `REQUIRED_FOR_PRIVILEGED` \| `REQUIRED`. `REQUIRED_FOR_PRIVILEGED` applies to any user holding a `*.manage`, `*.execute` or `credentials.rotate` permission at any scope — i.e. exactly the accounts that can change customer infrastructure. The UI recommends it during setup and flags accounts without it. |
+| MFA enforcement | `sessions.mfa_satisfied_at`; a session that has not satisfied MFA can reach only the enrolment flow and logout. Enforced by a global guard, so a new endpoint is covered by default rather than by remembering. |
+| Brute force | Per-account and per-IP rate limits with exponential backoff; lockout is *soft* (delay) to avoid a trivial account-DoS. MFA and recovery-code attempts have their own, stricter limiter. |
 | SSO | Microsoft Entra ID, OIDC authorization code + PKCE; `state`/`nonce` in Redis with a 10-min TTL |
 | Break-glass | Local admin login can never be disabled by SSO configuration; disabling local login entirely requires at least one other MSP Super Administrator with a verified local password |
 | Machine access | Scoped API tokens (`velnox_pat_<id>_<secret>`), hashed at rest, own permission set, own audit actor type |
@@ -391,6 +400,61 @@ files exists, and `validate()` can positively confirm the result. Everything els
 touching storage, networking or non-Proxmox packages — halts for approval and shows the operator
 the exact `ChangeSet`. Every remediation writes an audit event containing the before/after diff.
 
+### 10.1 Ceph major upgrades
+
+Ceph upgrades are **in scope for v1** and are the second concrete playbook on the generic engine —
+which is also how genericity gets proven: the same runner, step registry and guard evaluator drive
+both a Debian/PVE major upgrade and a Ceph release upgrade, with nothing Ceph-specific in the
+engine itself.
+
+**Why this cannot be a step inside the PVE upgrade.** A Proxmox major upgrade crosses a Debian
+release; a Ceph release upgrade is a rolling daemon restart across the whole cluster. They have
+different units of work (node vs. daemon), different health models (corosync quorum vs. Ceph
+`HEALTH_OK` + PG state) and different failure modes. Velnox models them as **separate playbooks
+that a plan composes in order.**
+
+**Ordering.** A PVE major release ships a specific Ceph release, and the older Ceph release is not
+supported on the newer PVE. So an upgrade plan for a Ceph-backed cluster is composed as:
+
+```
+UpgradePlan(kind = COMPOSITE)
+  └─ 1. ceph-upgrade playbook   (run first, while still on the current PVE/Debian release)
+  └─ 2. pve-major-upgrade playbook  (node-by-node, rolling)
+```
+
+The composition and the exact source → target release pairs come from a **version matrix data
+file**, not from code — and the matrix is *verified against the live node at runtime* rather than
+trusted. If the running Ceph release, the target PVE release and the matrix disagree, the plan
+refuses to build and says exactly which of the three is unexpected. This is the same fail-safe
+posture as the `pve8to9` parser: Velnox never guesses about version compatibility.
+
+**Daemon ordering within one Ceph release upgrade** follows Ceph's documented sequence, and each
+stage completes and re-validates before the next begins:
+
+```
+repositories on all nodes  →  set noout
+  →  MON   (one at a time; wait for full mon quorum after each)
+  →  MGR   (wait for an active mgr)
+  →  OSD   (per node; wait for HEALTH_OK and all PGs active+clean after each node)
+  →  MDS   (reduce to a single active rank first where CephFS is present)
+  →  RGW   (if present)
+  →  raise require-osd-release  →  unset noout  →  verify daemon versions are homogeneous
+```
+
+**Guards, evaluated before the run and again before every daemon group:**
+Ceph reports `HEALTH_OK`; all PGs `active+clean`; no backfill or recovery in progress; full MON
+quorum; no OSDs `out` or `down`; enough free capacity to tolerate one node's OSDs being unavailable
+at the configured failure domain; and `ceph versions` homogeneous — a cluster already mid-upgrade
+is a blocker, not something to "continue".
+
+**Hard rules.** `noout` is always unset in a `finally`-equivalent cleanup step, including on
+cancellation and failure — leaving a cluster with `noout` set is a silent time bomb. `require-osd-
+release` is raised only after every OSD reports the target release. Cancellation stops at a daemon
+boundary, never mid-restart. And Velnox never proceeds to the next daemon group on a `HEALTH_WARN`
+it does not recognise: unrecognised health states are blockers.
+
+**Non-Ceph clusters** skip all of this; the composition step is a no-op when no Ceph is detected.
+
 ---
 
 ## 11. Migration framework
@@ -456,6 +520,15 @@ the **same image** with different entrypoints — one build, two roles.
   Docker secrets files with `*_FILE` env indirection.
 - `install.sh` is idempotent: it preserves an existing `.env`, installs Docker only when missing,
   and re-runs migrations safely.
+- **Air-gapped installation is the default artifact.** `build.sh --target tar` bundles
+  `docker save`d images alongside the compose files and installer, so a clean Debian host needs no
+  registry access — it `docker load`s and starts. This costs roughly 1 GB of artifact size, which is
+  the right trade for an appliance that will be installed inside customer networks where outbound
+  access to a registry is often the thing standing in the way. A `--slim` variant that pulls from a
+  registry is produced alongside it for bandwidth-constrained distribution. Docker itself is still
+  installed from the Debian/Docker repositories when missing; a fully offline install additionally
+  requires the host to have Docker present, and the installer says so explicitly rather than failing
+  halfway.
 
 ---
 
@@ -471,4 +544,48 @@ the **same image** with different entrypoints — one build, two roles.
 
 ---
 
-*Velnox™ and the Velnox logo are trademarks of The Velnox Foundation.*
+## 15. Licensing, localization and branding
+
+### AGPLv3 — and the product requirement it creates
+
+Velnox is licensed under the **GNU Affero General Public License, version 3**. Section 13 is not a
+paperwork exercise for network-accessed software: anyone interacting with a *modified* Velnox over
+a network must be offered that version's Corresponding Source.
+
+This is therefore a **feature with acceptance criteria**, not a file in the repository root:
+
+- `GET /api/v1/system/source` returns the version, the build commit, the build timestamp and the
+  source URL of the running build.
+- **Settings → About** displays the same, with a visible link, reachable by every authenticated
+  user — not only administrators.
+- The source URL is a build-time variable (`VELNOX_SOURCE_URL`) that defaults to the upstream
+  repository. An operator running a modified build sets it to their own source. The build embeds
+  the git commit so the claim is verifiable.
+- `THIRD-PARTY-NOTICES.md` is generated from the lockfile during the build and shipped in every
+  artifact.
+
+The choice of AGPL over GPL is deliberate for this product: Velnox is exactly the kind of software
+someone would otherwise run as a closed hosted service, and the AGPL is what keeps improvements
+flowing back. See [tech-decisions.md](tech-decisions.md) ADR-020.
+
+### Localization
+
+English and Dutch ship in v1, built on a controlled vocabulary
+(`packages/i18n/glossary.csv`) so a third language is a data change rather than a code change. The
+governing rule — **no user-visible string is ever written in application source** — has to hold from
+the first commit, which is why it is an architectural constraint and not a Phase 13 polish item.
+Audit events, job events and logs stay English by design; they are forensic records. Full design:
+[i18n.md](i18n.md).
+
+### Branding
+
+The product name is read from `system_settings.product_name` and interpolated as `{product}` in
+every message catalogue; logos and colour tokens live in one asset module. Renaming the product is
+a settings change plus an asset swap — no code change — which satisfies both the modularity
+requirement in the brief and the trademark position in [TRADEMARK.md](../TRADEMARK.md): a fork can
+rebrand cleanly and is expected to.
+
+---
+
+*Velnox™ and the Velnox logo are trademarks of The Velnox Foundation.
+Velnox is free software under the AGPLv3; the licence grants no trademark rights.*

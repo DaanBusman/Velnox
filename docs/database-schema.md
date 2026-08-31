@@ -36,11 +36,15 @@ erDiagram
   SITE ||--o{ CLUSTER : contains
   SITE ||--o{ NODE : contains
   CLUSTER ||--o{ NODE : "members"
+  CLUSTER ||--o{ CEPH_DAEMON : runs
+  NODE ||--o{ CEPH_DAEMON : hosts
   NODE ||--o{ WORKLOAD : hosts
   NODE ||--o{ NODE_PACKAGE_UPDATE : "pending updates"
   NODE ||--o{ NODE_STORAGE : exposes
   NODE ||--o{ NODE_INTERFACE : exposes
   USER ||--o{ USER_IDENTITY : "local + oidc"
+  USER ||--o{ USER_MFA_FACTOR : enrolls
+  USER ||--o{ MFA_RECOVERY_CODE : holds
   USER ||--o{ SESSION : has
   USER ||--o{ API_TOKEN : owns
   USER ||--o{ ROLE_ASSIGNMENT : granted
@@ -87,10 +91,35 @@ Clusters and standalone nodes belong to a site; a site belongs to exactly one te
 ### `users`
 `id, tenant_id (home tenant), email citext unique, display_name, status (ACTIVE|DISABLED|INVITED),
 password_hash (nullable — SSO-only users have none), password_algo, must_change_password,
-mfa_enrolled, token_version int, last_login_at, failed_login_count, locked_until`
+mfa_enrolled (derived, maintained by trigger), locale (nullable — falls back to Accept-Language then
+'en'), timezone, token_version int, last_login_at, failed_login_count, locked_until`
 
 `password_hash` holds an Argon2id PHC string. `token_version` increments on password change,
 role change or forced logout and invalidates outstanding access tokens.
+
+### `user_mfa_factors`
+`id, user_id, kind (TOTP|WEBAUTHN), label, secret_ref (→ credentials, nullable for WEBAUTHN),
+credential_public_key (WEBAUTHN only), sign_count, confirmed_at, last_used_at, disabled_at,
+created_ip`
+
+The TOTP seed is **not a column** — it is a reference into the credential store, encrypted like every
+other secret. A factor is only usable once `confirmed_at` is set, which requires the user to prove a
+working code during enrolment; this prevents an account being locked out by a half-finished setup.
+Unique partial index keeps one confirmed TOTP factor per user. `kind = WEBAUTHN` is reserved and not
+implemented in v1.
+
+### `mfa_recovery_codes`
+`id, user_id, code_hash, used_at, used_ip, generated_at, generation int`
+
+Argon2id-hashed, single use, shown exactly once at generation. Regenerating invalidates the previous
+`generation` wholesale. A used code is retained (not deleted) so the audit trail can show that a
+recovery path was taken — which is a signal worth alerting on.
+
+### MFA policy
+Lives on `system_settings.mfa_policy` and, overridably, on `tenants.settings.mfa_policy`:
+`OPTIONAL` (default) | `REQUIRED_FOR_PRIVILEGED` | `REQUIRED`. The effective policy for a user is the
+stricter of the two. `REQUIRED_FOR_PRIVILEGED` resolves to "holds any `*.manage`, `*.execute` or
+`credentials.rotate` permission at any scope".
 
 ### `identity_providers`
 `id, kind (LOCAL|OIDC), name, enabled, discovery_url, client_id, client_secret_ref (→ credentials),
@@ -106,7 +135,10 @@ verified email only when the provider is configured to allow it.
 
 ### `sessions`
 `id, user_id, refresh_token_hash, family_id, parent_id, ip, user_agent, created_at, last_used_at,
-expires_at, revoked_at, revoked_reason`
+mfa_satisfied_at, expires_at, revoked_at, revoked_reason`
+
+A session with a null `mfa_satisfied_at` while the effective policy requires MFA can reach only the
+enrolment and logout endpoints — enforced by a global guard, so new endpoints are covered by default.
 Refresh rotation creates a child row; presenting an already-rotated token revokes the whole
 `family_id` (reuse detection).
 
@@ -141,8 +173,16 @@ trigger.
 
 ### `clusters`
 `id, tenant_id, site_id, name, kind (CLUSTER|STANDALONE), pve_version, quorum_ok, quorate_nodes,
-expected_votes, ceph_present, ceph_health, health (OK|WARNING|CRITICAL|UNKNOWN),
-last_seen_at, last_discovery_at, discovery_error`
+expected_votes, health (OK|WARNING|CRITICAL|UNKNOWN), last_seen_at, last_discovery_at,
+discovery_error`
+
+Ceph columns: `ceph_present, ceph_version, ceph_release, ceph_health (HEALTH_OK|HEALTH_WARN|
+HEALTH_ERR|UNKNOWN), ceph_health_detail jsonb, ceph_pgs_total, ceph_pgs_clean, ceph_osds_up,
+ceph_osds_in, ceph_osds_total, ceph_mon_quorum_size, ceph_mon_quorum_expected, ceph_flags text[],
+ceph_versions_homogeneous bool`
+
+`ceph_flags` matters operationally: a cluster left with `noout` set after an aborted maintenance is
+a silent time bomb, so it is inventoried, surfaced in the UI and alerted on.
 
 A standalone node is modelled as a cluster of one. That keeps every downstream code path — rolling
 updates, upgrade plans, guards — uniform instead of branching on "is this standalone".
@@ -159,6 +199,15 @@ updates, upgrade plans, guards — uniform instead of branching on "is this stan
 | flags | `maintenance_mode, managed (bool), notes` |
 
 `tls_verify_mode` is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. There is no `INSECURE` value.
+
+### `ceph_daemons`
+`id, tenant_id, site_id, cluster_id, node_id, kind (MON|MGR|OSD|MDS|RGW), daemon_id (e.g. "osd.7",
+"mon.pve1"), version, release, state (UP|DOWN|STANDBY|ACTIVE|UNKNOWN), osd_in bool, osd_up bool,
+osd_device, osd_used_bytes, osd_total_bytes, mds_rank, mds_active, last_seen_at`
+
+Ceph upgrades restart **daemons**, not nodes, so daemons need to be first-class rows: they are the
+unit of work for the Ceph playbook, the unit the guards evaluate, and the unit the upgrade report is
+written against. Unique on `(cluster_id, daemon_id)`.
 
 ### `node_storages`, `node_interfaces`
 Per-node storage entries (`storage_id, type, shared, total/used/avail bytes, enabled, active,
@@ -269,16 +318,28 @@ duplicate state machine.
 ## 8. Major upgrades
 
 ### `upgrade_plans`
-`id, tenant_id, cluster_id, name, from_version, to_version, playbook_id, playbook_version,
-status (DRAFT|PREFLIGHT|BLOCKED|READY|RUNNING|COMPLETED|FAILED|CANCELLED), strategy jsonb
-(concurrency, reboot policy, abort rules), created_by, approved_by, scheduled_for`
+`id, tenant_id, cluster_id, name, kind (PVE_MAJOR|CEPH|PBS|COMPOSITE), from_version, to_version,
+playbook_id, playbook_version, parent_plan_id, sequence, status (DRAFT|PREFLIGHT|BLOCKED|READY|
+RUNNING|COMPLETED|FAILED|CANCELLED), strategy jsonb (concurrency, reboot policy, abort rules),
+version_matrix_id, created_by, approved_by, scheduled_for`
+
+A `COMPOSITE` plan has child plans ordered by `sequence` — this is how a Ceph-backed PVE 8 → 9
+upgrade is expressed: child 1 is the `CEPH` plan, child 2 the `PVE_MAJOR` plan. A child plan can also
+exist on its own, which is what makes "upgrade Ceph only" a normal operation rather than a special
+case. `version_matrix_id` records **which version matrix produced this plan**, so a report remains
+interpretable after the matrix is updated.
 
 ### `upgrade_targets`
-`id, plan_id, node_id, sequence, status, pre_state jsonb, post_state jsonb, started_at, finished_at`
-`pre_state`/`post_state` are the before/after snapshots the Phase 7 report is generated from.
+`id, plan_id, target_kind (NODE|CEPH_DAEMON), node_id, ceph_daemon_id, daemon_group (MON|MGR|OSD|
+MDS|RGW, null for nodes), sequence, status, pre_state jsonb, post_state jsonb, started_at,
+finished_at`
+
+`pre_state`/`post_state` are the before/after snapshots the Phase 7 report is generated from. The
+`target_kind` discriminator is what lets one report, one progress model and one UI serve both a
+node-by-node PVE upgrade and a daemon-by-daemon Ceph upgrade.
 
 ### `upgrade_checks`
-`id, target_id, source (PVE8TO9|VELNOX_GUARD), parser_version, check_key, severity
+`id, target_id, source (PVE8TO9|CEPH_HEALTH|CEPH_VERSION_MATRIX|VELNOX_GUARD), parser_version, check_key, severity
 (PASS|INFO|WARNING|BLOCKER|UNKNOWN), title, detail, raw_line, remediation_id (nullable),
 run_index int (0 = initial preflight, 1+ = re-checks), created_at`
 
@@ -343,10 +404,13 @@ Notification: delivery attempts, status, last error.
 
 ### `system_settings`
 Single-row table: `initialized (bool), initialized_at, instance_id, product_name, base_url,
-key_version, feature_flags jsonb, retention jsonb, schema_version`
+key_version, mfa_policy (OPTIONAL|REQUIRED_FOR_PRIVILEGED|REQUIRED), default_locale, default_timezone,
+source_url, build_commit, feature_flags jsonb, retention jsonb, schema_version`
 
 `product_name` lives here and is read by the frontend, so rebranding from "Velnox" is a settings
-change plus asset swap — not a code change.
+change plus asset swap — not a code change. `source_url` and `build_commit` back the AGPL §13
+obligation: they are what `GET /api/v1/system/source` and **Settings → About** serve, and an operator
+running a modified build points `source_url` at their own source.
 
 ---
 
@@ -358,6 +422,9 @@ change plus asset swap — not a code change.
 | `UNIQUE (credential_id) WHERE status = 'ACTIVE'` on `credential_secrets` | one active secret version |
 | `UNIQUE (concurrency_key) WHERE status IN (QUEUED,PREFLIGHT,RUNNING,VALIDATING)` on `jobs` | no two mutating jobs on one cluster |
 | `UNIQUE (provider_id, subject)` on `user_identities` | no OIDC identity hijack |
+| `UNIQUE (user_id) WHERE kind='TOTP' AND confirmed_at IS NOT NULL AND disabled_at IS NULL` on `user_mfa_factors` | one active TOTP factor per user; an unconfirmed enrolment can never shadow a working one |
+| `UNIQUE (cluster_id, daemon_id)` on `ceph_daemons` | daemon identity is stable across discoveries |
+| `CHECK ((target_kind='NODE') = (node_id IS NOT NULL))` on `upgrade_targets` | a target is a node or a daemon, never both or neither |
 | composite index `(tenant_id, …)` leading on **every** tenant-scoped table | tenant filter is always index-covered, so the mandatory filter costs nothing |
 | trigger `audit_events_no_mutate` | immutability |
 | `CHECK (scope_type <> 'GLOBAL' OR user_is_msp_root(user_id))` on `role_assignments` | global grants only for MSP root users |

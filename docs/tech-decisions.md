@@ -201,6 +201,120 @@ invariant.
 
 ---
 
+## ADR-016 — Ceph upgrades are a separate playbook, composed into the plan
+
+**Decision:** Ceph major-version upgrades are in v1 scope, implemented as their own playbook on the
+generic engine. An upgrade plan for a Ceph-backed cluster is a **composite**: the Ceph playbook runs
+to completion first, then the PVE major-upgrade playbook.
+
+**Why not a phase inside the PVE upgrade:** the two workflows have different units of work (Ceph
+restarts *daemons*, PVE upgrades *nodes*), different health models (Ceph `HEALTH_OK` and PG state
+vs. corosync quorum) and different failure modes. Fusing them would produce exactly the large
+monolithic function the brief forbids, and would make "upgrade Ceph only" — a common standalone
+maintenance task — impossible to express.
+
+**Why Ceph first:** a PVE major release ships a specific Ceph release and does not support the
+previous one, so the Ceph upgrade must complete while the cluster is still on its current PVE and
+Debian release.
+
+**Version pairing is data, and verified:** source → target release pairs live in a version-matrix
+data file, and the matrix is checked against the live cluster at plan time. Disagreement between
+the running release, the target and the matrix refuses the plan rather than guessing — the same
+fail-safe posture as the `pve8to9` parser.
+
+**Consequence:** genericity of the Phase 8 engine is proven by construction, since two very
+different workflows run on it unchanged.
+
+---
+
+## ADR-017 — MFA: TOTP, optional but recommended; WebAuthn deferred
+
+**Decision:** TOTP (RFC 6238) plus Argon2id-hashed single-use recovery codes. Default policy
+`OPTIONAL`, with `REQUIRED_FOR_PRIVILEGED` and `REQUIRED` available per installation and per tenant.
+The UI recommends enrolment during setup and flags privileged accounts without it.
+
+**Why TOTP first:** it needs no hardware, works for every operator, and — decisively — it works for
+the **break-glass account**, which must remain usable when SSO and the network to the identity
+provider are unavailable. WebAuthn's platform-authenticator model is a poor fit for an account whose
+whole purpose is being usable from an unexpected machine during an incident.
+
+**Why not required by default:** the first administrator is created by the setup wizard before any
+authenticator is enrolled, and forcing enrolment there risks locking out an operator who has not yet
+stored recovery codes. `REQUIRED_FOR_PRIVILEGED` is a one-click policy change once the installation
+is running, and this is what the documentation recommends.
+
+**Storage:** the TOTP seed is secret material and goes through the `SecretStore`, not into a plain
+column. Recovery codes are hashed, never retrievable, and shown exactly once.
+
+**Deferred:** WebAuthn/passkeys as a second factor type — the `user_mfa_factors.kind` discriminator
+exists for it.
+
+---
+
+## ADR-018 — The tar.gz artifact bundles images for air-gapped installation
+
+**Decision:** `build.sh --target tar` includes `docker save`d images by default; a `--slim` variant
+pulls from a registry.
+
+**Why:** Velnox is installed inside customer networks and management VLANs where outbound access to
+a container registry is frequently the thing that blocks an installation. ~1 GB of artifact is a
+cheap price for "it installs on the first attempt, offline".
+
+**Honest limit:** Docker itself is still installed from Debian/Docker repositories when absent. A
+genuinely offline host must already have Docker. The installer detects this case and says so up
+front rather than failing halfway through.
+
+---
+
+## ADR-019 — Localization: keys everywhere, ICU catalogues, error codes over sentences
+
+**Decision:** English and Dutch in v1. No user-visible string in application source; every one is a
+key against an ICU MessageFormat catalogue. The API returns machine-readable error codes with typed
+parameters, and the frontend renders them. A `glossary.csv` controlled vocabulary is the source of
+truth for both UI catalogues and Dutch documentation.
+
+**Why from commit one:** retrofitting externalised strings means touching every component and every
+exception in the codebase. It is one of the few decisions that is nearly free at the start and
+expensive at any later point.
+
+**Why error codes:** they make a new language cover API errors for free, and they are stable enough
+to assert on in tests, alert on, and document — a side benefit worth as much as the translation.
+
+**Deliberately untranslated:** audit events, job events and logs. They are forensic records, they
+embed verbatim Proxmox/`apt`/Ceph output, and a support engineer must never have to guess which
+language a customer's audit trail was written in.
+
+**Cost acknowledged:** two documentation sets double maintenance across fifteen phases. Mitigated by
+recording the source commit in each Dutch file and a CI check that *warns* on drift — English
+documentation is never blocked by a pending translation. See [i18n.md](i18n.md).
+
+---
+
+## ADR-020 — AGPLv3
+
+**Decision:** GNU Affero General Public License v3.0 (canonical text in `LICENSE`, retrieved
+verbatim from gnu.org).
+
+**Why AGPL over GPL:** Velnox is network-accessed management software — precisely the category where
+the GPL's distribution trigger never fires, because a hosted operator never "distributes" anything.
+Section 13 closes that gap.
+
+**Why copyleft at all rather than Apache-2.0/MIT:** the project's value is the accumulated safety
+logic — quorum invariants, preflight parsing, remediation definitions. A permissive licence invites
+that to be absorbed into closed products without the corrections flowing back, and incorrect safety
+logic in this domain damages third-party production infrastructure.
+
+**Consequences that are engineering work, not paperwork:**
+- §13 compliance is a product feature: `GET /api/v1/system/source` and a Settings → About link, both
+  driven by a build-time `VELNOX_SOURCE_URL` and the embedded git commit.
+- `THIRD-PARTY-NOTICES.md` is generated from the lockfile at build time and ships in every artifact.
+- Dependency licences must be AGPL-compatible; a CI licence check rejects incompatible additions.
+  This rules out some commercially-licensed component libraries — a real constraint on the frontend,
+  and one reason shadcn/ui (MIT, vendored source) was chosen over a licensed enterprise grid.
+- Trademarks are handled separately, because the AGPL grants none: see `TRADEMARK.md`.
+
+---
+
 ## Version targets
 
 | Component | Version |
@@ -215,7 +329,10 @@ invariant.
 | Caddy | 2.x |
 | Debian base image | bookworm-slim |
 | Proxmox VE support | 8.x and 9.x (upgrade path 8 → 9) |
+| Ceph support | releases as declared in the version matrix, verified against the live cluster at plan time |
+| Localization | `en` (source), `nl`; ICU MessageFormat via next-intl |
+| Licence | AGPL-3.0-or-later |
 
 ---
 
-*Velnox™ is a trademark of The Velnox Foundation.*
+*Velnox™ is a trademark of The Velnox Foundation. Velnox is free software under the AGPLv3.*

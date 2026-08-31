@@ -23,7 +23,7 @@ These are decisions, not omissions. They are out of scope unless the product own
 |---|---|---|
 | Metrics | Long-term time-series storage and graphing | Velnox records point-in-time inventory and health; a TSDB is a different product. Future: Prometheus integration. |
 | Backups | Managing or storing VM backups | Proxmox Backup Server does this. Velnox may orchestrate PBS later; it will never store VM data. |
-| Ceph | Ceph major-version upgrades | The upgrade framework is built to accept a Ceph playbook, but none ships in v1. Ceph health is monitored and guarded on. See open question 1 in [risks.md](risks.md). |
+| PBS | Proxmox Backup Server as first-class inventory | **Deferred by decision (2026-08-31).** The upgrade framework accepts a PBS playbook, and `upgrade_plans.kind` already has a `PBS` value, but no PBS inventory or playbook ships in v1. |
 | Agent | Any software installed on managed nodes | Velnox is agentless. This costs resilience against dropped SSH sessions (R-16) and is a conscious trade. |
 | Portal | Customer-facing self-service | Tenant users in v1 are operators, not end customers. |
 | Rollback | Rolling back a completed Debian major upgrade | Technically not reliably possible. Velnox states this before the operator confirms and requires a documented backup as a precondition. |
@@ -62,11 +62,31 @@ an explicit transaction. Recorded here rather than quietly skipped.
 HashiCorp Vault and Azure Key Vault backends are designed for but not implemented, which means
 `MASTER_ENCRYPTION_KEY` is a single point of failure (R-05).
 
-### Multi-factor authentication — *not in v1 scope*
-The user model reserves `mfa_enrolled`, but no TOTP or WebAuthn flow is planned for v1. Entra ID SSO
-can supply MFA for SSO users; local break-glass accounts would not have it. Flagged because it is a
-reasonable thing to expect from a tool holding hypervisor root credentials — raise it if it should
-move into scope.
+### Multi-factor authentication — *TOTP only; WebAuthn deferred*
+**Now in scope (2026-08-31): optional but recommended.** TOTP with recovery codes ships in Phase 2,
+with `OPTIONAL` / `REQUIRED_FOR_PRIVILEGED` / `REQUIRED` policies and `OPTIONAL` as the default.
+WebAuthn/passkeys are **not** implemented — `user_mfa_factors.kind` reserves the value. TOTP was
+chosen first because it is the factor that still works for a break-glass account on an unexpected
+machine during an incident.
+
+### Ceph — *upgrades in scope; automated repair is not*
+**Now in scope (2026-08-31):** Ceph inventory (Phase 4) and Ceph major-version upgrades as their own
+playbook composed before the PVE upgrade (Phase 9A). What Velnox does **not** do: repair a damaged
+Ceph cluster. If health does not return, the run stops and reports — it does not attempt automated
+recovery, because that is expert work where a wrong automated action makes things worse.
+
+### Dutch documentation — *translation drift is possible*
+English under `docs/` is canonical; `docs/nl/` is a translation. CI *warns* when an English source
+has changed since its Dutch counterpart was translated, but does not block — English documentation is
+never held hostage to a pending translation. So a Dutch document can be behind. Each one records the
+source commit it was translated from, so a reader can tell. UI strings are held to a stricter rule:
+a missing or extra locale key **fails** the build.
+
+### AGPL §13 source offer — *depends on the operator*
+Velnox ships the mechanism (`GET /api/v1/system/source`, Settings → About, `VELNOX_SOURCE_URL`,
+embedded build commit). An operator running a **modified** build must point that variable at their
+own Corresponding Source. Velnox cannot verify that they did — no software can. The obligation is
+theirs; the mechanism is ours.
 
 ### Sub-tenants — *schema-ready, not implemented*
 `tenants.parent_tenant_id` exists so hierarchical tenants remain possible, but v1 supports exactly

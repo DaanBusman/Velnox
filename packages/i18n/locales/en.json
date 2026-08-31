@@ -1,0 +1,162 @@
+{
+  "$schema": "./_schema.json",
+  "$meta": {
+    "locale": "en",
+    "name": "English",
+    "source": true,
+    "note": "Source language. Every other locale is a translation of this file. Keys are stable; values are not."
+  },
+
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "search": "Search",
+    "filter": "Filter",
+    "refresh": "Refresh",
+    "loading": "Loading…",
+    "never": "Never",
+    "unknown": "Unknown",
+    "yes": "Yes",
+    "no": "No",
+    "selected": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
+    "lastSeen": "Last seen {time}",
+    "requiresPermission": "Requires the {permission} permission"
+  },
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Tenants",
+    "sites": "Sites",
+    "infrastructure": "Infrastructure",
+    "clusters": "Clusters",
+    "nodes": "Nodes",
+    "virtualMachines": "Virtual Machines",
+    "containers": "Containers",
+    "storage": "Storage",
+    "networks": "Networks",
+    "updates": "Updates",
+    "majorUpgrades": "Major Upgrades",
+    "migrations": "Migrations",
+    "automation": "Automation",
+    "jobs": "Jobs",
+    "alerts": "Alerts",
+    "reports": "Reports",
+    "users": "Users",
+    "rolesPermissions": "Roles & Permissions",
+    "auditLog": "Audit Log",
+    "settings": "Settings"
+  },
+
+  "status": {
+    "health": {
+      "ok": "OK",
+      "warning": "Warning",
+      "critical": "Critical",
+      "unknown": "Unknown"
+    },
+    "node": {
+      "online": "Online",
+      "offline": "Offline",
+      "maintenance": "Maintenance",
+      "unknown": "Unknown"
+    },
+    "job": {
+      "queued": "Queued",
+      "preflight": "Preflight",
+      "waiting_approval": "Waiting for approval",
+      "running": "Running",
+      "validating": "Validating",
+      "succeeded": "Succeeded",
+      "partially_succeeded": "Partially succeeded",
+      "failed": "Failed",
+      "rolled_back": "Rolled back",
+      "cancelled": "Cancelled"
+    },
+    "check": {
+      "pass": "Pass",
+      "info": "Info",
+      "warning": "Warning",
+      "blocker": "Blocker",
+      "unknown": "Unrecognised — treated as a blocker"
+    }
+  },
+
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "email": "Email address",
+    "password": "Password",
+    "signInWithMicrosoft": "Sign in with Microsoft",
+    "mfaPrompt": "Enter the code from your authenticator app",
+    "mfaRecoveryPrompt": "Enter a recovery code",
+    "mfaRecommended": "Multi-factor authentication is strongly recommended for accounts that can manage infrastructure."
+  },
+
+  "setup": {
+    "title": "Set up {product}",
+    "subtitle": "Create the first administrator account. This can only be done once.",
+    "name": "Full name",
+    "email": "Email address",
+    "password": "Password",
+    "passwordConfirm": "Confirm password",
+    "passwordWeak": "This password does not meet the minimum strength requirement.",
+    "masterKeyWarning": "Store a backup of MASTER_ENCRYPTION_KEY now. Without it, every credential this installation stores becomes permanently unreadable.",
+    "complete": "Setup complete"
+  },
+
+  "errors": {
+    "generic": "Something went wrong.",
+    "network": "Could not reach the server.",
+    "auth": {
+      "invalid_credentials": "Email address or password is incorrect.",
+      "mfa_required": "A second authentication factor is required.",
+      "mfa_invalid": "That code is not valid.",
+      "session_expired": "Your session has expired. Please sign in again.",
+      "rate_limited": "Too many attempts. Try again in {seconds, plural, one {# second} other {# seconds}}."
+    },
+    "authz": {
+      "forbidden": "You do not have permission to perform this action.",
+      "tenant_forbidden": "This resource belongs to another tenant."
+    },
+    "setup": {
+      "already_initialized": "This installation has already been set up."
+    },
+    "cluster": {
+      "unreachable": "Cluster {cluster} could not be reached.",
+      "quorum_at_risk": "Cluster {cluster} would lose quorum: {available} of {required} voting nodes would remain available.",
+      "already_degraded": "Cluster {cluster} is not healthy. Resolve this before starting a change."
+    },
+    "node": {
+      "fingerprint_mismatch": "The TLS certificate of {node} does not match the pinned fingerprint. The connection was refused.",
+      "host_key_mismatch": "The SSH host key of {node} does not match the pinned key. The connection was refused."
+    },
+    "ceph": {
+      "not_healthy": "Ceph reports {status}. A change may only start at HEALTH_OK.",
+      "pgs_not_clean": "{count, plural, one {# placement group is} other {# placement groups are}} not active+clean.",
+      "version_mismatch": "Not all Ceph daemons run the same version. Complete the running upgrade first."
+    },
+    "job": {
+      "concurrent_run": "Another job is already running against {target}.",
+      "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe."
+    },
+    "upgrade": {
+      "blockers_present": "{count, plural, one {# blocker} other {# blockers}} must be resolved before this upgrade can start.",
+      "unparsed_output": "Preflight output contained lines this version of Velnox does not recognise. They are treated as blockers and shown verbatim."
+    },
+    "credential": {
+      "rotation_verify_failed": "The new password was applied but could not be verified. Both versions have been kept and the credential is flagged for attention."
+    }
+  },
+
+  "job": {
+    "cancel": "Cancel job",
+    "cancelHint": "The job stops at the next safe boundary. Work already in progress is allowed to finish or roll back.",
+    "retry": "Retry",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approvalPrompt": "Review the exact changes below before approving.",
+    "operatorAssisted": "This step requires a manual action. {product} will not report success until it has verified the result itself."
+  }
+}

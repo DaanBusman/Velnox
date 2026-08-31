@@ -1,0 +1,47 @@
+Velnox
+Copyright (C) 2026 The Velnox Foundation
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+The full licence text is in the file LICENSE.
+
+--------------------------------------------------------------------------------
+AGPL section 13 — remote network interaction
+
+Velnox is network-accessed software. Section 13 of the AGPLv3 requires that
+users interacting with a modified version over a network be offered the
+Corresponding Source of that version.
+
+Velnox satisfies this obligation in the product itself: the Settings > About
+screen and the API endpoint GET /api/v1/system/source display the version, the
+build commit, and a link from which the Corresponding Source of the running
+build can be obtained. Operators running a modified build MUST keep that link
+pointing at their own modified source. Removing the notice does not remove the
+obligation.
+
+--------------------------------------------------------------------------------
+Trademarks
+
+Velnox(TM) and the Velnox logo are trademarks of The Velnox Foundation.
+The AGPLv3 grants no trademark rights.  See TRADEMARK.md.
+
+Proxmox(R), VMware(R), Microsoft(R), Hyper-V(R), Ceph(R), Debian(R), Docker(R)
+and PostgreSQL(R) are trademarks of their respective owners.  Velnox is not
+affiliated with, endorsed by, or sponsored by any of them.
+
+--------------------------------------------------------------------------------
+Third-party components
+
+Velnox is distributed with third-party open source software.  Their licences and
+copyright notices are collected in THIRD-PARTY-NOTICES.md, generated during the
+build from the dependency lockfile.

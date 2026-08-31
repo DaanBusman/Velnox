@@ -1,0 +1,163 @@
+{
+  "$schema": "./_schema.json",
+  "$meta": {
+    "locale": "nl",
+    "name": "Nederlands",
+    "source": false,
+    "translatedFrom": "en",
+    "note": "Vertaling van en.json. Termen volgen glossary.csv; termen met translate=no blijven onvertaald."
+  },
+
+  "common": {
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "confirm": "Bevestigen",
+    "delete": "Verwijderen",
+    "search": "Zoeken",
+    "filter": "Filteren",
+    "refresh": "Vernieuwen",
+    "loading": "Laden…",
+    "never": "Nooit",
+    "unknown": "Onbekend",
+    "yes": "Ja",
+    "no": "Nee",
+    "selected": "{count, plural, =0 {Niets geselecteerd} one {# geselecteerd} other {# geselecteerd}}",
+    "lastSeen": "Laatst gezien {time}",
+    "requiresPermission": "Vereist het recht {permission}"
+  },
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Tenants",
+    "sites": "Locaties",
+    "infrastructure": "Infrastructuur",
+    "clusters": "Clusters",
+    "nodes": "Nodes",
+    "virtualMachines": "Virtuele machines",
+    "containers": "Containers",
+    "storage": "Opslag",
+    "networks": "Netwerken",
+    "updates": "Updates",
+    "majorUpgrades": "Major upgrades",
+    "migrations": "Migraties",
+    "automation": "Automatisering",
+    "jobs": "Jobs",
+    "alerts": "Meldingen",
+    "reports": "Rapporten",
+    "users": "Gebruikers",
+    "rolesPermissions": "Rollen en rechten",
+    "auditLog": "Auditlog",
+    "settings": "Instellingen"
+  },
+
+  "status": {
+    "health": {
+      "ok": "OK",
+      "warning": "Waarschuwing",
+      "critical": "Kritiek",
+      "unknown": "Onbekend"
+    },
+    "node": {
+      "online": "Online",
+      "offline": "Offline",
+      "maintenance": "Onderhoud",
+      "unknown": "Onbekend"
+    },
+    "job": {
+      "queued": "In wachtrij",
+      "preflight": "Preflight",
+      "waiting_approval": "Wacht op goedkeuring",
+      "running": "Actief",
+      "validating": "Valideren",
+      "succeeded": "Geslaagd",
+      "partially_succeeded": "Deels geslaagd",
+      "failed": "Mislukt",
+      "rolled_back": "Teruggedraaid",
+      "cancelled": "Geannuleerd"
+    },
+    "check": {
+      "pass": "Geslaagd",
+      "info": "Info",
+      "warning": "Waarschuwing",
+      "blocker": "Blokkade",
+      "unknown": "Niet herkend — behandeld als blokkade"
+    }
+  },
+
+  "auth": {
+    "signIn": "Inloggen",
+    "signOut": "Uitloggen",
+    "email": "E-mailadres",
+    "password": "Wachtwoord",
+    "signInWithMicrosoft": "Inloggen met Microsoft",
+    "mfaPrompt": "Voer de code uit je authenticator-app in",
+    "mfaRecoveryPrompt": "Voer een herstelcode in",
+    "mfaRecommended": "Meervoudige authenticatie wordt sterk aanbevolen voor accounts die infrastructuur kunnen beheren."
+  },
+
+  "setup": {
+    "title": "{product} instellen",
+    "subtitle": "Maak het eerste beheerdersaccount aan. Dit kan slechts één keer.",
+    "name": "Volledige naam",
+    "email": "E-mailadres",
+    "password": "Wachtwoord",
+    "passwordConfirm": "Wachtwoord bevestigen",
+    "passwordWeak": "Dit wachtwoord voldoet niet aan de minimale sterkte-eis.",
+    "masterKeyWarning": "Maak nu een back-up van MASTER_ENCRYPTION_KEY. Zonder deze sleutel wordt elk credential dat deze installatie opslaat definitief onleesbaar.",
+    "complete": "Installatie voltooid"
+  },
+
+  "errors": {
+    "generic": "Er is iets misgegaan.",
+    "network": "De server is niet bereikbaar.",
+    "auth": {
+      "invalid_credentials": "E-mailadres of wachtwoord is onjuist.",
+      "mfa_required": "Een tweede authenticatiefactor is vereist.",
+      "mfa_invalid": "Deze code is niet geldig.",
+      "session_expired": "Je sessie is verlopen. Log opnieuw in.",
+      "rate_limited": "Te veel pogingen. Probeer het over {seconds, plural, one {# seconde} other {# seconden}} opnieuw."
+    },
+    "authz": {
+      "forbidden": "Je hebt geen recht om deze actie uit te voeren.",
+      "tenant_forbidden": "Deze resource hoort bij een andere tenant."
+    },
+    "setup": {
+      "already_initialized": "Deze installatie is al ingesteld."
+    },
+    "cluster": {
+      "unreachable": "Cluster {cluster} is niet bereikbaar.",
+      "quorum_at_risk": "Cluster {cluster} zou quorum verliezen: {available} van {required} stemmende nodes zouden beschikbaar blijven.",
+      "already_degraded": "Cluster {cluster} is niet gezond. Los dit op voordat je een wijziging start."
+    },
+    "node": {
+      "fingerprint_mismatch": "Het TLS-certificaat van {node} komt niet overeen met de vastgelegde vingerafdruk. De verbinding is geweigerd.",
+      "host_key_mismatch": "De SSH-hostsleutel van {node} komt niet overeen met de vastgelegde sleutel. De verbinding is geweigerd."
+    },
+    "ceph": {
+      "not_healthy": "Ceph meldt {status}. Een wijziging mag alleen starten bij HEALTH_OK.",
+      "pgs_not_clean": "{count, plural, one {# placement group is} other {# placement groups zijn}} niet active+clean.",
+      "version_mismatch": "Niet alle Ceph-daemons draaien dezelfde versie. Voltooi eerst de lopende upgrade."
+    },
+    "job": {
+      "concurrent_run": "Er draait al een job op {target}.",
+      "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is."
+    },
+    "upgrade": {
+      "blockers_present": "{count, plural, one {# blokkade} other {# blokkades}} moeten worden opgelost voordat deze upgrade kan starten.",
+      "unparsed_output": "De preflight-uitvoer bevatte regels die deze versie van Velnox niet herkent. Ze worden als blokkade behandeld en letterlijk getoond."
+    },
+    "credential": {
+      "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."
+    }
+  },
+
+  "job": {
+    "cancel": "Job annuleren",
+    "cancelHint": "De job stopt op het eerstvolgende veilige punt. Werk dat al bezig is mag afronden of terugdraaien.",
+    "retry": "Opnieuw proberen",
+    "approve": "Goedkeuren",
+    "reject": "Afwijzen",
+    "approvalPrompt": "Beoordeel de exacte wijzigingen hieronder voordat je goedkeurt.",
+    "operatorAssisted": "Deze stap vereist een handmatige actie. {product} meldt pas succes wanneer het resultaat zelf is geverifieerd."
+  }
+}
