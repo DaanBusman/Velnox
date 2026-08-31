@@ -1,0 +1,351 @@
+# Velnox — Technologiekeuzes (ADR-log)
+
+> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `5fd136a`.
+> **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
+
+**Status:** Phase 0. Deze keuzes zijn voorstellen in afwachting van goedkeuring; er is nog niets
+geïmplementeerd. Elke ADR benoemt de keuze, de overwogen alternatieven, en waarom die afvielen.
+
+---
+
+## ADR-001 — Monorepo met pnpm workspaces + Turborepo
+
+**Keuze:** één repository, `pnpm` workspaces, Turborepo voor taakorkestratie en caching.
+
+**Alternatieven:** npm/yarn workspaces (tragere installaties, geen strikte node_modules-isolatie); Nx
+(krachtiger, maar zwaarder qua concepten dan dit project nodig heeft); polyrepo (afgevallen — api en
+worker moeten domeincode en de Prisma-client delen, en versieverschil daartussen zou een
+correctheidsfout zijn, geen ongemak).
+
+**Gevolg:** api, worker, web en alle packages delen één TypeScript-basisconfiguratie, één
+ESLint-configuratie, één lockfile en één `pnpm build` die incrementeel gecachet wordt.
+
+---
+
+## ADR-002 — NestJS voor de backend
+
+**Keuze:** NestJS 11 op Node 22 LTS.
+
+**Waarom:** de eisenlijst is in feite een opsomming van NestJS-sterktes — guards voor RBAC,
+interceptors voor audit en redactie, modules voor servicegrenzen, DI voor de adapterregisters,
+eersteklas BullMQ- en OpenAPI-integratie, en een testaanpak die RBAC- en tenant-isolatietests
+eenvoudig maakt.
+
+**Alternatieven:** Fastify met eigen structuur (sneller te starten, maar dan bouwen we DI, guards en
+modulegrenzen zelf); Express (te weinig structuur voor een project van deze omvang); Go/Rust (betere
+ruwe prestaties, maar deze belasting is I/O-gebonden orkestratie, en TypeScript van voor tot achter
+laat de frontend dezelfde zod-contracten importeren).
+
+---
+
+## ADR-003 — Next.js App Router voor de frontend, gebruikt als BFF
+
+**Keuze:** Next.js 15, App Router, TypeScript, Tailwind, shadcn/ui.
+
+**Waarom BFF:** de browser houdt geen token vast. Sessiecookies blijven `HttpOnly` en same-origin;
+Next route handlers proxyen `/api/v1/*` naar de api-container over het interne Docker-netwerk. Dat
+elimineert CORS volledig, elimineert XSS-blootstelling van een token in JavaScript, en houdt het
+API-oppervlak privé.
+
+**Alternatieven:** Vite-SPA met directe API-aanroepen (vereist CORS en een token dat voor JavaScript
+bereikbaar is, of cookieafhandeling over origins heen); Remix (prima, maar een kleiner ecosysteem voor
+de gewenste componentbibliotheek).
+
+---
+
+## ADR-004 — PostgreSQL 16 + Prisma
+
+**Keuze:** PostgreSQL 16 als enige persistente opslag; Prisma als ORM en migratiehulpmiddel.
+
+**Waarom Prisma:** een getypeerde client die api en worker delen; een volwassen migratieproces
+(`prisma migrate deploy` in een eenmalige container); en, doorslaggevend, **client extensions**, die
+één plek geven om tenant-afbakening op elke query af te dwingen.
+
+**Aanvaarde afweging:** de ruwe-SQL-uitweg van Prisma omzeilt die extensie. Ondervangen door een
+ESLint-verbod op `$queryRaw`/`$executeRaw` buiten een uitzonderingslijst, en door
+tenant-isolatietests.
+
+**Alternatieven:** Drizzle (lichter, betere ruwe SQL, maar geen equivalent van globale
+query-onderschepping); TypeORM (zwakkere typering en migratie-ergonomie die we niet op een security
+boundary willen).
+
+---
+
+## ADR-005 — Redis + BullMQ voor de wachtrij, PostgreSQL voor jobwaarheid
+
+**Keuze:** BullMQ op Redis 7 voor planning en uitvoering; een `jobs`-tabel in PostgreSQL als bron van
+waarheid voor status, stappen, gebeurtenissen en goedkeuringen.
+
+**Waarom beide:** Redis geeft herhaalpogingen, uitgestelde jobs, herhaalbare (cron)jobs,
+gelijktijdigheidslimieten en pub/sub voor live voortgang. Maar jobhistorie, goedkeuringsbeslissingen en
+auditsporen zijn verantwoordingsdocumenten en moeten een Redis-flush overleven. Bij het starten van de
+worker vergelijkt een verzoener beide en zet weesjobs opnieuw in de wachtrij of laat ze falen.
+
+**Alternatieven:** alleen PostgreSQL als wachtrij (pg-boss / SKIP LOCKED) — één service minder, maar
+zwakkere planningsprimitieven en geen pub/sub voor SSE; Temporal (uitstekend passend bij de
+workflowsemantiek, maar voegt een heel cluster toe aan een self-hosted appliance — afgevallen op
+operationele zwaarte).
+
+---
+
+## ADR-006 — SSE in plaats van WebSockets voor live jobvoortgang
+
+**Keuze:** Server-Sent Events op `GET /api/v1/jobs/:id/stream`, gevoed door Redis pub/sub.
+
+**Waarom:** voortgang gaat uitsluitend van server naar client. SSE hergebruikt de bestaande
+cookie-authenticatie en de HTTP-middlewarestapel (inclusief de RBAC-guard), overleeft reverse proxies
+zonder upgrade-dans, en herverbindt vanzelf. WebSockets zouden een parallel authenticatiepad vereisen —
+precies het soort tweede deur dat autorisatiegaten oplevert.
+
+---
+
+## ADR-007 — Argon2id, JWT access token, ondoorzichtig roterend refresh token
+
+**Keuze:** zoals beschreven in [architecture.md](architecture.md#5-authenticatieontwerp).
+
+**Waarom geen langlevende JWT's alleen:** die kunnen niet ingetrokken worden. Voor een hulpmiddel dat
+root-credentials van hypervisors bewaart, is directe sessie-intrekking verplicht. Korte access tokens
+plus een server-side refresh-record geven intrekbaarheid zonder databaselezing bij elke request.
+
+**Waarom geen pure server-side sessies:** ook acceptabel; de hybride houdt het hete pad staatloos en
+behoudt intrekbaarheid. `JWT_SECRET` maakt bovendien al deel uit van de vereiste configuratie.
+
+---
+
+## ADR-008 — Envelope-encryptie met een vervangbare SecretStore
+
+**Keuze:** AES-256-GCM DEK per secret, gewrapt door een KEK afgeleid van `MASTER_ENCRYPTION_KEY` via
+HKDF-SHA256, achter een `SecretStore`-interface.
+
+**Waarom:** rotatie van de hoofdsleutel herwrapt alleen DEK's. Een toekomstige Vault- of Azure Key
+Vault-backend vervangt de wrap-stap zonder één aanroeppunt aan te raken. Secrets direct met de
+hoofdsleutel versleutelen zou rotatie tot een volledige herversleuteling van elke rij maken en het
+vertrouwensmodel vastleggen in code.
+
+---
+
+## ADR-009 — De API-container voert geen outbound automation uit
+
+**Keuze:** Proxmox-, SSH- en WinRM-adapters worden alleen in de worker-rol geladen. De API kan werk in
+de wachtrij zetten; uitvoeren kan het niet.
+
+**Waarom:** het verandert een hele klasse kwetsbaarheden (SSRF, command injection via een
+requestparameter, een autorisatiefout die remote root wordt) in een ontbrekend-code-path. Het betekent
+ook dat een gecompromitteerd API-proces geen credentials kan ontsleutelen voor gebruik.
+
+**Prijs:** sommige leesoperaties die triviaal synchroon zouden zijn, worden jobs. Aanvaard; een
+gecachet inventarispad bedient de UI, en een "nu vernieuwen"-actie zet een discovery-job in de wachtrij.
+
+---
+
+## ADR-010 — Commando's zijn registeritems, nooit teksten uit HTTP
+
+**Keuze:** een `CommandSpec`-register definieert elk remote commando: argv-sjabloon, getypeerde
+parameters, alleen-lezenvlag, timeout, uitvoerparser, vereist recht.
+
+**Waarom:** er is geen endpoint dat een commando accepteert. Parameters zijn getypeerd en worden door de
+spec geëscaped, niet aaneengeplakt. De audit toont *welke spec* met *welke getypeerde parameters* liep,
+wat veel bruikbaarder is dan een shelltekst.
+
+---
+
+## ADR-011 — Playbooks zijn data, geen code paths
+
+**Keuze:** upgrade-, update- en migratieworkflows zijn geversioneerde playbookdefinities, samengesteld
+uit geregistreerde stappen en guards.
+
+**Waarom:** de opdracht vereist expliciet dat de major-upgrade-engine generiek is (PVE 9 → volgende,
+PBS, Ceph). Een data-gedreven engine maakt de workflow bovendien *inspecteerbaar* — de UI kan het plan
+tonen vóór uitvoering, en tests kunnen op het plan controleren in plaats van op bijwerkingen.
+
+---
+
+## ADR-012 — Caddy als reverse proxy
+
+**Keuze:** Caddy 2, standaard met een gegenereerd self-signed certificaat en optioneel ACME wanneer een
+publieke hostnaam is ingesteld.
+
+**Waarom:** het kleinste configuratieoppervlak, automatische HTTPS, verstandige security headers, één
+binary. De dynamische discovery van Traefik levert niets op in een vaste appliance met zes services;
+nginx zou ons TLS en headers met de hand laten schrijven.
+
+---
+
+## ADR-013 — Eén backend-image, twee rollen
+
+**Keuze:** `velnox/backend` wordt één keer gebouwd; de services `api` en `worker` verschillen alleen in
+entrypoint en in welke modules opstarten.
+
+**Waarom:** halveert bouwtijd en imageopslag in het tar.gz-artefact, en garandeert dat api en worker
+identieke domeincode draaien.
+
+---
+
+## ADR-014 — Debian-ISO via live-build in een container
+
+**Keuze:** `scripts/build-iso.sh` draait Debian `live-build` binnen een Debian-container en produceert
+een installer-ISO die de Velnox-bundel meelevert en bij eerste start `install.sh` uitvoert.
+
+**Bekende beperking, gedocumenteerd in plaats van verzwegen:** live-build heeft loop devices en
+verhoogde rechten nodig; de buildcontainer vereist daarom `--privileged` (of specifieke device-toegang)
+op een Linux-host. ISO-bouwen wordt **niet ondersteund op Docker Desktop voor Windows/macOS**. Kan die
+voorwaarde niet vervuld worden, dan faalt `build.sh --target iso` met een duidelijke melding — er wordt
+nooit een niet-opstartbaar bestand geproduceerd.
+
+**Alternatieven:** Packer met debian-installer preseed (haalbaar, voegt een tweede toolchain toe); een
+cloud image bouwen in plaats van een ISO (gepland als extra doel, niet als vervanging).
+
+---
+
+## ADR-015 — Teststack
+
+**Keuze:** Vitest voor unittests; geen Jest. Supertest tegen een echte NestJS-appinstantie voor
+API-tests; Testcontainers (PostgreSQL + Redis) voor integratietests; Playwright voor een kleine
+rooktest over installatiewizard, inloggen en één joburitvoering.
+
+**Verplichte suites (blokkerend in CI):** tenant-isolatie (cross-tenant lezen *en* schrijven, voor elke
+tenant-gebonden resource), de RBAC-rechtenmatrix, secretredactie, en de quorum-invariant van rolling
+updates.
+
+---
+
+## ADR-016 — Ceph-upgrades zijn een apart playbook, samengesteld in het plan
+
+**Keuze:** Ceph major upgrades vallen binnen v1-scope, geïmplementeerd als eigen playbook op de
+generieke engine. Een upgradeplan voor een Ceph-cluster is een **samenstelling**: het Ceph-playbook
+draait eerst volledig, daarna het PVE-major-upgrade-playbook.
+
+**Waarom geen fase binnen de PVE-upgrade:** de twee workflows hebben verschillende werkeenheden (Ceph
+herstart *daemons*, PVE upgradet *nodes*), verschillende gezondheidsmodellen (Ceph `HEALTH_OK` en
+PG-status versus corosync-quorum) en verschillende faalwijzen. Ze samenvoegen levert precies de grote
+monolithische functie op die de opdracht verbiedt, en maakt "alleen Ceph upgraden" — een gangbare
+losstaande onderhoudstaak — onuitdrukbaar.
+
+**Waarom Ceph eerst:** een PVE major release levert een specifieke Ceph-release en ondersteunt de vorige
+niet, dus de Ceph-upgrade moet afgerond zijn terwijl het cluster nog op de huidige PVE- en
+Debian-release draait.
+
+**Versiekoppeling is data, en wordt geverifieerd:** bron → doel releaseparen staan in een
+versiematrix-databestand, en de matrix wordt tijdens het opstellen van het plan tegen het live cluster
+gecontroleerd. Onenigheid tussen draaiende release, doel en matrix weigert het plan in plaats van te
+gokken — dezelfde veilige houding als bij de `pve8to9`-parser.
+
+**Gevolg:** de genericiteit van de engine uit Phase 8 wordt bewezen door constructie, doordat twee zeer
+verschillende workflows er ongewijzigd op draaien.
+
+---
+
+## ADR-017 — MFA: TOTP, optioneel maar aanbevolen; WebAuthn uitgesteld
+
+**Keuze:** TOTP (RFC 6238) plus Argon2id-gehashte eenmalige herstelcodes. Standaardbeleid `OPTIONAL`,
+met `REQUIRED_FOR_PRIVILEGED` en `REQUIRED` beschikbaar per installatie en per tenant. De UI beveelt
+aanmelden aan tijdens de installatie en markeert bevoorrechte accounts zonder MFA.
+
+**Waarom TOTP eerst:** het vereist geen hardware, werkt voor elke operator en — doorslaggevend — het
+werkt voor het **noodtoegangsaccount**, dat bruikbaar moet blijven wanneer SSO en het netwerk naar de
+identity provider onbereikbaar zijn. Het platform-authenticatormodel van WebAuthn past slecht bij een
+account dat juist bedoeld is om vanaf een onverwachte machine tijdens een incident te werken.
+
+**Waarom niet standaard verplicht:** de eerste beheerder wordt door de installatiewizard aangemaakt
+vóórdat er een authenticator is aangemeld, en daar aanmelden afdwingen riskeert een operator buiten te
+sluiten die nog geen herstelcodes heeft opgeslagen. `REQUIRED_FOR_PRIVILEGED` is één klik zodra de
+installatie draait, en dat is wat de documentatie aanbeveelt.
+
+**Opslag:** de TOTP-seed is secretmateriaal en gaat door de `SecretStore`, niet in een platte kolom.
+Herstelcodes zijn gehasht, nooit opvraagbaar, en worden precies één keer getoond.
+
+**Uitgesteld:** WebAuthn/passkeys als tweede factortype — de discriminator `user_mfa_factors.kind`
+bestaat ervoor.
+
+---
+
+## ADR-018 — Het tar.gz-artefact bundelt images voor air-gapped installatie
+
+**Keuze:** `build.sh --target tar` bevat standaard met `docker save` opgeslagen images; een
+`--slim`-variant haalt uit een registry.
+
+**Waarom:** Velnox wordt geïnstalleerd binnen klantnetwerken en beheer-VLAN's waar uitgaande toegang tot
+een containerregistry regelmatig juist de installatie blokkeert. Circa 1 GB artefact is een lage prijs
+voor "het installeert offline, in één poging".
+
+**Eerlijke grens:** Docker zelf wordt nog steeds uit de Debian-/Docker-repositories geïnstalleerd
+wanneer het ontbreekt. Een werkelijk offline host moet Docker al hebben. De installer detecteert dat
+geval en zegt het vooraf, in plaats van halverwege te falen.
+
+---
+
+## ADR-019 — Lokalisatie: overal sleutels, ICU-catalogi, foutcodes in plaats van zinnen
+
+**Keuze:** Engels en Nederlands in v1. Geen zichtbare tekst in applicatiecode; elke tekst is een sleutel
+tegen een ICU MessageFormat-catalogus. De API geeft machineleesbare foutcodes met getypeerde parameters
+terug, die de frontend rendert. Een `glossary.csv` met vaste woordenlijst is de bron van waarheid voor
+zowel UI-catalogi als de Nederlandse documentatie.
+
+**Waarom vanaf de eerste commit:** teksten achteraf uit de code halen betekent elk component en elke
+exception aanraken. Het is een van de weinige keuzes die aan het begin bijna gratis is en op elk later
+moment duur.
+
+**Waarom foutcodes:** een nieuwe taal dekt API-fouten daarmee vanzelf, en de codes zijn stabiel genoeg
+om op te testen, op te alarmeren en te documenteren — een bijkomend voordeel dat net zoveel waard is als
+de vertaling.
+
+**Bewust onvertaald:** auditgebeurtenissen, jobgebeurtenissen en logs. Het zijn forensische
+vastleggingen, ze bevatten letterlijke Proxmox-, `apt`- en Ceph-uitvoer, en een support-engineer mag
+nooit hoeven raden in welke taal het auditspoor van een klant is geschreven.
+
+**Erkende prijs:** twee documentatiesets verdubbelen het onderhoud over vijftien fasen. Ondervangen door
+in elk Nederlands bestand de bron-commit vast te leggen en een CI-controle die *waarschuwt* bij drift —
+Engelse documentatie wordt nooit opgehouden door een openstaande vertaling. Zie [i18n.md](i18n.md).
+
+---
+
+## ADR-020 — AGPLv3
+
+**Keuze:** GNU Affero General Public License v3.0 (canonieke tekst in `LICENSE`, letterlijk opgehaald
+van gnu.org).
+
+**Waarom AGPL boven GPL:** Velnox is netwerk-benaderde beheersoftware — precies de categorie waarin de
+distributietrigger van de GPL nooit afgaat, omdat een hostende partij nooit iets "verspreidt". Artikel
+13 dicht dat gat.
+
+**Waarom überhaupt copyleft in plaats van Apache-2.0/MIT:** de waarde van dit project zit in de
+opgebouwde veiligheidslogica — quorum-invarianten, preflight-parsing, herstelactiedefinities. Een
+permissieve licentie nodigt uit die logica in gesloten producten op te nemen zonder dat correcties
+terugvloeien, en foutieve veiligheidslogica in dit domein beschadigt productie-infrastructuur van
+derden.
+
+**Gevolgen die technisch werk zijn, geen papierwerk:**
+- Naleving van artikel 13 is een productfunctie: `GET /api/v1/system/source` en een link onder
+  Instellingen → Over, beide aangestuurd door een buildvariabele `VELNOX_SOURCE_URL` en de ingesloten
+  git-commit.
+- `THIRD-PARTY-NOTICES.md` wordt tijdens de build uit het lockfile gegenereerd en in elk artefact
+  meegeleverd.
+- Licenties van afhankelijkheden moeten AGPL-compatibel zijn; een CI-licentiecontrole weigert
+  incompatibele toevoegingen. Dat sluit sommige commercieel gelicentieerde componentbibliotheken uit —
+  een reële beperking op de frontend, en een reden waarom shadcn/ui (MIT, meegeleverde broncode) boven
+  een gelicentieerde enterprise-grid is gekozen.
+- Handelsmerken worden apart geregeld, omdat de AGPL er geen verleent: zie `TRADEMARK.md`.
+
+---
+
+## Versiedoelen
+
+| Component | Versie |
+|---|---|
+| Node.js | 22 LTS |
+| pnpm | 9.x |
+| NestJS | 11.x |
+| Next.js | 15.x |
+| PostgreSQL | 16 |
+| Redis | 7.x |
+| Prisma | 6.x |
+| Caddy | 2.x |
+| Debian base image | bookworm-slim |
+| Proxmox VE-ondersteuning | 8.x en 9.x (upgradepad 8 → 9) |
+| Ceph-ondersteuning | releases zoals vastgelegd in de versiematrix, geverifieerd tegen het live cluster bij het opstellen van het plan |
+| Lokalisatie | `en` (bron), `nl`; ICU MessageFormat via next-intl |
+| Licentie | AGPL-3.0-or-later |
+
+---
+
+*Velnox™ is een handelsmerk van The Velnox Foundation. Velnox is vrije software onder de AGPLv3.*
