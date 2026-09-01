@@ -6,8 +6,9 @@
 > Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.
 > Velnox™ is een handelsmerk van **The Velnox Foundation**.
 
-**Status:** Phase 0 — ontwerpvoorstel. Er bestaat nog geen implementatiecode.
-**Documentversie:** 0.1.0
+**Status:** Fase 1 geïmplementeerd. Secties over latere fasen blijven ontwerpvoorstellen; waar fase 1
+een keuze uit fase 0 heeft gewijzigd, staat dat ter plekke gemarkeerd als *Gewijzigd in fase 1*.
+**Documentversie:** 0.2.0
 **Doelplatform:** Debian 12 (bookworm) / Debian 13 (trixie), x86_64, Docker + Docker Compose.
 
 ---
@@ -91,8 +92,9 @@ Volledig servicediagram, poorten, health checks en afhankelijkheidsvolgorde:
   geen code path naartoe bestaat.
 - **worker** voert alle outbound automation uit. Het is de enige container waarin de Proxmox-, SSH- en
   WinRM-adapters geladen zijn, en de enige die credentials ontsleutelt voor gebruik.
-- **web** is een dunne BFF. De browser houdt nooit een token vast: de sessiecookie is `HttpOnly`,
-  `SameSite=Lax` en same-origin, en Next.js proxyt naar de api over het interne Docker-netwerk.
+- **web** rendert server-side en houdt geen token vast. Caddy serveert de UI en de API op één origin,
+  waardoor de sessiecookie `HttpOnly`, `SameSite=Lax` en same-origin blijft, en Server Components de
+  API over het interne Docker-netwerk lezen. Zie de wijziging uit fase 1 in §12.
 - **PostgreSQL is de bron van waarheid** voor jobs. Redis is het *transport*. Wordt Redis gewist, dan
   gaat er geen jobhistorie, auditspoor of goedkeuringsbeslissing verloren — alleen planning die op dat
   moment liep, en die wordt bij het starten van de worker verzoend.
@@ -505,8 +507,17 @@ Next.js App Router, TypeScript, Tailwind, shadcn/ui (Radix-primitieven), TanStac
 `next-themes` voor donkere modus. Server Components voor de shell en de eerste data; Client Components
 voor tabellen, detailpanelen en live jobstromen.
 
-- De browser krijgt nooit een bearer token te zien. Route handlers onder `app/api/[...proxy]` sturen
-  cookies door naar de api-container over het interne netwerk.
+- De browser krijgt nooit een bearer token te zien. Pagina's lezen via Server Components over het
+  interne Docker-netwerk; de enkele client-side aanroepen gaan naar `/api/v1/*` op **dezelfde origin**,
+  die Caddy naar de API routeert.
+
+  > **Gewijzigd in fase 1.** Fase 0 schreef een Next.js-proxyroute voor (`app/api/[...proxy]`) om de
+  > API van de publieke origin te houden. Dat bleek niets op te leveren: machineclients hebben hoe dan
+  > ook API-tokens tegen een bereikbare API nodig (§5), dus de API is sowieso publiek, en Caddy maakt
+  > hem al same-origin — en dát is wat CORS wegneemt en de sessiecookie `HttpOnly` houdt. De proxy zou
+  > een extra hop en een tweede code path zijn geweest zonder winst in veiligheid, dus is hij niet
+  > gebouwd. Het pakket `server-only` bewaakt `lib/api.ts`, zodat het interne adres niet per ongeluk in
+  > een Client Component kan belanden.
 - Rechten worden eenmaal per sessie in een context geladen; de UI *verbergt* wat een gebruiker niet mag,
   maar dat is cosmetisch — de server beslist en geeft hoe dan ook 403.
 - Live jobvoortgang loopt via een `EventSource` op `/api/v1/jobs/:id/stream`, met automatisch

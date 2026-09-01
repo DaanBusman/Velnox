@@ -1,5 +1,4 @@
 {
-  "$schema": "./_schema.json",
   "$meta": {
     "locale": "nl",
     "name": "Nederlands",
@@ -7,7 +6,6 @@
     "translatedFrom": "en",
     "note": "Vertaling van en.json. Termen volgen glossary.csv; termen met translate=no blijven onvertaald."
   },
-
   "common": {
     "save": "Opslaan",
     "cancel": "Annuleren",
@@ -16,16 +14,38 @@
     "search": "Zoeken",
     "filter": "Filteren",
     "refresh": "Vernieuwen",
+    "retry": "Opnieuw proberen",
+    "close": "Sluiten",
     "loading": "Laden…",
     "never": "Nooit",
     "unknown": "Onbekend",
+    "notAvailable": "Niet beschikbaar",
     "yes": "Ja",
     "no": "Nee",
     "selected": "{count, plural, =0 {Niets geselecteerd} one {# geselecteerd} other {# geselecteerd}}",
     "lastSeen": "Laatst gezien {time}",
     "requiresPermission": "Vereist het recht {permission}"
   },
-
+  "layout": {
+    "skipToContent": "Naar de inhoud",
+    "primaryNavigation": "Hoofdnavigatie",
+    "sectionInfrastructure": "Infrastructuur",
+    "sectionOperations": "Beheer",
+    "sectionAdministration": "Administratie",
+    "searchPlaceholder": "Zoeken…",
+    "searchUnavailable": "Globaal zoeken komt met de inventaris in fase 4.",
+    "notifications": "Notificaties",
+    "userMenu": "Account",
+    "tenantSelector": "Tenant",
+    "tenantSelectorUnavailable": "Tenants komen in fase 3",
+    "language": "Taal",
+    "theme": "Thema",
+    "themeLight": "Licht",
+    "themeDark": "Donker",
+    "themeSystem": "Systeem",
+    "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
+    "footerSource": "Broncode"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "tenants": "Tenants",
@@ -47,9 +67,9 @@
     "users": "Gebruikers",
     "rolesPermissions": "Rollen en rechten",
     "auditLog": "Auditlog",
-    "settings": "Instellingen"
+    "settings": "Instellingen",
+    "about": "Over"
   },
-
   "status": {
     "health": {
       "ok": "OK",
@@ -81,9 +101,94 @@
       "warning": "Waarschuwing",
       "blocker": "Blokkade",
       "unknown": "Niet herkend — behandeld als blokkade"
+    },
+    "dependency": {
+      "ok": "Operationeel",
+      "degraded": "Verminderd",
+      "down": "Niet beschikbaar"
     }
   },
-
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overzicht van de omgeving",
+    "phaseNoticeTitle": "Deze installatie draait een fase 1-build",
+    "phaseNoticeBody": "De basis van het platform staat: services, database, wachtrij, lokalisatie en licentienaleving. Authenticatie komt in fase 2 en Proxmox-inventaris in fase 4. De tellers hieronder blijven op nul tot er werkelijk iets te tellen valt — het zijn geen plaatshouders voor verborgen gegevens.",
+    "tiles": {
+      "tenants": "Tenants",
+      "clusters": "Clusters",
+      "nodes": "Nodes",
+      "nodesNeedingUpdates": "Nodes met openstaande updates",
+      "upgradeBlockers": "Upgradeblokkades",
+      "unhealthyClusters": "Ongezonde clusters",
+      "runningJobs": "Actieve jobs",
+      "recentFailures": "Recente fouten"
+    },
+    "tileUnavailable": "Beschikbaar vanaf fase {phase}"
+  },
+  "system": {
+    "title": "Servicestatus",
+    "subtitle": "Actuele gereedheid van deze installatie",
+    "overall": "Totaal",
+    "checkName": "Component",
+    "checkStatus": "Status",
+    "checkDetail": "Detail",
+    "latency": "{ms} ms",
+    "checks": {
+      "database": "PostgreSQL",
+      "redis": "Redis",
+      "worker": "Worker",
+      "migrations": "Schemamigraties"
+    },
+    "migrationsSummary": "{applied} van {expected} toegepast",
+    "migrationsPending": "Openstaand: {names}",
+    "migrationsUnknown": "De database loopt voor op deze build: {names}",
+    "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld.",
+    "unreachable": "De API is niet bereikbaar.",
+    "lastChecked": "Gecontroleerd om {time}",
+    "detail": {
+      "noHeartbeat": "Geen hartslag vastgelegd",
+      "heartbeatInvalid": "Hartslag is geen tijdstempel",
+      "heartbeatStale": "Hartslag is {seconds}s oud",
+      "heartbeatAge": "Hartslag {seconds}s geleden",
+      "connectionFailed": "Verbinding mislukt: {message}"
+    }
+  },
+  "selftest": {
+    "title": "Zelftest van de wachtrij",
+    "description": "Zet een job in de wachtrij en wacht tot de worker die uitvoert. Dit bewijst dat API, Redis en worker met elkaar verbonden zijn — er wordt geen beheerde infrastructuur aangeraakt.",
+    "run": "Zelftest uitvoeren",
+    "running": "Wachten op de worker…",
+    "jobId": "Job {id}",
+    "succeeded": "Voltooid door {host} in {ms} ms",
+    "failed": "Mislukt: {reason}",
+    "disabled": "Diagnostische endpoints staan uit op deze installatie.",
+    "error": "De zelftest kon niet worden gestart."
+  },
+  "about": {
+    "title": "Over",
+    "subtitle": "Buildgegevens en licentie",
+    "product": "Product",
+    "version": "Versie",
+    "commit": "Build-commit",
+    "builtAt": "Gebouwd op",
+    "license": "Licentie",
+    "source": "Bijbehorende broncode",
+    "viewSource": "Broncode van deze build opvragen",
+    "sourceHeading": "Aanbod van broncode",
+    "unmodifiedNotice": "Deze build meldt zichzelf als ongewijzigd: de bronlink verwijst naar de upstream-repository.",
+    "modifiedNotice": "Deze build meldt zichzelf als gewijzigd. De beheerder heeft de bronlink naar een eigen repository gezet; die moet de bijbehorende broncode bevatten van de commit die hierboven staat.",
+    "agplNotice": "{product} is vrije software onder de GNU Affero General Public License v3 of later. Artikel 13 vereist dat wie een gewijzigde versie via een netwerk gebruikt, de bijbehorende broncode aangeboden krijgt. Dat aanbod is de link hierboven, en de build-commit maakt het verifieerbaar.",
+    "trademarkNotice": "{product} en het {product}-logo zijn handelsmerken van The Velnox Foundation. De AGPLv3 verleent geen rechten op handelsmerken.",
+    "instance": "Installatie",
+    "environment": "Omgeving"
+  },
+  "placeholder": {
+    "notBuiltYet": "Nog niet gebouwd",
+    "plannedIn": "Gepland voor fase {phase}",
+    "body": "Dit onderdeel is in deze build niet geïmplementeerd. Het staat in de navigatie zodat de beoogde vorm van het product zichtbaar is, en het is als zodanig gelabeld in plaats van gevuld met voorbeeldgegevens — {product} toont geen gegevens die het niet heeft.",
+    "backToDashboard": "Terug naar dashboard",
+    "seeRoadmap": "Het volledige faseplan staat in docs/roadmap.md."
+  },
   "auth": {
     "signIn": "Inloggen",
     "signOut": "Uitloggen",
@@ -92,9 +197,9 @@
     "signInWithMicrosoft": "Inloggen met Microsoft",
     "mfaPrompt": "Voer de code uit je authenticator-app in",
     "mfaRecoveryPrompt": "Voer een herstelcode in",
-    "mfaRecommended": "Meervoudige authenticatie wordt sterk aanbevolen voor accounts die infrastructuur kunnen beheren."
+    "mfaRecommended": "Meervoudige authenticatie wordt sterk aanbevolen voor accounts die infrastructuur kunnen beheren.",
+    "notImplementedNotice": "Deze build kent geen authenticatie. Stel deze installatie niet bloot aan een onvertrouwd netwerk."
   },
-
   "setup": {
     "title": "{product} instellen",
     "subtitle": "Maak het eerste beheerdersaccount aan. Dit kan slechts één keer.",
@@ -106,10 +211,14 @@
     "masterKeyWarning": "Maak nu een back-up van MASTER_ENCRYPTION_KEY. Zonder deze sleutel wordt elk credential dat deze installatie opslaat definitief onleesbaar.",
     "complete": "Installatie voltooid"
   },
-
   "errors": {
     "generic": "Er is iets misgegaan.",
     "network": "De server is niet bereikbaar.",
+    "validation": "Een deel van de ingevoerde waarden is niet geldig.",
+    "not_found": "Niet gevonden.",
+    "feature": {
+      "disabled": "Die functie staat niet aan op deze installatie."
+    },
     "auth": {
       "invalid_credentials": "E-mailadres of wachtwoord is onjuist.",
       "mfa_required": "Een tweede authenticatiefactor is vereist.",
@@ -140,7 +249,8 @@
     },
     "job": {
       "concurrent_run": "Er draait al een job op {target}.",
-      "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is."
+      "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is.",
+      "not_found": "Die job bestaat niet meer."
     },
     "upgrade": {
       "blockers_present": "{count, plural, one {# blokkade} other {# blokkades}} moeten worden opgelost voordat deze upgrade kan starten.",
@@ -150,7 +260,6 @@
       "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."
     }
   },
-
   "job": {
     "cancel": "Job annuleren",
     "cancelHint": "De job stopt op het eerstvolgende veilige punt. Werk dat al bezig is mag afronden of terugdraaien.",

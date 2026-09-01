@@ -1,0 +1,16 @@
+# Build context hygiene. Everything here is either regenerated inside the image
+# or must never enter it.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+.git
+.github
+.env
+.env.*
+!.env.example
+docs/
+*.log
+dist-artifacts/
+iso/out/

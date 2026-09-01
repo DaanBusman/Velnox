@@ -42,10 +42,16 @@ laat de frontend dezelfde zod-contracten importeren).
 
 **Keuze:** Next.js 15, App Router, TypeScript, Tailwind, shadcn/ui.
 
-**Waarom BFF:** de browser houdt geen token vast. Sessiecookies blijven `HttpOnly` en same-origin;
-Next route handlers proxyen `/api/v1/*` naar de api-container over het interne Docker-netwerk. Dat
-elimineert CORS volledig, elimineert XSS-blootstelling van een token in JavaScript, en houdt het
-API-oppervlak privé.
+**Waarom BFF:** de browser houdt geen token vast. Sessiecookies blijven `HttpOnly` en same-origin, en
+pagina's lezen de API vanuit Server Components over het interne Docker-netwerk.
+
+**Gewijzigd in fase 1 — geen proxyroute.** Het oorspronkelijke plan voegde Next route handlers toe die
+`/api/v1/*` proxyden. Caddy serveert de API al op dezelfde origin, en dát is wat CORS wegneemt en de
+`HttpOnly`-cookie laat werken; bovendien was de API van de publieke origin houden nooit haalbaar,
+omdat machineclients API-tokens tegen een bereikbare API nodig hebben. De proxy zou een extra hop en
+een tweede code path zijn geweest zonder winst in veiligheid, dus is hij geschrapt. `lib/api.ts` is
+gemarkeerd als `server-only`, wat een onbedoelde import vanuit een Client Component tot een buildfout
+maakt.
 
 **Alternatieven:** Vite-SPA met directe API-aanroepen (vereist CORS en een token dat voor JavaScript
 bereikbaar is, of cookieafhandeling over origins heen); Remix (prima, maar een kleiner ecosysteem voor
@@ -328,14 +334,46 @@ derden.
 
 ---
 
+## ADR-021 — zod voor requestvalidatie, niet class-validator
+
+**Keuze:** een `ZodValidationPipe` valideert requestinvoer tegen dezelfde zod-schema's die de
+API-contracten definiëren. `class-validator` en `class-transformer` worden niet gebruikt.
+
+**Waarom:** de architectuur legt zod-contracten al in `packages/shared`. Een tweede,
+decorator-gebaseerd validatiesysteem toevoegen betekent twee definities van dezelfde vorm die uit
+elkaar kunnen lopen — en als ze dat doen, is degene die draait niet degene die iemand gelezen heeft.
+Eén bron van waarheid is de prijs waard.
+
+**Prijs, eerlijk gesteld:** `@nestjs/swagger` leidt schema's af uit klassedecorators, dus respons- en
+bodyschema's worden expliciet in `@ApiResponse` geschreven in plaats van afgeleid. Voor fase 1 gaat dat
+om een handvol endpoints. Wordt het een last, dan dicht een zod-naar-OpenAPI-generator het gat zonder
+het validatieverhaal te wijzigen.
+
+---
+
+## ADR-022 — `consistent-type-imports` staat uit in de NestJS-apps
+
+**Keuze:** de lintregel staat overal aan, behalve in `apps/api` en `apps/worker`.
+
+**Waarom:** NestJS leidt constructorafhankelijkheden af uit de runtime-typemetadata die
+`emitDecoratorMetadata` genereert. `import type { PrismaService }` wist de klasse, de metadata wordt
+`undefined`, en injectie faalt tijdens runtime met een fout die naar de module wijst in plaats van naar
+de import. De autofix van de regel introduceert precies die bug — dat gebeurde tijdens fase 1, vóór
+deze uitzondering bestond. Een lintregel die stilzwijgend dependency injection kan breken hoort niet
+thuis in een codebase die het gebruikt.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |
 |---|---|
 | Node.js | 22 LTS |
-| pnpm | 9.x |
+| pnpm | 10.x (fase 0 noemde 9.x; 10 is wat de toolchain oploste) |
 | NestJS | 11.x |
 | Next.js | 15.x |
+| React | 19.x |
+| Tailwind CSS | 4.x |
 | PostgreSQL | 16 |
 | Redis | 7.x |
 | Prisma | 6.x |

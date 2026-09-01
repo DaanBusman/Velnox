@@ -1,12 +1,10 @@
 {
-  "$schema": "./_schema.json",
   "$meta": {
     "locale": "en",
     "name": "English",
     "source": true,
     "note": "Source language. Every other locale is a translation of this file. Keys are stable; values are not."
   },
-
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -15,16 +13,38 @@
     "search": "Search",
     "filter": "Filter",
     "refresh": "Refresh",
+    "retry": "Retry",
+    "close": "Close",
     "loading": "Loading…",
     "never": "Never",
     "unknown": "Unknown",
+    "notAvailable": "Not available",
     "yes": "Yes",
     "no": "No",
     "selected": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
     "lastSeen": "Last seen {time}",
     "requiresPermission": "Requires the {permission} permission"
   },
-
+  "layout": {
+    "skipToContent": "Skip to content",
+    "primaryNavigation": "Primary navigation",
+    "sectionInfrastructure": "Infrastructure",
+    "sectionOperations": "Operations",
+    "sectionAdministration": "Administration",
+    "searchPlaceholder": "Search…",
+    "searchUnavailable": "Global search arrives with the inventory in phase 4.",
+    "notifications": "Notifications",
+    "userMenu": "Account",
+    "tenantSelector": "Tenant",
+    "tenantSelectorUnavailable": "Tenants arrive in phase 3",
+    "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "footerLicense": "{product} {version} — free software under the AGPLv3.",
+    "footerSource": "Source code"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "tenants": "Tenants",
@@ -46,9 +66,9 @@
     "users": "Users",
     "rolesPermissions": "Roles & Permissions",
     "auditLog": "Audit Log",
-    "settings": "Settings"
+    "settings": "Settings",
+    "about": "About"
   },
-
   "status": {
     "health": {
       "ok": "OK",
@@ -80,9 +100,94 @@
       "warning": "Warning",
       "blocker": "Blocker",
       "unknown": "Unrecognised — treated as a blocker"
+    },
+    "dependency": {
+      "ok": "Operational",
+      "degraded": "Degraded",
+      "down": "Unavailable"
     }
   },
-
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Fleet overview",
+    "phaseNoticeTitle": "This installation is running a phase 1 build",
+    "phaseNoticeBody": "The platform foundation is in place: services, database, queue, localization and licence compliance. Authentication arrives in phase 2 and Proxmox inventory in phase 4. Counters below stay at zero until there is something real to count — they are not placeholders for hidden data.",
+    "tiles": {
+      "tenants": "Tenants",
+      "clusters": "Clusters",
+      "nodes": "Nodes",
+      "nodesNeedingUpdates": "Nodes needing updates",
+      "upgradeBlockers": "Upgrade blockers",
+      "unhealthyClusters": "Unhealthy clusters",
+      "runningJobs": "Running jobs",
+      "recentFailures": "Recent failures"
+    },
+    "tileUnavailable": "Available from phase {phase}"
+  },
+  "system": {
+    "title": "Service status",
+    "subtitle": "Live readiness of this installation",
+    "overall": "Overall",
+    "checkName": "Component",
+    "checkStatus": "Status",
+    "checkDetail": "Detail",
+    "latency": "{ms} ms",
+    "checks": {
+      "database": "PostgreSQL",
+      "redis": "Redis",
+      "worker": "Worker",
+      "migrations": "Schema migrations"
+    },
+    "migrationsSummary": "{applied} of {expected} applied",
+    "migrationsPending": "Pending: {names}",
+    "migrationsUnknown": "Database is ahead of this build: {names}",
+    "workerHint": "The worker has no network port by design; its liveness is reported through a heartbeat.",
+    "unreachable": "Could not reach the API.",
+    "lastChecked": "Checked at {time}",
+    "detail": {
+      "noHeartbeat": "No heartbeat recorded",
+      "heartbeatInvalid": "Heartbeat is not a timestamp",
+      "heartbeatStale": "Heartbeat is {seconds}s old",
+      "heartbeatAge": "Heartbeat {seconds}s ago",
+      "connectionFailed": "Connection failed: {message}"
+    }
+  },
+  "selftest": {
+    "title": "Queue self-test",
+    "description": "Submits a job to the queue and waits for the worker to execute it. This proves the API, Redis and worker are connected — it does not touch any managed infrastructure.",
+    "run": "Run self-test",
+    "running": "Waiting for the worker…",
+    "jobId": "Job {id}",
+    "succeeded": "Completed by {host} in {ms} ms",
+    "failed": "Failed: {reason}",
+    "disabled": "Diagnostic endpoints are disabled on this installation.",
+    "error": "Could not start the self-test."
+  },
+  "about": {
+    "title": "About",
+    "subtitle": "Build identity and licence",
+    "product": "Product",
+    "version": "Version",
+    "commit": "Build commit",
+    "builtAt": "Built at",
+    "license": "Licence",
+    "source": "Corresponding Source",
+    "viewSource": "Obtain the source of this build",
+    "sourceHeading": "Source code offer",
+    "unmodifiedNotice": "This build reports itself as unmodified: the source link points at the upstream repository.",
+    "modifiedNotice": "This build reports itself as modified. The operator has set the source link to their own repository, which must contain the Corresponding Source of the commit shown above.",
+    "agplNotice": "{product} is free software under the GNU Affero General Public License v3 or later. Section 13 requires that anyone interacting with a modified version over a network be offered its Corresponding Source. That offer is the link above, and the build commit makes it verifiable.",
+    "trademarkNotice": "{product} and the {product} logo are trademarks of The Velnox Foundation. The AGPLv3 grants no trademark rights.",
+    "instance": "Installation",
+    "environment": "Environment"
+  },
+  "placeholder": {
+    "notBuiltYet": "Not built yet",
+    "plannedIn": "Planned for phase {phase}",
+    "body": "This section has no implementation in this build. It is shown in the navigation so the intended shape of the product is visible, and it is labelled rather than filled with sample data — {product} does not display data it does not have.",
+    "backToDashboard": "Back to dashboard",
+    "seeRoadmap": "The full phase plan is in docs/roadmap.md."
+  },
   "auth": {
     "signIn": "Sign in",
     "signOut": "Sign out",
@@ -91,9 +196,9 @@
     "signInWithMicrosoft": "Sign in with Microsoft",
     "mfaPrompt": "Enter the code from your authenticator app",
     "mfaRecoveryPrompt": "Enter a recovery code",
-    "mfaRecommended": "Multi-factor authentication is strongly recommended for accounts that can manage infrastructure."
+    "mfaRecommended": "Multi-factor authentication is strongly recommended for accounts that can manage infrastructure.",
+    "notImplementedNotice": "There is no authentication in this build. Do not expose this installation to an untrusted network."
   },
-
   "setup": {
     "title": "Set up {product}",
     "subtitle": "Create the first administrator account. This can only be done once.",
@@ -105,10 +210,14 @@
     "masterKeyWarning": "Store a backup of MASTER_ENCRYPTION_KEY now. Without it, every credential this installation stores becomes permanently unreadable.",
     "complete": "Setup complete"
   },
-
   "errors": {
     "generic": "Something went wrong.",
     "network": "Could not reach the server.",
+    "validation": "Some of the values submitted are not valid.",
+    "not_found": "Not found.",
+    "feature": {
+      "disabled": "That feature is not enabled on this installation."
+    },
     "auth": {
       "invalid_credentials": "Email address or password is incorrect.",
       "mfa_required": "A second authentication factor is required.",
@@ -139,7 +248,8 @@
     },
     "job": {
       "concurrent_run": "Another job is already running against {target}.",
-      "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe."
+      "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe.",
+      "not_found": "That job no longer exists."
     },
     "upgrade": {
       "blockers_present": "{count, plural, one {# blocker} other {# blockers}} must be resolved before this upgrade can start.",
@@ -149,7 +259,6 @@
       "rotation_verify_failed": "The new password was applied but could not be verified. Both versions have been kept and the credential is flagged for attention."
     }
   },
-
   "job": {
     "cancel": "Cancel job",
     "cancelHint": "The job stops at the next safe boundary. Work already in progress is allowed to finish or roll back.",

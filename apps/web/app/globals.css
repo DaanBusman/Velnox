@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+
+/*
+ * Velnox visual language.
+ *
+ * Dense, neutral, high information density — the brief calls for "Proxmox
+ * Datacenter Manager meets a modern MSP operations platform", explicitly not a
+ * marketing page. So: flat surfaces, one accent colour, semantic status colours
+ * used only for status, and no gradients or glassmorphism anywhere.
+ *
+ * Dark mode is class-based rather than media-query-based so an operator can
+ * choose, and the choice survives a system theme that does not match the room
+ * they are sitting in at 3am.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --velnox-bg: #f4f5f7;
+  --velnox-surface: #ffffff;
+  --velnox-surface-2: #eceef1;
+  --velnox-border: #d5d9e0;
+  --velnox-border-strong: #b9c0ca;
+  --velnox-text: #10151c;
+  --velnox-text-muted: #5a6673;
+  --velnox-accent: #1f6feb;
+  --velnox-accent-contrast: #ffffff;
+
+  --velnox-ok: #1a7f37;
+  --velnox-ok-bg: #dbf3e0;
+  --velnox-warn: #8a6100;
+  --velnox-warn-bg: #fbeecb;
+  --velnox-error: #c02c38;
+  --velnox-error-bg: #fbdfe1;
+  --velnox-unknown: #59636e;
+  --velnox-unknown-bg: #e6e9ed;
+}
+
+.dark {
+  --velnox-bg: #0c1015;
+  --velnox-surface: #151a21;
+  --velnox-surface-2: #1c222b;
+  --velnox-border: #2a313b;
+  --velnox-border-strong: #3d4650;
+  --velnox-text: #e4eaf1;
+  --velnox-text-muted: #93a0af;
+  --velnox-accent: #4c94f7;
+  --velnox-accent-contrast: #06101d;
+
+  --velnox-ok: #4ac26b;
+  --velnox-ok-bg: #12301c;
+  --velnox-warn: #dda92c;
+  --velnox-warn-bg: #34270a;
+  --velnox-error: #f4666a;
+  --velnox-error-bg: #3a1519;
+  --velnox-unknown: #93a0af;
+  --velnox-unknown-bg: #212831;
+}
+
+@theme inline {
+  --color-bg: var(--velnox-bg);
+  --color-surface: var(--velnox-surface);
+  --color-surface-2: var(--velnox-surface-2);
+  --color-line: var(--velnox-border);
+  --color-line-strong: var(--velnox-border-strong);
+  --color-ink: var(--velnox-text);
+  --color-ink-muted: var(--velnox-text-muted);
+  --color-accent: var(--velnox-accent);
+  --color-accent-contrast: var(--velnox-accent-contrast);
+
+  --color-ok: var(--velnox-ok);
+  --color-ok-bg: var(--velnox-ok-bg);
+  --color-warn: var(--velnox-warn);
+  --color-warn-bg: var(--velnox-warn-bg);
+  --color-error: var(--velnox-error);
+  --color-error-bg: var(--velnox-error-bg);
+  --color-unknown: var(--velnox-unknown);
+  --color-unknown-bg: var(--velnox-unknown-bg);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, monospace;
+}
+
+html {
+  color-scheme: light;
+}
+
+.dark html,
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--velnox-bg);
+  color: var(--velnox-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible focus everywhere. Operators use this at speed and by keyboard. */
+:focus-visible {
+  outline: 2px solid var(--velnox-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--velnox-accent) 30%, transparent);
+}

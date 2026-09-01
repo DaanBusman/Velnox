@@ -1,0 +1,63 @@
+// Velnox database schema.
+//
+// Phase 1 creates exactly one table: the installation settings singleton. Every
+// other model in docs/database-schema.md arrives in the phase that needs it, via
+// its own migration. Migrations are never edited after they have been applied
+// anywhere; corrections are new migrations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Multi-factor authentication policy. Implemented in Phase 2; the column exists
+/// now so the settings row does not need a schema change to gain it later.
+enum MfaPolicy {
+  OPTIONAL
+  REQUIRED_FOR_PRIVILEGED
+  REQUIRED
+
+  @@map("mfa_policy")
+}
+
+/// Installation-wide settings. Exactly one row, id = 1, enforced by a CHECK
+/// constraint in the migration.
+model SystemSettings {
+  id Int @id @default(1)
+
+  /// False until the setup wizard has created the first administrator (Phase 2).
+  /// While false, the API exposes exactly one mutating endpoint.
+  initialized   Boolean   @default(false)
+  initializedAt DateTime? @map("initialized_at") @db.Timestamptz(3)
+
+  /// Stable identifier for this installation. Used in support and in reports.
+  instanceId String @default(uuid()) @map("instance_id") @db.Uuid
+
+  /// Read by the frontend so rebranding is a settings change, not a code change.
+  productName String @default("Velnox") @map("product_name")
+
+  baseUrl         String?   @map("base_url")
+  defaultLocale   String    @default("en") @map("default_locale")
+  defaultTimezone String    @default("Europe/Amsterdam") @map("default_timezone")
+  mfaPolicy       MfaPolicy @default(OPTIONAL) @map("mfa_policy")
+
+  /// Version of the master encryption key currently in use. Bumped by rewrap.
+  keyVersion Int @default(1) @map("key_version")
+
+  /// AGPL section 13: where the Corresponding Source of the running build can be
+  /// obtained. An operator running a modified build points this at their source.
+  /// Null means "use the build-time default", which is the upstream repository.
+  sourceUrl String? @map("source_url")
+
+  featureFlags Json @default("{}") @map("feature_flags")
+  retention    Json @default("{}") @map("retention")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("system_settings")
+}

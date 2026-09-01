@@ -3,8 +3,9 @@
 > Velnox is a self-hosted MSP management platform for Proxmox VE fleets.
 > Velnox™ is a trademark of **The Velnox Foundation**.
 
-**Status:** Phase 0 — design proposal. No implementation code exists yet.
-**Document version:** 0.1.0
+**Status:** Phase 1 implemented. Sections describing later phases remain design proposals; where
+Phase 1 changed a Phase 0 decision, the change is marked *Amended in Phase 1* in place.
+**Document version:** 0.2.0
 **Target platform:** Debian 12 (bookworm) / Debian 13 (trixie), x86_64, Docker + Docker Compose.
 
 ---
@@ -87,8 +88,9 @@ Full service diagram, ports, health checks and dependency ordering: [service-dia
   to it.
 - **worker** owns all outbound infrastructure automation. It is the only container with the
   Proxmox/SSH/WinRM adapters loaded and the only one that decrypts credentials for use.
-- **web** is a thin BFF. The browser never holds a token: the session cookie is `HttpOnly`,
-  `SameSite=Lax`, same-origin, and Next.js proxies to the api over the internal Docker network.
+- **web** renders server-side and holds no token. Caddy serves the UI and the API on one origin, so
+  the session cookie stays `HttpOnly`, `SameSite=Lax` and same-origin, and Server Components read
+  the API over the internal Docker network. See the Phase 1 amendment in §12.
 - **PostgreSQL is the system of record** for jobs. Redis is the *transport*. If Redis is wiped, no
   job history, audit trail or approval decision is lost — only in-flight scheduling, which is
   reconciled on worker start.
@@ -109,11 +111,11 @@ velnox/
 │  ├─ worker/                  # NestJS standalone app, BullMQ processors
 │  │  └─ src/processors/       # discovery, inventory, update, rolling-update,
 │  │                           # major-upgrade, rotation, migration, scheduler
-│  └─ web/                     # Next.js App Router frontend + BFF proxy
-│     ├─ app/(auth)/           # login, sso callback, setup wizard
-│     ├─ app/(dashboard)/      # sidebar shell + all authenticated routes
-│     ├─ components/           # ui/ (shadcn), data-table/, status/, forms/
-│     └─ lib/                  # api client, session, permission helpers
+│  └─ web/                     # Next.js App Router frontend
+│     ├─ app/                  # sidebar shell, dashboard, settings, placeholder routes
+│     ├─ i18n/                 # next-intl request configuration
+│     ├─ components/           # ui primitives, status, navigation
+│     └─ lib/                  # server-only api client, navigation model
 ├─ packages/
 │  ├─ db/                      # Prisma schema, migrations, seed, tenancy extension
 │  ├─ shared/                  # zod contracts, DTOs, permission catalogue, enums, errors
@@ -129,8 +131,11 @@ velnox/
 │  ├─ caddy/                   # Caddyfile templates
 │  └─ systemd/                 # velnox.service unit for appliance installs
 ├─ scripts/
-│  ├─ build.sh  build-tar.sh  build-iso.sh  build-dev.sh
-│  └─ lib/                     # shared shell functions (logging, preflight, docker install)
+│  ├─ gen-env.sh               # generates .env with strong secrets, refuses to overwrite
+│  ├─ verify-stack.sh          # asserts the running stack against the acceptance criteria
+│  ├─ validate-glossary.mjs  validate-locales.mjs  check-licenses.mjs
+│  ├─ build.sh  build-tar.sh  build-iso.sh  build-dev.sh      (Phase 14)
+│  └─ lib/                     # shared shell and script helpers
 ├─ iso/                        # live-build config: hooks, preseed, package lists
 ├─ docs/                       # this directory
 ├─ install.sh
@@ -494,8 +499,17 @@ Next.js App Router, TypeScript, Tailwind, shadcn/ui (Radix primitives), TanStack
 `next-themes` for dark mode. Server Components for the shell and initial data; Client Components
 for tables, drawers and live job streams.
 
-- The browser never sees a bearer token. Route handlers under `app/api/[...proxy]` forward cookies
-  to the api container over the internal network.
+- The browser never sees a bearer token. Pages read through Server Components over the internal
+  Docker network; the few client-side calls go to `/api/v1/*` on the **same origin**, which Caddy
+  routes to the API.
+
+  > **Amended in Phase 1.** Phase 0 specified a Next.js proxy route (`app/api/[...proxy]`) to keep
+  > the API off the public origin. That turned out to buy nothing: machine clients need API tokens
+  > against a reachable API anyway (§5), so the API is public regardless, and Caddy already makes it
+  > same-origin — which is what actually removes CORS and keeps the session cookie `HttpOnly`. The
+  > proxy would have added a hop and a second code path for no security gain, so it is not built.
+  > The `server-only` package guards `lib/api.ts` so the internal address cannot leak into a Client
+  > Component by accident.
 - Permissions are fetched once per session into a context; the UI *hides* what a user cannot do,
   but this is cosmetic — the server is the authority and returns 403 regardless.
 - Live job progress is an `EventSource` against `/api/v1/jobs/:id/stream`, with automatic reconnect

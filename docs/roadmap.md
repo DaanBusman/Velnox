@@ -1,6 +1,11 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phase 0 complete (this document set). Phases 1–15 await approval.
+**Status:** Phase 0 and Phase 1 complete. Phases 2–15 await approval.
+
+Phase 1 is verified rather than asserted: `./scripts/verify-stack.sh` asserts its acceptance criteria
+against a running stack — 25 checks covering every dependency, the migration state, security headers,
+both languages, the licence offer, a real queue round trip, and the data tier not being reachable
+from the host. It runs in CI on every change.
 
 Every phase ends with the same gate. A phase is **not** finished until all of these are true:
 
@@ -17,11 +22,12 @@ Effort estimates are relative sizes (S/M/L/XL), not calendar promises.
 
 ---
 
-## Phase 1 — Monorepo bootstrap and running stack · **L**
+## Phase 1 — Monorepo bootstrap and running stack · **L** · ✅ complete
 
 pnpm workspaces, Turborepo, shared TS/ESLint/Prettier configs. NestJS api skeleton with
 `/healthz`, `/readyz`, OpenAPI, global validation pipe, error filter, pino logging with redaction.
-Next.js web skeleton with the sidebar shell, dark mode and the BFF proxy. Prisma package with the
+Next.js web skeleton with the sidebar shell, dark mode and server-side API reads (the proxy route was
+dropped — see the Phase 1 amendment in tech-decisions.md ADR-003). Prisma package with the
 initial migration (`system_settings` only). Redis + BullMQ wiring with a trivial ping job. Compose
 files for dev and prod, Caddy, health checks, dependency ordering, named volumes. `.env.example`
 with every variable documented. CI running lint, typecheck, test and build.

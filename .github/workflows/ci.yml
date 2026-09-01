@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Runs before the code checks: a malformed glossary row or a missing
+      # translation key is a fast failure and does not need a build first.
+      - name: Validate localization
+        run: pnpm run validate:i18n
+
+      # AGPL-3.0 compatibility, checked on every change rather than audited at
+      # the end — see docs/risks.md R-24.
+      - name: Check dependency licences
+        run: pnpm run validate:licenses
+
+      # Warns rather than fails: English documentation is never held hostage to a
+      # pending translation (docs/risks.md R-23).
+      - name: Check documentation sync
+        run: node scripts/check-doc-sync.mjs
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+  shell:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck scripts/*.sh
+
+  stack:
+    name: Compose stack starts and is healthy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate configuration
+        run: ./scripts/gen-env.sh
+
+      - name: Enable diagnostic endpoints for the queue self-test
+        run: |
+          sed -i 's/^VELNOX_DEV_ENDPOINTS=.*/VELNOX_DEV_ENDPOINTS=true/' .env
+          echo "VELNOX_BUILD_COMMIT=${GITHUB_SHA::7}" >> .env
+
+      - name: Build and start
+        run: |
+          docker compose -f deploy/compose/docker-compose.yml --env-file .env up \
+            --build --detach --wait --wait-timeout 600
+
+      # The acceptance criteria for Phase 1, asserted rather than eyeballed.
+      - name: Verify the stack
+        run: ./scripts/verify-stack.sh
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
+          docker compose -f deploy/compose/docker-compose.yml --env-file .env logs --tail=200
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f deploy/compose/docker-compose.yml --env-file .env down -v

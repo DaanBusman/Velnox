@@ -11,3 +11,4 @@ coverage/
 dist-artifacts/
 iso/out/
 .DS_Store
+.preview/

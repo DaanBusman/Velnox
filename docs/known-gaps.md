@@ -8,10 +8,50 @@ not met its gate.
 
 ---
 
-## Current status: Phase 0 (design only)
+## Current status: Phase 1 (foundation)
 
-**Everything is a gap.** No application code exists. The repository contains architecture documents
-only. Nothing can be installed, started or used.
+The stack runs: six services, database, queue, localization, licence compliance. What is **not**
+there yet, in order of how much it matters:
+
+### There is no authentication. At all.
+Every endpoint is unauthenticated and every page is public. Authentication, RBAC and multi-tenancy
+arrive in Phase 2 and 3. **Do not put a Phase 1 build on a network you do not fully control.** The
+API says so on startup, and the dashboard says so to anyone who opens it.
+
+### `VELNOX_DEV_ENDPOINTS` exposes a diagnostic endpoint
+The queue self-test (`POST /api/v1/system/selftest/queue`) exists to demonstrate that the worker
+executes submitted work. It touches no managed infrastructure and returns nothing sensitive, but it
+is unauthenticated like everything else in this build. It defaults to off in `.env.example`; the
+flag and the endpoint are both removed in Phase 2.
+
+### The backend image carries its build dependencies
+`deploy/docker/backend.Dockerfile` copies the whole workspace, including devDependencies, into the
+runtime layer. pnpm's `node_modules` is a graph of relative symlinks that does not survive being
+taken apart, and a naive `pnpm prune --prod` would delete the generated Prisma client. Producing a
+properly slimmed runtime image is Phase 14 packaging work, and it matters there because it is part
+of the ~1 GB air-gapped artifact budget.
+
+### The Content-Security-Policy still allows `'unsafe-inline'`
+Next.js emits inline bootstrap scripts and inline styles, and Swagger UI does the same. Replacing
+that with per-request nonces is Phase 15 hardening. The header is present and every other security
+header is strict; this one specific relaxation is real and is not being papered over.
+
+### Standalone output is opt-in, for a Windows reason
+`next build` only emits `output: 'standalone'` when `VELNOX_STANDALONE=1`, which the Dockerfile
+sets. Tracing creates symlinks, and Windows refuses that without Developer Mode — leaving it always
+on would mean a developer on Windows could not build the app at all. The shipped image is always
+the standalone one.
+
+### The dashboard counters are dashes, not zeros
+Tenants, clusters, nodes and the rest show `—` with the phase that will populate them. They are not
+placeholders for hidden data and they are not zeroes pretending to be measurements. The one card
+backed by real data is service status, and it is live.
+
+### Documentation drift is now possible
+Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture.md` and
+`tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were
+translated from; `scripts/check-doc-sync.mjs` reports which ones have fallen behind. It warns, it
+does not block.
 
 ---
 
