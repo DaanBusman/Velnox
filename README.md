@@ -85,6 +85,7 @@ fingerprints instead. Both are enforced in `eslint.config.mjs`.
 
 | Document | Contents |
 |---|---|
+| [deployment.md](docs/deployment.md) | Deploying on Debian/Ubuntu with Docker, sizing, and VM settings for Proxmox, ESXi and Hyper-V |
 | [architecture.md](docs/architecture.md) | System architecture, security boundaries, monorepo layout, subsystem designs |
 | [tech-decisions.md](docs/tech-decisions.md) | ADR log — every stack choice with the alternatives and why they lost |
 | [database-schema.md](docs/database-schema.md) | Entity model, key columns, tenancy and security constraints |

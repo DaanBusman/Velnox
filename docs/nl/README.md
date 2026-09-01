@@ -90,6 +90,7 @@ certificaatvingerafdrukken vastlegt. Beide staan in `eslint.config.mjs`.
 
 | Document | Inhoud |
 |---|---|
+| [deployment.md](deployment.md) | Uitrollen op Debian/Ubuntu met Docker, dimensionering, en VM-instellingen voor Proxmox, ESXi en Hyper-V |
 | [architecture.md](architecture.md) | Systeemarchitectuur, security boundaries, monorepo-indeling, subsystemen |
 | [tech-decisions.md](tech-decisions.md) | ADR-log — elke stackkeuze met alternatieven en waarom die afvielen |
 | [database-schema.md](database-schema.md) | Entiteitenmodel, belangrijkste kolommen, tenancy- en security-constraints |
