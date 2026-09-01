@@ -1,6 +1,6 @@
 # Velnox — Architectuur
 
-> **Vertaling.** Bron: [docs/architecture.md](../architecture.md) @ `5fd136a`.
+> **Vertaling.** Bron: [docs/architecture.md](../architecture.md) @ `5b3fb43`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 > Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.

@@ -1,6 +1,6 @@
 # Velnox — Bekende beperkingen
 
-> **Vertaling.** Bron: [docs/known-gaps.md](../known-gaps.md) @ `5fd136a`.
+> **Vertaling.** Bron: [docs/known-gaps.md](../known-gaps.md) @ `5b3fb43`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 Dit bestand is het eerlijke grootboek. Alles wat Velnox niet doet, niet volledig doet, of met handmatige
@@ -11,10 +11,50 @@ heeft haar poort niet gehaald.
 
 ---
 
-## Huidige status: Phase 0 (alleen ontwerp)
+## Huidige status: fase 1 (basis)
 
-**Alles is een beperking.** Er is geen applicatiecode. De repository bevat uitsluitend
-architectuurdocumenten. Er valt niets te installeren, te starten of te gebruiken.
+De stack draait: zes services, database, wachtrij, lokalisatie, licentienaleving. Wat er **nog niet**
+is, op volgorde van hoe zwaar het weegt:
+
+### Er is geen authenticatie. Helemaal niet.
+Elk endpoint is niet-geauthenticeerd en elke pagina is publiek. Authenticatie, RBAC en multi-tenancy
+komen in fase 2 en 3. **Zet een fase 1-build niet op een netwerk dat je niet volledig beheert.** De API
+zegt dat bij het opstarten, en het dashboard zegt het tegen iedereen die het opent.
+
+### `VELNOX_DEV_ENDPOINTS` stelt een diagnostisch endpoint bloot
+De zelftest van de wachtrij (`POST /api/v1/system/selftest/queue`) bestaat om aan te tonen dat de
+worker ingediend werk uitvoert. Hij raakt geen beheerde infrastructuur aan en geeft niets gevoeligs
+terug, maar hij is net zo onbeschermd als de rest van deze build. Standaard staat hij uit in
+`.env.example`; de vlag en het endpoint verdwijnen beide in fase 2.
+
+### De backend-image draagt zijn buildafhankelijkheden mee
+`deploy/docker/backend.Dockerfile` kopieert de hele workspace, inclusief devDependencies, naar de
+runtime-laag. De `node_modules` van pnpm is een graaf van relatieve symlinks die niet overleeft dat je
+hem uit elkaar haalt, en een naïeve `pnpm prune --prod` zou de gegenereerde Prisma-client verwijderen.
+Een echt afgeslankte runtime-image is verpakkingswerk voor fase 14, en daar telt het ook, want het is
+onderdeel van het budget van circa 1 GB voor het air-gapped artefact.
+
+### De Content-Security-Policy staat nog `'unsafe-inline'` toe
+Next.js zendt inline bootstrap-scripts en inline stijlen uit, en Swagger UI doet hetzelfde. Dat
+vervangen door nonces per request is hardening voor fase 15. De header staat er en elke andere
+security header is strikt; deze ene versoepeling is echt en wordt niet weggemoffeld.
+
+### Standalone-output staat aan via een vlag, om een Windows-reden
+`next build` levert alleen `output: 'standalone'` wanneer `VELNOX_STANDALONE=1`, wat de Dockerfile
+zet. Tracing maakt symlinks aan, en Windows weigert dat zonder Developer Mode — het altijd aanzetten
+zou betekenen dat een ontwikkelaar op Windows de app niet kan bouwen. De image die uitgeleverd wordt is
+altijd de standalone versie.
+
+### De dashboardtellers zijn streepjes, geen nullen
+Tenants, clusters, nodes en de rest tonen `—` met de fase die ze gaat vullen. Het zijn geen
+plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. De enige kaart met
+echte data is servicestatus, en die is live.
+
+### Documentatiedrift is nu mogelijk
+Fase 1 heeft twee keuzes uit fase 0 gewijzigd (zie *Gewijzigd in fase 1* in `architecture.md` en
+`tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen de Engelse commit vast waaruit
+ze vertaald zijn; `scripts/check-doc-sync.mjs` meldt welke zijn achtergebleven. Het waarschuwt, het
+blokkeert niet.
 
 ---
 

@@ -1,9 +1,14 @@
 # Velnox — Implementatieroadmap
 
-> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `5fd136a`.
+> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `5b3fb43`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Phase 0 afgerond (deze documentenset). Phase 1–15 wachten op goedkeuring.
+**Status:** Fase 0 en fase 1 afgerond. Fase 2–15 wachten op goedkeuring.
+
+Fase 1 is geverifieerd in plaats van beweerd: `./scripts/verify-stack.sh` toetst de acceptatiecriteria
+tegen een draaiende stack — 27 controles over elke afhankelijkheid, de migratiestatus, security
+headers, beide talen, het bronaanbod, een echte wachtrij-rondgang, en het feit dat de datalaag niet
+vanaf de host bereikbaar is. Het draait in CI bij elke wijziging.
 
 Elke fase eindigt met dezelfde poort. Een fase is **niet** klaar voordat dit alles waar is:
 
@@ -21,11 +26,12 @@ Inspanningsschattingen zijn relatieve maten (S/M/L/XL), geen beloften in kalende
 
 ---
 
-## Phase 1 — Monorepo-bootstrap en draaiende stack · **L**
+## Phase 1 — Monorepo-bootstrap en draaiende stack · **L** · ✅ afgerond
 
 pnpm workspaces, Turborepo, gedeelde TS-/ESLint-/Prettier-configuraties. NestJS api-skelet met
 `/healthz`, `/readyz`, OpenAPI, globale validatiepipe, foutfilter, pino-logging met redactie. Next.js
-web-skelet met de sidebar-shell, donkere modus en de BFF-proxy. Prisma-package met de eerste migratie
+web-skelet met de sidebar-shell, donkere modus en server-side API-reads (de proxyroute is geschrapt —
+zie de wijziging uit fase 1 in tech-decisions.md ADR-003). Prisma-package met de eerste migratie
 (alleen `system_settings`). Redis- en BullMQ-bedrading met een triviale ping-job. Compose-bestanden voor
 dev en productie, Caddy, health checks, afhankelijkheidsvolgorde, named volumes. `.env.example` met elke
 variabele gedocumenteerd. CI die lint, typecheck, test en build draait.
