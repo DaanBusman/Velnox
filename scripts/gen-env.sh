@@ -6,20 +6,26 @@
 # overwriting MASTER_ENCRYPTION_KEY would make every stored credential
 # permanently unreadable. Use --force only when you mean to lose them.
 #
-# Phase 14's install.sh reuses this script rather than reimplementing it.
+# install.sh calls this; you only need to run it by hand for a manual deployment
+# or a development environment.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/env-file.sh
+source "${ROOT}/scripts/lib/env-file.sh"
+
 ENV_FILE="${ROOT}/.env"
 EXAMPLE_FILE="${ROOT}/.env.example"
 FORCE=0
+QUIET=0
 
 for arg in "$@"; do
   case "$arg" in
     --force) FORCE=1 ;;
+    --quiet) QUIET=1 ;;
     -h | --help)
-      sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -29,7 +35,7 @@ for arg in "$@"; do
   esac
 done
 
-log() { printf '\033[0;36m==>\033[0m %s\n' "$*"; }
+log() { [[ $QUIET -eq 1 ]] || printf '\033[0;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[0;33m warn\033[0m %s\n' "$*" >&2; }
 die() {
   printf '\033[0;31merror\033[0m %s\n' "$*" >&2
@@ -40,10 +46,14 @@ die() {
 
 if [[ -f "$ENV_FILE" && $FORCE -eq 0 ]]; then
   log ".env already exists — leaving it untouched."
-  echo
-  echo "  Re-running this script never rotates your secrets by accident."
-  echo "  Losing MASTER_ENCRYPTION_KEY makes every stored credential unreadable."
-  echo "  If you really want a fresh file, back the current one up and pass --force."
+  if [[ $QUIET -eq 0 ]]; then
+    cat <<'EOF'
+
+  Re-running this script never rotates your secrets by accident.
+  Losing MASTER_ENCRYPTION_KEY makes every stored credential unreadable.
+  If you really want a fresh file, back the current one up and pass --force.
+EOF
+  fi
   exit 0
 fi
 
@@ -54,51 +64,31 @@ if [[ -f "$ENV_FILE" && $FORCE -eq 1 ]]; then
   warn "Existing .env backed up to $(basename "$BACKUP")"
 fi
 
-# Node is a hard requirement for Velnox anyway, and its CSPRNG is available on
-# every platform this runs on — including Git Bash on Windows, where openssl
-# frequently is not.
-random_b64() {
-  node -e "process.stdout.write(require('node:crypto').randomBytes($1).toString('base64'))"
-}
-random_pw() {
-  node -e "process.stdout.write(require('node:crypto').randomBytes(24).toString('base64url'))"
-}
-
-command -v node >/dev/null 2>&1 || die "node is required to generate secrets"
-
 log "Generating secrets"
-POSTGRES_PASSWORD="$(random_pw)"
-REDIS_PASSWORD="$(random_pw)"
-MASTER_ENCRYPTION_KEY="$(random_b64 32)"
-JWT_SECRET="$(random_b64 32)"
+POSTGRES_PASSWORD="$(random_password)"
+REDIS_PASSWORD="$(random_password)"
+MASTER_ENCRYPTION_KEY="$(random_base64 32)"
+JWT_SECRET="$(random_base64 32)"
 
 log "Writing ${ENV_FILE}"
 cp "$EXAMPLE_FILE" "$ENV_FILE"
 
-# `|` as the delimiter: base64 contains `/` and `+`, but never `|`.
-set_var() {
-  local key="$1" value="$2"
-  if grep -qE "^${key}=" "$ENV_FILE"; then
-    sed -i.tmp "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
-    rm -f "${ENV_FILE}.tmp"
-  else
-    printf '%s=%s\n' "$key" "$value" >>"$ENV_FILE"
-  fi
-}
-
-set_var POSTGRES_PASSWORD "$POSTGRES_PASSWORD"
-set_var REDIS_PASSWORD "$REDIS_PASSWORD"
-set_var MASTER_ENCRYPTION_KEY "$MASTER_ENCRYPTION_KEY"
-set_var JWT_SECRET "$JWT_SECRET"
-set_var DATABASE_URL "postgresql://velnox:${POSTGRES_PASSWORD}@postgres:5432/velnox?schema=public"
+set_env_var "$ENV_FILE" POSTGRES_PASSWORD "$POSTGRES_PASSWORD"
+set_env_var "$ENV_FILE" REDIS_PASSWORD "$REDIS_PASSWORD"
+set_env_var "$ENV_FILE" MASTER_ENCRYPTION_KEY "$MASTER_ENCRYPTION_KEY"
+set_env_var "$ENV_FILE" JWT_SECRET "$JWT_SECRET"
+set_env_var "$ENV_FILE" DATABASE_URL \
+  "postgresql://velnox:${POSTGRES_PASSWORD}@postgres:5432/velnox?schema=public"
 
 if command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  set_var VELNOX_BUILD_COMMIT "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  set_env_var "$ENV_FILE" VELNOX_BUILD_COMMIT \
+    "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 fi
 
 chmod 600 "$ENV_FILE"
 
-cat <<'BANNER'
+if [[ $QUIET -eq 0 ]]; then
+  cat <<'BANNER'
 
   .env created with generated secrets (mode 0600).
 
@@ -109,6 +99,5 @@ cat <<'BANNER'
   #  If you lose it there is no recovery path, by design.                     #
   ############################################################################
 
-  Next:  pnpm docker:up
-
 BANNER
+fi

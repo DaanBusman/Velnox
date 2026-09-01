@@ -68,7 +68,7 @@ jobs:
       - name: shellcheck
         run: |
           sudo apt-get update && sudo apt-get install -y shellcheck
-          shellcheck scripts/*.sh
+          shellcheck -x --source-path=SCRIPTDIR install.sh scripts/*.sh scripts/lib/*.sh
 
   stack:
     name: Compose stack starts and is healthy

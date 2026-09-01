@@ -18,10 +18,17 @@ CURL=(curl --silent --show-error --insecure --max-time 15)
 
 PASS=0
 FAIL=0
+SKIP=0
 
 green() { printf '\033[0;32m  ok  \033[0m %s\n' "$*"; }
 red() { printf '\033[0;31m FAIL \033[0m %s\n' "$*"; }
+grey() { printf '\033[0;90m skip \033[0m %s\n' "$*"; }
 info() { printf '\033[0;36m----\033[0m %s\n' "$*"; }
+
+skip() {
+  grey "$*"
+  SKIP=$((SKIP + 1))
+}
 
 check() {
   local name="$1"
@@ -35,26 +42,44 @@ check() {
   fi
 }
 
-# Reads a dotted path out of a JSON document on stdin. Uses node rather than jq:
-# node is a hard requirement for Velnox, jq is not, and this script has to run on
-# a developer's machine as well as in CI.
-json() {
-  node -e '
-    let raw = "";
-    process.stdin.on("data", (c) => (raw += c));
-    process.stdin.on("end", () => {
-      try {
-        const value = process.argv[1]
-          .split(".")
-          .reduce((acc, key) => (acc == null ? acc : acc[key]), JSON.parse(raw));
-        process.stdout.write(value === undefined || value === null ? "" : String(value));
-      } catch {
-        process.stdout.write("");
-      }
-    });
-  ' "$1"
-}
+# Reads a dotted path out of a JSON document on stdin.
+#
+# Prefers jq, falls back to node. Neither is assumed: a freshly installed Debian
+# or Ubuntu host has no Node, and a developer's Windows machine often has no jq,
+# so the script has to work with whichever is present.
+if command -v jq >/dev/null 2>&1; then
+  json() {
+    jq -r --arg path "$1" '
+      ($path | split(".")) as $keys
+      | reduce $keys[] as $k (.; if . == null then null else .[$k]? end)
+      | if . == null then "" else tostring end
+    ' 2>/dev/null || printf ''
+  }
+elif command -v node >/dev/null 2>&1; then
+  json() {
+    node -e '
+      let raw = "";
+      process.stdin.on("data", (c) => (raw += c));
+      process.stdin.on("end", () => {
+        try {
+          const value = process.argv[1]
+            .split(".")
+            .reduce((acc, key) => (acc == null ? acc : acc[key]), JSON.parse(raw));
+          process.stdout.write(value === undefined || value === null ? "" : String(value));
+        } catch {
+          process.stdout.write("");
+        }
+      });
+    ' "$1"
+  }
+else
+  echo "This script needs either jq or node to read JSON responses." >&2
+  echo "Install one:  sudo apt-get install -y jq" >&2
+  exit 2
+fi
 
+# Invoked indirectly, as `check expect_equals ...`.
+# shellcheck disable=SC2329
 expect_equals() {
   local actual="$1" expected="$2"
   if [[ "$actual" == "$expected" ]]; then return 0; fi
@@ -62,6 +87,7 @@ expect_equals() {
   return 1
 }
 
+# shellcheck disable=SC2329
 expect_contains() {
   local haystack="$1" needle="$2"
   if [[ "$haystack" == *"$needle"* ]]; then return 0; fi
@@ -69,6 +95,7 @@ expect_contains() {
   return 1
 }
 
+# shellcheck disable=SC2329
 expect_not_contains() {
   local haystack="$1" needle="$2"
   if [[ "$haystack" != *"$needle"* ]]; then return 0; fi
@@ -82,19 +109,15 @@ expect_not_contains() {
 # payload, so a raw grep matches translation *keys* (`noHeartbeat`) as well as
 # rendered text — which is exactly how the first version of the check below
 # produced a false failure.
+#
+# perl rather than node: perl-base is a required package on Debian and Ubuntu, so
+# it is present on every host this runs on, and Git for Windows ships it too.
 visible_text() {
-  node -e '
-    let raw = "";
-    process.stdin.on("data", (c) => (raw += c));
-    process.stdin.on("end", () => {
-      process.stdout.write(
-        raw
-          .replace(/<script[\s\S]*?<\/script>/g, " ")
-          .replace(/<style[\s\S]*?<\/style>/g, " ")
-          .replace(/<[^>]+>/g, " ")
-          .replace(/\s+/g, " "),
-      );
-    });
+  perl -0777 -pe '
+    s{<script\b.*?</script>}{ }gsi;
+    s{<style\b.*?</style>}{ }gsi;
+    s{<[^>]+>}{ }gs;
+    s{\s+}{ }gs;
   '
 }
 
@@ -107,16 +130,12 @@ check "web: the dashboard shell is served over HTTPS" bash -c "
 "
 
 # --- 2. The API answers through the reverse proxy ----------------------------
-check "api: /api/v1/health responds through Caddy" bash -c "
-  status=\$(${CURL[*]} '${BASE}/api/v1/health' | node -e '
-    let r=\"\";process.stdin.on(\"data\",c=>r+=c);
-    process.stdin.on(\"end\",()=>{try{process.stdout.write(JSON.parse(r).status||\"\")}catch{process.stdout.write(\"\")}});
-  ')
-  [[ \"\$status\" == 'ok' ]]
-"
+HEALTH_JSON="$("${CURL[@]}" "${BASE}/api/v1/health" 2>/dev/null)"
+check "api: /api/v1/health responds through Caddy" expect_equals \
+  "$(printf '%s' "$HEALTH_JSON" | json status)" "ok"
 
 # --- 3. Readiness: every dependency reachable, schema current ----------------
-READY_JSON="$(${CURL[@]} "${BASE}/readyz" 2>/dev/null)"
+READY_JSON="$("${CURL[@]}" "${BASE}/readyz" 2>/dev/null)"
 check "readyz: overall status is ok" expect_equals "$(printf '%s' "$READY_JSON" | json status)" "ok"
 check "readyz: PostgreSQL reachable" expect_contains "$READY_JSON" '"name":"database","status":"ok"'
 check "readyz: Redis reachable" expect_contains "$READY_JSON" '"name":"redis","status":"ok"'
@@ -133,7 +152,7 @@ check "api: /api/docs serves the OpenAPI UI" bash -c "
 "
 
 # --- 5. AGPL section 13 source offer ----------------------------------------
-SOURCE_JSON="$(${CURL[@]} "${BASE}/api/v1/system/source" 2>/dev/null)"
+SOURCE_JSON="$("${CURL[@]}" "${BASE}/api/v1/system/source" 2>/dev/null)"
 check "licence: the source offer declares AGPL-3.0-or-later" expect_equals \
   "$(printf '%s' "$SOURCE_JSON" | json license)" "AGPL-3.0-or-later"
 check "licence: a source URL is published" bash -c "
@@ -162,14 +181,14 @@ check "i18n: the locale cookie overrides the browser preference" bash -c "
 # The API returns health detail as a code with parameters, not as a sentence
 # (ADR-019). If that ever regresses, English prose from the API shows up in the
 # middle of a Dutch page — which is exactly how it was caught the first time.
-NL_TEXT="$(${CURL[@]} -H 'Accept-Language: nl' "${BASE}/" 2>/dev/null | visible_text)"
+NL_TEXT="$("${CURL[@]}" -H 'Accept-Language: nl' "${BASE}/" 2>/dev/null | visible_text)"
 check "i18n: API-supplied health detail is rendered in Dutch" \
   expect_contains "$NL_TEXT" "Hartslag"
 check "i18n: no English health detail leaks onto the Dutch page" \
   expect_not_contains "$NL_TEXT" "Heartbeat "
 
 # --- 7. Security headers -----------------------------------------------------
-HEADERS="$(${CURL[@]} --head "${BASE}/" 2>/dev/null)"
+HEADERS="$("${CURL[@]}" --head "${BASE}/" 2>/dev/null)"
 for header in \
   'strict-transport-security' \
   'x-content-type-options' \
@@ -182,20 +201,32 @@ for header in \
 done
 
 # --- 8. The queue actually round-trips --------------------------------------
-info "Running the queue self-test (api -> Redis -> worker)"
-JOB_ID="$(${CURL[@]} -X POST "${BASE}/api/v1/system/selftest/queue" 2>/dev/null | json jobId)"
+#
+# The self-test endpoint is a diagnostic and is off in a normal installation, so
+# its absence is reported as skipped rather than failed. The worker's heartbeat
+# check above already proves the worker is alive and reaching Redis; this adds
+# proof that submitted work is actually executed.
+DEV_ENDPOINTS="$("${CURL[@]}" "${BASE}/api/v1/system/info" 2>/dev/null | json features.devEndpoints)"
 
-if [[ -z "$JOB_ID" ]]; then
-  red "queue: could not submit a job (is VELNOX_DEV_ENDPOINTS=true?)"
-  FAIL=$((FAIL + 1))
+if [[ "$DEV_ENDPOINTS" != "true" ]]; then
+  skip "queue: self-test endpoint disabled (set VELNOX_DEV_ENDPOINTS=true to include it)"
+  JOB_ID=""
 else
+  info "Running the queue self-test (api -> Redis -> worker)"
+  JOB_ID="$("${CURL[@]}" -X POST "${BASE}/api/v1/system/selftest/queue" 2>/dev/null | json jobId)"
+fi
+
+if [[ "$DEV_ENDPOINTS" == "true" && -z "$JOB_ID" ]]; then
+  red "queue: the self-test endpoint is enabled but would not accept a job"
+  FAIL=$((FAIL + 1))
+elif [[ -n "$JOB_ID" ]]; then
   green "queue: job ${JOB_ID} accepted"
   PASS=$((PASS + 1))
 
   STATE=""
   PROCESSED_BY=""
   for _ in $(seq 1 40); do
-    JOB_JSON="$(${CURL[@]} "${BASE}/api/v1/system/selftest/queue/${JOB_ID}" 2>/dev/null)"
+    JOB_JSON="$("${CURL[@]}" "${BASE}/api/v1/system/selftest/queue/${JOB_ID}" 2>/dev/null)"
     STATE="$(printf '%s' "$JOB_JSON" | json state)"
     if [[ "$STATE" == "completed" || "$STATE" == "failed" ]]; then
       PROCESSED_BY="$(printf '%s' "$JOB_JSON" | json result.processedBy)"
@@ -217,9 +248,12 @@ check "network: Redis is not published to the host" bash -c "
 "
 
 echo
+SKIPPED_NOTE=""
+[[ $SKIP -gt 0 ]] && SKIPPED_NOTE=", $SKIP skipped"
+
 if [[ $FAIL -eq 0 ]]; then
-  printf '\033[0;32m%s checks passed.\033[0m\n' "$PASS"
+  printf '\033[0;32m%s checks passed%s.\033[0m\n' "$PASS" "$SKIPPED_NOTE"
   exit 0
 fi
-printf '\033[0;31m%s passed, %s failed.\033[0m\n' "$PASS" "$FAIL"
+printf '\033[0;31m%s passed, %s failed%s.\033[0m\n' "$PASS" "$FAIL" "$SKIPPED_NOTE"
 exit 1

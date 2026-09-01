@@ -26,37 +26,29 @@ What each phase adds, and what is deliberately missing today:
 
 ## Quick start
 
-Requires Docker and Docker Compose. Nothing else — Node and pnpm are only needed for development.
+On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server:
 
 ```bash
-./scripts/gen-env.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone <velnox-repository-url> /opt/velnox && sudo /opt/velnox/install.sh
 ```
+
+The installer installs Docker if it is missing, generates secrets, builds the images, starts the
+stack, verifies it and prints the URL. Re-running it is safe and is also the upgrade path.
+
+Full options, sizing and hypervisor VM settings: [docs/deployment.md](docs/deployment.md).
+
+> **Back up `MASTER_ENCRYPTION_KEY`,** which the installer prints when it finishes. Every credential
+> Velnox stores is encrypted under a key derived from it. Lose it and there is no recovery path, by
+> design.
+
+### Verify a running installation
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env up --build --detach --wait
+./scripts/verify-stack.sh https://your-velnox-host
 ```
 
-Then open **https://localhost**. Caddy issues its own certificate, so the browser will warn once;
-that is expected for an appliance reached by hostname or IP.
-
-`gen-env.sh` generates strong secrets and refuses to overwrite an existing `.env`.
-
-> **Back up `MASTER_ENCRYPTION_KEY` separately from the database.** Every credential Velnox stores
-> is encrypted under a key derived from it. Lose it and there is no recovery path, by design.
-
-To see the queue actually round-trip through the worker, set `VELNOX_DEV_ENDPOINTS=true` in `.env`
-and use the self-test card on the dashboard. That flag exposes an unauthenticated diagnostic
-endpoint and is removed in Phase 2.
-
-### Verify the installation
-
-```bash
-./scripts/verify-stack.sh
-```
-
-Asserts the Phase 1 acceptance criteria against the running stack: every dependency reachable,
-migrations applied, security headers set, both languages served, the licence offer published, the
-queue completing a real job, and the data tier not exposed to the host.
+Asserts against the running stack: every dependency reachable, migrations applied, security headers
+set, both languages served, the licence offer published, and the data tier not exposed to the host.
 
 ---
 
