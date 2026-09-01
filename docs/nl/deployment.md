@@ -1,6 +1,6 @@
 # Velnox — Uitrolhandleiding
 
-> **Vertaling.** Bron: [docs/deployment.md](../deployment.md) @ `PLACEHOLDER`.
+> **Vertaling.** Bron: [docs/deployment.md](../deployment.md) @ `c6aa25b`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 Hoe je Velnox draait op een Debian- of Ubuntu-host met Docker, hoe je het dimensioneert, en hoe je de
