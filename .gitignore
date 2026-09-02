@@ -13,3 +13,4 @@ iso/out/
 .DS_Store
 .preview/
 apps/web/next-env.d.ts
+*.tsbuildinfo
