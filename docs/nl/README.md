@@ -1,6 +1,6 @@
 # Velnox — Nederlandse documentatie
 
-> **Vertaling.** Bron: [README.md](../../README.md) @ `820f839`.
+> **Vertaling.** Bron: [README.md](../../README.md) @ `ef1ba38`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.**
@@ -30,38 +30,30 @@ Wat elke fase toevoegt, en wat er vandaag bewust ontbreekt:
 
 ## Snel starten
 
-Vereist Docker en Docker Compose. Verder niets — Node en pnpm zijn alleen nodig voor ontwikkeling.
+Op een verse Debian 12/13- of Ubuntu 22.04/24.04-server:
 
 ```bash
-./scripts/gen-env.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
 ```
+
+De installer installeert Docker als dat ontbreekt, genereert secrets, bouwt de images, start de
+stack, verifieert die en drukt de URL af. Hem opnieuw draaien is veilig en is meteen het upgradepad.
+
+Volledige opties, dimensionering en VM-instellingen: [deployment.md](deployment.md).
+
+> **Maak een back-up van `MASTER_ENCRYPTION_KEY`,** die de installer toont als hij klaar is. Elk
+> credential dat Velnox opslaat is versleuteld met een sleutel die daarvan is afgeleid. Raak je hem
+> kwijt, dan is er geen herstelpad — dat is een ontwerpkeuze.
+
+### Een draaiende installatie verifiëren
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env up --build --detach --wait
+./scripts/verify-stack.sh https://jouw-velnox-host
 ```
 
-Open daarna **https://localhost**. Caddy geeft een eigen certificaat uit, dus de browser waarschuwt
-één keer; dat hoort zo bij een appliance die je op hostnaam of IP benadert.
-
-`gen-env.sh` genereert sterke secrets en weigert een bestaande `.env` te overschrijven.
-
-> **Maak een back-up van `MASTER_ENCRYPTION_KEY`, los van de database.** Elk credential dat Velnox
-> opslaat is versleuteld met een sleutel die daarvan is afgeleid. Raak je hem kwijt, dan is er geen
-> herstelpad — dat is een ontwerpkeuze.
-
-Wil je de wachtrij daadwerkelijk door de worker zien lopen, zet dan `VELNOX_DEV_ENDPOINTS=true` in
-`.env` en gebruik de zelftestkaart op het dashboard. Die vlag stelt een niet-geauthenticeerd
-diagnostisch endpoint bloot en verdwijnt in fase 2.
-
-### De installatie verifiëren
-
-```bash
-./scripts/verify-stack.sh
-```
-
-Toetst de acceptatiecriteria van fase 1 tegen de draaiende stack: elke afhankelijkheid bereikbaar,
-migraties toegepast, security headers gezet, beide talen geserveerd, het bronaanbod gepubliceerd, de
-wachtrij die een echte job afrondt, en de datalaag die niet aan de host is blootgesteld.
+Toetst tegen de draaiende stack: elke afhankelijkheid bereikbaar, migraties toegepast, security
+headers gezet, beide talen geserveerd, het bronaanbod gepubliceerd, en de datalaag die niet aan de
+host is blootgesteld.
 
 ---
 
