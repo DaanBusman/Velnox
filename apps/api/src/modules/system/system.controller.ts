@@ -1,13 +1,10 @@
-import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
-import type {
-  PingJobAcceptedResponse,
-  PingJobStatusResponse,
-  SourceOfferResponse,
-  SystemInfoResponse,
-} from '@velnox/shared';
+import { Controller, Get } from '@nestjs/common';
+import { Public } from '../../common/auth.guard';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { SourceOfferResponse, SystemInfoResponse } from '@velnox/shared';
 import { SystemService } from './system.service';
 
+@Public()
 @ApiTags('system')
 @Controller('system')
 export class SystemController {
@@ -50,26 +47,4 @@ export class SystemController {
     return this.system.source();
   }
 
-  /**
-   * Phase 1 only, behind VELNOX_DEV_ENDPOINTS. Returns 404 when disabled.
-   * Phase 5 replaces this with the real job system, under RBAC.
-   */
-  @Post('selftest/queue')
-  @HttpCode(202)
-  @ApiOperation({
-    summary: 'Queue self-test (Phase 1 diagnostic)',
-    description:
-      'Enqueues a job for the worker so the api -> Redis -> worker path can be observed ' +
-      'end to end. Disabled unless VELNOX_DEV_ENDPOINTS is set. Removed in Phase 2.',
-  })
-  startQueueSelfTest(): Promise<PingJobAcceptedResponse> {
-    return this.system.startQueueSelfTest();
-  }
-
-  @Get('selftest/queue/:jobId')
-  @ApiOperation({ summary: 'Queue self-test status (Phase 1 diagnostic)' })
-  @ApiParam({ name: 'jobId', description: 'Id returned when the self-test was started' })
-  queueSelfTestStatus(@Param('jobId') jobId: string): Promise<PingJobStatusResponse> {
-    return this.system.queueSelfTestStatus(jobId);
-  }
 }

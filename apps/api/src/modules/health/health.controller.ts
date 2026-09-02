@@ -1,4 +1,5 @@
 import { Controller, Get, Res } from '@nestjs/common';
+import { Public } from '../../common/auth.guard';
 import { ApiExcludeEndpoint, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { HealthResponse, ReadinessResponse } from '@velnox/shared';
@@ -9,6 +10,7 @@ import { HealthService } from './health.service';
  * Docker and orchestrators, not part of the versioned public API, and they must
  * keep working across API version changes.
  */
+@Public()
 @ApiTags('health')
 @Controller()
 export class HealthController {

@@ -1,4 +1,5 @@
 import { Controller, Get, Header, Inject, NotFoundException } from '@nestjs/common';
+import { Public } from '../../common/auth.guard';
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { ApiConfig } from '@velnox/config';
 import { API_CONFIG } from '../../config/config.module';
@@ -13,6 +14,7 @@ import { HealthService } from '../health/health.service';
  * of a process that holds hypervisor credentials. If the metric set grows past
  * what this can carry, that trade changes.
  */
+@Public()
 @ApiExcludeController()
 @Controller()
 export class MetricsController {

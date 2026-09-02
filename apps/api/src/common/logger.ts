@@ -1,7 +1,14 @@
-import { Injectable, type LoggerService, type LogLevel } from '@nestjs/common';
+import { Inject, Injectable, type LoggerService, type LogLevel } from '@nestjs/common';
 import pino, { type Logger } from 'pino';
 import { rootRedactor, type Redactor } from '@velnox/shared';
 import { currentRequestId } from './request-context';
+
+/**
+ * Injection token for the process logger. Declared here rather than in the
+ * module, so the module can import the logger without the logger importing the
+ * module back.
+ */
+export const ROOT_LOGGER = 'ROOT_LOGGER';
 
 /**
  * Structured logging with mandatory redaction.
@@ -59,10 +66,9 @@ export function createRootLogger(options: LoggerOptions): Logger {
 
 @Injectable()
 export class NestPinoLogger implements LoggerService {
-  constructor(
-    private readonly logger: Logger,
-    private readonly redactor: Redactor = rootRedactor,
-  ) {}
+  private readonly redactor: Redactor = rootRedactor;
+
+  constructor(@Inject(ROOT_LOGGER) private readonly logger: Logger) {}
 
   private write(level: LogLevel, message: unknown, ...optional: unknown[]): void {
     const context = typeof optional.at(-1) === 'string' ? (optional.at(-1) as string) : undefined;

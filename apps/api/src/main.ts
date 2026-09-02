@@ -9,6 +9,8 @@ import { AppModule } from './app.module';
 import { createRootLogger, NestPinoLogger } from './common/logger';
 import { RequestContextMiddleware } from './common/request-context.middleware';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
+import { CsrfMiddleware } from './common/csrf.middleware';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap(): Promise<void> {
   // Configuration first: a bad value must stop the process before anything binds
@@ -37,6 +39,11 @@ async function bootstrap(): Promise<void> {
 
   const requestContext = new RequestContextMiddleware(logger);
   app.use(requestContext.handle);
+
+  // Cookies carry the session; the CSRF check runs before any route so a
+  // state-changing request cannot slip past it.
+  app.use(cookieParser());
+  app.use(new CsrfMiddleware().handle);
 
   app.setGlobalPrefix(API_PREFIX, {
     exclude: [
@@ -80,12 +87,6 @@ async function bootstrap(): Promise<void> {
     'Velnox API listening',
   );
 
-  if (config.VELNOX_DEV_ENDPOINTS) {
-    logger.warn(
-      'VELNOX_DEV_ENDPOINTS is enabled: unauthenticated diagnostic endpoints are exposed. ' +
-        'Phase 1 has no authentication at all — do not expose this installation to an untrusted network.',
-    );
-  }
 }
 
 bootstrap().catch((error: unknown) => {
