@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "tsBuildInfoFile": "./dist/.tsbuildinfo.typecheck" },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

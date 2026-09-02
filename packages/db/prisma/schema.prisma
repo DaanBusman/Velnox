@@ -1,9 +1,8 @@
 // Velnox database schema.
 //
-// Phase 1 creates exactly one table: the installation settings singleton. Every
-// other model in docs/database-schema.md arrives in the phase that needs it, via
-// its own migration. Migrations are never edited after they have been applied
-// anywhere; corrections are new migrations.
+// Migrations are never edited after they have been applied anywhere; corrections
+// are new migrations. Models arrive in the phase that needs them, so this file
+// grows rather than being written up front.
 
 generator client {
   provider = "prisma-client-js"
@@ -14,8 +13,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Multi-factor authentication policy. Implemented in Phase 2; the column exists
-/// now so the settings row does not need a schema change to gain it later.
+// ---------------------------------------------------------------------------
+// Installation settings
+// ---------------------------------------------------------------------------
+
+/// Multi-factor authentication policy. The effective policy for a user is the
+/// stricter of the installation-wide setting and their tenant's.
 enum MfaPolicy {
   OPTIONAL
   REQUIRED_FOR_PRIVILEGED
@@ -29,8 +32,8 @@ enum MfaPolicy {
 model SystemSettings {
   id Int @id @default(1)
 
-  /// False until the setup wizard has created the first administrator (Phase 2).
-  /// While false, the API exposes exactly one mutating endpoint.
+  /// False until the setup wizard has created the first administrator. While
+  /// false, the API exposes exactly one mutating endpoint.
   initialized   Boolean   @default(false)
   initializedAt DateTime? @map("initialized_at") @db.Timestamptz(3)
 
@@ -49,8 +52,7 @@ model SystemSettings {
   keyVersion Int @default(1) @map("key_version")
 
   /// AGPL section 13: where the Corresponding Source of the running build can be
-  /// obtained. An operator running a modified build points this at their source.
-  /// Null means "use the build-time default", which is the upstream repository.
+  /// obtained. Null means "use the build-time default".
   sourceUrl String? @map("source_url")
 
   featureFlags Json @default("{}") @map("feature_flags")
@@ -60,4 +62,502 @@ model SystemSettings {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("system_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+enum TenantKind {
+  MSP_ROOT
+  CUSTOMER
+
+  @@map("tenant_kind")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+
+  @@map("tenant_status")
+}
+
+/// An isolated customer organisation. Exactly one row has kind MSP_ROOT,
+/// enforced by a partial unique index; it is created by the setup wizard and
+/// cannot be deleted.
+model Tenant {
+  id   String     @id @default(uuid()) @db.Uuid
+  name String
+  slug String     @unique
+  kind TenantKind @default(CUSTOMER)
+
+  status TenantStatus @default(ACTIVE)
+
+  /// Reserved for hierarchical tenants. v1 supports one level below the root.
+  parentTenantId String? @map("parent_tenant_id") @db.Uuid
+
+  /// Per-tenant overrides, including an MFA policy stricter than the installation's.
+  settings Json @default("{}")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  users           User[]
+  roles           Role[]
+  roleAssignments RoleAssignment[]
+  auditEvents     AuditEvent[]
+  credentials     Credential[]
+
+  @@map("tenants")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  INVITED
+
+  @@map("user_status")
+}
+
+model User {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  email       String     @unique
+  displayName String     @map("display_name")
+  status      UserStatus @default(ACTIVE)
+
+  /// Argon2id PHC string. Null for users that authenticate only through SSO.
+  passwordHash        String?  @map("password_hash")
+  mustChangePassword  Boolean  @default(false) @map("must_change_password")
+  passwordUpdatedAt   DateTime? @map("password_updated_at") @db.Timestamptz(3)
+
+  /// Maintained by the application whenever a factor is confirmed or removed.
+  mfaEnrolled Boolean @default(false) @map("mfa_enrolled")
+
+  locale   String?
+  timezone String?
+
+  /// Incremented on password change, role change or forced logout. An access
+  /// token carrying a stale value is rejected without a database lookup.
+  tokenVersion Int @default(0) @map("token_version")
+
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(3)
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(3)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  sessions        Session[]
+  roleAssignments RoleAssignment[]
+  identities      UserIdentity[]
+  mfaFactors      UserMfaFactor[]
+  recoveryCodes   MfaRecoveryCode[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("users")
+}
+
+enum IdentityProviderKind {
+  LOCAL
+  OIDC
+
+  @@map("identity_provider_kind")
+}
+
+/// An external identity provider. The client secret is a reference into the
+/// credential store, never a column.
+model IdentityProvider {
+  id      String               @id @default(uuid()) @db.Uuid
+  kind    IdentityProviderKind
+  name    String
+  enabled Boolean              @default(false)
+
+  discoveryUrl      String? @map("discovery_url")
+  issuer            String?
+  clientId          String? @map("client_id")
+  clientSecretRef   String? @map("client_secret_ref") @db.Uuid
+  allowedEmailDomains String[] @default([]) @map("allowed_email_domains")
+
+  /// Whether an unknown but successfully authenticated identity may create a user.
+  autoProvision   Boolean @default(false) @map("auto_provision")
+  defaultRoleId   String? @map("default_role_id") @db.Uuid
+  defaultTenantId String? @map("default_tenant_id") @db.Uuid
+
+  /// Result of the last "test connection", so the UI reports a real state.
+  lastTestedAt    DateTime? @map("last_tested_at") @db.Timestamptz(3)
+  lastTestOk      Boolean?  @map("last_test_ok")
+  lastTestMessage String?   @map("last_test_message")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  identities UserIdentity[]
+
+  @@map("identity_providers")
+}
+
+/// Links a Velnox user to an external identity. Matching is on `subject` first;
+/// a verified email is only used when the provider is configured to allow it.
+model UserIdentity {
+  id         String @id @default(uuid()) @db.Uuid
+  userId     String @map("user_id") @db.Uuid
+  providerId String @map("provider_id") @db.Uuid
+
+  subject      String
+  emailAtLink  String? @map("email_at_link")
+  linkedAt     DateTime @default(now()) @map("linked_at") @db.Timestamptz(3)
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider IdentityProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, subject])
+  @@index([userId])
+  @@map("user_identities")
+}
+
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
+
+model Session {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  /// SHA-256 of the opaque refresh token. The token itself is never stored.
+  refreshTokenHash String @unique @map("refresh_token_hash")
+
+  /// Rotation chain. Presenting an already-rotated token revokes the whole
+  /// family, which is how a stolen token is detected.
+  familyId String  @map("family_id") @db.Uuid
+  parentId String? @map("parent_id") @db.Uuid
+
+  ip        String?
+  userAgent String? @map("user_agent")
+
+  /// Null while the session has not satisfied a required second factor. Such a
+  /// session can reach only enrolment and logout.
+  mfaSatisfiedAt DateTime? @map("mfa_satisfied_at") @db.Timestamptz(3)
+
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt   DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedReason String?  @map("revoked_reason")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Multi-factor authentication
+// ---------------------------------------------------------------------------
+
+enum MfaFactorKind {
+  TOTP
+  WEBAUTHN
+
+  @@map("mfa_factor_kind")
+}
+
+/// An enrolled second factor. The TOTP seed is a reference into the credential
+/// store, never a column. A factor is only usable once `confirmedAt` is set,
+/// which requires proving a working code — so a half-finished enrolment can
+/// never become the factor that locks someone out.
+model UserMfaFactor {
+  id     String        @id @default(uuid()) @db.Uuid
+  userId String        @map("user_id") @db.Uuid
+  kind   MfaFactorKind @default(TOTP)
+
+  label     String?
+  secretRef String? @map("secret_ref") @db.Uuid
+
+  /// Counter of the last accepted time step, so the same code cannot be replayed.
+  lastUsedCounter BigInt? @map("last_used_counter")
+
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz(3)
+  disabledAt  DateTime? @map("disabled_at") @db.Timestamptz(3)
+  createdIp   String?   @map("created_ip")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_mfa_factors")
+}
+
+/// Single-use codes that replace the second factor when it is unavailable.
+/// Argon2id-hashed, shown exactly once, and retained after use so the audit
+/// trail can show that a recovery path was taken.
+model MfaRecoveryCode {
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  codeHash String @map("code_hash")
+
+  generation Int      @default(1)
+  usedAt     DateTime? @map("used_at") @db.Timestamptz(3)
+  usedIp     String?   @map("used_ip")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mfa_recovery_codes")
+}
+
+// ---------------------------------------------------------------------------
+// Roles and grants
+// ---------------------------------------------------------------------------
+
+/// A named bundle of permissions. System roles are seeded and immutable; a
+/// tenant may define its own from the same catalogue.
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String
+  name        String
+  description String?
+  isSystem    Boolean @default(false) @map("is_system")
+
+  /// Roles only assignable to members of the MSP root tenant.
+  mspOnly Boolean @default(false) @map("msp_only")
+
+  /// Null for a system role; set for a tenant-defined one.
+  tenantId String? @map("tenant_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant      Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  assignments RoleAssignment[]
+
+  @@unique([key, tenantId])
+  @@map("roles")
+}
+
+/// Permission strings validated against the frozen catalogue in packages/shared.
+/// Text rather than a foreign key to a permissions table, so adding one is a code
+/// change plus a data migration rather than a runtime data-entry surface.
+model RolePermission {
+  roleId     String @map("role_id") @db.Uuid
+  permission String
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permission])
+  @@map("role_permissions")
+}
+
+enum ScopeType {
+  GLOBAL
+  TENANT
+  SITE
+  CLUSTER
+
+  @@map("scope_type")
+}
+
+/// A role granted to a user at a scope. GLOBAL is only insertable for users whose
+/// home tenant is the MSP root, enforced by a trigger in the migration.
+model RoleAssignment {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+
+  scopeType ScopeType @map("scope_type")
+  /// Null when scopeType is GLOBAL.
+  scopeId   String?   @map("scope_id") @db.Uuid
+
+  /// Denormalised for the tenancy filter, so a grant can be listed per tenant
+  /// without walking the scope chain.
+  tenantId String? @map("tenant_id") @db.Uuid
+
+  grantedBy String?   @map("granted_by") @db.Uuid
+  grantedAt DateTime  @default(now()) @map("granted_at") @db.Timestamptz(3)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, scopeType, scopeId])
+  @@index([userId])
+  @@index([tenantId])
+  @@map("role_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Credential store
+// ---------------------------------------------------------------------------
+
+enum CredentialKind {
+  PVE_API_TOKEN
+  PVE_PASSWORD
+  SSH_PASSWORD
+  SSH_KEY
+  WINRM_PASSWORD
+  OIDC_CLIENT_SECRET
+  VMWARE_PASSWORD
+  TOTP_SEED
+
+  @@map("credential_kind")
+}
+
+enum CredentialStatus {
+  ACTIVE
+  PENDING
+  NEEDS_ATTENTION
+  REVOKED
+
+  @@map("credential_status")
+}
+
+/// Metadata about stored authentication material. Contains no secret itself.
+model Credential {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String? @map("tenant_id") @db.Uuid
+
+  kind   CredentialKind
+  label  String?
+  status CredentialStatus @default(ACTIVE)
+
+  scopeType ScopeType? @map("scope_type")
+  scopeId   String?    @map("scope_id") @db.Uuid
+
+  username String?
+  realm    String?
+
+  storeBackend String  @default("DATABASE") @map("store_backend")
+  externalRef  String? @map("external_ref")
+
+  lastVerifiedAt DateTime? @map("last_verified_at") @db.Timestamptz(3)
+  lastRotatedAt  DateTime? @map("last_rotated_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant  Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  secrets CredentialSecret[]
+
+  @@index([tenantId])
+  @@map("credentials")
+}
+
+enum SecretStatus {
+  PENDING
+  ACTIVE
+  SUPERSEDED
+  REVOKED
+
+  @@map("secret_status")
+}
+
+/// Encrypted secret material, versioned so rotation is crash-safe. Exactly one
+/// ACTIVE version per credential, enforced by a partial unique index.
+model CredentialSecret {
+  id           String @id @default(uuid()) @db.Uuid
+  credentialId String @map("credential_id") @db.Uuid
+
+  version Int
+  status  SecretStatus @default(ACTIVE)
+
+  ciphertext Bytes
+  iv         Bytes
+  authTag    Bytes  @map("auth_tag")
+  wrappedDek Bytes  @map("wrapped_dek")
+  dekIv      Bytes  @map("dek_iv")
+  dekAuthTag Bytes  @map("dek_auth_tag")
+  keyVersion Int    @map("key_version")
+  algorithm  String
+
+  /// Associated data the ciphertext is bound to, so the row cannot be moved.
+  aad String?
+
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  activatedAt  DateTime? @map("activated_at") @db.Timestamptz(3)
+  supersededAt DateTime? @map("superseded_at") @db.Timestamptz(3)
+  purgeAfter   DateTime? @map("purge_after") @db.Timestamptz(3)
+
+  credential Credential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@unique([credentialId, version])
+  @@index([credentialId])
+  @@map("credential_secrets")
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+enum ActorType {
+  USER
+  API_TOKEN
+  SYSTEM
+  SCHEDULER
+  ANONYMOUS
+
+  @@map("actor_type")
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+  DENIED
+
+  @@map("audit_result")
+}
+
+/// Append-only record of every action that matters. UPDATE and DELETE are
+/// rejected by a trigger; metadata passes through the same redaction pipeline as
+/// logs before insert.
+model AuditEvent {
+  id String   @id @default(uuid()) @db.Uuid
+  at DateTime @default(now()) @db.Timestamptz(3)
+
+  tenantId String? @map("tenant_id") @db.Uuid
+
+  actorType     ActorType @map("actor_type")
+  actorId       String?   @map("actor_id") @db.Uuid
+  actorLabel    String?   @map("actor_label")
+  impersonatedBy String?  @map("impersonated_by") @db.Uuid
+
+  action        String
+  resourceType  String? @map("resource_type")
+  resourceId    String? @map("resource_id")
+  resourceLabel String? @map("resource_label")
+
+  result AuditResult
+
+  ip        String?
+  userAgent String? @map("user_agent")
+  requestId String? @map("request_id")
+
+  metadata Json @default("{}")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([at])
+  @@index([tenantId, at])
+  @@index([actorId, at])
+  @@index([action, at])
+  @@map("audit_events")
 }

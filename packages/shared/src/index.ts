@@ -1,4 +1,5 @@
 export * from './errors';
+export * from './permissions';
 export * from './redaction';
 export * from './system';
 
