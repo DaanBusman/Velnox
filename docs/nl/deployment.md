@@ -3,56 +3,17 @@
 > **Vertaling.** Bron: [docs/deployment.md](../deployment.md) @ `ef83573`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-Velnox draait als een set Docker-containers op een Debian- of Ubuntu-host. De installer doet alles:
-Docker installeren als dat nodig is, secrets genereren, de images bouwen, de stack starten en
-controleren dat het werkt.
-
----
-
-## Installeren
-
-Op een verse Debian 12/13- of Ubuntu 22.04/24.04-server, als gebruiker met `sudo`:
-
-```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
-```
-
-De installer stelt twee vragen — het adres dat operators gaan gebruiken, en of je een zelfondertekend
-of een publiek vertrouwd certificaat wilt — toont daarna zijn voortgang en drukt de URL af als hij
-klaar is. Reken op vijf tot tien minuten, grotendeels het bouwen van de images.
-
-Volledig onbewaakt:
-
-```bash
-sudo /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
-```
-
-| Optie | Betekenis |
-|---|---|
-| `--non-interactive`, `-y` | Nooit vragen stellen; standaarden en vlaggen gebruiken |
-| `--site-address=HOST` | Hostnaam of IP dat operators gebruiken. Standaard het IP van deze host |
-| `--tls=internal\|EMAIL` | `internal` voor een zelfondertekend certificaat (standaard), of een e-mailadres om er een van Let's Encrypt te halen |
-| `--http-port=POORT` | Hostpoort voor HTTP (standaard 80) |
-| `--https-port=POORT` | Hostpoort voor HTTPS (standaard 443) |
-| `--skip-docker` | Docker is al geïnstalleerd en ingericht |
-| `--skip-verify` | De verificatie na installatie overslaan |
-
-De installer opnieuw draaien is veilig. Hij overschrijft nooit een bestaande `.env` en raakt je data
-niet aan, dus hij is meteen het upgradepad na een `git pull`.
-
-> ### Maak een back-up van `MASTER_ENCRYPTION_KEY`
->
-> De installer toont hem als hij klaar is. Elk credential dat Velnox opslaat is versleuteld met een
-> sleutel die daarvan is afgeleid, en er is geen herstelpad als je hem kwijtraakt — dat is een
-> ontwerpkeuze. Zet hem in je wachtwoordmanager voordat je iets anders doet.
-
-**Eén plaatsingsregel:** draai Velnox niet op een hypervisor-node die Velnox zelf beheert. Op het
-moment dat het die node in onderhoud zet of herstart, zet het zichzelf uit — middenin een job.
-Gebruik een beheercluster of een aparte host.
+Velnox draait als een set Docker-containers op een Debian- of Ubuntu-host. Dimensioneer de machine,
+richt hem in voor een databasebelasting, en draai dan de installer — die doet de rest: Docker,
+secrets, images, migraties en health checks.
 
 ---
 
 ## Systeemeisen
+
+**Waar je het neerzet:** niet op een hypervisor-node die Velnox zelf beheert. Op het moment dat het die
+node in onderhoud zet of herstart, zet het zichzelf uit — middenin een job. Gebruik een beheercluster
+of een aparte host.
 
 | | vCPU | RAM | Schijf |
 |---|---|---|---|
@@ -155,6 +116,45 @@ Hyper-V-tijdsynchronisatie:
 ```bash
 sudo apt-get install -y chrony && echo 'refclock PHC /dev/ptp_hyperv poll 3 dpoll -2 offset 0' | sudo tee /etc/chrony/conf.d/hyperv.conf && sudo systemctl restart chrony
 ```
+
+---
+
+## Installeren
+
+Op een verse Debian 12/13- of Ubuntu 22.04/24.04-server, als gebruiker met `sudo`:
+
+```bash
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
+```
+
+De installer stelt twee vragen — het adres dat operators gaan gebruiken, en of je een zelfondertekend
+of een publiek vertrouwd certificaat wilt — toont daarna zijn voortgang en drukt de URL af als hij
+klaar is. Reken op vijf tot tien minuten, grotendeels het bouwen van de images.
+
+Volledig onbewaakt:
+
+```bash
+sudo /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
+```
+
+| Optie | Betekenis |
+|---|---|
+| `--non-interactive`, `-y` | Nooit vragen stellen; standaarden en vlaggen gebruiken |
+| `--site-address=HOST` | Hostnaam of IP dat operators gebruiken. Standaard het IP van deze host |
+| `--tls=internal\|EMAIL` | `internal` voor een zelfondertekend certificaat (standaard), of een e-mailadres om er een van Let's Encrypt te halen |
+| `--http-port=POORT` | Hostpoort voor HTTP (standaard 80) |
+| `--https-port=POORT` | Hostpoort voor HTTPS (standaard 443) |
+| `--skip-docker` | Docker is al geïnstalleerd en ingericht |
+| `--skip-verify` | De verificatie na installatie overslaan |
+
+De installer opnieuw draaien is veilig. Hij overschrijft nooit een bestaande `.env` en raakt je data
+niet aan, dus hij is meteen het upgradepad na een `git pull`.
+
+> ### Maak een back-up van `MASTER_ENCRYPTION_KEY`
+>
+> De installer toont hem als hij klaar is. Elk credential dat Velnox opslaat is versleuteld met een
+> sleutel die daarvan is afgeleid, en er is geen herstelpad als je hem kwijtraakt — dat is een
+> ontwerpkeuze. Zet hem in je wachtwoordmanager voordat je iets anders doet.
 
 ---
 

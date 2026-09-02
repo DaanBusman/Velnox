@@ -1,55 +1,16 @@
 # Velnox — Deployment Guide
 
-Velnox runs as a set of Docker containers on a Debian or Ubuntu host. The installer does everything:
-it installs Docker if needed, generates secrets, builds the images, starts the stack and verifies
-that it works.
-
----
-
-## Install
-
-On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server, as a user with `sudo`:
-
-```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
-```
-
-The installer asks two questions — the address operators will use, and whether you want a
-self-signed certificate or a publicly trusted one — then shows its progress and prints the URL when
-it is done. Expect five to ten minutes, most of it building images.
-
-Fully unattended:
-
-```bash
-sudo /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
-```
-
-| Option | Meaning |
-|---|---|
-| `--non-interactive`, `-y` | Never prompt; use defaults and flags |
-| `--site-address=HOST` | Hostname or IP operators will use. Defaults to this host's IP |
-| `--tls=internal\|EMAIL` | `internal` for a self-signed certificate (default), or an email address to obtain one from Let's Encrypt |
-| `--http-port=PORT` | Host port for HTTP (default 80) |
-| `--https-port=PORT` | Host port for HTTPS (default 443) |
-| `--skip-docker` | Docker is already installed and configured |
-| `--skip-verify` | Skip the post-install verification |
-
-Re-running the installer is safe. It never overwrites an existing `.env` and never touches your
-data, so it doubles as the upgrade path after `git pull`.
-
-> ### Back up `MASTER_ENCRYPTION_KEY`
->
-> The installer prints it when it finishes. Every credential Velnox stores is encrypted under a key
-> derived from it, and there is no recovery path if it is lost — by design. Put it in your password
-> manager before you do anything else.
-
-**One placement rule:** do not run Velnox on a hypervisor node that Velnox itself manages. The
-moment it puts that node into maintenance or reboots it, it shuts itself down mid-job. Use a
-management cluster or a separate host.
+Velnox runs as a set of Docker containers on a Debian or Ubuntu host. Size the machine, configure it
+for a database workload, then run the installer — it does the rest: Docker, secrets, images,
+migrations and health checks.
 
 ---
 
 ## System requirements
+
+**Where to put it:** not on a hypervisor node that Velnox itself manages. The moment it puts that node
+into maintenance or reboots it, it shuts itself down mid-job. Use a management cluster or a separate
+host.
 
 | | vCPU | RAM | Disk |
 |---|---|---|---|
@@ -150,6 +111,45 @@ Take time from the host's PTP device rather than letting NTP fight Hyper-V time 
 ```bash
 sudo apt-get install -y chrony && echo 'refclock PHC /dev/ptp_hyperv poll 3 dpoll -2 offset 0' | sudo tee /etc/chrony/conf.d/hyperv.conf && sudo systemctl restart chrony
 ```
+
+---
+
+## Install
+
+On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server, as a user with `sudo`:
+
+```bash
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
+```
+
+The installer asks two questions — the address operators will use, and whether you want a
+self-signed certificate or a publicly trusted one — then shows its progress and prints the URL when
+it is done. Expect five to ten minutes, most of it building images.
+
+Fully unattended:
+
+```bash
+sudo /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
+```
+
+| Option | Meaning |
+|---|---|
+| `--non-interactive`, `-y` | Never prompt; use defaults and flags |
+| `--site-address=HOST` | Hostname or IP operators will use. Defaults to this host's IP |
+| `--tls=internal\|EMAIL` | `internal` for a self-signed certificate (default), or an email address to obtain one from Let's Encrypt |
+| `--http-port=PORT` | Host port for HTTP (default 80) |
+| `--https-port=PORT` | Host port for HTTPS (default 443) |
+| `--skip-docker` | Docker is already installed and configured |
+| `--skip-verify` | Skip the post-install verification |
+
+Re-running the installer is safe. It never overwrites an existing `.env` and never touches your
+data, so it doubles as the upgrade path after `git pull`.
+
+> ### Back up `MASTER_ENCRYPTION_KEY`
+>
+> The installer prints it when it finishes. Every credential Velnox stores is encrypted under a key
+> derived from it, and there is no recovery path if it is lost — by design. Put it in your password
+> manager before you do anything else.
 
 ---
 
