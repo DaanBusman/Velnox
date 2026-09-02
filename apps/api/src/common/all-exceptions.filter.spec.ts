@@ -61,6 +61,25 @@ describe('AllExceptionsFilter', () => {
     expect(body.error.details).toHaveLength(1);
   });
 
+  it('does not mistake a Nest exception body for the Velnox envelope', () => {
+    // Nest builds `{ message, error: 'Bad Request', statusCode }`. Both shapes
+    // have an `error` key, and treating that one as ours spread the string into
+    // `{"0":"B","1":"a", ...}`, which hid the real message from the client and
+    // from anyone debugging it.
+    const { host, logger, capture } = harness();
+
+    new AllExceptionsFilter(logger, false).catch(
+      new BadRequestException('Recovery codes are not enabled'),
+      host,
+    );
+
+    const { status, body } = capture();
+    expect(status).toBe(400);
+    expect(body.error.code).toBe(ERROR_CODES.generic);
+    expect(body.error.message).toBe('Recovery codes are not enabled');
+    expect(body.error).not.toHaveProperty('0');
+  });
+
   it('maps a 404 to the not_found code', () => {
     const { host, logger, capture } = harness();
     new AllExceptionsFilter(logger, false).catch(new NotFoundException(), host);

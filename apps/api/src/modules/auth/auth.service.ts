@@ -34,9 +34,24 @@ export interface Principal {
   mfaRequired: boolean;
 }
 
+interface EstablishedSession {
+  principal: Principal;
+  sessionId: string;
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresAt: Date;
+}
+
 export type LoginOutcome =
-  | { status: 'authenticated'; principal: Principal; sessionId: string; accessToken: string; refreshToken: string; accessTokenExpiresAt: Date }
-  | { status: 'mfa_required'; principal: Principal; sessionId: string; accessToken: string; refreshToken: string; accessTokenExpiresAt: Date }
+  | ({ status: 'authenticated' } & EstablishedSession)
+  /** Correct password, second factor owed: the user has a factor to answer with. */
+  | ({ status: 'mfa_required' } & EstablishedSession)
+  /**
+   * Correct password, second factor owed, but nothing to answer with. The policy
+   * requires MFA and this account has never enrolled, so the session is held in
+   * the same restricted state and the only way forward is to enrol now.
+   */
+  | ({ status: 'mfa_enrolment_required' } & EstablishedSession)
   | { status: 'rejected' }
   | { status: 'rate_limited'; retryAfterSeconds: number };
 
@@ -111,7 +126,17 @@ export class AuthService {
     }
 
     const principal = await this.buildPrincipal(user);
-    const needsSecondFactor = principal.mfaRequired && user.mfaEnrolled;
+
+    /*
+     * Deliberately not `&& user.mfaEnrolled`.
+     *
+     * Tying this to enrolment would mean a required policy is satisfied by never
+     * enrolling — the accounts that ignored the requirement would be exactly the
+     * ones it stopped applying to. So the session is held in the restricted
+     * state either way; the difference is only whether the user answers a
+     * challenge or has to enrol first.
+     */
+    const needsSecondFactor = principal.mfaRequired;
 
     const { session, refreshToken } = await this.sessions.create(user.id, context, {
       // A session only counts as satisfied when no second factor is owed.
@@ -139,7 +164,10 @@ export class AuthService {
     };
 
     if (needsSecondFactor) {
-      return { status: 'mfa_required', ...common };
+      return {
+        status: user.mfaEnrolled ? 'mfa_required' : 'mfa_enrolment_required',
+        ...common,
+      };
     }
 
     await this.audit.success(AUDIT_ACTIONS.loginSucceeded, {

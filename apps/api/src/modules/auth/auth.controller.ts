@@ -54,7 +54,9 @@ export class AuthController {
     summary: 'Sign in with an email address and password',
     description:
       'On success the session is delivered as HttpOnly cookies; no token is returned in the body. ' +
-      'A response of mfa_required means the credentials were correct but a second factor is owed.',
+      'A response of mfa_required means the credentials were correct but a second factor is owed; ' +
+      'mfa_enrolment_required means the same, for an account that has no factor to answer with yet. ' +
+      'In both cases the session can reach only MFA enrolment, the challenge, me and logout.',
   })
   async login(
     @Body(zodBody(loginSchema)) body: z.infer<typeof loginSchema>,
@@ -82,10 +84,8 @@ export class AuthController {
 
     this.setSessionCookies(response, outcome.accessToken, outcome.refreshToken);
 
-    return {
-      status: outcome.status === 'mfa_required' ? 'mfa_required' : 'authenticated',
-      user: describePrincipal(outcome.principal),
-    };
+    // The session exists in all three cases; the status says what it may do.
+    return { status: outcome.status, user: describePrincipal(outcome.principal) };
   }
 
   @Public()

@@ -61,12 +61,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const payload = exception.getResponse();
 
-      // Already in our shape (thrown by the validation pipe).
-      if (typeof payload === 'object' && payload !== null && 'error' in payload) {
-        const body = payload as ApiErrorBody;
+      /*
+       * Already in our shape (thrown by the validation pipe).
+       *
+       * The nested value must be an object, not merely present. Nest's own
+       * exception bodies are `{ message, error: 'Bad Request', statusCode }` —
+       * an `error` *string*. Testing only for the key's presence matched those
+       * too and then spread a string, turning a plain message into
+       * `{"0":"B","1":"a",...}` and hiding what actually went wrong.
+       */
+      if (isApiErrorBody(payload)) {
         return {
           status,
-          body: { error: { ...body.error, ...(requestId ? { requestId } : {}) } },
+          body: { error: { ...payload.error, ...(requestId ? { requestId } : {}) } },
         };
       }
 
@@ -100,4 +107,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       },
     };
   }
+}
+
+/**
+ * Our error envelope carries an object under `error` with a `code`. Nest's
+ * carries a string. Both have the key, so the check has to look inside.
+ */
+function isApiErrorBody(payload: unknown): payload is ApiErrorBody {
+  if (typeof payload !== 'object' || payload === null) return false;
+  const error = (payload as { error?: unknown }).error;
+  return typeof error === 'object' && error !== null && 'code' in error;
 }
