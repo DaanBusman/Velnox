@@ -41,7 +41,7 @@ export class SystemController {
         version: { type: 'string', example: '0.1.0' },
         commit: { type: 'string', example: 'a1b2c3d' },
         license: { type: 'string', example: 'AGPL-3.0-or-later' },
-        url: { type: 'string', example: 'https://github.com/velnox-foundation/velnox' },
+        url: { type: 'string', example: 'https://github.com/DaanBusman/Velnox' },
         modified: { type: 'boolean', example: false },
       },
     },

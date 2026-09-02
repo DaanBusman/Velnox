@@ -29,7 +29,7 @@ What each phase adds, and what is deliberately missing today:
 On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone <velnox-repository-url> /opt/velnox && sudo /opt/velnox/install.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
 ```
 
 The installer installs Docker if it is missing, generates secrets, builds the images, starts the

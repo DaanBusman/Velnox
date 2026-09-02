@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
  */
 
 /** The upstream source URL. Used to decide whether this build claims to be modified. */
-export const UPSTREAM_SOURCE_URL = 'https://github.com/velnox-foundation/velnox';
+export const UPSTREAM_SOURCE_URL = 'https://github.com/DaanBusman/Velnox';
 
 /**
  * Reads `NAME`, falling back to the contents of the file named by `NAME_FILE`.

@@ -11,7 +11,7 @@ that it works.
 On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server, as a user with `sudo`:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone <velnox-repository-url> /opt/velnox && sudo /opt/velnox/install.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
 ```
 
 The installer asks two questions — the address operators will use, and whether you want a

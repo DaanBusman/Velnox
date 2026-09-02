@@ -14,7 +14,7 @@ controleren dat het werkt.
 Op een verse Debian 12/13- of Ubuntu 22.04/24.04-server, als gebruiker met `sudo`:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone <url-van-de-velnox-repository> /opt/velnox && sudo /opt/velnox/install.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
 ```
 
 De installer stelt twee vragen — het adres dat operators gaan gebruiken, en of je een zelfondertekend
