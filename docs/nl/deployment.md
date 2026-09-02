@@ -188,7 +188,30 @@ docker compose -f deploy/compose/docker-compose.yml --env-file .env down
 
 ## Bijwerken
 
-Haal de nieuwe versie op en draai de installer opnieuw:
+Drie stappen, in deze volgorde. Stap 1 is de stap die je geneigd bent over te slaan, en het is de stap
+die de andere twee terugdraaibaar maakt.
+
+### Stap 1 — Back-up de database. Eerst.
+
+```bash
+cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/root/velnox-$(date +%F).dump"
+```
+
+Dit kost seconden, en het is de enige weg terug. **Migraties lopen alleen vooruit.** Voegt de nieuwe
+versie er een toe en wil je daarna weer de vorige versie, dan kan de oudere code niet tegen het
+nieuwere schema — een `git checkout` alleen draait dat niet terug. Zonder deze dump zit je vast aan
+vooruit.
+
+### Stap 2 — Bekijk wat je gaat krijgen
+
+```bash
+cd /opt/velnox && git fetch && git log --oneline HEAD..origin/main
+```
+
+Overslaan mag, maar het kost een seconde en laat zien of je één kleine fix ophaalt of een maand aan
+wijzigingen.
+
+### Stap 3 — Bijwerken
 
 ```bash
 cd /opt/velnox && sudo git pull && sudo ./install.sh --non-interactive
@@ -198,7 +221,12 @@ Dat is de hele procedure. De installer bouwt de images opnieuw, voert nieuwe mig
 de services en verifieert het resultaat — dezelfde stappen als bij een eerste installatie, en daarom
 is er geen apart upgradescript dat achterop kan raken.
 
-**Wat behouden blijft.** Je `.env` wordt nooit opnieuw gegenereerd, dus secrets blijven staan. Het
+Weigert `git pull` vanwege lokale wijzigingen, dan heb je iets in `/opt/velnox` aangepast. Bewaar het
+met `git stash`, of gooi het weg met `git checkout -- <bestand>`. Configuratie hoort in `.env`, die
+git negeert, dus een conflict hier betekent meestal een aanpassing die eigenlijk een echte wijziging
+in de repository zou moeten worden.
+
+**Wat de upgrade behoudt.** Je `.env` wordt nooit opnieuw gegenereerd, dus secrets blijven staan. Het
 site-adres, de TLS-modus en de poorten worden uit je bestaande configuratie gelezen in plaats van
 opnieuw afgeleid, zodat een onbewaakte upgrade een hostnaam niet stilletjes terugzet naar een
 IP-adres of een publiek vertrouwd certificaat vervangt door een zelfondertekend. Named volumes worden
@@ -206,25 +234,6 @@ niet aangeraakt, dus de database en de wachtrij blijven intact.
 
 **Wat wél ververst wordt.** De build-commit, die de bronlink onder Instellingen → Over toont. Dat is
 buildinformatie en geen configuratie, dus die volgt altijd de code die werkelijk draait.
-
-### Vóór het bijwerken
-
-Maak een databasedump. Het kost seconden, en migraties lopen alleen vooruit:
-
-```bash
-cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/root/velnox-$(date +%F).dump"
-```
-
-Bekijk wat je gaat krijgen:
-
-```bash
-cd /opt/velnox && git fetch && git log --oneline HEAD..origin/main
-```
-
-Weigert `git pull` vanwege lokale wijzigingen, dan heb je iets in `/opt/velnox` aangepast. Bewaar het
-met `git stash`, of gooi het weg met `git checkout -- <bestand>`. Configuratie hoort in `.env`, die
-git negeert, dus een conflict hier betekent meestal een aanpassing die eigenlijk een echte wijziging
-in de repository zou moeten worden.
 
 ### Wat je kunt verwachten
 
@@ -255,16 +264,18 @@ cd /opt/velnox && sudo git log --oneline -5
 cd /opt/velnox && sudo git checkout <vorige-commit> && sudo ./install.sh --non-interactive
 ```
 
-**Eén kanttekening die ertoe doet.** Databasemigraties lopen alleen vooruit. Voegde de upgrade die je
-terugdraait een migratie toe, dan kan de oudere code mogelijk niet tegen het nieuwere schema draaien.
-Zet in dat geval de dump terug die je vooraf maakte, en check daarna pas de oudere commit uit. Dat is
-precies waarom die dump stap één is en geen optionele extra.
+Dat volstaat **alleen als de upgrade geen migratie toevoegde**. Deed hij dat wel, zet dan eerst je
+dump uit stap 1 terug en check daarna pas de oudere commit uit:
+
+```bash
+cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /root/velnox-2026-09-01.dump
+```
 
 ### Meerdere machines gelijk houden
 
 De commit onder Instellingen → Over is de exacte broncode van de draaiende build, dus die naast elkaar
 leggen laat zien welke installaties achterlopen. Voor een groep hosts draai je op elke machine
-dezelfde twee commando's; de installer is idempotent, dus hem draaien op een machine die al actueel is
+dezelfde drie stappen; de installer is idempotent, dus hem draaien op een machine die al actueel is
 doet geen kwaad en kost ongeveer een minuut.
 
 ---

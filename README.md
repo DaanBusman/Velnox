@@ -33,7 +33,9 @@ sudo apt-get update && sudo apt-get install -y git && sudo git clone https://git
 ```
 
 The installer installs Docker if it is missing, generates secrets, builds the images, starts the
-stack, verifies it and prints the URL. Re-running it is safe and is also the upgrade path.
+stack, verifies it and prints the URL. Re-running it is safe and is also the upgrade path — but take
+a database dump first, because migrations only run forwards:
+[Upgrading](docs/deployment.md#upgrading).
 
 Full options, sizing and hypervisor VM settings: [docs/deployment.md](docs/deployment.md).
 

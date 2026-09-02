@@ -37,7 +37,9 @@ sudo apt-get update && sudo apt-get install -y git && sudo git clone https://git
 ```
 
 De installer installeert Docker als dat ontbreekt, genereert secrets, bouwt de images, start de
-stack, verifieert die en drukt de URL af. Hem opnieuw draaien is veilig en is meteen het upgradepad.
+stack, verifieert die en drukt de URL af. Hem opnieuw draaien is veilig en is meteen het upgradepad —
+maar maak eerst een databasedump, want migraties lopen alleen vooruit:
+[Bijwerken](deployment.md#bijwerken).
 
 Volledige opties, dimensionering en VM-instellingen: [deployment.md](deployment.md).
 
