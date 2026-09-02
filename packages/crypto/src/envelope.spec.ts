@@ -76,14 +76,14 @@ describe('tamper detection', () => {
   it('refuses a modified ciphertext', () => {
     const m = master();
     const secret = encryptSecret(m, 'original');
-    secret.ciphertext[0] ^= 0xff;
+    secret.ciphertext.writeUInt8(secret.ciphertext.readUInt8(0) ^ 0xff, 0);
     expect(() => decryptSecret(m, secret)).toThrow(DecryptionError);
   });
 
   it('refuses a modified authentication tag', () => {
     const m = master();
     const secret = encryptSecret(m, 'original');
-    secret.authTag[0] ^= 0xff;
+    secret.authTag.writeUInt8(secret.authTag.readUInt8(0) ^ 0xff, 0);
     expect(() => decryptSecret(m, secret)).toThrow(DecryptionError);
   });
 
