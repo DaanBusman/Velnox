@@ -173,17 +173,94 @@ Re-verify a running installation at any time:
 ./scripts/verify-stack.sh https://velnox.example.internal
 ```
 
-Update:
-
-```bash
-cd /opt/velnox && sudo git pull && sudo ./install.sh --non-interactive
-```
-
 Stop (data is preserved in named volumes):
 
 ```bash
 docker compose -f deploy/compose/docker-compose.yml --env-file .env down
 ```
+
+---
+
+## Upgrading
+
+Pull the new version and re-run the installer:
+
+```bash
+cd /opt/velnox && sudo git pull && sudo ./install.sh --non-interactive
+```
+
+That is the whole procedure. The installer rebuilds the images, applies any new
+migrations, restarts the services and verifies the result — the same steps as a first install,
+which is why there is no separate upgrade script to keep in step.
+
+**What it keeps.** Your `.env` is never regenerated, so secrets survive. The site address, TLS mode
+and ports are read from your existing configuration rather than re-derived, so an unattended upgrade
+cannot silently move a hostname back to an IP address or replace a publicly trusted certificate with
+a self-signed one. Named volumes are untouched, so the database and queue survive.
+
+**What it refreshes.** The build commit, which the source link under Settings → About reports. That is
+build metadata rather than configuration, so it always follows the code that is actually running.
+
+### Before you upgrade
+
+Take a database dump. It costs seconds and migrations only run forwards:
+
+```bash
+cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/root/velnox-$(date +%F).dump"
+```
+
+See what you are about to get:
+
+```bash
+cd /opt/velnox && git fetch && git log --oneline HEAD..origin/main
+```
+
+If `git pull` refuses because of local edits, you changed something inside `/opt/velnox`. Either keep
+the change with `git stash`, or discard it with `git checkout -- <file>`. Configuration belongs in
+`.env`, which git ignores, so a conflict here usually means an edit that wants to become a proper
+change in the repository.
+
+### What to expect
+
+Five to ten minutes, most of it rebuilding images. Services restart at the end, so there is a short
+interruption — roughly a minute — while containers are recreated. The installer only returns once
+every health check passes, so if the command completes, the upgrade worked.
+
+Reclaim the build cache afterwards, or it grows without limit:
+
+```bash
+docker builder prune -f
+```
+
+### If an upgrade goes wrong
+
+The installer stops at the failing step and prints the last lines of its log, with the full log at
+`/var/log/velnox-install-*.log`. Nothing is left half-applied at the compose level: migrations run in
+a one-shot container that must succeed before the API starts.
+
+To go back to the previous version:
+
+```bash
+cd /opt/velnox && sudo git log --oneline -5
+```
+
+```bash
+cd /opt/velnox && sudo git checkout <previous-commit> && sudo ./install.sh --non-interactive
+```
+
+**One caveat that matters.** Database migrations only run forwards. If the upgrade you are backing
+out of added a migration, the older code may not run against the newer schema. In that case restore
+the dump you took before upgrading, then check out the older commit. This is the reason the dump is
+step one and not an optional extra.
+
+### Keeping several machines in step
+
+The commit shown under Settings → About is the exact source of the running build, so comparing that
+across installations tells you which are behind. To upgrade a fleet, run the same two commands on
+each host; the installer is idempotent, so running it on a machine that is already current is
+harmless and takes about a minute.
+
+---
 
 ### Backup
 

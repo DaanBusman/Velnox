@@ -22,6 +22,11 @@ ORIGINAL_ARGS=("$@")
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${ROOT}/deploy/compose/docker-compose.yml"
 ENV_FILE="${ROOT}/.env"
+
+# get_env_var / set_env_var / random_*, shared with gen-env.sh so the two cannot
+# drift apart on escaping rules.
+# shellcheck source=scripts/lib/env-file.sh
+source "${ROOT}/scripts/lib/env-file.sh"
 LOG_FILE="/var/log/velnox-install-$(date +%Y%m%d-%H%M%S).log"
 
 SITE_ADDRESS=""
@@ -367,23 +372,50 @@ ask() {
   printf '%s' "${answer:-$default}"
 }
 
+UPGRADE=0
+
+# Works out the settings to install with.
+#
+# On an existing installation the values already in .env are the defaults, so
+# re-running — which is the documented upgrade path — never silently changes a
+# working configuration. Without this, an unattended re-run would overwrite a
+# hostname with the host's IP address and reset TLS to self-signed, quietly
+# breaking a site that was serving a publicly trusted certificate.
+#
+# An explicit flag still wins, so a deliberate change is still possible.
 configure() {
-  local detected
-  detected="$(default_site_address)"
+  local current_address="" current_tls="" current_http="" current_https=""
+
+  if [[ -f "$ENV_FILE" ]]; then
+    UPGRADE=1
+    current_address="$(get_env_var "$ENV_FILE" VELNOX_SITE_ADDRESS)"
+    current_tls="$(get_env_var "$ENV_FILE" VELNOX_TLS)"
+    current_http="$(get_env_var "$ENV_FILE" CADDY_HTTP_PORT)"
+    current_https="$(get_env_var "$ENV_FILE" CADDY_HTTPS_PORT)"
+  fi
+
+  # Ports and TLS: keep what is configured unless a flag overrode the default.
+  [[ "$TLS_MODE" == "internal" && -n "$current_tls" ]] && TLS_MODE="$current_tls"
+  [[ "$HTTP_PORT" == "80" && -n "$current_http" ]] && HTTP_PORT="$current_http"
+  [[ "$HTTPS_PORT" == "443" && -n "$current_https" ]] && HTTPS_PORT="$current_https"
+
+  local default_address="${current_address:-$(default_site_address)}"
 
   if [[ -z "$SITE_ADDRESS" ]]; then
     if [[ $INTERACTIVE -eq 1 ]]; then
       printf '  %sHow will operators reach this installation?%s\n' "$C_BOLD" "$C_RESET"
       printf '  %sA hostname if you have DNS for it, otherwise this host'"'"'s IP address.%s\n\n' \
         "$C_DIM" "$C_RESET"
-      SITE_ADDRESS="$(ask "Address" "$detected")"
+      SITE_ADDRESS="$(ask "Address" "$default_address")"
       printf '\n'
     else
-      SITE_ADDRESS="$detected"
+      SITE_ADDRESS="$default_address"
     fi
   fi
 
-  if [[ $INTERACTIVE -eq 1 && "$TLS_MODE" == "internal" ]]; then
+  # Only offered on a first install. On an upgrade the configured value stands,
+  # and changing it is an explicit --tls= away.
+  if [[ $INTERACTIVE -eq 1 && $UPGRADE -eq 0 && "$TLS_MODE" == "internal" ]]; then
     printf '  %sCertificate%s\n' "$C_BOLD" "$C_RESET"
     printf '  %sLeave as "internal" for a self-signed certificate, which is right for a\n' "$C_DIM"
     printf '  management network — browsers warn once. Enter an email address instead to\n'
@@ -438,16 +470,25 @@ enable_time_sync() {
 }
 
 generate_configuration() {
+  # A no-op when .env already exists: secrets are never regenerated, because
+  # replacing MASTER_ENCRYPTION_KEY would orphan every stored credential.
   bash "${ROOT}/scripts/gen-env.sh" --quiet
-
-  # shellcheck source=scripts/lib/env-file.sh
-  source "${ROOT}/scripts/lib/env-file.sh"
 
   set_env_var "$ENV_FILE" VELNOX_SITE_ADDRESS "$SITE_ADDRESS"
   set_env_var "$ENV_FILE" APP_URL "https://${SITE_ADDRESS}"
   set_env_var "$ENV_FILE" VELNOX_TLS "$TLS_MODE"
   set_env_var "$ENV_FILE" CADDY_HTTP_PORT "$HTTP_PORT"
   set_env_var "$ENV_FILE" CADDY_HTTPS_PORT "$HTTPS_PORT"
+
+  # Always refreshed, unlike the settings above: this is build metadata, not
+  # configuration. A stale value would make the source offer in Settings > About
+  # name a commit that is not the one running, which is exactly the claim AGPL
+  # section 13 relies on.
+  if command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    set_env_var "$ENV_FILE" VELNOX_BUILD_COMMIT \
+      "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  fi
+
   chmod 600 "$ENV_FILE"
 }
 
@@ -470,8 +511,6 @@ verify_installation() {
 
 summary() {
   clear_bar
-  # shellcheck source=scripts/lib/env-file.sh
-  source "${ROOT}/scripts/lib/env-file.sh"
   local key
   key="$(get_env_var "$ENV_FILE" MASTER_ENCRYPTION_KEY)"
 
