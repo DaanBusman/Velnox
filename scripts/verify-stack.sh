@@ -50,9 +50,19 @@ check() {
 # so the script has to work with whichever is present.
 if command -v jq >/dev/null 2>&1; then
   json() {
+    # The array branch exists because jq cannot index an array with a string:
+    # `.["2"]` on a list is an error, which `?` then swallows into null. The node
+    # fallback below has no such problem, so without this the two backends
+    # disagreed — `checks.2.detail.code` worked on a machine with node and came
+    # back empty on a machine with jq, and the acceptance check that reads it
+    # failed on exactly half the world for reasons that looked like an API bug.
     jq -r --arg path "$1" '
       ($path | split(".")) as $keys
-      | reduce $keys[] as $k (.; if . == null then null else .[$k]? end)
+      | reduce $keys[] as $k (.;
+          if . == null then null
+          elif (type == "array") then
+            (if ($k | test("^[0-9]+$")) then .[($k | tonumber)]? else null end)
+          else .[$k]? end)
       | if . == null then "" else tostring end
     ' 2>/dev/null || printf ''
   }
@@ -130,6 +140,24 @@ visible_text() {
   '
 }
 
+# The JSON reader is checked against a known document before anything relies on
+# it. Every assertion below compares a value this function produced, so a reader
+# that silently returns nothing turns real failures into confusing ones and real
+# passes into lies. This costs nothing and removes a whole class of them.
+JSON_SELFTEST='{"a":"x","n":{"b":"y"},"list":[{"k":"first"},{"k":"second"},{"k":"third"}]}'
+selftest_json() {
+  local path="$1" expected="$2" actual
+  actual="$(printf '%s' "$JSON_SELFTEST" | json "$path")"
+  [[ "$actual" == "$expected" ]] && return 0
+  printf '       json("%s") returned %q, expected %q\n' "$path" "$actual" "$expected" >&2
+  return 1
+}
+
+check "self: the JSON reader handles a plain key" selftest_json a x
+check "self: the JSON reader handles a nested key" selftest_json n.b y
+check "self: the JSON reader handles an array index" selftest_json list.2.k third
+check "self: the JSON reader returns nothing for a missing key" selftest_json nope.nope ''
+
 info "Verifying ${BASE}"
 
 # --- 1. The UI is served -----------------------------------------------------
@@ -200,7 +228,12 @@ check "i18n: the locale cookie overrides the browser preference" bash -c "
 # which is no longer reachable without a session — and asserting it against the
 # API directly is the stronger test anyway, because it names the invariant
 # instead of one of its symptoms.
+# Position, then name: reading checks.2 without confirming what lives there
+# would silently test the wrong entry the day a check is inserted before it.
+WORKER_CHECK_NAME="$(printf '%s' "$READY_JSON" | json checks.2.name)"
 WORKER_DETAIL_CODE="$(printf '%s' "$READY_JSON" | json checks.2.detail.code)"
+check "readyz: the third readiness check is the worker (got '${WORKER_CHECK_NAME}')" \
+  expect_equals "$WORKER_CHECK_NAME" "worker"
 check "i18n: the API returns a health detail code, not English prose" \
   bash -c "[[ -n '$WORKER_DETAIL_CODE' ]]"
 check "i18n: no English sentence leaks out of the health payload" \
