@@ -14,3 +14,7 @@ iso/out/
 .preview/
 apps/web/next-env.d.ts
 *.tsbuildinfo
+
+# Built from docs/*.md by apps/web/scripts/build-docs.mjs at build time.
+# Two committed inputs; committing the output would make a third thing to keep in step.
+apps/web/generated/

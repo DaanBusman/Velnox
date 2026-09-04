@@ -109,3 +109,164 @@ body {
 ::selection {
   background: color-mix(in srgb, var(--velnox-accent) 30%, transparent);
 }
+
+
+/* ---------------------------------------------------------------------------
+   Rendered documentation.
+
+   The markdown in docs/ is converted to HTML at build time, so it arrives here
+   as plain tags with no utility classes on them. These rules are scoped to
+   .velnox-prose so they cannot leak into the application interface, and they
+   use the same tokens as everything else — the documentation should look like
+   part of the product, not like a README pasted into a page.
+   --------------------------------------------------------------------------- */
+
+.velnox-prose {
+  color: var(--velnox-text);
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: 74ch;
+}
+
+.velnox-prose > *:first-child {
+  margin-top: 0;
+}
+
+.velnox-prose h1,
+.velnox-prose h2,
+.velnox-prose h3,
+.velnox-prose h4 {
+  font-weight: 600;
+  line-height: 1.3;
+  /* Keeps a heading clear of the top of the scroll container when an in-page
+     anchor jumps to it. */
+  scroll-margin-top: 1rem;
+}
+
+.velnox-prose h1 {
+  font-size: 1.35rem;
+  margin: 0 0 0.75rem;
+}
+
+.velnox-prose h2 {
+  font-size: 1.1rem;
+  margin: 2rem 0 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--velnox-border);
+}
+
+.velnox-prose h3 {
+  font-size: 0.95rem;
+  margin: 1.5rem 0 0.375rem;
+}
+
+.velnox-prose h4 {
+  font-size: 0.875rem;
+  margin: 1.25rem 0 0.25rem;
+  color: var(--velnox-text-muted);
+}
+
+.velnox-prose p,
+.velnox-prose ul,
+.velnox-prose ol {
+  margin: 0 0 0.85rem;
+}
+
+.velnox-prose ul,
+.velnox-prose ol {
+  padding-left: 1.35rem;
+}
+
+.velnox-prose ul { list-style: disc; }
+.velnox-prose ol { list-style: decimal; }
+.velnox-prose li { margin: 0.2rem 0; }
+.velnox-prose li > ul,
+.velnox-prose li > ol { margin: 0.2rem 0; }
+
+.velnox-prose a {
+  color: var(--velnox-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* An external link leaves the appliance. On an isolated management network it
+   will simply not open, so it is marked rather than left to disappoint. */
+.velnox-prose a.velnox-external::after {
+  content: ' ↗';
+  font-size: 0.85em;
+  color: var(--velnox-text-muted);
+}
+
+.velnox-prose code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  background: var(--velnox-surface-2);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+
+.velnox-prose pre {
+  background: var(--velnox-surface-2);
+  border: 1px solid var(--velnox-border);
+  border-radius: 4px;
+  padding: 0.75rem 0.9rem;
+  margin: 0 0 0.85rem;
+  /* Long commands are common in the deployment guide; scroll the block rather
+     than the page. */
+  overflow-x: auto;
+}
+
+.velnox-prose pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.82em;
+  line-height: 1.55;
+}
+
+.velnox-prose blockquote {
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.9rem;
+  border-left: 3px solid var(--velnox-accent);
+  background: var(--velnox-surface-2);
+  border-radius: 0 4px 4px 0;
+}
+
+.velnox-prose blockquote > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Tables carry the version matrices and the risk register, and several are
+   wider than the column. The wrapper scrolls; the page does not. */
+.velnox-prose table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.85rem;
+  font-size: 0.85em;
+}
+
+.velnox-prose th,
+.velnox-prose td {
+  border: 1px solid var(--velnox-border);
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.velnox-prose th {
+  background: var(--velnox-surface-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.velnox-prose hr {
+  border: 0;
+  border-top: 1px solid var(--velnox-border);
+  margin: 1.5rem 0;
+}
+
+.velnox-prose img {
+  max-width: 100%;
+  height: auto;
+}

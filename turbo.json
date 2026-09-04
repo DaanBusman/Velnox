@@ -5,15 +5,22 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "generated/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../docs/**/*.md",
+        "../../package.json"
+      ]
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "../../docs/**/*.md", "../../package.json"]
     },
     "lint": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "../../docs/**/*.md", "../../package.json"]
     },
     "test": {
       "dependsOn": ["^build"],

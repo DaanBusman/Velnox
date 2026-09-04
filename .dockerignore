@@ -10,7 +10,10 @@
 .env
 .env.*
 !.env.example
-docs/
+# docs/ is NOT excluded: the web build reads it to bundle the offline
+# documentation into the image (apps/web/scripts/build-docs.mjs). Only the
+# generated output is kept out, because it is rebuilt inside the image.
+apps/web/generated/
 *.log
 dist-artifacts/
 iso/out/

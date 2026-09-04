@@ -489,6 +489,19 @@ generate_configuration() {
       "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
   fi
 
+  # The version, for the same reason as the commit above and with a sharper
+  # consequence: the documentation shipped inside the build states the version
+  # it applies to, and a .env still pinned to the previous release would make
+  # every documentation page report a mismatch that is not real.
+  #
+  # Read with grep and cut rather than a JSON tool: a freshly installed Debian
+  # has neither jq nor Node, and this runs before anything is built.
+  local version_from_source
+  version_from_source="$(grep -m1 '"version"' "${ROOT}/package.json" | cut -d'"' -f4)"
+  if [[ -n "$version_from_source" ]]; then
+    set_env_var "$ENV_FILE" VELNOX_VERSION "$version_from_source"
+  fi
+
   chmod 600 "$ENV_FILE"
 }
 

@@ -249,6 +249,23 @@ else
   skip "setup: not initialized yet, so there is nothing to re-run"
 fi
 
+# --- 8c. The running build reports the version in the source ----------------
+#
+# Catches a stale `.env`: VELNOX_VERSION is written there by the installer, and
+# before it refreshed that value on every run an upgrade left the API reporting
+# the previous release. The documentation bundled in the web image states the
+# version it applies to, so a stale value there makes every documentation page
+# announce a mismatch that is not real.
+SOURCE_VERSION="$(grep -m1 '"version"' "$(dirname "$0")/../package.json" 2>/dev/null | cut -d'"' -f4)"
+RUNNING_VERSION="$("${CURL[@]}" "${BASE}/api/v1/system/info" 2>/dev/null | json version)"
+
+if [[ -z "$SOURCE_VERSION" ]]; then
+  skip "version: no package.json next to this script, so there is nothing to compare against"
+else
+  check "version: the stack reports ${SOURCE_VERSION} as the source declares" \
+    expect_equals "$RUNNING_VERSION" "$SOURCE_VERSION"
+fi
+
 # --- 9. Data tier is not exposed --------------------------------------------
 check "network: PostgreSQL is not published to the host" bash -c "
   ! (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null

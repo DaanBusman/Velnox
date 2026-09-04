@@ -6,6 +6,38 @@
     "translatedFrom": "en",
     "note": "Vertaling van en.json. Termen volgen glossary.csv; termen met translate=no blijven onvertaald."
   },
+  "about": {
+    "agplNotice": "{product} is vrije software onder de GNU Affero General Public License v3 of later. Artikel 13 vereist dat wie een gewijzigde versie via een netwerk gebruikt, de bijbehorende broncode aangeboden krijgt. Dat aanbod is de link hierboven, en de build-commit maakt het verifieerbaar.",
+    "builtAt": "Gebouwd op",
+    "commit": "Build-commit",
+    "environment": "Omgeving",
+    "instance": "Installatie",
+    "license": "Licentie",
+    "modifiedNotice": "Deze build meldt zichzelf als gewijzigd. De beheerder heeft de bronlink naar een eigen repository gezet; die moet de bijbehorende broncode bevatten van de commit die hierboven staat.",
+    "product": "Product",
+    "source": "Bijbehorende broncode",
+    "sourceHeading": "Aanbod van broncode",
+    "subtitle": "Buildgegevens en licentie",
+    "title": "Over",
+    "trademarkNotice": "{product} en het {product}-logo zijn handelsmerken van The Velnox Foundation. De AGPLv3 verleent geen rechten op handelsmerken.",
+    "unmodifiedNotice": "Deze build meldt zichzelf als ongewijzigd: de bronlink verwijst naar de upstream-repository.",
+    "version": "Versie",
+    "viewSource": "Broncode van deze build opvragen"
+  },
+  "auth": {
+    "apiUnreachableBody": "De interface draait, maar de API antwoordt niet. Inloggen werkt pas als dat wel het geval is.",
+    "apiUnreachableTitle": "Server niet bereikbaar",
+    "email": "E-mailadres",
+    "mfaPrompt": "Voer de code uit je authenticator-app in",
+    "mfaRecommended": "Meervoudige authenticatie wordt sterk aanbevolen voor accounts die infrastructuur kunnen beheren.",
+    "mfaRecommendedNotice": "Tweefactorauthenticatie is hier optioneel. Het inschakelen voor accounts die infrastructuur kunnen beheren is de grootste verbetering die deze installatie kan doorvoeren.",
+    "mfaRecoveryPrompt": "Voer een herstelcode in",
+    "or": "of",
+    "password": "Wachtwoord",
+    "signIn": "Inloggen",
+    "signInWithMicrosoft": "Inloggen met Microsoft",
+    "signOut": "Uitloggen"
+  },
   "common": {
     "cancel": "Annuleren",
     "close": "Sluiten",
@@ -26,90 +58,6 @@
     "unknown": "Onbekend",
     "yes": "Ja"
   },
-  "layout": {
-    "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
-    "footerSource": "Broncode",
-    "language": "Taal",
-    "notifications": "Notificaties",
-    "primaryNavigation": "Hoofdnavigatie",
-    "searchPlaceholder": "Zoeken…",
-    "searchUnavailable": "Globaal zoeken komt met de inventaris in fase 4.",
-    "sectionAdministration": "Administratie",
-    "sectionInfrastructure": "Infrastructuur",
-    "sectionOperations": "Beheer",
-    "skipToContent": "Naar de inhoud",
-    "tenantSelector": "Tenant",
-    "tenantSelectorUnavailable": "Tenants komen in fase 3",
-    "theme": "Thema",
-    "themeDark": "Donker",
-    "themeLight": "Licht",
-    "themeSystem": "Systeem",
-    "userMenu": "Account"
-  },
-  "nav": {
-    "about": "Over",
-    "alerts": "Meldingen",
-    "auditLog": "Auditlog",
-    "automation": "Automatisering",
-    "clusters": "Clusters",
-    "containers": "Containers",
-    "dashboard": "Dashboard",
-    "infrastructure": "Infrastructuur",
-    "jobs": "Jobs",
-    "majorUpgrades": "Major upgrades",
-    "migrations": "Migraties",
-    "networks": "Netwerken",
-    "nodes": "Nodes",
-    "reports": "Rapporten",
-    "rolesPermissions": "Rollen en rechten",
-    "security": "Beveiliging",
-    "settings": "Instellingen",
-    "sites": "Locaties",
-    "sso": "Eenmalige aanmelding",
-    "storage": "Opslag",
-    "tenants": "Tenants",
-    "updates": "Updates",
-    "users": "Gebruikers",
-    "virtualMachines": "Virtuele machines"
-  },
-  "status": {
-    "check": {
-      "pass": "Geslaagd",
-      "info": "Info",
-      "warning": "Waarschuwing",
-      "blocker": "Blokkade",
-      "unknown": "Niet herkend — behandeld als blokkade"
-    },
-    "dependency": {
-      "ok": "Operationeel",
-      "degraded": "Verminderd",
-      "down": "Niet beschikbaar"
-    },
-    "health": {
-      "ok": "OK",
-      "warning": "Waarschuwing",
-      "critical": "Kritiek",
-      "unknown": "Onbekend"
-    },
-    "job": {
-      "queued": "In wachtrij",
-      "preflight": "Preflight",
-      "waiting_approval": "Wacht op goedkeuring",
-      "running": "Actief",
-      "validating": "Valideren",
-      "succeeded": "Geslaagd",
-      "partially_succeeded": "Deels geslaagd",
-      "failed": "Mislukt",
-      "rolled_back": "Teruggedraaid",
-      "cancelled": "Geannuleerd"
-    },
-    "node": {
-      "online": "Online",
-      "offline": "Offline",
-      "maintenance": "Onderhoud",
-      "unknown": "Onbekend"
-    }
-  },
   "dashboard": {
     "phaseNoticeBody": "Authenticatie, de installatiewizard, rollen en optionele tweefactorauthenticatie werken. Proxmox-inventaris komt in fase 4 en het taaksysteem in fase 5. De tellers hieronder blijven op nul tot er werkelijk iets te tellen valt — het zijn geen plaatshouders voor verborgen gegevens.",
     "phaseNoticeTitle": "Deze installatie draait een fase 2-build",
@@ -127,100 +75,19 @@
     "tileUnavailable": "Beschikbaar vanaf fase {phase}",
     "title": "Dashboard"
   },
-  "system": {
-    "checkDetail": "Detail",
-    "checkName": "Component",
-    "checks": {
-      "database": "PostgreSQL",
-      "redis": "Redis",
-      "worker": "Worker",
-      "migrations": "Schemamigraties"
-    },
-    "checkStatus": "Status",
-    "detail": {
-      "noHeartbeat": "Geen hartslag vastgelegd",
-      "heartbeatInvalid": "Hartslag is geen tijdstempel",
-      "heartbeatStale": "Hartslag is {seconds}s oud",
-      "heartbeatAge": "Hartslag {seconds}s geleden",
-      "connectionFailed": "Verbinding mislukt: {message}"
-    },
-    "lastChecked": "Gecontroleerd om {time}",
-    "latency": "{ms} ms",
-    "migrationsPending": "Openstaand: {names}",
-    "migrationsSummary": "{applied} van {expected} toegepast",
-    "migrationsUnknown": "De database loopt voor op deze build: {names}",
-    "overall": "Totaal",
-    "subtitle": "Actuele gereedheid van deze installatie",
-    "title": "Servicestatus",
-    "unreachable": "De API is niet bereikbaar.",
-    "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld."
-  },
-  "selftest": {
-    "description": "Zet een job in de wachtrij en wacht tot de worker die uitvoert. Dit bewijst dat API, Redis en worker met elkaar verbonden zijn — er wordt geen beheerde infrastructuur aangeraakt.",
-    "disabled": "Diagnostische endpoints staan uit op deze installatie.",
-    "error": "De zelftest kon niet worden gestart.",
-    "failed": "Mislukt: {reason}",
-    "jobId": "Job {id}",
-    "run": "Zelftest uitvoeren",
-    "running": "Wachten op de worker…",
-    "succeeded": "Voltooid door {host} in {ms} ms",
-    "title": "Zelftest van de wachtrij"
-  },
-  "about": {
-    "agplNotice": "{product} is vrije software onder de GNU Affero General Public License v3 of later. Artikel 13 vereist dat wie een gewijzigde versie via een netwerk gebruikt, de bijbehorende broncode aangeboden krijgt. Dat aanbod is de link hierboven, en de build-commit maakt het verifieerbaar.",
-    "builtAt": "Gebouwd op",
-    "commit": "Build-commit",
-    "environment": "Omgeving",
-    "instance": "Installatie",
-    "license": "Licentie",
-    "modifiedNotice": "Deze build meldt zichzelf als gewijzigd. De beheerder heeft de bronlink naar een eigen repository gezet; die moet de bijbehorende broncode bevatten van de commit die hierboven staat.",
-    "product": "Product",
-    "source": "Bijbehorende broncode",
-    "sourceHeading": "Aanbod van broncode",
-    "subtitle": "Buildgegevens en licentie",
-    "title": "Over",
-    "trademarkNotice": "{product} en het {product}-logo zijn handelsmerken van The Velnox Foundation. De AGPLv3 verleent geen rechten op handelsmerken.",
-    "unmodifiedNotice": "Deze build meldt zichzelf als ongewijzigd: de bronlink verwijst naar de upstream-repository.",
-    "version": "Versie",
-    "viewSource": "Broncode van deze build opvragen"
-  },
-  "placeholder": {
-    "backToDashboard": "Terug naar dashboard",
-    "body": "Dit onderdeel is in deze build niet geïmplementeerd. Het staat in de navigatie zodat de beoogde vorm van het product zichtbaar is, en het is als zodanig gelabeld in plaats van gevuld met voorbeeldgegevens — {product} toont geen gegevens die het niet heeft.",
-    "notBuiltYet": "Nog niet gebouwd",
-    "plannedIn": "Gepland voor fase {phase}",
-    "seeRoadmap": "Het volledige faseplan staat in docs/roadmap.md."
-  },
-  "auth": {
-    "apiUnreachableBody": "De interface draait, maar de API antwoordt niet. Inloggen werkt pas als dat wel het geval is.",
-    "apiUnreachableTitle": "Server niet bereikbaar",
-    "email": "E-mailadres",
-    "mfaPrompt": "Voer de code uit je authenticator-app in",
-    "mfaRecommended": "Meervoudige authenticatie wordt sterk aanbevolen voor accounts die infrastructuur kunnen beheren.",
-    "mfaRecommendedNotice": "Tweefactorauthenticatie is hier optioneel. Het inschakelen voor accounts die infrastructuur kunnen beheren is de grootste verbetering die deze installatie kan doorvoeren.",
-    "mfaRecoveryPrompt": "Voer een herstelcode in",
-    "or": "of",
-    "password": "Wachtwoord",
-    "signIn": "Inloggen",
-    "signInWithMicrosoft": "Inloggen met Microsoft",
-    "signOut": "Uitloggen"
-  },
-  "setup": {
-    "complete": "Installatie voltooid",
-    "createAccount": "Beheerdersaccount aanmaken",
-    "email": "E-mailadres",
-    "masterKeyWarning": "Maak nu een back-up van MASTER_ENCRYPTION_KEY. Zonder deze sleutel wordt elk credential dat deze installatie opslaat definitief onleesbaar.",
-    "masterKeyWarningTitle": "Maak een back-up van uw encryptiesleutel",
-    "name": "Volledige naam",
-    "organisationName": "Naam van de organisatie",
-    "organisationNameHint": "Uw eigen bedrijf. Klanten voegt u later toe als tenants.",
-    "password": "Wachtwoord",
-    "passwordConfirm": "Wachtwoord bevestigen",
-    "passwordHint": "Minimaal {min} tekens. Lengte telt zwaarder dan symbolen.",
-    "passwordMismatch": "De twee wachtwoorden komen niet overeen.",
-    "passwordWeak": "Dit wachtwoord voldoet niet aan de minimale sterkte-eis.",
-    "subtitle": "Maak het eerste beheerdersaccount aan. Dit kan slechts één keer.",
-    "title": "{product} instellen"
+  "docs": {
+    "appliesToVersion": "Deze Documentatie is toepasbaar voor versie V{version}",
+    "availableOffline": "Offline beschikbaar",
+    "availableOfflineBody": "Deze pagina’s maken deel uit van de build en hebben geen internetverbinding nodig. Ze worden opnieuw gebouwd uit de repository telkens als het versienummer verandert.",
+    "backToIndex": "Alle documentatie",
+    "englishOnly": "Alleen Engels",
+    "notTranslatedBody": "Van dit document bestaat nog geen vertaling in uw taal, dus het Engelse origineel wordt getoond. Engels is hoe dan ook leidend.",
+    "notTranslatedTitle": "Nog niet vertaald",
+    "onThisPage": "Op deze pagina",
+    "sourceFile": "Bron: {file}",
+    "subtitle": "De volledige documentatie, meegeleverd in deze installatie.",
+    "versionMismatchBody": "Deze documentatie is gebouwd voor V{docs}, maar deze installatie meldt V{running}. Meestal betekent dat een upgrade waarbij de ene container wel en de andere niet is vervangen. Voer het installatiescript opnieuw uit zodat beide uit dezelfde build komen.",
+    "versionMismatchTitle": "Documentatie en software zijn verschillende versies"
   },
   "errors": {
     "auth": {
@@ -280,6 +147,26 @@
     "reject": "Afwijzen",
     "retry": "Opnieuw proberen"
   },
+  "layout": {
+    "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
+    "footerSource": "Broncode",
+    "language": "Taal",
+    "notifications": "Notificaties",
+    "primaryNavigation": "Hoofdnavigatie",
+    "searchPlaceholder": "Zoeken…",
+    "searchUnavailable": "Globaal zoeken komt met de inventaris in fase 4.",
+    "sectionAdministration": "Administratie",
+    "sectionInfrastructure": "Infrastructuur",
+    "sectionOperations": "Beheer",
+    "skipToContent": "Naar de inhoud",
+    "tenantSelector": "Tenant",
+    "tenantSelectorUnavailable": "Tenants komen in fase 3",
+    "theme": "Thema",
+    "themeDark": "Donker",
+    "themeLight": "Licht",
+    "themeSystem": "Systeem",
+    "userMenu": "Account"
+  },
   "mfa": {
     "badgeEnrolled": "Ingeschakeld",
     "badgeNotEnrolled": "Niet ingeschakeld",
@@ -320,20 +207,70 @@
     "useRecoveryCode": "Gebruik in plaats daarvan een herstelcode",
     "verify": "Verifiëren"
   },
+  "nav": {
+    "about": "Over",
+    "alerts": "Meldingen",
+    "auditLog": "Auditlog",
+    "automation": "Automatisering",
+    "clusters": "Clusters",
+    "containers": "Containers",
+    "dashboard": "Dashboard",
+    "documentation": "Documentatie",
+    "infrastructure": "Infrastructuur",
+    "jobs": "Jobs",
+    "majorUpgrades": "Major upgrades",
+    "migrations": "Migraties",
+    "networks": "Netwerken",
+    "nodes": "Nodes",
+    "reports": "Rapporten",
+    "rolesPermissions": "Rollen en rechten",
+    "security": "Beveiliging",
+    "settings": "Instellingen",
+    "sites": "Locaties",
+    "sso": "Eenmalige aanmelding",
+    "storage": "Opslag",
+    "tenants": "Tenants",
+    "updates": "Updates",
+    "users": "Gebruikers",
+    "virtualMachines": "Virtuele machines"
+  },
+  "placeholder": {
+    "backToDashboard": "Terug naar dashboard",
+    "body": "Dit onderdeel is in deze build niet geïmplementeerd. Het staat in de navigatie zodat de beoogde vorm van het product zichtbaar is, en het is als zodanig gelabeld in plaats van gevuld met voorbeeldgegevens — {product} toont geen gegevens die het niet heeft.",
+    "notBuiltYet": "Nog niet gebouwd",
+    "plannedIn": "Gepland voor fase {phase}",
+    "seeRoadmap": "Het volledige faseplan staat in docs/roadmap.md."
+  },
   "security": {
     "subtitle": "Instellingen die gelden voor uw eigen account."
   },
-  "users": {
-    "columnLastLogin": "Laatste aanmelding",
-    "columnMfa": "Tweefactor",
-    "columnName": "Naam",
-    "columnRoles": "Rollen",
-    "listTitle": "{count, plural, one {# account} other {# accounts}}",
-    "managementPendingBody": "Gebruikers uitnodigen, rollen toewijzen en accounts deactiveren komen met het rollenscherm. De accounts hierboven worden uit de API gelezen.",
-    "managementPendingTitle": "Gebruikers aanmaken en bewerken",
-    "mfaGapTitle": "{count, plural, one {# account met verhoogde rechten zonder tweede factor} other {# accounts met verhoogde rechten zonder tweede factor}}",
-    "subtitle": "Accounts die kunnen inloggen op deze installatie.",
-    "you": "(u)"
+  "selftest": {
+    "description": "Zet een job in de wachtrij en wacht tot de worker die uitvoert. Dit bewijst dat API, Redis en worker met elkaar verbonden zijn — er wordt geen beheerde infrastructuur aangeraakt.",
+    "disabled": "Diagnostische endpoints staan uit op deze installatie.",
+    "error": "De zelftest kon niet worden gestart.",
+    "failed": "Mislukt: {reason}",
+    "jobId": "Job {id}",
+    "run": "Zelftest uitvoeren",
+    "running": "Wachten op de worker…",
+    "succeeded": "Voltooid door {host} in {ms} ms",
+    "title": "Zelftest van de wachtrij"
+  },
+  "setup": {
+    "complete": "Installatie voltooid",
+    "createAccount": "Beheerdersaccount aanmaken",
+    "email": "E-mailadres",
+    "masterKeyWarning": "Maak nu een back-up van MASTER_ENCRYPTION_KEY. Zonder deze sleutel wordt elk credential dat deze installatie opslaat definitief onleesbaar.",
+    "masterKeyWarningTitle": "Maak een back-up van uw encryptiesleutel",
+    "name": "Volledige naam",
+    "organisationName": "Naam van de organisatie",
+    "organisationNameHint": "Uw eigen bedrijf. Klanten voegt u later toe als tenants.",
+    "password": "Wachtwoord",
+    "passwordConfirm": "Wachtwoord bevestigen",
+    "passwordHint": "Minimaal {min} tekens. Lengte telt zwaarder dan symbolen.",
+    "passwordMismatch": "De twee wachtwoorden komen niet overeen.",
+    "passwordWeak": "Dit wachtwoord voldoet niet aan de minimale sterkte-eis.",
+    "subtitle": "Maak het eerste beheerdersaccount aan. Dit kan slechts één keer.",
+    "title": "{product} instellen"
   },
   "sso": {
     "allowedDomains": "Toegestane e-maildomeinen",
@@ -357,5 +294,83 @@
     "testFailedDetail": "De controle is mislukt: {reason} ({detail})",
     "testOk": "De provider antwoordde en het discovery-document is geldig.",
     "testPassed": "Laatste controle geslaagd"
+  },
+  "status": {
+    "check": {
+      "pass": "Geslaagd",
+      "info": "Info",
+      "warning": "Waarschuwing",
+      "blocker": "Blokkade",
+      "unknown": "Niet herkend — behandeld als blokkade"
+    },
+    "dependency": {
+      "ok": "Operationeel",
+      "degraded": "Verminderd",
+      "down": "Niet beschikbaar"
+    },
+    "health": {
+      "ok": "OK",
+      "warning": "Waarschuwing",
+      "critical": "Kritiek",
+      "unknown": "Onbekend"
+    },
+    "job": {
+      "queued": "In wachtrij",
+      "preflight": "Preflight",
+      "waiting_approval": "Wacht op goedkeuring",
+      "running": "Actief",
+      "validating": "Valideren",
+      "succeeded": "Geslaagd",
+      "partially_succeeded": "Deels geslaagd",
+      "failed": "Mislukt",
+      "rolled_back": "Teruggedraaid",
+      "cancelled": "Geannuleerd"
+    },
+    "node": {
+      "online": "Online",
+      "offline": "Offline",
+      "maintenance": "Onderhoud",
+      "unknown": "Onbekend"
+    }
+  },
+  "system": {
+    "checkDetail": "Detail",
+    "checkName": "Component",
+    "checks": {
+      "database": "PostgreSQL",
+      "redis": "Redis",
+      "worker": "Worker",
+      "migrations": "Schemamigraties"
+    },
+    "checkStatus": "Status",
+    "detail": {
+      "noHeartbeat": "Geen hartslag vastgelegd",
+      "heartbeatInvalid": "Hartslag is geen tijdstempel",
+      "heartbeatStale": "Hartslag is {seconds}s oud",
+      "heartbeatAge": "Hartslag {seconds}s geleden",
+      "connectionFailed": "Verbinding mislukt: {message}"
+    },
+    "lastChecked": "Gecontroleerd om {time}",
+    "latency": "{ms} ms",
+    "migrationsPending": "Openstaand: {names}",
+    "migrationsSummary": "{applied} van {expected} toegepast",
+    "migrationsUnknown": "De database loopt voor op deze build: {names}",
+    "overall": "Totaal",
+    "subtitle": "Actuele gereedheid van deze installatie",
+    "title": "Servicestatus",
+    "unreachable": "De API is niet bereikbaar.",
+    "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld."
+  },
+  "users": {
+    "columnLastLogin": "Laatste aanmelding",
+    "columnMfa": "Tweefactor",
+    "columnName": "Naam",
+    "columnRoles": "Rollen",
+    "listTitle": "{count, plural, one {# account} other {# accounts}}",
+    "managementPendingBody": "Gebruikers uitnodigen, rollen toewijzen en accounts deactiveren komen met het rollenscherm. De accounts hierboven worden uit de API gelezen.",
+    "managementPendingTitle": "Gebruikers aanmaken en bewerken",
+    "mfaGapTitle": "{count, plural, one {# account met verhoogde rechten zonder tweede factor} other {# accounts met verhoogde rechten zonder tweede factor}}",
+    "subtitle": "Accounts die kunnen inloggen op deze installatie.",
+    "you": "(u)"
   }
 }

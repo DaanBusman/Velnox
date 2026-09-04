@@ -68,6 +68,12 @@ export const NAVIGATION: NavGroup[] = [
       { key: 'settings', href: '/settings/about', phase: null },
     ],
   },
+  {
+    // Its own group at the end: the documentation is not an administration
+    // task, and everyone who can sign in can read it.
+    labelKey: null,
+    items: [{ key: 'documentation', href: '/docs', phase: null }],
+  },
 ];
 
 const BY_HREF = new Map<string, NavItem>(

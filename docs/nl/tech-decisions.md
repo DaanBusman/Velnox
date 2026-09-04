@@ -395,6 +395,40 @@ scheiden zou een tweede KEK en een sleutelbeheerverhaal vergen die fase 2 niet h
 
 ---
 
+## ADR-024 — Eén versienummer, bij elke wijziging opgehoogd, met documentatie die meereist
+
+**Besluit:** Het veld `version` in de root-`package.json` is de enige plek waar een versie wordt
+geschreven. `scripts/version.mjs` zet hem in de negen andere manifesten, de twee compose-defaults en
+`.env.example`; `pnpm run validate:version` laat de lint-taak falen zodra er iets uit de pas loopt.
+Elke wijziging die wordt uitgeleverd hoogt hem op — `bump patch` voor een correctie, `bump minor`
+voor functionaliteit — en `bump major` wordt door het script geweigerd, omdat 1.0.0 bereiken een
+besluit van de opdrachtgever is en geen rekensom.
+
+De documentatie onder `docs/` wordt tijdens de build omgezet naar HTML en meegeleverd in de
+web-image, en elke pagina toont **"Deze Documentatie is toepasbaar voor versie VX.Y.Z"** (in het
+Engels **"This Documentation applies to version VX.Y.Z"**). Die tekst komt uit hetzelfde
+`package.json`-veld dat de draaiende software rapporteert.
+
+**Waarom:** Documentatie op een beheerapparaat is precies nodig wanneer het netwerk er niet is, dus
+zij kan niet alleen op GitHub staan. En documentatie die niet zegt welke versie zij beschrijft is
+slechter dan geen: een beheerder die een upgradeprocedure uit een andere release volgt, kan echte
+schade aanrichten.
+
+Beide aan één veld koppelen is wat de zin waar maakt in plaats van decoratief. De documentatie en de
+software komen uit één build en uit één versietekst, dus ze kunnen niet een release uit elkaar
+liggen — en als dat toch zo is, doordat een upgrade de ene container wel en de andere niet heeft
+vervangen, zegt de documentatiepagina dat, in plaats van stilletjes de verkeerde software te
+beschrijven.
+
+**Kosten:** Elke wijziging raakt nu de versie, wat in de diff van elf bestanden zichtbaar is. Dat is
+juist de bedoeling: een wijziging die de versie níét ophoogt, valt als zodanig op. `install.sh`
+ververst `VELNOX_VERSION` in `.env` bij elke uitvoering om dezelfde reden als de build-commit — het
+is build-metadata, geen configuratie, en een vastgezette verouderde waarde zou elke
+documentatiepagina een niet-bestaande mismatch laten melden. `scripts/verify-stack.sh` stelt tegen
+een draaiende stack vast dat de gerapporteerde versie overeenkomt met de bron.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

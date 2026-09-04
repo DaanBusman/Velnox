@@ -380,6 +380,39 @@ second KEK and a key-management story that Phase 2 does not have; it is recorded
 
 ---
 
+## ADR-024 — One version number, bumped on every change, and documentation that ships with it
+
+**Decision:** The `version` field in the root `package.json` is the only place a version is
+authored. `scripts/version.mjs` writes it into the nine other manifests, the two compose defaults
+and `.env.example`; `pnpm run validate:version` fails the lint task if any of them drift. Every
+change that ships bumps it — `bump patch` for a fix, `bump minor` for a feature — and `bump major`
+is refused by the script, because reaching 1.0.0 is a decision the product owner makes rather than
+an arithmetic step.
+
+The documentation set under `docs/` is converted to HTML at build time and bundled into the web
+image, and every page renders **"This Documentation applies to version VX.Y.Z"** (in Dutch,
+**"Deze Documentatie is toepasbaar voor versie VX.Y.Z"**). That string comes from the same
+`package.json` field the running software reports.
+
+**Why:** Documentation on a management appliance is needed exactly when the network is not
+available, so it cannot live only on GitHub. And documentation that does not say which version it
+describes is worse than none: an operator following an upgrade procedure from a different release
+can do real damage.
+
+Tying both to one field is what makes the sentence true rather than decorative. The documentation
+and the software are produced by one build, from one version string, so they cannot be a release
+apart — and when they somehow are, because an upgrade replaced one container and not the other, the
+documentation page says so instead of quietly describing the wrong software.
+
+**Cost:** Every change now touches the version, which shows up in the diff of eleven files. That is
+the point: a change that does not bump the version is visible as such. `install.sh` refreshes
+`VELNOX_VERSION` in `.env` on every run for the same reason it refreshes the build commit — it is
+build metadata, not configuration, and a pinned stale value would make every documentation page
+report a mismatch that is not real. `scripts/verify-stack.sh` asserts against a running stack that
+the reported version matches the source.
+
+---
+
 ## Version targets
 
 | Component | Version |

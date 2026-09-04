@@ -1,6 +1,6 @@
 {
   "name": "@velnox/config",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Typed, validated environment configuration",
@@ -15,7 +15,9 @@
     "lint": "eslint src",
     "test": "vitest run"
   },
-  "dependencies": { "zod": "^3.24.1" },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
   "devDependencies": {
     "@types/node": "^22.10.5",
     "typescript": "^5.7.3",

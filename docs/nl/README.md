@@ -39,6 +39,32 @@ Wat elke fase toevoegt, en wat er vandaag bewust ontbreekt:
 
 ---
 
+## Documentatie en versiebeheer
+
+De volledige documentatie wordt **meegeleverd in de build** en is binnen het product te lezen onder
+**Documentatie** — zonder internetverbinding, wat uitmaakt omdat een beheerapparaat er meestal geen
+heeft, en het moment waarop de documentatie nodig is precies het moment is dat er iets stuk is.
+
+Elke documentatiepagina vermeldt **"Deze Documentatie is toepasbaar voor versie VX.Y.Z"**. Die tekst
+en de versie die de software rapporteert komen uit hetzelfde veld, geschreven door dezelfde build,
+dus ze kunnen niet verschillende releases beschrijven. Vervangt een upgrade ooit de ene container en
+de andere niet, dan zegt de pagina dat, in plaats van stilletjes de verkeerde software te
+beschrijven.
+
+De versie staat in de root-`package.json` en nergens anders:
+
+```bash
+pnpm run version:show          # wat dit is
+pnpm run version:bump patch    # een correctie
+pnpm run version:bump minor    # functionaliteit
+pnpm run validate:version      # faalt zodra een manifest uit de pas loopt
+```
+
+Elke wijziging die wordt uitgeleverd hoogt hem op. **1.0.0** bereiken is een productbesluit, en het
+script weigert dat uit zichzelf te doen.
+
+---
+
 ## Snel starten
 
 Op een verse Debian 12/13- of Ubuntu 22.04/24.04-server:

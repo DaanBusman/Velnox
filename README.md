@@ -34,6 +34,32 @@ What each phase adds, and what is deliberately missing today:
 
 ---
 
+## Documentation and versioning
+
+The whole documentation set is **bundled into the build** and readable inside the product under
+**Documentation** — no internet connection required, which matters because a management appliance
+usually cannot reach one, and the moment the documentation is needed is the moment something is
+broken.
+
+Every documentation page states **"This Documentation applies to version VX.Y.Z"**. That string and
+the version the software reports come from the same field, written by the same build, so the two
+cannot describe different releases. If an upgrade ever replaces one container and not the other, the
+page says so rather than quietly describing the wrong software.
+
+The version lives in the root `package.json` and nowhere else:
+
+```bash
+pnpm run version:show          # what this is
+pnpm run version:bump patch    # a fix
+pnpm run version:bump minor    # a feature
+pnpm run validate:version      # fails if any manifest has drifted
+```
+
+Every change that ships bumps it. Reaching **1.0.0** is a product decision, and the script refuses to
+do it on its own.
+
+---
+
 ## Quick start
 
 On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server:
