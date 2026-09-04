@@ -84,6 +84,48 @@ describe('checkPasswordStrength', () => {
     expect(checkPasswordStrength('').problems).toContain('too_short');
   });
 
+  it('sees through the decoration people add when told a password is weak', () => {
+    /*
+     * The regression this exists for. The blocklist matched whole passwords, so
+     * appending a digit walked straight past it — and a running installation
+     * accepted `password1234` for its first administrator account, which is how
+     * it was found.
+     *
+     * Every one of these is the same word to an attacker's list.
+     */
+    for (const decorated of [
+      'password1234',
+      'Password2026',
+      'P@ssw0rd!23',
+      'passw0rd',
+      'velnox2026!',
+      'Velnox123456',
+      'proxmox2024',
+      'letmein!!!!!!',
+      'ChangeMe-2026',
+    ]) {
+      expect(checkPasswordStrength(decorated).problems, decorated).toContain('too_common');
+    }
+  });
+
+  it('rejects a password that is only digits, however long', () => {
+    // Length is meant to buy entropy; a twelve-digit number does not.
+    expect(checkPasswordStrength('839201847362').problems).toContain('too_simple');
+  });
+
+  it('does not reject a passphrase that merely contains a common word', () => {
+    // The stem check must not become a substring check: a long passphrase is
+    // exactly what this is trying to encourage, and rejecting it would push
+    // people back towards short passwords with a symbol in them.
+    for (const good of [
+      'correct horse battery staple',
+      'my password is a whole sentence',
+      'velnox runs the whole fleet quietly',
+    ]) {
+      expect(checkPasswordStrength(good).problems, good).not.toContain('too_common');
+    }
+  });
+
   it('rejects obvious passwords that are long enough to pass a length check', () => {
     for (const bad of ['password123', 'administrator', 'Velnox123', 'proxmox123']) {
       expect(checkPasswordStrength(bad).problems, bad).toContain('too_common');

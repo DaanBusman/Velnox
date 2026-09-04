@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { MfaPolicy, User } from '@velnox/db';
-import { hashPassword, needsRehash, verifyPassword } from '@velnox/crypto';
+import { checkPasswordStrength, hashPassword, needsRehash, verifyPassword } from '@velnox/crypto';
 import {
   ERROR_CODES,
   VelnoxError,
@@ -240,6 +240,24 @@ export class AuthService {
 
   /** Change a password, revoking every other session as a side effect. */
   async changePassword(userId: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.client.user.findUnique({ where: { id: userId } });
+    if (!user) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
+
+    /*
+     * The strength check lives here rather than in the endpoint that will call
+     * this, so it cannot be skipped by wiring up a new caller. The setup wizard
+     * checks the same way for the same reason: a floor that only some paths
+     * enforce is not a floor.
+     */
+    const strength = checkPasswordStrength(newPassword, { email: user.email });
+    if (!strength.ok) {
+      throw new VelnoxError(ERROR_CODES.validation, {
+        status: 400,
+        message: 'Password does not meet the minimum strength requirement',
+        params: { problems: strength.problems.join(',') },
+      });
+    }
+
     await this.prisma.client.user.update({
       where: { id: userId },
       data: {

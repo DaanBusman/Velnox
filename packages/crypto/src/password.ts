@@ -86,9 +86,38 @@ const OBVIOUS_PASSWORDS = new Set([
   'monkey123',
   'proxmox',
   'velnox',
-  'velnox123',
-  'proxmox123',
 ]);
+
+/**
+ * Reduce a password to the word someone actually chose.
+ *
+ * An exact-match blocklist is defeated by typing one more character, which is
+ * precisely what people do when told a password is too weak: `password` becomes
+ * `password1234`, `velnox` becomes `Velnox2026!`. Both were accepted before this
+ * existed, and `password1234` was accepted by a running installation for its
+ * first administrator account — which is where it was caught.
+ *
+ * So the check looks at the stem: case folded, common character substitutions
+ * undone, and trailing digits and punctuation removed. `P@ssw0rd!23` and
+ * `password` collapse to the same thing, because to an attacker's word list
+ * they are the same thing.
+ */
+function passwordStem(value: string): string {
+  // Trailing filler comes off first. Undoing substitutions before this would
+  // turn the "123" of velnox123 into letters and cement it into the stem.
+  const trimmed = value.toLowerCase().replace(/[^a-z]+$/, '');
+
+  const unleeted = trimmed
+    .replace(/[@4]/g, 'a')
+    .replace(/0/g, 'o')
+    .replace(/[1!|]/g, 'i')
+    .replace(/3/g, 'e')
+    .replace(/[$5]/g, 's')
+    .replace(/7/g, 't');
+
+  // Again, because undoing substitutions can expose more filler.
+  return unleeted.replace(/[^a-z]+$/, '');
+}
 
 export interface PasswordCheck {
   ok: boolean;
@@ -111,7 +140,18 @@ export function checkPasswordStrength(password: string, context: { email?: strin
   if (value.length > PASSWORD_MAX_LENGTH) problems.push('too_long');
 
   const normalised = value.toLowerCase();
-  if (OBVIOUS_PASSWORDS.has(normalised)) problems.push('too_common');
+  const stem = passwordStem(value);
+
+  // Both forms, because a password can be obvious as typed or obvious once the
+  // decoration is stripped off it.
+  if (OBVIOUS_PASSWORDS.has(normalised) || OBVIOUS_PASSWORDS.has(stem)) {
+    problems.push('too_common');
+  }
+
+  // A password made entirely of digits is a number, however long. Length is
+  // supposed to buy entropy, and a 12-digit number has about as much as a
+  // 6-character mixed password.
+  if (/^\d+$/.test(value)) problems.push('too_simple');
 
   // A single repeated character, or a straight run, however long.
   if (value.length > 0 && new Set(value).size <= 2) problems.push('too_repetitive');
