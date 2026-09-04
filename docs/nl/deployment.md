@@ -63,8 +63,24 @@ back-up.
 | Starten bij opstarten | Ja |
 
 ```bash
-sudo apt-get install -y qemu-guest-agent && sudo systemctl enable --now qemu-guest-agent
+sudo apt-get install -y qemu-guest-agent
 ```
+
+Installeren is alles wat u in de guest doet. Voer `systemctl enable qemu-guest-agent` **niet** uit:
+de unit wordt door udev gestart zodra de virtuele seriële poort verschijnt, en hem inschakelen levert
+een lap tekst op over een unit zonder installatieconfiguratie — dat is systemd die correct meldt dat
+het commando zinloos was, geen fout die u moet verhelpen.
+
+Wat wél telt is het vinkje **Guest agent** in de VM-opties hierboven. Dat toevoegen is een
+hardwarewijziging, dus een draaiende VM moet volledig worden gestopt en gestart — opnieuw opstarten
+vanuit de guest is niet genoeg. Controleren of het gelukt is:
+
+```bash
+systemctl is-active qemu-guest-agent && ls /dev/virtio-ports/
+```
+
+`active` plus een lijst met `org.qemu.guest_agent.0` betekent dat het werkt. Is de service inactief
+en bestaat dat pad niet, dan is de VM sinds het aanzetten van het vinkje niet uit en aan geweest.
 
 Back-uppen met Proxmox Backup Server in snapshot-modus met de guest agent ingeschakeld, zodat
 `fsfreeze` eerst draait.

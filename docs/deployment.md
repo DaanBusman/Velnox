@@ -59,8 +59,25 @@ a running database is a crash-consistent image, not a backup.
 | Start at boot | Yes |
 
 ```bash
-sudo apt-get install -y qemu-guest-agent && sudo systemctl enable --now qemu-guest-agent
+sudo apt-get install -y qemu-guest-agent
 ```
+
+Installing it is all you do in the guest. Do **not** run `systemctl enable qemu-guest-agent`: the
+unit is started by udev the moment the virtio serial port appears, and enabling it prints a wall of
+text about the unit having no installation config — which is systemd correctly telling you the
+command was pointless, not an error you need to fix.
+
+What actually matters is the **Guest agent** checkbox in the VM options above. Adding it is a
+hardware change, so a running VM needs a full stop and start — a reboot from inside the guest is not
+enough. Check it landed:
+
+```bash
+systemctl is-active qemu-guest-agent && ls /dev/virtio-ports/
+```
+
+`active` and a listing containing `org.qemu.guest_agent.0` mean it is working. If the service is
+inactive and that path does not exist, the VM has not been power-cycled since the checkbox was
+ticked.
 
 Back up with Proxmox Backup Server in snapshot mode with the guest agent enabled, so `fsfreeze` runs
 first.
