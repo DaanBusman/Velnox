@@ -124,7 +124,7 @@ sudo apt-get install -y chrony && echo 'refclock PHC /dev/ptp_hyperv poll 3 dpol
 Op een verse Debian 12/13- of Ubuntu 22.04/24.04-server, als gebruiker met `sudo`:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo bash /opt/velnox/install.sh
 ```
 
 De installer stelt twee vragen — het adres dat operators gaan gebruiken, en of je een zelfondertekend
@@ -134,7 +134,7 @@ klaar is. Reken op vijf tot tien minuten, grotendeels het bouwen van de images.
 Volledig onbewaakt:
 
 ```bash
-sudo /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
+sudo bash /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
 ```
 
 | Optie | Betekenis |
@@ -175,7 +175,7 @@ docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
 Een draaiende installatie op elk moment opnieuw controleren:
 
 ```bash
-./scripts/verify-stack.sh https://velnox.example.internal
+bash scripts/verify-stack.sh https://velnox.example.internal
 ```
 
 Stoppen (data blijft behouden in named volumes):
@@ -214,7 +214,7 @@ wijzigingen.
 ### Stap 3 — Bijwerken
 
 ```bash
-cd /opt/velnox && sudo git pull && sudo ./install.sh --non-interactive
+cd /opt/velnox && sudo git pull && sudo bash install.sh --non-interactive
 ```
 
 Dat is de hele procedure. De installer bouwt de images opnieuw, voert nieuwe migraties uit, herstart
@@ -261,7 +261,7 @@ cd /opt/velnox && sudo git log --oneline -5
 ```
 
 ```bash
-cd /opt/velnox && sudo git checkout <vorige-commit> && sudo ./install.sh --non-interactive
+cd /opt/velnox && sudo git checkout <vorige-commit> && sudo bash install.sh --non-interactive
 ```
 
 Dat volstaat **alleen als de upgrade geen migratie toevoegde**. Deed hij dat wel, zet dan eerst je

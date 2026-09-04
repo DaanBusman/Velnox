@@ -119,7 +119,7 @@ sudo apt-get install -y chrony && echo 'refclock PHC /dev/ptp_hyperv poll 3 dpol
 On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server, as a user with `sudo`:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo bash /opt/velnox/install.sh
 ```
 
 The installer asks two questions — the address operators will use, and whether you want a
@@ -129,7 +129,7 @@ it is done. Expect five to ten minutes, most of it building images.
 Fully unattended:
 
 ```bash
-sudo /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
+sudo bash /opt/velnox/install.sh --non-interactive --site-address=velnox.example.internal
 ```
 
 | Option | Meaning |
@@ -170,7 +170,7 @@ docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
 Re-verify a running installation at any time:
 
 ```bash
-./scripts/verify-stack.sh https://velnox.example.internal
+bash scripts/verify-stack.sh https://velnox.example.internal
 ```
 
 Stop (data is preserved in named volumes):
@@ -209,7 +209,7 @@ changes.
 ### Step 3 — Upgrade
 
 ```bash
-cd /opt/velnox && sudo git pull && sudo ./install.sh --non-interactive
+cd /opt/velnox && sudo git pull && sudo bash install.sh --non-interactive
 ```
 
 That is the whole procedure. The installer rebuilds the images, applies any new migrations, restarts
@@ -254,7 +254,7 @@ cd /opt/velnox && sudo git log --oneline -5
 ```
 
 ```bash
-cd /opt/velnox && sudo git checkout <previous-commit> && sudo ./install.sh --non-interactive
+cd /opt/velnox && sudo git checkout <previous-commit> && sudo bash install.sh --non-interactive
 ```
 
 That is enough **only if the upgrade added no migration**. If it did, restore your step 1 dump first,

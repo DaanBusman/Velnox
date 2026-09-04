@@ -5,7 +5,7 @@
 
 **Status:** Fase 0, 1 en 2 afgerond. Fase 3–15 wachten op goedkeuring.
 
-Elke afgeronde fase is geverifieerd in plaats van beweerd: `./scripts/verify-stack.sh` toetst de
+Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
 acceptatiecriteria tegen een draaiende stack — 29 controles over elke afhankelijkheid, de
 migratiestatus, security headers, beide talen, het bronaanbod, het feit dat authenticatie anonieme
 aanroepers daadwerkelijk weigert, dat de installatie na afloop gesloten is, en dat de datalaag niet
@@ -244,7 +244,7 @@ secretgeneratie, idempotent herhalen, migraties, gezondheidsverificatie, tonen v
 live-build ISO-pijplijn met eerlijke voorcontrole. **Standaard air-gapped tar** (gebundelde
 `docker save`-images) met een `--slim`-variant die uit een registry haalt.
 
-**Acceptatie:** een schone Debian 12-VM zonder Docker gaat met één commando van `./install.sh` naar een
+**Acceptatie:** een schone Debian 12-VM zonder Docker gaat met één commando van `bash install.sh` naar een
 werkende inlogpagina; opnieuw uitvoeren behoudt `.env` en data; de tar.gz pakt uit en installeert op een
 tweede host **met uitgaand netwerk geblokkeerd**, mits Docker aanwezig is — en wanneer Docker op een
 offline host ontbreekt zegt de installer dat vooraf in plaats van halverwege te falen; `uninstall.sh`

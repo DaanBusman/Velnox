@@ -70,7 +70,7 @@ script weigert dat uit zichzelf te doen.
 Op een verse Debian 12/13- of Ubuntu 22.04/24.04-server:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo bash /opt/velnox/install.sh
 ```
 
 De installer installeert Docker als dat ontbreekt, genereert secrets, bouwt de images, start de
@@ -87,7 +87,7 @@ Volledige opties, dimensionering en VM-instellingen: [deployment.md](deployment.
 ### Een draaiende installatie verifiëren
 
 ```bash
-./scripts/verify-stack.sh https://jouw-velnox-host
+bash scripts/verify-stack.sh https://jouw-velnox-host
 ```
 
 Toetst tegen de draaiende stack: elke afhankelijkheid bereikbaar, migraties toegepast, security

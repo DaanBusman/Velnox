@@ -2,7 +2,7 @@
 
 **Status:** Phases 0, 1 and 2 complete. Phases 3–15 await approval.
 
-Each landed phase is verified rather than asserted: `./scripts/verify-stack.sh` asserts its acceptance criteria
+Each landed phase is verified rather than asserted: `bash scripts/verify-stack.sh` asserts its acceptance criteria
 against a running stack — 29 checks covering every dependency, the migration state, security headers,
 both languages, the licence offer, authentication actually refusing anonymous callers, setup being
 closed once it has run, and the data tier not being reachable from the host. It runs in CI on every
@@ -232,7 +232,7 @@ Checksums, a manifest and a generated `THIRD-PARTY-NOTICES.md`. live-build ISO p
 honest preflight. **Air-gapped tar by default** (bundled `docker save` images) with a `--slim`
 registry-pull variant.
 
-**Acceptance:** a clean Debian 12 VM without Docker goes from `./install.sh` to a working login page
+**Acceptance:** a clean Debian 12 VM without Docker goes from `bash install.sh` to a working login page
 in one command; re-running preserves `.env` and data; the tar.gz unpacks and installs on a second
 host **with outbound network blocked**, given Docker is already present — and when Docker is absent
 on an offline host the installer says so up front instead of failing halfway; `uninstall.sh` never

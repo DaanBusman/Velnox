@@ -65,7 +65,7 @@ do it on its own.
 On a fresh Debian 12/13 or Ubuntu 22.04/24.04 server:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo /opt/velnox/install.sh
+sudo apt-get update && sudo apt-get install -y git && sudo git clone https://github.com/DaanBusman/Velnox.git /opt/velnox && sudo bash /opt/velnox/install.sh
 ```
 
 The installer installs Docker if it is missing, generates secrets, builds the images, starts the
@@ -82,7 +82,7 @@ Full options, sizing and hypervisor VM settings: [docs/deployment.md](docs/deplo
 ### Verify a running installation
 
 ```bash
-./scripts/verify-stack.sh https://your-velnox-host
+bash scripts/verify-stack.sh https://your-velnox-host
 ```
 
 Asserts against the running stack: every dependency reachable, migrations applied, security headers

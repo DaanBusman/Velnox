@@ -1,6 +1,6 @@
 {
   "name": "@velnox/api",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox HTTP API. Owns authentication, authorization and job submission; performs no outbound automation.",

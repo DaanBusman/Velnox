@@ -2,8 +2,8 @@
 #
 # Velnox installer for Debian and Ubuntu.
 #
-#   sudo ./install.sh                     interactive
-#   sudo ./install.sh --non-interactive   use defaults and flags only
+#   sudo bash install.sh                     interactive
+#   sudo bash install.sh --non-interactive   use defaults and flags only
 #
 # Installs Docker if it is missing, generates configuration and secrets, builds
 # the images, starts the stack, waits for every service to become healthy and
@@ -240,7 +240,7 @@ usage() {
   cat <<EOF
 Velnox installer
 
-  sudo ./install.sh [options]
+  sudo bash install.sh [options]
 
 Options
   --non-interactive        Never prompt; use defaults and the flags below
