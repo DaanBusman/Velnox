@@ -1,8 +1,10 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import type { SessionUser } from '@/lib/session-types';
 import { LocaleSwitcher } from './locale-switcher';
 import { ThemeToggle } from './theme-toggle';
+import { UserMenu } from './user-menu';
 
 /**
  * Top bar.
@@ -11,7 +13,7 @@ import { ThemeToggle } from './theme-toggle';
  * are present but disabled, each stating the phase that makes it work. A control
  * that looks live and does nothing is worse than one that explains itself.
  */
-export function Topbar({ locale }: { locale: string }) {
+export function Topbar({ locale, user }: { locale: string; user: SessionUser }) {
   const t = useTranslations();
 
   return (
@@ -38,6 +40,7 @@ export function Topbar({ locale }: { locale: string }) {
       <div className="flex shrink-0 items-center gap-2">
         <LocaleSwitcher current={locale} />
         <ThemeToggle />
+        <UserMenu user={user} />
       </div>
     </header>
   );

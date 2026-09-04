@@ -11,6 +11,7 @@ import { HealthController } from '../modules/health/health.controller';
 import { SetupController } from '../modules/setup/setup.controller';
 import { MetricsController } from '../modules/system/metrics.controller';
 import { SystemController } from '../modules/system/system.controller';
+import { UsersController } from '../modules/users/users.controller';
 
 /**
  * What a half-authenticated session can reach.
@@ -74,6 +75,7 @@ const CONTROLLERS = [
   SetupController,
   MetricsController,
   SystemController,
+  UsersController,
 ];
 
 function collectRoutes(): Route[] {

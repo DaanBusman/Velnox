@@ -6,80 +6,87 @@
     "note": "Source language. Every other locale is a translation of this file. Keys are stable; values are not."
   },
   "common": {
-    "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "confirm": "Confirm",
     "delete": "Delete",
-    "search": "Search",
     "filter": "Filter",
-    "refresh": "Refresh",
-    "retry": "Retry",
-    "close": "Close",
+    "lastSeen": "Last seen {time}",
     "loading": "Loading…",
     "never": "Never",
-    "unknown": "Unknown",
-    "notAvailable": "Not available",
-    "yes": "Yes",
     "no": "No",
+    "notAvailable": "Not available",
+    "refresh": "Refresh",
+    "requiresPermission": "Requires the {permission} permission",
+    "retry": "Retry",
+    "save": "Save",
+    "search": "Search",
     "selected": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
-    "lastSeen": "Last seen {time}",
-    "requiresPermission": "Requires the {permission} permission"
+    "unknown": "Unknown",
+    "yes": "Yes"
   },
   "layout": {
-    "skipToContent": "Skip to content",
+    "footerLicense": "{product} {version} — free software under the AGPLv3.",
+    "footerSource": "Source code",
+    "language": "Language",
+    "notifications": "Notifications",
     "primaryNavigation": "Primary navigation",
-    "sectionInfrastructure": "Infrastructure",
-    "sectionOperations": "Operations",
-    "sectionAdministration": "Administration",
     "searchPlaceholder": "Search…",
     "searchUnavailable": "Global search arrives with the inventory in phase 4.",
-    "notifications": "Notifications",
-    "userMenu": "Account",
+    "sectionAdministration": "Administration",
+    "sectionInfrastructure": "Infrastructure",
+    "sectionOperations": "Operations",
+    "skipToContent": "Skip to content",
     "tenantSelector": "Tenant",
     "tenantSelectorUnavailable": "Tenants arrive in phase 3",
-    "language": "Language",
     "theme": "Theme",
-    "themeLight": "Light",
     "themeDark": "Dark",
+    "themeLight": "Light",
     "themeSystem": "System",
-    "footerLicense": "{product} {version} — free software under the AGPLv3.",
-    "footerSource": "Source code"
+    "userMenu": "Account"
   },
   "nav": {
-    "dashboard": "Dashboard",
-    "tenants": "Tenants",
-    "sites": "Sites",
-    "infrastructure": "Infrastructure",
+    "about": "About",
+    "alerts": "Alerts",
+    "auditLog": "Audit Log",
+    "automation": "Automation",
     "clusters": "Clusters",
-    "nodes": "Nodes",
-    "virtualMachines": "Virtual Machines",
     "containers": "Containers",
-    "storage": "Storage",
-    "networks": "Networks",
-    "updates": "Updates",
+    "dashboard": "Dashboard",
+    "infrastructure": "Infrastructure",
+    "jobs": "Jobs",
     "majorUpgrades": "Major Upgrades",
     "migrations": "Migrations",
-    "automation": "Automation",
-    "jobs": "Jobs",
-    "alerts": "Alerts",
+    "networks": "Networks",
+    "nodes": "Nodes",
     "reports": "Reports",
-    "users": "Users",
     "rolesPermissions": "Roles & Permissions",
-    "auditLog": "Audit Log",
+    "security": "Security",
     "settings": "Settings",
-    "about": "About"
+    "sites": "Sites",
+    "storage": "Storage",
+    "tenants": "Tenants",
+    "updates": "Updates",
+    "users": "Users",
+    "virtualMachines": "Virtual Machines"
   },
   "status": {
+    "check": {
+      "pass": "Pass",
+      "info": "Info",
+      "warning": "Warning",
+      "blocker": "Blocker",
+      "unknown": "Unrecognised — treated as a blocker"
+    },
+    "dependency": {
+      "ok": "Operational",
+      "degraded": "Degraded",
+      "down": "Unavailable"
+    },
     "health": {
       "ok": "OK",
       "warning": "Warning",
       "critical": "Critical",
-      "unknown": "Unknown"
-    },
-    "node": {
-      "online": "Online",
-      "offline": "Offline",
-      "maintenance": "Maintenance",
       "unknown": "Unknown"
     },
     "job": {
@@ -94,24 +101,17 @@
       "rolled_back": "Rolled back",
       "cancelled": "Cancelled"
     },
-    "check": {
-      "pass": "Pass",
-      "info": "Info",
-      "warning": "Warning",
-      "blocker": "Blocker",
-      "unknown": "Unrecognised — treated as a blocker"
-    },
-    "dependency": {
-      "ok": "Operational",
-      "degraded": "Degraded",
-      "down": "Unavailable"
+    "node": {
+      "online": "Online",
+      "offline": "Offline",
+      "maintenance": "Maintenance",
+      "unknown": "Unknown"
     }
   },
   "dashboard": {
-    "title": "Dashboard",
+    "phaseNoticeBody": "Authentication, the setup wizard, roles and optional two-factor authentication work. Proxmox inventory arrives in phase 4 and the job system in phase 5. Counters below stay at zero until there is something real to count — they are not placeholders for hidden data.",
+    "phaseNoticeTitle": "This installation is running a phase 2 build",
     "subtitle": "Fleet overview",
-    "phaseNoticeTitle": "This installation is running a phase 1 build",
-    "phaseNoticeBody": "The platform foundation is in place: services, database, queue, localization and licence compliance. Authentication arrives in phase 2 and Proxmox inventory in phase 4. Counters below stay at zero until there is something real to count — they are not placeholders for hidden data.",
     "tiles": {
       "tenants": "Tenants",
       "clusters": "Clusters",
@@ -122,102 +122,105 @@
       "runningJobs": "Running jobs",
       "recentFailures": "Recent failures"
     },
-    "tileUnavailable": "Available from phase {phase}"
+    "tileUnavailable": "Available from phase {phase}",
+    "title": "Dashboard"
   },
   "system": {
-    "title": "Service status",
-    "subtitle": "Live readiness of this installation",
-    "overall": "Overall",
-    "checkName": "Component",
-    "checkStatus": "Status",
     "checkDetail": "Detail",
-    "latency": "{ms} ms",
+    "checkName": "Component",
     "checks": {
       "database": "PostgreSQL",
       "redis": "Redis",
       "worker": "Worker",
       "migrations": "Schema migrations"
     },
-    "migrationsSummary": "{applied} of {expected} applied",
-    "migrationsPending": "Pending: {names}",
-    "migrationsUnknown": "Database is ahead of this build: {names}",
-    "workerHint": "The worker has no network port by design; its liveness is reported through a heartbeat.",
-    "unreachable": "Could not reach the API.",
-    "lastChecked": "Checked at {time}",
+    "checkStatus": "Status",
     "detail": {
       "noHeartbeat": "No heartbeat recorded",
       "heartbeatInvalid": "Heartbeat is not a timestamp",
       "heartbeatStale": "Heartbeat is {seconds}s old",
       "heartbeatAge": "Heartbeat {seconds}s ago",
       "connectionFailed": "Connection failed: {message}"
-    }
+    },
+    "lastChecked": "Checked at {time}",
+    "latency": "{ms} ms",
+    "migrationsPending": "Pending: {names}",
+    "migrationsSummary": "{applied} of {expected} applied",
+    "migrationsUnknown": "Database is ahead of this build: {names}",
+    "overall": "Overall",
+    "subtitle": "Live readiness of this installation",
+    "title": "Service status",
+    "unreachable": "Could not reach the API.",
+    "workerHint": "The worker has no network port by design; its liveness is reported through a heartbeat."
   },
   "selftest": {
-    "title": "Queue self-test",
     "description": "Submits a job to the queue and waits for the worker to execute it. This proves the API, Redis and worker are connected — it does not touch any managed infrastructure.",
+    "disabled": "Diagnostic endpoints are disabled on this installation.",
+    "error": "Could not start the self-test.",
+    "failed": "Failed: {reason}",
+    "jobId": "Job {id}",
     "run": "Run self-test",
     "running": "Waiting for the worker…",
-    "jobId": "Job {id}",
     "succeeded": "Completed by {host} in {ms} ms",
-    "failed": "Failed: {reason}",
-    "disabled": "Diagnostic endpoints are disabled on this installation.",
-    "error": "Could not start the self-test."
+    "title": "Queue self-test"
   },
   "about": {
-    "title": "About",
-    "subtitle": "Build identity and licence",
-    "product": "Product",
-    "version": "Version",
-    "commit": "Build commit",
-    "builtAt": "Built at",
-    "license": "Licence",
-    "source": "Corresponding Source",
-    "viewSource": "Obtain the source of this build",
-    "sourceHeading": "Source code offer",
-    "unmodifiedNotice": "This build reports itself as unmodified: the source link points at the upstream repository.",
-    "modifiedNotice": "This build reports itself as modified. The operator has set the source link to their own repository, which must contain the Corresponding Source of the commit shown above.",
     "agplNotice": "{product} is free software under the GNU Affero General Public License v3 or later. Section 13 requires that anyone interacting with a modified version over a network be offered its Corresponding Source. That offer is the link above, and the build commit makes it verifiable.",
-    "trademarkNotice": "{product} and the {product} logo are trademarks of The Velnox Foundation. The AGPLv3 grants no trademark rights.",
+    "builtAt": "Built at",
+    "commit": "Build commit",
+    "environment": "Environment",
     "instance": "Installation",
-    "environment": "Environment"
+    "license": "Licence",
+    "modifiedNotice": "This build reports itself as modified. The operator has set the source link to their own repository, which must contain the Corresponding Source of the commit shown above.",
+    "product": "Product",
+    "source": "Corresponding Source",
+    "sourceHeading": "Source code offer",
+    "subtitle": "Build identity and licence",
+    "title": "About",
+    "trademarkNotice": "{product} and the {product} logo are trademarks of The Velnox Foundation. The AGPLv3 grants no trademark rights.",
+    "unmodifiedNotice": "This build reports itself as unmodified: the source link points at the upstream repository.",
+    "version": "Version",
+    "viewSource": "Obtain the source of this build"
   },
   "placeholder": {
+    "backToDashboard": "Back to dashboard",
+    "body": "This section has no implementation in this build. It is shown in the navigation so the intended shape of the product is visible, and it is labelled rather than filled with sample data — {product} does not display data it does not have.",
     "notBuiltYet": "Not built yet",
     "plannedIn": "Planned for phase {phase}",
-    "body": "This section has no implementation in this build. It is shown in the navigation so the intended shape of the product is visible, and it is labelled rather than filled with sample data — {product} does not display data it does not have.",
-    "backToDashboard": "Back to dashboard",
     "seeRoadmap": "The full phase plan is in docs/roadmap.md."
   },
   "auth": {
-    "signIn": "Sign in",
-    "signOut": "Sign out",
+    "apiUnreachableBody": "The interface is running but the API did not answer. Signing in will not work until it does.",
+    "apiUnreachableTitle": "Cannot reach the server",
     "email": "Email address",
-    "password": "Password",
-    "signInWithMicrosoft": "Sign in with Microsoft",
     "mfaPrompt": "Enter the code from your authenticator app",
-    "mfaRecoveryPrompt": "Enter a recovery code",
     "mfaRecommended": "Multi-factor authentication is strongly recommended for accounts that can manage infrastructure.",
-    "notImplementedNotice": "There is no authentication in this build. Do not expose this installation to an untrusted network."
+    "mfaRecommendedNotice": "Two-factor authentication is optional here. Turning it on for accounts that can manage infrastructure is the single largest improvement available to this installation.",
+    "mfaRecoveryPrompt": "Enter a recovery code",
+    "or": "or",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signInWithMicrosoft": "Sign in with Microsoft",
+    "signOut": "Sign out"
   },
   "setup": {
-    "title": "Set up {product}",
-    "subtitle": "Create the first administrator account. This can only be done once.",
-    "name": "Full name",
+    "complete": "Setup complete",
+    "createAccount": "Create administrator account",
     "email": "Email address",
+    "masterKeyWarning": "Store a backup of MASTER_ENCRYPTION_KEY now. Without it, every credential this installation stores becomes permanently unreadable.",
+    "masterKeyWarningTitle": "Back up your encryption key",
+    "name": "Full name",
+    "organisationName": "Organisation name",
+    "organisationNameHint": "Your own company. Customers are added later as tenants.",
     "password": "Password",
     "passwordConfirm": "Confirm password",
+    "passwordHint": "At least {min} characters. Length matters more than symbols.",
+    "passwordMismatch": "The two passwords do not match.",
     "passwordWeak": "This password does not meet the minimum strength requirement.",
-    "masterKeyWarning": "Store a backup of MASTER_ENCRYPTION_KEY now. Without it, every credential this installation stores becomes permanently unreadable.",
-    "complete": "Setup complete"
+    "subtitle": "Create the first administrator account. This can only be done once.",
+    "title": "Set up {product}"
   },
   "errors": {
-    "generic": "Something went wrong.",
-    "network": "Could not reach the server.",
-    "validation": "Some of the values submitted are not valid.",
-    "not_found": "Not found.",
-    "feature": {
-      "disabled": "That feature is not enabled on this installation."
-    },
     "auth": {
       "invalid_credentials": "Email address or password is incorrect.",
       "mfa_required": "A second authentication factor is required.",
@@ -229,43 +232,105 @@
       "forbidden": "You do not have permission to perform this action.",
       "tenant_forbidden": "This resource belongs to another tenant."
     },
-    "setup": {
-      "already_initialized": "This installation has already been set up."
+    "ceph": {
+      "not_healthy": "Ceph reports {status}. A change may only start at HEALTH_OK.",
+      "pgs_not_clean": "{count, plural, one {# placement group is} other {# placement groups are}} not active+clean.",
+      "version_mismatch": "Not all Ceph daemons run the same version. Complete the running upgrade first."
     },
     "cluster": {
       "unreachable": "Cluster {cluster} could not be reached.",
       "quorum_at_risk": "Cluster {cluster} would lose quorum: {available} of {required} voting nodes would remain available.",
       "already_degraded": "Cluster {cluster} is not healthy. Resolve this before starting a change."
     },
-    "node": {
-      "fingerprint_mismatch": "The TLS certificate of {node} does not match the pinned fingerprint. The connection was refused.",
-      "host_key_mismatch": "The SSH host key of {node} does not match the pinned key. The connection was refused."
+    "credential": {
+      "rotation_verify_failed": "The new password was applied but could not be verified. Both versions have been kept and the credential is flagged for attention."
     },
-    "ceph": {
-      "not_healthy": "Ceph reports {status}. A change may only start at HEALTH_OK.",
-      "pgs_not_clean": "{count, plural, one {# placement group is} other {# placement groups are}} not active+clean.",
-      "version_mismatch": "Not all Ceph daemons run the same version. Complete the running upgrade first."
+    "feature": {
+      "disabled": "That feature is not enabled on this installation."
     },
+    "generic": "Something went wrong.",
     "job": {
       "concurrent_run": "Another job is already running against {target}.",
       "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe.",
       "not_found": "That job no longer exists."
     },
+    "network": "Could not reach the server.",
+    "node": {
+      "fingerprint_mismatch": "The TLS certificate of {node} does not match the pinned fingerprint. The connection was refused.",
+      "host_key_mismatch": "The SSH host key of {node} does not match the pinned key. The connection was refused."
+    },
+    "not_found": "Not found.",
+    "setup": {
+      "already_initialized": "This installation has already been set up."
+    },
     "upgrade": {
       "blockers_present": "{count, plural, one {# blocker} other {# blockers}} must be resolved before this upgrade can start.",
       "unparsed_output": "Preflight output contained lines this version of Velnox does not recognise. They are treated as blockers and shown verbatim."
     },
-    "credential": {
-      "rotation_verify_failed": "The new password was applied but could not be verified. Both versions have been kept and the credential is flagged for attention."
-    }
+    "validation": "Some of the values submitted are not valid."
   },
   "job": {
+    "approvalPrompt": "Review the exact changes below before approving.",
+    "approve": "Approve",
     "cancel": "Cancel job",
     "cancelHint": "The job stops at the next safe boundary. Work already in progress is allowed to finish or roll back.",
-    "retry": "Retry",
-    "approve": "Approve",
+    "operatorAssisted": "This step requires a manual action. {product} will not report success until it has verified the result itself.",
     "reject": "Reject",
-    "approvalPrompt": "Review the exact changes below before approving.",
-    "operatorAssisted": "This step requires a manual action. {product} will not report success until it has verified the result itself."
+    "retry": "Retry"
+  },
+  "mfa": {
+    "badgeEnrolled": "Enabled",
+    "badgeNotEnrolled": "Not enabled",
+    "challengeTitle": "Two-factor authentication",
+    "codeLabel": "Six-digit code",
+    "confirmEnrolment": "Confirm and continue",
+    "continue": "Continue",
+    "copied": "Copied",
+    "copy": "Copy",
+    "disableAction": "Turn off two-factor authentication",
+    "disableBlockedBody": "This installation requires two-factor authentication, so you will be asked to set it up again at your next sign-in.",
+    "disableBlockedTitle": "Required for this account",
+    "disableCodeHint": "Confirm with a current code from your authenticator app.",
+    "download": "Download",
+    "enrolAction": "Set up two-factor authentication",
+    "enrolCodeHint": "Enter the code your app shows right now.",
+    "enrolOptionalBody": "Scan the code with an authenticator app, then enter the code it shows.",
+    "enrolRequiredBody": "This installation requires a second factor. Scan the code with an authenticator app to continue.",
+    "enrolTitle": "Set up two-factor authentication",
+    "enrolUnavailableBody": "The server did not return a setup code. Try again in a moment.",
+    "enrolUnavailableTitle": "Could not start enrolment",
+    "manualEntry": "Or enter this key manually:",
+    "recoveryAcknowledge": "I have saved these codes somewhere safe.",
+    "recoveryBody": "Each code works once, and they are the only way in if you lose your authenticator.",
+    "recoveryCodeLabel": "Recovery code",
+    "recoveryRemaining": "{count, plural, =0 {No recovery codes left} one {# recovery code left} other {# recovery codes left}}",
+    "recoveryTitle": "Save your recovery codes",
+    "recoveryWarning": "They cannot be shown again. Store them somewhere you can reach without this account.",
+    "recoveryWarningTitle": "These are shown only once",
+    "regenerateRecoveryCodes": "Generate new recovery codes",
+    "requiredHere": "This installation requires two-factor authentication for your account.",
+    "sectionDescription": "A code from an authenticator app, in addition to your password.",
+    "sectionTitle": "Two-factor authentication",
+    "signedInAs": "Signed in as {email}.",
+    "statusEnrolled": "Two-factor authentication is on",
+    "statusNotEnrolled": "Two-factor authentication is off",
+    "useAuthenticator": "Use your authenticator app instead",
+    "useRecoveryCode": "Use a recovery code instead",
+    "verify": "Verify"
+  },
+  "security": {
+    "subtitle": "Settings that apply to your own account."
+  },
+  "users": {
+    "columnLastLogin": "Last sign-in",
+    "columnMfa": "Two-factor",
+    "columnName": "Name",
+    "columnRoles": "Roles",
+    "listTitle": "{count, plural, one {# account} other {# accounts}}",
+    "managementPendingBody": "Inviting users, assigning roles and deactivating accounts arrive with the roles interface. The accounts above are read from the API.",
+    "managementPendingTitle": "Creating and editing users",
+    "mfaGapTitle": "{count, plural, one {# privileged account without a second factor} other {# privileged accounts without a second factor}}",
+    "subtitle": "Accounts that can sign in to this installation.",
+    "you": "(you)"
   }
 }

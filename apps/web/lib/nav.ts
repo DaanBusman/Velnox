@@ -60,9 +60,10 @@ export const NAVIGATION: NavGroup[] = [
   {
     labelKey: 'sectionAdministration',
     items: [
-      { key: 'users', href: '/users', phase: 2 },
+      { key: 'users', href: '/users', phase: null },
       { key: 'rolesPermissions', href: '/roles', phase: 2 },
       { key: 'auditLog', href: '/audit-log', phase: 2 },
+      { key: 'security', href: '/settings/security', phase: null },
       { key: 'settings', href: '/settings/about', phase: null },
     ],
   },

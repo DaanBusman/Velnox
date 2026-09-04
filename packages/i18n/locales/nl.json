@@ -7,80 +7,87 @@
     "note": "Vertaling van en.json. Termen volgen glossary.csv; termen met translate=no blijven onvertaald."
   },
   "common": {
-    "save": "Opslaan",
     "cancel": "Annuleren",
+    "close": "Sluiten",
     "confirm": "Bevestigen",
     "delete": "Verwijderen",
-    "search": "Zoeken",
     "filter": "Filteren",
-    "refresh": "Vernieuwen",
-    "retry": "Opnieuw proberen",
-    "close": "Sluiten",
+    "lastSeen": "Laatst gezien {time}",
     "loading": "Laden…",
     "never": "Nooit",
-    "unknown": "Onbekend",
-    "notAvailable": "Niet beschikbaar",
-    "yes": "Ja",
     "no": "Nee",
+    "notAvailable": "Niet beschikbaar",
+    "refresh": "Vernieuwen",
+    "requiresPermission": "Vereist het recht {permission}",
+    "retry": "Opnieuw proberen",
+    "save": "Opslaan",
+    "search": "Zoeken",
     "selected": "{count, plural, =0 {Niets geselecteerd} one {# geselecteerd} other {# geselecteerd}}",
-    "lastSeen": "Laatst gezien {time}",
-    "requiresPermission": "Vereist het recht {permission}"
+    "unknown": "Onbekend",
+    "yes": "Ja"
   },
   "layout": {
-    "skipToContent": "Naar de inhoud",
+    "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
+    "footerSource": "Broncode",
+    "language": "Taal",
+    "notifications": "Notificaties",
     "primaryNavigation": "Hoofdnavigatie",
-    "sectionInfrastructure": "Infrastructuur",
-    "sectionOperations": "Beheer",
-    "sectionAdministration": "Administratie",
     "searchPlaceholder": "Zoeken…",
     "searchUnavailable": "Globaal zoeken komt met de inventaris in fase 4.",
-    "notifications": "Notificaties",
-    "userMenu": "Account",
+    "sectionAdministration": "Administratie",
+    "sectionInfrastructure": "Infrastructuur",
+    "sectionOperations": "Beheer",
+    "skipToContent": "Naar de inhoud",
     "tenantSelector": "Tenant",
     "tenantSelectorUnavailable": "Tenants komen in fase 3",
-    "language": "Taal",
     "theme": "Thema",
-    "themeLight": "Licht",
     "themeDark": "Donker",
+    "themeLight": "Licht",
     "themeSystem": "Systeem",
-    "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
-    "footerSource": "Broncode"
+    "userMenu": "Account"
   },
   "nav": {
-    "dashboard": "Dashboard",
-    "tenants": "Tenants",
-    "sites": "Locaties",
-    "infrastructure": "Infrastructuur",
+    "about": "Over",
+    "alerts": "Meldingen",
+    "auditLog": "Auditlog",
+    "automation": "Automatisering",
     "clusters": "Clusters",
-    "nodes": "Nodes",
-    "virtualMachines": "Virtuele machines",
     "containers": "Containers",
-    "storage": "Opslag",
-    "networks": "Netwerken",
-    "updates": "Updates",
+    "dashboard": "Dashboard",
+    "infrastructure": "Infrastructuur",
+    "jobs": "Jobs",
     "majorUpgrades": "Major upgrades",
     "migrations": "Migraties",
-    "automation": "Automatisering",
-    "jobs": "Jobs",
-    "alerts": "Meldingen",
+    "networks": "Netwerken",
+    "nodes": "Nodes",
     "reports": "Rapporten",
-    "users": "Gebruikers",
     "rolesPermissions": "Rollen en rechten",
-    "auditLog": "Auditlog",
+    "security": "Beveiliging",
     "settings": "Instellingen",
-    "about": "Over"
+    "sites": "Locaties",
+    "storage": "Opslag",
+    "tenants": "Tenants",
+    "updates": "Updates",
+    "users": "Gebruikers",
+    "virtualMachines": "Virtuele machines"
   },
   "status": {
+    "check": {
+      "pass": "Geslaagd",
+      "info": "Info",
+      "warning": "Waarschuwing",
+      "blocker": "Blokkade",
+      "unknown": "Niet herkend — behandeld als blokkade"
+    },
+    "dependency": {
+      "ok": "Operationeel",
+      "degraded": "Verminderd",
+      "down": "Niet beschikbaar"
+    },
     "health": {
       "ok": "OK",
       "warning": "Waarschuwing",
       "critical": "Kritiek",
-      "unknown": "Onbekend"
-    },
-    "node": {
-      "online": "Online",
-      "offline": "Offline",
-      "maintenance": "Onderhoud",
       "unknown": "Onbekend"
     },
     "job": {
@@ -95,24 +102,17 @@
       "rolled_back": "Teruggedraaid",
       "cancelled": "Geannuleerd"
     },
-    "check": {
-      "pass": "Geslaagd",
-      "info": "Info",
-      "warning": "Waarschuwing",
-      "blocker": "Blokkade",
-      "unknown": "Niet herkend — behandeld als blokkade"
-    },
-    "dependency": {
-      "ok": "Operationeel",
-      "degraded": "Verminderd",
-      "down": "Niet beschikbaar"
+    "node": {
+      "online": "Online",
+      "offline": "Offline",
+      "maintenance": "Onderhoud",
+      "unknown": "Onbekend"
     }
   },
   "dashboard": {
-    "title": "Dashboard",
+    "phaseNoticeBody": "Authenticatie, de installatiewizard, rollen en optionele tweefactorauthenticatie werken. Proxmox-inventaris komt in fase 4 en het taaksysteem in fase 5. De tellers hieronder blijven op nul tot er werkelijk iets te tellen valt — het zijn geen plaatshouders voor verborgen gegevens.",
+    "phaseNoticeTitle": "Deze installatie draait een fase 2-build",
     "subtitle": "Overzicht van de omgeving",
-    "phaseNoticeTitle": "Deze installatie draait een fase 1-build",
-    "phaseNoticeBody": "De basis van het platform staat: services, database, wachtrij, lokalisatie en licentienaleving. Authenticatie komt in fase 2 en Proxmox-inventaris in fase 4. De tellers hieronder blijven op nul tot er werkelijk iets te tellen valt — het zijn geen plaatshouders voor verborgen gegevens.",
     "tiles": {
       "tenants": "Tenants",
       "clusters": "Clusters",
@@ -123,102 +123,105 @@
       "runningJobs": "Actieve jobs",
       "recentFailures": "Recente fouten"
     },
-    "tileUnavailable": "Beschikbaar vanaf fase {phase}"
+    "tileUnavailable": "Beschikbaar vanaf fase {phase}",
+    "title": "Dashboard"
   },
   "system": {
-    "title": "Servicestatus",
-    "subtitle": "Actuele gereedheid van deze installatie",
-    "overall": "Totaal",
-    "checkName": "Component",
-    "checkStatus": "Status",
     "checkDetail": "Detail",
-    "latency": "{ms} ms",
+    "checkName": "Component",
     "checks": {
       "database": "PostgreSQL",
       "redis": "Redis",
       "worker": "Worker",
       "migrations": "Schemamigraties"
     },
-    "migrationsSummary": "{applied} van {expected} toegepast",
-    "migrationsPending": "Openstaand: {names}",
-    "migrationsUnknown": "De database loopt voor op deze build: {names}",
-    "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld.",
-    "unreachable": "De API is niet bereikbaar.",
-    "lastChecked": "Gecontroleerd om {time}",
+    "checkStatus": "Status",
     "detail": {
       "noHeartbeat": "Geen hartslag vastgelegd",
       "heartbeatInvalid": "Hartslag is geen tijdstempel",
       "heartbeatStale": "Hartslag is {seconds}s oud",
       "heartbeatAge": "Hartslag {seconds}s geleden",
       "connectionFailed": "Verbinding mislukt: {message}"
-    }
+    },
+    "lastChecked": "Gecontroleerd om {time}",
+    "latency": "{ms} ms",
+    "migrationsPending": "Openstaand: {names}",
+    "migrationsSummary": "{applied} van {expected} toegepast",
+    "migrationsUnknown": "De database loopt voor op deze build: {names}",
+    "overall": "Totaal",
+    "subtitle": "Actuele gereedheid van deze installatie",
+    "title": "Servicestatus",
+    "unreachable": "De API is niet bereikbaar.",
+    "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld."
   },
   "selftest": {
-    "title": "Zelftest van de wachtrij",
     "description": "Zet een job in de wachtrij en wacht tot de worker die uitvoert. Dit bewijst dat API, Redis en worker met elkaar verbonden zijn — er wordt geen beheerde infrastructuur aangeraakt.",
+    "disabled": "Diagnostische endpoints staan uit op deze installatie.",
+    "error": "De zelftest kon niet worden gestart.",
+    "failed": "Mislukt: {reason}",
+    "jobId": "Job {id}",
     "run": "Zelftest uitvoeren",
     "running": "Wachten op de worker…",
-    "jobId": "Job {id}",
     "succeeded": "Voltooid door {host} in {ms} ms",
-    "failed": "Mislukt: {reason}",
-    "disabled": "Diagnostische endpoints staan uit op deze installatie.",
-    "error": "De zelftest kon niet worden gestart."
+    "title": "Zelftest van de wachtrij"
   },
   "about": {
-    "title": "Over",
-    "subtitle": "Buildgegevens en licentie",
-    "product": "Product",
-    "version": "Versie",
-    "commit": "Build-commit",
-    "builtAt": "Gebouwd op",
-    "license": "Licentie",
-    "source": "Bijbehorende broncode",
-    "viewSource": "Broncode van deze build opvragen",
-    "sourceHeading": "Aanbod van broncode",
-    "unmodifiedNotice": "Deze build meldt zichzelf als ongewijzigd: de bronlink verwijst naar de upstream-repository.",
-    "modifiedNotice": "Deze build meldt zichzelf als gewijzigd. De beheerder heeft de bronlink naar een eigen repository gezet; die moet de bijbehorende broncode bevatten van de commit die hierboven staat.",
     "agplNotice": "{product} is vrije software onder de GNU Affero General Public License v3 of later. Artikel 13 vereist dat wie een gewijzigde versie via een netwerk gebruikt, de bijbehorende broncode aangeboden krijgt. Dat aanbod is de link hierboven, en de build-commit maakt het verifieerbaar.",
-    "trademarkNotice": "{product} en het {product}-logo zijn handelsmerken van The Velnox Foundation. De AGPLv3 verleent geen rechten op handelsmerken.",
+    "builtAt": "Gebouwd op",
+    "commit": "Build-commit",
+    "environment": "Omgeving",
     "instance": "Installatie",
-    "environment": "Omgeving"
+    "license": "Licentie",
+    "modifiedNotice": "Deze build meldt zichzelf als gewijzigd. De beheerder heeft de bronlink naar een eigen repository gezet; die moet de bijbehorende broncode bevatten van de commit die hierboven staat.",
+    "product": "Product",
+    "source": "Bijbehorende broncode",
+    "sourceHeading": "Aanbod van broncode",
+    "subtitle": "Buildgegevens en licentie",
+    "title": "Over",
+    "trademarkNotice": "{product} en het {product}-logo zijn handelsmerken van The Velnox Foundation. De AGPLv3 verleent geen rechten op handelsmerken.",
+    "unmodifiedNotice": "Deze build meldt zichzelf als ongewijzigd: de bronlink verwijst naar de upstream-repository.",
+    "version": "Versie",
+    "viewSource": "Broncode van deze build opvragen"
   },
   "placeholder": {
+    "backToDashboard": "Terug naar dashboard",
+    "body": "Dit onderdeel is in deze build niet geïmplementeerd. Het staat in de navigatie zodat de beoogde vorm van het product zichtbaar is, en het is als zodanig gelabeld in plaats van gevuld met voorbeeldgegevens — {product} toont geen gegevens die het niet heeft.",
     "notBuiltYet": "Nog niet gebouwd",
     "plannedIn": "Gepland voor fase {phase}",
-    "body": "Dit onderdeel is in deze build niet geïmplementeerd. Het staat in de navigatie zodat de beoogde vorm van het product zichtbaar is, en het is als zodanig gelabeld in plaats van gevuld met voorbeeldgegevens — {product} toont geen gegevens die het niet heeft.",
-    "backToDashboard": "Terug naar dashboard",
     "seeRoadmap": "Het volledige faseplan staat in docs/roadmap.md."
   },
   "auth": {
-    "signIn": "Inloggen",
-    "signOut": "Uitloggen",
+    "apiUnreachableBody": "De interface draait, maar de API antwoordt niet. Inloggen werkt pas als dat wel het geval is.",
+    "apiUnreachableTitle": "Server niet bereikbaar",
     "email": "E-mailadres",
-    "password": "Wachtwoord",
-    "signInWithMicrosoft": "Inloggen met Microsoft",
     "mfaPrompt": "Voer de code uit je authenticator-app in",
-    "mfaRecoveryPrompt": "Voer een herstelcode in",
     "mfaRecommended": "Meervoudige authenticatie wordt sterk aanbevolen voor accounts die infrastructuur kunnen beheren.",
-    "notImplementedNotice": "Deze build kent geen authenticatie. Stel deze installatie niet bloot aan een onvertrouwd netwerk."
+    "mfaRecommendedNotice": "Tweefactorauthenticatie is hier optioneel. Het inschakelen voor accounts die infrastructuur kunnen beheren is de grootste verbetering die deze installatie kan doorvoeren.",
+    "mfaRecoveryPrompt": "Voer een herstelcode in",
+    "or": "of",
+    "password": "Wachtwoord",
+    "signIn": "Inloggen",
+    "signInWithMicrosoft": "Inloggen met Microsoft",
+    "signOut": "Uitloggen"
   },
   "setup": {
-    "title": "{product} instellen",
-    "subtitle": "Maak het eerste beheerdersaccount aan. Dit kan slechts één keer.",
-    "name": "Volledige naam",
+    "complete": "Installatie voltooid",
+    "createAccount": "Beheerdersaccount aanmaken",
     "email": "E-mailadres",
+    "masterKeyWarning": "Maak nu een back-up van MASTER_ENCRYPTION_KEY. Zonder deze sleutel wordt elk credential dat deze installatie opslaat definitief onleesbaar.",
+    "masterKeyWarningTitle": "Maak een back-up van uw encryptiesleutel",
+    "name": "Volledige naam",
+    "organisationName": "Naam van de organisatie",
+    "organisationNameHint": "Uw eigen bedrijf. Klanten voegt u later toe als tenants.",
     "password": "Wachtwoord",
     "passwordConfirm": "Wachtwoord bevestigen",
+    "passwordHint": "Minimaal {min} tekens. Lengte telt zwaarder dan symbolen.",
+    "passwordMismatch": "De twee wachtwoorden komen niet overeen.",
     "passwordWeak": "Dit wachtwoord voldoet niet aan de minimale sterkte-eis.",
-    "masterKeyWarning": "Maak nu een back-up van MASTER_ENCRYPTION_KEY. Zonder deze sleutel wordt elk credential dat deze installatie opslaat definitief onleesbaar.",
-    "complete": "Installatie voltooid"
+    "subtitle": "Maak het eerste beheerdersaccount aan. Dit kan slechts één keer.",
+    "title": "{product} instellen"
   },
   "errors": {
-    "generic": "Er is iets misgegaan.",
-    "network": "De server is niet bereikbaar.",
-    "validation": "Een deel van de ingevoerde waarden is niet geldig.",
-    "not_found": "Niet gevonden.",
-    "feature": {
-      "disabled": "Die functie staat niet aan op deze installatie."
-    },
     "auth": {
       "invalid_credentials": "E-mailadres of wachtwoord is onjuist.",
       "mfa_required": "Een tweede authenticatiefactor is vereist.",
@@ -230,43 +233,105 @@
       "forbidden": "Je hebt geen recht om deze actie uit te voeren.",
       "tenant_forbidden": "Deze resource hoort bij een andere tenant."
     },
-    "setup": {
-      "already_initialized": "Deze installatie is al ingesteld."
+    "ceph": {
+      "not_healthy": "Ceph meldt {status}. Een wijziging mag alleen starten bij HEALTH_OK.",
+      "pgs_not_clean": "{count, plural, one {# placement group is} other {# placement groups zijn}} niet active+clean.",
+      "version_mismatch": "Niet alle Ceph-daemons draaien dezelfde versie. Voltooi eerst de lopende upgrade."
     },
     "cluster": {
       "unreachable": "Cluster {cluster} is niet bereikbaar.",
       "quorum_at_risk": "Cluster {cluster} zou quorum verliezen: {available} van {required} stemmende nodes zouden beschikbaar blijven.",
       "already_degraded": "Cluster {cluster} is niet gezond. Los dit op voordat je een wijziging start."
     },
-    "node": {
-      "fingerprint_mismatch": "Het TLS-certificaat van {node} komt niet overeen met de vastgelegde vingerafdruk. De verbinding is geweigerd.",
-      "host_key_mismatch": "De SSH-hostsleutel van {node} komt niet overeen met de vastgelegde sleutel. De verbinding is geweigerd."
+    "credential": {
+      "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."
     },
-    "ceph": {
-      "not_healthy": "Ceph meldt {status}. Een wijziging mag alleen starten bij HEALTH_OK.",
-      "pgs_not_clean": "{count, plural, one {# placement group is} other {# placement groups zijn}} niet active+clean.",
-      "version_mismatch": "Niet alle Ceph-daemons draaien dezelfde versie. Voltooi eerst de lopende upgrade."
+    "feature": {
+      "disabled": "Die functie staat niet aan op deze installatie."
     },
+    "generic": "Er is iets misgegaan.",
     "job": {
       "concurrent_run": "Er draait al een job op {target}.",
       "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is.",
       "not_found": "Die job bestaat niet meer."
     },
+    "network": "De server is niet bereikbaar.",
+    "node": {
+      "fingerprint_mismatch": "Het TLS-certificaat van {node} komt niet overeen met de vastgelegde vingerafdruk. De verbinding is geweigerd.",
+      "host_key_mismatch": "De SSH-hostsleutel van {node} komt niet overeen met de vastgelegde sleutel. De verbinding is geweigerd."
+    },
+    "not_found": "Niet gevonden.",
+    "setup": {
+      "already_initialized": "Deze installatie is al ingesteld."
+    },
     "upgrade": {
       "blockers_present": "{count, plural, one {# blokkade} other {# blokkades}} moeten worden opgelost voordat deze upgrade kan starten.",
       "unparsed_output": "De preflight-uitvoer bevatte regels die deze versie van Velnox niet herkent. Ze worden als blokkade behandeld en letterlijk getoond."
     },
-    "credential": {
-      "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."
-    }
+    "validation": "Een deel van de ingevoerde waarden is niet geldig."
   },
   "job": {
+    "approvalPrompt": "Beoordeel de exacte wijzigingen hieronder voordat je goedkeurt.",
+    "approve": "Goedkeuren",
     "cancel": "Job annuleren",
     "cancelHint": "De job stopt op het eerstvolgende veilige punt. Werk dat al bezig is mag afronden of terugdraaien.",
-    "retry": "Opnieuw proberen",
-    "approve": "Goedkeuren",
+    "operatorAssisted": "Deze stap vereist een handmatige actie. {product} meldt pas succes wanneer het resultaat zelf is geverifieerd.",
     "reject": "Afwijzen",
-    "approvalPrompt": "Beoordeel de exacte wijzigingen hieronder voordat je goedkeurt.",
-    "operatorAssisted": "Deze stap vereist een handmatige actie. {product} meldt pas succes wanneer het resultaat zelf is geverifieerd."
+    "retry": "Opnieuw proberen"
+  },
+  "mfa": {
+    "badgeEnrolled": "Ingeschakeld",
+    "badgeNotEnrolled": "Niet ingeschakeld",
+    "challengeTitle": "Tweefactorauthenticatie",
+    "codeLabel": "Zescijferige code",
+    "confirmEnrolment": "Bevestigen en doorgaan",
+    "continue": "Doorgaan",
+    "copied": "Gekopieerd",
+    "copy": "Kopiëren",
+    "disableAction": "Tweefactorauthenticatie uitschakelen",
+    "disableBlockedBody": "Deze installatie vereist tweefactorauthenticatie, dus bij uw volgende aanmelding wordt u gevraagd het opnieuw in te stellen.",
+    "disableBlockedTitle": "Vereist voor dit account",
+    "disableCodeHint": "Bevestig met een actuele code uit uw authenticator-app.",
+    "download": "Downloaden",
+    "enrolAction": "Tweefactorauthenticatie instellen",
+    "enrolCodeHint": "Voer de code in die uw app op dit moment toont.",
+    "enrolOptionalBody": "Scan de code met een authenticator-app en voer daarna de code in die de app toont.",
+    "enrolRequiredBody": "Deze installatie vereist een tweede factor. Scan de code met een authenticator-app om verder te gaan.",
+    "enrolTitle": "Tweefactorauthenticatie instellen",
+    "enrolUnavailableBody": "De server gaf geen instelcode terug. Probeer het over een moment opnieuw.",
+    "enrolUnavailableTitle": "Instellen kon niet worden gestart",
+    "manualEntry": "Of voer deze sleutel handmatig in:",
+    "recoveryAcknowledge": "Ik heb deze codes op een veilige plek bewaard.",
+    "recoveryBody": "Elke code werkt eenmaal en ze zijn de enige manier om binnen te komen als u uw authenticator kwijtraakt.",
+    "recoveryCodeLabel": "Herstelcode",
+    "recoveryRemaining": "{count, plural, =0 {Geen herstelcodes meer over} one {# herstelcode over} other {# herstelcodes over}}",
+    "recoveryTitle": "Bewaar uw herstelcodes",
+    "recoveryWarning": "Ze kunnen niet opnieuw worden getoond. Bewaar ze op een plek die u kunt bereiken zonder dit account.",
+    "recoveryWarningTitle": "Deze worden maar één keer getoond",
+    "regenerateRecoveryCodes": "Nieuwe herstelcodes genereren",
+    "requiredHere": "Deze installatie vereist tweefactorauthenticatie voor uw account.",
+    "sectionDescription": "Een code uit een authenticator-app, naast uw wachtwoord.",
+    "sectionTitle": "Tweefactorauthenticatie",
+    "signedInAs": "Aangemeld als {email}.",
+    "statusEnrolled": "Tweefactorauthenticatie staat aan",
+    "statusNotEnrolled": "Tweefactorauthenticatie staat uit",
+    "useAuthenticator": "Gebruik in plaats daarvan uw authenticator-app",
+    "useRecoveryCode": "Gebruik in plaats daarvan een herstelcode",
+    "verify": "Verifiëren"
+  },
+  "security": {
+    "subtitle": "Instellingen die gelden voor uw eigen account."
+  },
+  "users": {
+    "columnLastLogin": "Laatste aanmelding",
+    "columnMfa": "Tweefactor",
+    "columnName": "Naam",
+    "columnRoles": "Rollen",
+    "listTitle": "{count, plural, one {# account} other {# accounts}}",
+    "managementPendingBody": "Gebruikers uitnodigen, rollen toewijzen en accounts deactiveren komen met het rollenscherm. De accounts hierboven worden uit de API gelezen.",
+    "managementPendingTitle": "Gebruikers aanmaken en bewerken",
+    "mfaGapTitle": "{count, plural, one {# account met verhoogde rechten zonder tweede factor} other {# accounts met verhoogde rechten zonder tweede factor}}",
+    "subtitle": "Accounts die kunnen inloggen op deze installatie.",
+    "you": "(u)"
   }
 }

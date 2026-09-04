@@ -153,7 +153,7 @@ export class AuthGuard implements CanActivate {
     request.velnoxSessionId = session.id;
     // Trust the session row, not the token claim: the token was issued before
     // the factor was satisfied and is not reissued until the next refresh.
-    request.velnoxMfaSatisfied = !principal.mfaRequired || session.mfaSatisfiedAt !== null;
+    request.velnoxMfaSatisfied = !principal.mfaOwed || session.mfaSatisfiedAt !== null;
 
     setPrincipal({
       userId: principal.user.id,

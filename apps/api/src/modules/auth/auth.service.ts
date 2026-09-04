@@ -30,8 +30,16 @@ export interface Principal {
   isMspRoot: boolean;
   /** The policy in force for this user: the stricter of installation and tenant. */
   mfaPolicy: MfaPolicy;
-  /** Whether that policy actually requires a second factor for this user. */
+  /** Whether the policy in force requires a second factor for this user. */
   mfaRequired: boolean;
+  /**
+   * Whether this sign-in must present a second factor.
+   *
+   * Wider than `mfaRequired`: someone who enrolled voluntarily is challenged
+   * too. A factor that is only checked when a policy demands it is decoration —
+   * an attacker holding the password would simply never be asked for it.
+   */
+  mfaOwed: boolean;
 }
 
 interface EstablishedSession {
@@ -127,16 +135,7 @@ export class AuthService {
 
     const principal = await this.buildPrincipal(user);
 
-    /*
-     * Deliberately not `&& user.mfaEnrolled`.
-     *
-     * Tying this to enrolment would mean a required policy is satisfied by never
-     * enrolling — the accounts that ignored the requirement would be exactly the
-     * ones it stopped applying to. So the session is held in the restricted
-     * state either way; the difference is only whether the user answers a
-     * challenge or has to enrol first.
-     */
-    const needsSecondFactor = principal.mfaRequired;
+    const needsSecondFactor = principal.mfaOwed;
 
     const { session, refreshToken } = await this.sessions.create(user.id, context, {
       // A session only counts as satisfied when no second factor is owed.
@@ -175,7 +174,7 @@ export class AuthService {
       actorId: user.id,
       actorLabel: user.email,
       tenantId: user.tenantId,
-      metadata: { mfa: user.mfaEnrolled ? 'satisfied_not_required' : 'not_enrolled' },
+      metadata: { mfa: 'not_owed' },
     });
 
     return { status: 'authenticated', ...common };
@@ -217,14 +216,19 @@ export class AuthService {
     const tenantPolicy = readTenantMfaPolicy(tenant?.settings);
     const mfaPolicy = strictestPolicy(installationPolicy, tenantPolicy);
 
+    const obligation = resolveMfaObligation({
+      policy: mfaPolicy,
+      holdsPrivilegedPermission: holdsPrivilegedPermission(grants),
+      enrolled: user.mfaEnrolled,
+    });
+
     return {
       user,
       grants,
       isMspRoot: tenant?.kind === 'MSP_ROOT',
       mfaPolicy,
-      mfaRequired:
-        mfaPolicy === 'REQUIRED' ||
-        (mfaPolicy === 'REQUIRED_FOR_PRIVILEGED' && holdsPrivilegedPermission(grants)),
+      mfaRequired: obligation.required,
+      mfaOwed: obligation.owed,
     };
   }
 
@@ -290,4 +294,32 @@ const POLICY_RANK: Record<MfaPolicy, number> = {
 /** The effective policy is the stricter of the two, never the looser. */
 export function strictestPolicy(a: MfaPolicy, b: MfaPolicy): MfaPolicy {
   return POLICY_RANK[a] >= POLICY_RANK[b] ? a : b;
+}
+
+/**
+ * Whether a sign-in owes a second factor, and whether a policy demands one.
+ *
+ * Pure, and separate from everything around it, because this is the decision
+ * that says who gets in. Both halves have failed in obvious-looking ways:
+ *
+ *   - requiring a factor only from users who have one means a REQUIRED policy is
+ *     satisfied by never enrolling, so it stops applying to precisely the
+ *     accounts that ignored it;
+ *   - asking for a factor only when a policy demands one means a user who
+ *     enrolled voluntarily is never challenged, and their factor protects
+ *     nothing at all.
+ *
+ * So `required` is about the policy, `owed` is about this sign-in, and they are
+ * not the same question.
+ */
+export function resolveMfaObligation(input: {
+  policy: MfaPolicy;
+  holdsPrivilegedPermission: boolean;
+  enrolled: boolean;
+}): { required: boolean; owed: boolean } {
+  const required =
+    input.policy === 'REQUIRED' ||
+    (input.policy === 'REQUIRED_FOR_PRIVILEGED' && input.holdsPrivilegedPermission);
+
+  return { required, owed: required || input.enrolled };
 }

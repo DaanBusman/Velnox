@@ -9,6 +9,7 @@ import { SystemModule } from './modules/system/system.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SetupModule } from './modules/setup/setup.module';
+import { UsersModule } from './modules/users/users.module';
 
 /**
  * Application composition root.
@@ -28,6 +29,7 @@ import { SetupModule } from './modules/setup/setup.module';
     AuditModule,
     AuthModule,
     SetupModule,
+    UsersModule,
     HealthModule,
     SystemModule,
   ],
