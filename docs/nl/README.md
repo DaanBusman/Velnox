@@ -13,15 +13,26 @@ auditlogging.
 
 ---
 
-## ⚠️ Projectstatus: fase 1 van 15
+## Projectstatus: fase 2 van 15
 
-De **basis** is gebouwd en draait: zes services onder Docker Compose, PostgreSQL met migraties, een
-door Redis ondersteunde jobwachtrij met worker, Engelse en Nederlandse lokalisatie, gestructureerde
-logging met secretredactie, health- en readiness-probes, OpenAPI, en naleving van AGPL artikel 13.
+De **basis** draait: zes services onder Docker Compose, PostgreSQL met migraties, een door Redis
+ondersteunde jobwachtrij met worker, Engelse en Nederlandse lokalisatie, gestructureerde logging met
+secretredactie, health- en readiness-probes, OpenAPI, en naleving van AGPL artikel 13.
 
-> **Deze build kent geen authenticatie.** Elk endpoint staat open en elke pagina is publiek.
-> Authenticatie en RBAC komen in fase 2, multi-tenancy in fase 3, Proxmox-inventaris in fase 4.
-> **Zet dit niet op een netwerk dat je niet volledig beheert.**
+**Fase 2 voegt de toegang toe.** Een installatiewizard maakt de eerste beheerder aan en sluit daarna
+permanent — er bestaan op geen enkel moment standaardinloggegevens. Aanmelden gebruikt Argon2id, een
+kortlevend access-token en een roterend refresh-token waarvan hergebruik de hele sessiefamilie
+intrekt. Optionele TOTP-tweefactorauthenticatie is er, met herstelcodes die elk één keer werken, en
+een beleid kan het verplichten voor iedereen of alleen voor accounts die klantinfrastructuur kunnen
+wijzigen. Elk endpoint dat niet bewust publiek is, vereist een sessie, en elke authenticatie- en
+autorisatiegebeurtenis wordt weggeschreven naar een auditlogboek dat de database zelf weigert te
+wijzigen.
+
+> **Dit is nog steeds een build in aanbouw, geen afgerond product.** Proxmox is nog niet gekoppeld,
+> dus Velnox beheert nog niets: de inventaris komt in fase 4 en het taaksysteem in fase 5.
+> Gebruikers zijn te bekijken maar nog niet aan te maken of te bewerken, rollen zijn niet te
+> bewerken, en er is geen scherm voor het auditlogboek. Aanmelden met Microsoft Entra ID is alleen
+> configuratie — de flow zelf is niet geschreven en de aanmeldpagina toont geen Microsoft-knop.
 
 Wat elke fase toevoegt, en wat er vandaag bewust ontbreekt:
 [roadmap.md](roadmap.md) · [known-gaps.md](known-gaps.md)
@@ -117,8 +128,11 @@ certificaatvingerafdrukken vastlegt. Beide staan in `eslint.config.mjs`.
   voorbeeldgegevens.
 - **Tenant-isolatie is een server-side security boundary**, afgedwongen in de querylaag en gedekt door
   CI-blokkerende cross-tenant tests. Filteren in de frontend is cosmetisch.
-- **Secrets verlaten de worker nooit.** Geen enkele API-respons, logregel, jobgebeurtenis of
-  auditrecord bevat credentialmateriaal, en een test controleert dat.
+- **Infrastructuurcredentials verlaten de worker nooit.** Geen enkele API-respons, logregel,
+  jobgebeurtenis of auditrecord bevat credentialmateriaal, en een test controleert dat. De API kan
+  precies twee soorten geheim ontsleutelen — de TOTP-seed en het OIDC-clientgeheim die zij nodig
+  heeft om Velnox' eigen gebruikers te authenticeren — en wordt elke andere soort geweigerd door de
+  credential store zelf ([ADR-023](tech-decisions.md)).
 - **De API-container doet geen outbound automation.** SSH-, Proxmox- en WinRM-adapters bestaan alleen
   in de worker-rol — afgedwongen in de code én op netwerkniveau, waar alleen de worker aan het
   egressnetwerk hangt.

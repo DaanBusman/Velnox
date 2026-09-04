@@ -9,15 +9,25 @@ permission-based RBAC, Microsoft Entra ID SSO and full audit logging.
 
 ---
 
-## ⚠️ Project status: Phase 1 of 15
+## Project status: Phase 2 of 15
 
-The **foundation** is built and runs: six services under Docker Compose, PostgreSQL with
-migrations, a Redis-backed job queue with a worker, English/Dutch localization, structured logging
-with secret redaction, health and readiness probes, OpenAPI, and AGPL §13 licence compliance.
+The **foundation** runs: six services under Docker Compose, PostgreSQL with migrations, a
+Redis-backed job queue with a worker, English/Dutch localization, structured logging with secret
+redaction, health and readiness probes, OpenAPI, and AGPL §13 licence compliance.
 
-> **There is no authentication in this build.** Every endpoint is open and every page is public.
-> Authentication and RBAC arrive in Phase 2, multi-tenancy in Phase 3, Proxmox inventory in Phase 4.
-> **Do not put this on a network you do not fully control.**
+**Phase 2 adds the way in.** A setup wizard creates the first administrator and then closes
+permanently — there are no default credentials at any point. Sign-in uses Argon2id, a short-lived
+access token and a rotating refresh token whose reuse revokes the whole session family. Optional
+TOTP two-factor authentication ships with single-use recovery codes, and a policy can require it for
+everyone or only for accounts that can change customer infrastructure. Every endpoint that is not
+deliberately public requires a session, and every authentication and authorization event is written
+to an append-only audit log the database itself refuses to modify.
+
+> **This is still a build in progress, not a finished product.** Proxmox is not connected yet, so
+> Velnox does not manage anything: inventory arrives in Phase 4 and the job system in Phase 5. Users
+> can be listed but not yet created or edited, roles cannot be edited, and there is no interface for
+> the audit log. Signing in with Microsoft Entra ID is configuration only — the flow itself is not
+> written, and the sign-in page shows no Microsoft button.
 
 What each phase adds, and what is deliberately missing today:
 [docs/roadmap.md](docs/roadmap.md) · [docs/known-gaps.md](docs/known-gaps.md)
@@ -120,8 +130,11 @@ Rationale for each: [docs/tech-decisions.md](docs/tech-decisions.md).
   sample data.
 - **Tenant isolation is a server-side security boundary**, enforced at the query layer and covered
   by CI-blocking cross-tenant tests. Frontend filtering is cosmetic.
-- **Secrets never leave the worker.** No API response, log line, job event or audit record contains
-  credential material, and a test asserts it.
+- **Infrastructure credentials never leave the worker.** No API response, log line, job event or
+  audit record contains credential material, and a test asserts it. The API can decrypt exactly two
+  kinds of secret — the TOTP seed and the OIDC client secret it needs to authenticate Velnox's own
+  users — and is refused every other kind by the credential store itself
+  ([ADR-023](docs/tech-decisions.md)).
 - **The API container performs no outbound automation.** SSH, Proxmox and WinRM adapters exist only
   in the worker role — enforced in the code and again at the network layer, where only the worker
   joins the egress network.
