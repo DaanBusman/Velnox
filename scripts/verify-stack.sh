@@ -99,6 +99,14 @@ expect_contains() {
 # shellcheck disable=SC2329
 expect_not_contains() {
   local haystack="$1" needle="$2"
+  # An absence check against nothing is not a pass, it is a check that did not
+  # run. Seen for real: when TLS was broken every request returned an empty
+  # body and "no English sentence leaks out of the health payload" reported ok
+  # while testing nothing at all.
+  if [[ -z "$haystack" ]]; then
+    echo "       expected some output to check, got nothing" >&2
+    return 1
+  fi
   if [[ "$haystack" != *"$needle"* ]]; then return 0; fi
   printf '       expected output NOT to contain %q\n' "$needle" >&2
   return 1
