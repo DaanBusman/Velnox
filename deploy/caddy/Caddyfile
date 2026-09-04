@@ -1,4 +1,18 @@
 {
+	# Which certificate to serve when the client sends no SNI at all.
+	#
+	# A browser or curl connecting to https://192.168.15.1 sends no SNI, because
+	# the specification forbids an IP literal there. Caddy matches its TLS
+	# connection policies on SNI, so with nothing to match it cannot choose a
+	# certificate and aborts the handshake with an internal_error alert — which
+	# reaches the operator as a bare "TLS connect error" and looks like the whole
+	# installation is broken.
+	#
+	# That is not an edge case here: the installer defaults the site address to the
+	# host's IP, so it was the normal outcome of accepting the defaults. Naming a
+	# default makes a no-SNI connection resolve to this site.
+	default_sni {$VELNOX_SITE_ADDRESS:localhost}
+
 	# The admin API is not needed and would be a second, unauthenticated control
 	# surface inside the container.
 	admin off
