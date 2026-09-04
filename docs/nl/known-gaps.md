@@ -11,50 +11,96 @@ heeft haar poort niet gehaald.
 
 ---
 
-## Huidige status: fase 1 (basis)
+## Huidige status: fase 2 (authenticatie, installatie, RBAC)
 
-De stack draait: zes services, database, wachtrij, lokalisatie, licentienaleving. Wat er **nog niet**
-is, op volgorde van hoe zwaar het weegt:
+Aanmelden werkt. De installatiewizard maakt de eerste beheerder aan en sluit daarna permanent. Elk
+API-endpoint dat niet bewust publiek is, vereist een sessie, en de globale guard beschermt
+standaard: een nieuw endpoint is beschermd doordat het bestaat, en moet zich schriftelijk afmelden.
 
-### Er is geen authenticatie. Helemaal niet.
-Elk endpoint is niet-geauthenticeerd en elke pagina is publiek. Authenticatie, RBAC en multi-tenancy
-komen in fase 2 en 3. **Zet een fase 1-build niet op een netwerk dat je niet volledig beheert.** De API
-zegt dat bij het opstarten, en het dashboard zegt het tegen iedereen die het opent.
+Wat er **nog niet** is, op volgorde van hoe zwaar het weegt:
 
-### `VELNOX_DEV_ENDPOINTS` stelt een diagnostisch endpoint bloot
-De zelftest van de wachtrij (`POST /api/v1/system/selftest/queue`) bestaat om aan te tonen dat de
-worker ingediend werk uitvoert. Hij raakt geen beheerde infrastructuur aan en geeft niets gevoeligs
-terug, maar hij is net zo onbeschermd als de rest van deze build. Standaard staat hij uit in
-`.env.example`; de vlag en het endpoint verdwijnen beide in fase 2.
+### Aanmelden met Microsoft Entra ID werkt nog niet
+Het configuratiemodel, de validatie van het discovery-document en "verbinding testen" zijn echt: de
+API haalt het discovery-document van de provider op, valideert het en legt vast wat er is
+waargenomen. De authorization code + PKCE-flow waarmee iemand daadwerkelijk zou aanmelden, is niet
+geschreven. `signInAvailable` staat in het API-antwoord op `false`, de aanmeldpagina toont geen
+Microsoft-knop, en de instellingenpagina zegt het met zoveel woorden. Niets hier doet alsof het
+werkt.
+
+### Gebruikers zijn te bekijken, niet te beheren
+`GET /api/v1/users` is echt en wordt op rechten gecontroleerd. Een gebruiker uitnodigen, een rol
+toewijzen, een account deactiveren en de rechten van een rol bewerken hebben nog geen endpoints —
+die komen bij het rollenscherm. De gebruikerspagina zegt dat, in plaats van knoppen te tonen die
+niets doen.
+
+### Rollen worden aangemaakt, niet bewerkt
+De zeven systeemrollen worden bij de installatie aangemaakt uit de bevroren catalogus in
+`packages/shared`. Er is geen interface om een eigen rol te maken of te wijzigen welke rechten een
+rol heeft.
+
+### Het auditlogboek heeft geen interface
+Elke authenticatie- en autorisatiegebeurtenis wordt weggeschreven, de tabel weigert UPDATE en DELETE
+op databaseniveau, en de gebeurtenissen kloppen. Er is geen pagina om ze te lezen: vandaag is dat
+`psql`. De sectie Auditlogboek in de zijbalk is gemarkeerd met de fase die haar invult.
+
+### Gebruik van een herstelcode wordt gelogd, niet gemeld
+Het gebruik van een herstelcode wordt naar het auditspoor geschreven en uitgestuurd als
+`warn`-gebeurtenis met een vaste naam (`auth.mfa.recovery_code_used`), waarop de logpijplijn van een
+beheerder vandaag kan alarmeren. Velnox heeft nog geen eigen meldingsafhandeling — geen e-mail, geen
+webhook — dus het woord "gemeld" uit de roadmap wordt op dit moment ingevuld door het logboek, niet
+doordat Velnox iemand benadert.
+
+### De SSRF-bescherming bij discovery heeft een gat voor DNS-rebinding
+Voordat de API een discovery-document ophaalt, vereist zij HTTPS, weigert zij redirects, en zoekt
+zij de hostnaam op om te controleren dat het geen privé-, loopback-, link-local- of
+cloud-metadata-adres is. Een naam die tussen die controle en het ophalen anders resolvet, zou er
+doorheen glippen. Dat goed dichtzetten vereist een agent die aan het gecontroleerde adres is
+vastgezet. Het endpoint is beperkt tot `system.manage`, het hoogste recht dat het product kent, en
+de controle stopt elke rechttoe-rechtaan poging — waaronder `169.254.169.254` en interne
+containernamen, beide geverifieerd.
+
+### Er is geen sessieoverzicht en geen "overal afmelden"
+Sessies roteren correct en een hergebruikt refresh-token trekt de hele familie in, maar een
+gebruiker kan zijn actieve sessies niet zien of beëindigen vanuit de interface. Een
+wachtwoordwijziging trekt al elke sessie in als neveneffect.
 
 ### De backend-image draagt zijn buildafhankelijkheden mee
 `deploy/docker/backend.Dockerfile` kopieert de hele workspace, inclusief devDependencies, naar de
-runtime-laag. De `node_modules` van pnpm is een graaf van relatieve symlinks die niet overleeft dat je
-hem uit elkaar haalt, en een naïeve `pnpm prune --prod` zou de gegenereerde Prisma-client verwijderen.
-Een echt afgeslankte runtime-image is verpakkingswerk voor fase 14, en daar telt het ook, want het is
-onderdeel van het budget van circa 1 GB voor het air-gapped artefact.
+runtime-laag. pnpm's `node_modules` is een graaf van relatieve symlinks die het niet overleeft om
+uit elkaar gehaald te worden, en een naïeve `pnpm prune --prod` zou de gegenereerde Prisma-client
+verwijderen. Een fatsoenlijk afgeslankte runtime-image is verpakkingswerk voor fase 14, en daar
+telt het omdat het onderdeel is van het artefactbudget van ~1 GB voor air-gapped installaties.
 
 ### De Content-Security-Policy staat nog `'unsafe-inline'` toe
-Next.js zendt inline bootstrap-scripts en inline stijlen uit, en Swagger UI doet hetzelfde. Dat
-vervangen door nonces per request is hardening voor fase 15. De header staat er en elke andere
-security header is strikt; deze ene versoepeling is echt en wordt niet weggemoffeld.
+Next.js zendt inline bootstrap-scripts en inline stijlen uit, en Swagger UI op `/api/docs` doet
+hetzelfde. Dat vervangen door nonces per verzoek is hardening voor fase 15. De header is aanwezig en
+elke andere beveiligingsheader is streng; deze ene specifieke versoepeling is echt en wordt niet
+weggepoetst.
 
-### Standalone-output staat aan via een vlag, om een Windows-reden
-`next build` levert alleen `output: 'standalone'` wanneer `VELNOX_STANDALONE=1`, wat de Dockerfile
-zet. Tracing maakt symlinks aan, en Windows weigert dat zonder Developer Mode — het altijd aanzetten
-zou betekenen dat een ontwikkelaar op Windows de app niet kan bouwen. De image die uitgeleverd wordt is
-altijd de standalone versie.
+### Standalone-output staat standaard uit, om een Windows-reden
+`next build` levert alleen `output: 'standalone'` op wanneer `VELNOX_STANDALONE=1`, wat de
+Dockerfile zet. Tracing maakt symlinks, en Windows weigert dat zonder Ontwikkelaarsmodus — het altijd
+aan laten staan zou betekenen dat een ontwikkelaar op Windows de app helemaal niet kan bouwen. De
+image die wordt uitgeleverd is altijd de standalone-versie.
 
-### De dashboardtellers zijn streepjes, geen nullen
-Tenants, clusters, nodes en de rest tonen `—` met de fase die ze gaat vullen. Het zijn geen
-plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. De enige kaart met
-echte data is servicestatus, en die is live.
+### De tellers op het dashboard zijn streepjes, geen nullen
+Tenants, clusters, nodes en de rest tonen `—` met de fase die ze zal vullen. Het zijn geen
+plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. De ene kaart
+met echte gegevens is de servicestatus, en die is live.
 
 ### Documentatiedrift is nu mogelijk
-Fase 1 heeft twee keuzes uit fase 0 gewijzigd (zie *Gewijzigd in fase 1* in `architecture.md` en
-`tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen de Engelse commit vast waaruit
-ze vertaald zijn; `scripts/check-doc-sync.mjs` meldt welke zijn achtergebleven. Het waarschuwt, het
-blokkeert niet.
+Fase 1 heeft twee besluiten uit fase 0 herzien (zie *Herzien in fase 1* in `architecture.md` en
+`tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen vast van welke Engelse
+commit ze zijn vertaald; `scripts/check-doc-sync.mjs` meldt welke zijn achtergebleven. Het
+waarschuwt, het blokkeert niet.
+
+### Opgelost in fase 2
+- **Er is geen authenticatie.** Die is er nu. Elk niet-publiek endpoint vereist een sessie, en
+  `scripts/verify-stack.sh` stelt vast dat anonieme aanroepers worden geweigerd.
+- **`VELNOX_DEV_ENDPOINTS` stelt een diagnostisch endpoint bloot.** Het endpoint, de vlag en de
+  dashboardkaart die hem aanriep zijn alle verdwenen. De controle erop in het acceptatiescript was
+  stilletjes een permanente "skip" geworden; die is vervangen door controles die vaststellen dat
+  authenticatie wordt afgedwongen.
 
 ---
 

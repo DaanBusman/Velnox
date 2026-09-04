@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Verifies a running Velnox stack against the Phase 1 acceptance criteria.
+# Verifies a running Velnox stack against the acceptance criteria of every
+# phase that has landed.
 #
 # This exists so "the stack works" is something the machine asserts rather than
 # something a human claims after glancing at a browser tab. It runs in CI and
@@ -142,8 +143,10 @@ check "readyz: Redis reachable" expect_contains "$READY_JSON" '"name":"redis","s
 check "readyz: worker heartbeat is fresh" expect_contains "$READY_JSON" '"name":"worker","status":"ok"'
 check "readyz: no pending migrations" expect_equals \
   "$(printf '%s' "$READY_JSON" | json migrations.status)" "ok"
-check "readyz: the initial migration is applied" expect_equals \
-  "$(printf '%s' "$READY_JSON" | json migrations.applied)" "1"
+APPLIED="$(printf '%s' "$READY_JSON" | json migrations.applied)"
+EXPECTED="$(printf '%s' "$READY_JSON" | json migrations.expected)"
+check "readyz: every migration the build expects is applied (${APPLIED}/${EXPECTED})" \
+  bash -c "[[ -n '$APPLIED' && '$APPLIED' == '$EXPECTED' && '$APPLIED' != '0' ]]"
 
 # --- 4. OpenAPI --------------------------------------------------------------
 check "api: /api/docs serves the OpenAPI UI" bash -c "
@@ -165,27 +168,35 @@ check "licence: the build commit is embedded, so the offer is verifiable" bash -
 "
 
 # --- 6. Localization ---------------------------------------------------------
+#
+# Against the sign-in page, which is public. The dashboard is behind
+# authentication, and an anonymous fetch of "/" is a redirect — one that Next.js
+# still attaches a rendered body to, so asserting on that body passes while
+# testing nothing a browser would show. -L follows to the page that is really
+# served.
 check "i18n: English is served by default" bash -c "
-  body=\$(${CURL[*]} -H 'Accept-Language: en' '${BASE}/') || exit 1
-  [[ \"\$body\" == *'Dashboard'* && \"\$body\" == *'Service status'* ]]
+  body=\$(${CURL[*]} -L -H 'Accept-Language: en' '${BASE}/') || exit 1
+  [[ \"\$body\" == *'Sign in'* ]]
 "
 check "i18n: Dutch is served for a Dutch browser" bash -c "
-  body=\$(${CURL[*]} -H 'Accept-Language: nl-NL,nl;q=0.9' '${BASE}/') || exit 1
-  [[ \"\$body\" == *'Servicestatus'* && \"\$body\" == *'Overzicht van de omgeving'* ]]
+  body=\$(${CURL[*]} -L -H 'Accept-Language: nl-NL,nl;q=0.9' '${BASE}/') || exit 1
+  [[ \"\$body\" == *'Inloggen'* && \"\$body\" == *'Wachtwoord'* ]]
 "
 check "i18n: the locale cookie overrides the browser preference" bash -c "
-  body=\$(${CURL[*]} -H 'Accept-Language: en' -H 'Cookie: velnox_locale=nl' '${BASE}/') || exit 1
-  [[ \"\$body\" == *'Servicestatus'* ]]
+  body=\$(${CURL[*]} -L -H 'Accept-Language: en' -H 'Cookie: velnox_locale=nl' '${BASE}/') || exit 1
+  [[ \"\$body\" == *'Inloggen'* ]]
 "
 
 # The API returns health detail as a code with parameters, not as a sentence
-# (ADR-019). If that ever regresses, English prose from the API shows up in the
-# middle of a Dutch page — which is exactly how it was caught the first time.
-NL_TEXT="$("${CURL[@]}" -H 'Accept-Language: nl' "${BASE}/" 2>/dev/null | visible_text)"
-check "i18n: API-supplied health detail is rendered in Dutch" \
-  expect_contains "$NL_TEXT" "Hartslag"
-check "i18n: no English health detail leaks onto the Dutch page" \
-  expect_not_contains "$NL_TEXT" "Heartbeat "
+# (ADR-019). This used to be checked by looking for Dutch words on the dashboard,
+# which is no longer reachable without a session — and asserting it against the
+# API directly is the stronger test anyway, because it names the invariant
+# instead of one of its symptoms.
+WORKER_DETAIL_CODE="$(printf '%s' "$READY_JSON" | json checks.2.detail.code)"
+check "i18n: the API returns a health detail code, not English prose" \
+  bash -c "[[ -n '$WORKER_DETAIL_CODE' ]]"
+check "i18n: no English sentence leaks out of the health payload" \
+  expect_not_contains "$READY_JSON" "ago"
 
 # --- 7. Security headers -----------------------------------------------------
 HEADERS="$("${CURL[@]}" --head "${BASE}/" 2>/dev/null)"
@@ -200,43 +211,42 @@ for header in \
   "
 done
 
-# --- 8. The queue actually round-trips --------------------------------------
+# --- 8. Authentication is actually enforced ---------------------------------
 #
-# The self-test endpoint is a diagnostic and is off in a normal installation, so
-# its absence is reported as skipped rather than failed. The worker's heartbeat
-# check above already proves the worker is alive and reaching Redis; this adds
-# proof that submitted work is actually executed.
-DEV_ENDPOINTS="$("${CURL[@]}" "${BASE}/api/v1/system/info" 2>/dev/null | json features.devEndpoints)"
+# The Phase 2 criterion that matters most: an endpoint that needs a session
+# refuses one that does not have it. Checked from outside, against the running
+# stack, because a guard that is registered but not reached is a guard that does
+# nothing.
+info "Checking that protected endpoints refuse an anonymous caller"
 
-if [[ "$DEV_ENDPOINTS" != "true" ]]; then
-  skip "queue: self-test endpoint disabled (set VELNOX_DEV_ENDPOINTS=true to include it)"
-  JOB_ID=""
+for ENDPOINT in "/api/v1/users" "/api/v1/auth/me" "/api/v1/identity-providers/oidc"; do
+  STATUS="$("${CURL[@]}" -o /dev/null -w '%{http_code}' "${BASE}${ENDPOINT}" 2>/dev/null)"
+  check "auth: ${ENDPOINT} refuses an anonymous caller (got ${STATUS})" \
+    bash -c "[[ '$STATUS' == '401' || '$STATUS' == '403' ]]"
+done
+
+# A mutating request without the double-submit token must be refused even when
+# it carries no session, so a cross-site page cannot reach the endpoint at all.
+CSRF_STATUS="$("${CURL[@]}" -o /dev/null -w '%{http_code}' -X POST \
+  -H 'Content-Type: application/json' -d '{}' \
+  "${BASE}/api/v1/auth/logout" 2>/dev/null)"
+check "auth: a POST without the CSRF header is refused (got ${CSRF_STATUS})" \
+  bash -c "[[ '$CSRF_STATUS' == '401' || '$CSRF_STATUS' == '403' ]]"
+
+# --- 8b. Setup is closed once it has run ------------------------------------
+INITIALIZED="$("${CURL[@]}" "${BASE}/api/v1/setup/status" 2>/dev/null | json initialized)"
+
+if [[ "$INITIALIZED" == "true" ]]; then
+  SETUP_STATUS="$("${CURL[@]}" -o /dev/null -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' \
+    -d '{"organisationName":"probe","displayName":"probe","email":"probe@example.invalid","password":"probe-probe-probe"}' \
+    "${BASE}/api/v1/setup/initialize" 2>/dev/null)"
+  # 409 is the documented answer; 403 means it never got past the CSRF check,
+  # which is also a refusal. Anything that creates a second administrator is not.
+  check "setup: a second initialize is refused (got ${SETUP_STATUS})" \
+    bash -c "[[ '$SETUP_STATUS' == '409' || '$SETUP_STATUS' == '403' ]]"
 else
-  info "Running the queue self-test (api -> Redis -> worker)"
-  JOB_ID="$("${CURL[@]}" -X POST "${BASE}/api/v1/system/selftest/queue" 2>/dev/null | json jobId)"
-fi
-
-if [[ "$DEV_ENDPOINTS" == "true" && -z "$JOB_ID" ]]; then
-  red "queue: the self-test endpoint is enabled but would not accept a job"
-  FAIL=$((FAIL + 1))
-elif [[ -n "$JOB_ID" ]]; then
-  green "queue: job ${JOB_ID} accepted"
-  PASS=$((PASS + 1))
-
-  STATE=""
-  PROCESSED_BY=""
-  for _ in $(seq 1 40); do
-    JOB_JSON="$("${CURL[@]}" "${BASE}/api/v1/system/selftest/queue/${JOB_ID}" 2>/dev/null)"
-    STATE="$(printf '%s' "$JOB_JSON" | json state)"
-    if [[ "$STATE" == "completed" || "$STATE" == "failed" ]]; then
-      PROCESSED_BY="$(printf '%s' "$JOB_JSON" | json result.processedBy)"
-      break
-    fi
-    sleep 1
-  done
-
-  check "queue: the worker completed the job" expect_equals "$STATE" "completed"
-  check "queue: the result names the worker that executed it" bash -c "[[ -n '$PROCESSED_BY' ]]"
+  skip "setup: not initialized yet, so there is nothing to re-run"
 fi
 
 # --- 9. Data tier is not exposed --------------------------------------------

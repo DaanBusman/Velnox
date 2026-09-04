@@ -8,6 +8,7 @@ import { ALLOWS_UNSATISFIED_MFA, IS_PUBLIC } from './auth.guard';
 import { AuthController } from '../modules/auth/auth.controller';
 import { MfaController } from '../modules/auth/mfa.controller';
 import { HealthController } from '../modules/health/health.controller';
+import { IdentityController } from '../modules/identity/identity.controller';
 import { SetupController } from '../modules/setup/setup.controller';
 import { MetricsController } from '../modules/system/metrics.controller';
 import { SystemController } from '../modules/system/system.controller';
@@ -76,6 +77,7 @@ const CONTROLLERS = [
   MetricsController,
   SystemController,
   UsersController,
+  IdentityController,
 ];
 
 function collectRoutes(): Route[] {

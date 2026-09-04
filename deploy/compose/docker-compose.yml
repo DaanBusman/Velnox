@@ -101,7 +101,6 @@ services:
       APP_URL: ${APP_URL:-https://localhost}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — run ./scripts/gen-env.sh}
       METRICS_ENABLED: ${METRICS_ENABLED:-false}
-      VELNOX_DEV_ENDPOINTS: ${VELNOX_DEV_ENDPOINTS:-false}
     command: ['node', 'apps/api/dist/main.js']
     networks: [app, data]
     depends_on:

@@ -82,7 +82,6 @@ async function bootstrap(): Promise<void> {
       environment: config.NODE_ENV,
       version: config.VELNOX_VERSION,
       commit: config.VELNOX_BUILD_COMMIT,
-      devEndpoints: config.VELNOX_DEV_ENDPOINTS,
     },
     'Velnox API listening',
   );

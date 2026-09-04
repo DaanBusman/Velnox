@@ -64,6 +64,7 @@
     "security": "Security",
     "settings": "Settings",
     "sites": "Sites",
+    "sso": "Single sign-on",
     "storage": "Storage",
     "tenants": "Tenants",
     "updates": "Updates",
@@ -332,5 +333,28 @@
     "mfaGapTitle": "{count, plural, one {# privileged account without a second factor} other {# privileged accounts without a second factor}}",
     "subtitle": "Accounts that can sign in to this installation.",
     "you": "(you)"
+  },
+  "sso": {
+    "allowedDomains": "Allowed email domains",
+    "allowedDomainsHint": "Comma separated. Leave empty to allow any domain the directory authenticates.",
+    "breakGlassBody": "Configuring a directory never disables signing in with an email address and password. A directory outage must not lock you out of the tool you would use to investigate it.",
+    "breakGlassTitle": "Local sign-in stays available",
+    "cardDescription": "Read from the directory at sign-in. Velnox stores no directory passwords.",
+    "clientId": "Application (client) ID",
+    "clientSecret": "Client secret",
+    "clientSecretHint": "Stored encrypted. It is never shown again after saving.",
+    "clientSecretStored": "A secret is stored. Leave blank to keep it, or enter a new one to replace it.",
+    "discoveryUrl": "Discovery document URL",
+    "discoveryUrlHint": "The OpenID configuration endpoint for your tenant. Must be HTTPS and publicly resolvable.",
+    "lastTested": "Last checked {time} — {message}",
+    "neverTested": "Never checked",
+    "notAvailableBody": "This build can hold and check the configuration. Signing in through Entra ID arrives in a later phase, so the button is not shown on the sign-in page yet.",
+    "notAvailableTitle": "Configuration only, for now",
+    "subtitle": "Sign in with a Microsoft Entra ID directory.",
+    "testConnection": "Test connection",
+    "testFailed": "Last check failed",
+    "testFailedDetail": "The check failed: {reason} ({detail})",
+    "testOk": "The provider answered and the discovery document is valid.",
+    "testPassed": "Last check passed"
   }
 }

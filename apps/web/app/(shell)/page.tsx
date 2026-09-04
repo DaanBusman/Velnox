@@ -1,8 +1,7 @@
 import { getTranslations } from 'next-intl/server';
-import { QueueSelfTest } from '@/components/queue-selftest';
 import { SystemStatus } from '@/components/system-status';
 import { Card, Notice, PageHeader } from '@/components/ui/primitives';
-import { tryGetReadiness, tryGetSystemInfo } from '@/lib/api';
+import { tryGetReadiness } from '@/lib/api';
 import { getSession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -20,14 +19,11 @@ const TILES = [
 ] as const;
 
 export default async function DashboardPage() {
-  const [t, readiness, info, session] = await Promise.all([
+  const [t, readiness, session] = await Promise.all([
     getTranslations(),
     tryGetReadiness(),
-    tryGetSystemInfo(),
     getSession(),
   ]);
-
-  const devEndpoints = info?.features.devEndpoints ?? false;
 
   // Recommended only where it is genuinely a choice. Repeating the advice at
   // someone whose installation already compels a second factor is noise, and
@@ -67,7 +63,6 @@ export default async function DashboardPage() {
           </ul>
         </Card>
 
-        <QueueSelfTest enabled={devEndpoints} />
       </div>
     </>
   );

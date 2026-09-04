@@ -17,7 +17,6 @@ describe('configuration', () => {
     expect(cfg.VELNOX_DEFAULT_LOCALE).toBe('en');
     expect(cfg.VELNOX_SOURCE_URL).toBe(UPSTREAM_SOURCE_URL);
     expect(cfg.METRICS_ENABLED).toBe(false);
-    expect(cfg.VELNOX_DEV_ENDPOINTS).toBe(false);
   });
 
   it('refuses to start without a master encryption key', () => {

@@ -68,7 +68,6 @@ const baseSchema = z.object({
   VELNOX_DEFAULT_TIMEZONE: z.string().min(1).default('Europe/Amsterdam'),
 
   METRICS_ENABLED: booleanish.default('false'),
-  VELNOX_DEV_ENDPOINTS: booleanish.default('false'),
 });
 
 const redisSchema = z.object({

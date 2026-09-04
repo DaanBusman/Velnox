@@ -351,6 +351,35 @@ a codebase that uses it.
 
 ---
 
+## ADR-023 — The API may decrypt its own authentication material, and nothing else
+
+**Amends ADR-009 (Phase 2).**
+
+**Decision:** The API's secret store refuses to decrypt any credential whose kind is not
+`TOTP_SEED` or `OIDC_CLIENT_SECRET`. Those two are the material Velnox uses to authenticate its own
+users. Every credential belonging to managed infrastructure — Proxmox passwords, SSH keys, WinRM
+credentials — remains readable only by the worker. The restriction is enforced by kind in
+`SecretStoreService`, throws `ForbiddenCredentialKindError`, and has no flag to turn it off.
+
+**Why:** ADR-009 says a compromised API process cannot decrypt credentials for use. Verifying a TOTP
+code needs the seed, in the API, on the sign-in path. Routing every sign-in through the job queue to
+borrow the worker's key would add a queue round trip to the latency of logging in, and would put the
+second factor behind the very system an operator uses the second factor to reach.
+
+The alternative — quietly letting the API read everything and treating ADR-009 as aspirational — is
+how a boundary becomes a comment. So the boundary moved to where it can actually be held, and became
+enforceable rather than declarative. The sentence that matters is unchanged: a compromised API
+process still cannot decrypt a single customer credential.
+
+**Cost:** The API holds the master key and can derive the KEK, so the restriction is a check in code
+rather than an absence of capability. A remote code execution bug in the API could bypass it. What
+it does prevent is the far likelier case: an authorization bug, an over-broad query, or a future
+endpoint that reads more than its author intended. Separating the keys themselves would need a
+second KEK and a key-management story that Phase 2 does not have; it is recorded in
+`docs/known-gaps.md` rather than claimed here.
+
+---
+
 ## Version targets
 
 | Component | Version |

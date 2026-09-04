@@ -364,6 +364,37 @@ thuis in een codebase die het gebruikt.
 
 ---
 
+## ADR-023 — De API mag zijn eigen authenticatiemateriaal ontsleutelen, en verder niets
+
+**Herziet ADR-009 (fase 2).**
+
+**Besluit:** De secret store van de API weigert elk credential te ontsleutelen waarvan de soort niet
+`TOTP_SEED` of `OIDC_CLIENT_SECRET` is. Die twee vormen het materiaal waarmee Velnox zijn eigen
+gebruikers authenticeert. Elk credential dat bij beheerde infrastructuur hoort — Proxmox-wachtwoorden,
+SSH-sleutels, WinRM-credentials — blijft alleen leesbaar voor de worker. De beperking wordt per soort
+afgedwongen in `SecretStoreService`, werpt `ForbiddenCredentialKindError`, en kent geen vlag om hem
+uit te zetten.
+
+**Waarom:** ADR-009 zegt dat een gecompromitteerd API-proces geen credentials kan ontsleutelen om te
+gebruiken. Het verifiëren van een TOTP-code heeft de seed nodig, in de API, op het aanmeldpad. Elke
+aanmelding via de taakwachtrij leiden om de sleutel van de worker te lenen zou een wachtrij-rondgang
+toevoegen aan de latency van inloggen, en zou de tweede factor achter precies het systeem plaatsen dat
+een beheerder met die tweede factor wil bereiken.
+
+Het alternatief — de API stilzwijgend alles laten lezen en ADR-009 als een streven behandelen — is hoe
+een grens verandert in een opmerking. Dus is de grens verplaatst naar waar hij daadwerkelijk te houden
+is, en afdwingbaar geworden in plaats van verklarend. De zin die ertoe doet is ongewijzigd: een
+gecompromitteerd API-proces kan nog steeds geen enkel klantcredential ontsleutelen.
+
+**Kosten:** De API heeft de hoofdsleutel en kan de KEK afleiden, dus de beperking is een controle in
+code en niet het ontbreken van een mogelijkheid. Een fout met uitvoering van externe code in de API
+zou eromheen kunnen. Wat hij wél voorkomt is het veel waarschijnlijkere geval: een autorisatiefout,
+een te brede query, of een toekomstig endpoint dat meer leest dan de auteur bedoelde. De sleutels zelf
+scheiden zou een tweede KEK en een sleutelbeheerverhaal vergen die fase 2 niet heeft; dat staat in
+`docs/known-gaps.md` in plaats van dat het hier wordt geclaimd.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

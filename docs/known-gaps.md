@@ -8,21 +8,53 @@ not met its gate.
 
 ---
 
-## Current status: Phase 1 (foundation)
+## Current status: Phase 2 (authentication, setup, RBAC)
 
-The stack runs: six services, database, queue, localization, licence compliance. What is **not**
-there yet, in order of how much it matters:
+Sign-in works. The setup wizard creates the first administrator and then closes permanently. Every
+API endpoint that is not deliberately public requires a session, and the global guard is
+protect-by-default: a new endpoint is protected by existing, and has to opt out in writing.
 
-### There is no authentication. At all.
-Every endpoint is unauthenticated and every page is public. Authentication, RBAC and multi-tenancy
-arrive in Phase 2 and 3. **Do not put a Phase 1 build on a network you do not fully control.** The
-API says so on startup, and the dashboard says so to anyone who opens it.
+What is **not** there yet, in order of how much it matters:
 
-### `VELNOX_DEV_ENDPOINTS` exposes a diagnostic endpoint
-The queue self-test (`POST /api/v1/system/selftest/queue`) exists to demonstrate that the worker
-executes submitted work. It touches no managed infrastructure and returns nothing sensitive, but it
-is unauthenticated like everything else in this build. It defaults to off in `.env.example`; the
-flag and the endpoint are both removed in Phase 2.
+### Signing in with Microsoft Entra ID does not work yet
+The configuration model, discovery validation and "test connection" are real: the API fetches the
+provider's discovery document, validates it, and records what it observed. The authorization code +
+PKCE flow that would actually sign someone in is not written. `signInAvailable` in the API response
+says `false`, the sign-in page shows no Microsoft button, and the settings page says so in as many
+words. Nothing here pretends to work.
+
+### Users can be listed, not managed
+`GET /api/v1/users` is real and permission-checked. Inviting a user, assigning a role, deactivating
+an account and editing a role's permissions have no endpoints yet — the roles interface is where
+they land. The users page says this rather than showing controls that do nothing.
+
+### Roles are seeded, not editable
+The seven system roles are created at setup from the frozen catalogue in `packages/shared`. There is
+no interface for creating a custom role or changing which permissions a role holds.
+
+### The audit log has no interface
+Every authentication and authorization event is written, the table refuses UPDATE and DELETE at the
+database level, and the events are correct. There is no page to read them from: today that is
+`psql`. The Audit Log section in the sidebar is marked with the phase that fills it.
+
+### Recovery-code use is logged, not alerted
+Using a recovery code is written to the audit trail and emitted as a `warn`-level event with a
+stable name (`auth.mfa.recovery_code_used`), which an operator's log pipeline can alert on today.
+Velnox has no alert delivery of its own yet — no email, no webhook — so the roadmap's word
+"alerted" is currently satisfied by the log, not by Velnox contacting anyone.
+
+### The SSRF guard on discovery has a DNS-rebinding gap
+Before fetching a discovery document the API requires HTTPS, refuses redirects, and resolves the
+hostname to check it is not a private, loopback, link-local or cloud-metadata address. A name that
+resolves differently between that check and the fetch would slip past. Closing it properly needs an
+agent pinned to the checked address. The endpoint is restricted to `system.manage`, which is the
+highest permission the product has, and the check stops every straightforward attempt — including
+`169.254.169.254` and internal container names, both verified.
+
+### There is no session list, and no "sign out everywhere"
+Sessions rotate correctly and a replayed refresh token revokes the family, but a user cannot see
+their active sessions or end them from the interface. Changing a password already revokes every
+session as a side effect.
 
 ### The backend image carries its build dependencies
 `deploy/docker/backend.Dockerfile` copies the whole workspace, including devDependencies, into the
@@ -32,9 +64,9 @@ properly slimmed runtime image is Phase 14 packaging work, and it matters there 
 of the ~1 GB air-gapped artifact budget.
 
 ### The Content-Security-Policy still allows `'unsafe-inline'`
-Next.js emits inline bootstrap scripts and inline styles, and Swagger UI does the same. Replacing
-that with per-request nonces is Phase 15 hardening. The header is present and every other security
-header is strict; this one specific relaxation is real and is not being papered over.
+Next.js emits inline bootstrap scripts and inline styles, and Swagger UI at `/api/docs` does the
+same. Replacing that with per-request nonces is Phase 15 hardening. The header is present and every
+other security header is strict; this one specific relaxation is real and is not being papered over.
 
 ### Standalone output is opt-in, for a Windows reason
 `next build` only emits `output: 'standalone'` when `VELNOX_STANDALONE=1`, which the Dockerfile
@@ -52,6 +84,13 @@ Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture
 `tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were
 translated from; `scripts/check-doc-sync.mjs` reports which ones have fallen behind. It warns, it
 does not block.
+
+### Resolved in Phase 2
+- **There is no authentication.** There is now. Every non-public endpoint requires a session, and
+  `scripts/verify-stack.sh` asserts that anonymous callers are refused.
+- **`VELNOX_DEV_ENDPOINTS` exposes a diagnostic endpoint.** The endpoint, the flag and the dashboard
+  card that called it are all gone. The acceptance script's check for it had quietly become a
+  permanent skip; it has been replaced with checks that assert authentication is enforced.
 
 ---
 

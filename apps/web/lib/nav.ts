@@ -64,6 +64,7 @@ export const NAVIGATION: NavGroup[] = [
       { key: 'rolesPermissions', href: '/roles', phase: 2 },
       { key: 'auditLog', href: '/audit-log', phase: 2 },
       { key: 'security', href: '/settings/security', phase: null },
+      { key: 'sso', href: '/settings/sso', phase: null },
       { key: 'settings', href: '/settings/about', phase: null },
     ],
   },

@@ -1,8 +1,13 @@
 import 'server-only';
 import { cookies } from 'next/headers';
-import type { Session, UserSummary } from './session-types';
+import type { IdentityProviderView, Session, UserSummary } from './session-types';
 
-export type { Session, SessionUser, UserSummary } from './session-types';
+export type {
+  IdentityProviderView,
+  Session,
+  SessionUser,
+  UserSummary,
+} from './session-types';
 
 /**
  * The signed-in user, as the server sees it.
@@ -90,6 +95,32 @@ export async function listUsers(): Promise<
 
     const body = (await response.json()) as { users: UserSummary[] };
     return { ok: true, users: body.users };
+  } catch {
+    return { ok: false, code: 'network' };
+  }
+}
+
+/** The Entra ID configuration. Requires system.manage, which the API enforces. */
+export async function getIdentityProvider(): Promise<
+  { ok: true; provider: IdentityProviderView } | { ok: false; code: string }
+> {
+  const cookieHeader = await forwardedCookies();
+
+  try {
+    const response = await fetch(`${INTERNAL_API_URL}/api/v1/identity-providers/oidc`, {
+      headers: { accept: 'application/json', cookie: cookieHeader },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5_000),
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as {
+        error?: { code?: string };
+      } | null;
+      return { ok: false, code: body?.error?.code ?? 'generic' };
+    }
+
+    return { ok: true, provider: (await response.json()) as IdentityProviderView };
   } catch {
     return { ok: false, code: 'network' };
   }

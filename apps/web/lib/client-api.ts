@@ -32,12 +32,24 @@ function readCsrfToken(): string | null {
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<ApiResult<T>> {
+  return send('POST', path, body);
+}
+
+export async function apiPut<T>(path: string, body?: unknown): Promise<ApiResult<T>> {
+  return send('PUT', path, body);
+}
+
+async function send<T>(
+  method: 'POST' | 'PUT',
+  path: string,
+  body?: unknown,
+): Promise<ApiResult<T>> {
   const csrf = readCsrfToken();
 
   let response: Response;
   try {
     response = await fetch(`/api/v1${path}`, {
-      method: 'POST',
+      method,
       // The cookie is the credential; it must be sent and it must be storable.
       credentials: 'same-origin',
       headers: {

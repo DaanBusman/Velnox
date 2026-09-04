@@ -1,11 +1,12 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phase 0 and Phase 1 complete. Phases 2–15 await approval.
+**Status:** Phases 0, 1 and 2 complete. Phases 3–15 await approval.
 
-Phase 1 is verified rather than asserted: `./scripts/verify-stack.sh` asserts its acceptance criteria
-against a running stack — 25 checks covering every dependency, the migration state, security headers,
-both languages, the licence offer, a real queue round trip, and the data tier not being reachable
-from the host. It runs in CI on every change.
+Each landed phase is verified rather than asserted: `./scripts/verify-stack.sh` asserts its acceptance criteria
+against a running stack — 29 checks covering every dependency, the migration state, security headers,
+both languages, the licence offer, authentication actually refusing anonymous callers, setup being
+closed once it has run, and the data tier not being reachable from the host. It runs in CI on every
+change.
 
 Every phase ends with the same gate. A phase is **not** finished until all of these are true:
 
@@ -43,7 +44,7 @@ processed by the worker and its completion is visible; `/api/docs` serves OpenAP
 Dutch changes every visible string; CI fails on a missing translation key or a malformed glossary
 row; the About screen shows version, commit and a working source link.
 
-## Phase 2 — Authentication, setup wizard, RBAC core · **XL**
+## Phase 2 — Authentication, setup wizard, RBAC core · **XL** · ✅ complete
 
 Argon2id hashing, JWT access + rotating refresh with reuse detection, CSRF double-submit, rate
 limiting, secure headers. Setup wizard: `GET /setup/status`, `POST /setup/initialize` creating the

@@ -41,3 +41,21 @@ export interface UserSummary {
   lastLoginAt: string | null;
   createdAt: string;
 }
+
+export interface IdentityProviderView {
+  configured: boolean;
+  enabled: boolean;
+  name: string;
+  discoveryUrl: string | null;
+  issuer: string | null;
+  clientId: string | null;
+  /** Whether a secret is stored. Never the secret itself. */
+  clientSecretSet: boolean;
+  allowedEmailDomains: string[];
+  autoProvision: boolean;
+  lastTestedAt: string | null;
+  lastTestOk: boolean | null;
+  lastTestMessage: string | null;
+  /** Whether signing in through this provider works in this build. */
+  signInAvailable: boolean;
+}

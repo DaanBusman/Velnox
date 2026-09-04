@@ -65,6 +65,7 @@
     "security": "Beveiliging",
     "settings": "Instellingen",
     "sites": "Locaties",
+    "sso": "Eenmalige aanmelding",
     "storage": "Opslag",
     "tenants": "Tenants",
     "updates": "Updates",
@@ -333,5 +334,28 @@
     "mfaGapTitle": "{count, plural, one {# account met verhoogde rechten zonder tweede factor} other {# accounts met verhoogde rechten zonder tweede factor}}",
     "subtitle": "Accounts die kunnen inloggen op deze installatie.",
     "you": "(u)"
+  },
+  "sso": {
+    "allowedDomains": "Toegestane e-maildomeinen",
+    "allowedDomainsHint": "Gescheiden door komma’s. Laat leeg om elk domein toe te staan dat de directory authenticeert.",
+    "breakGlassBody": "Het instellen van een directory schakelt aanmelden met e-mailadres en wachtwoord nooit uit. Een storing bij de directory mag u niet buitensluiten uit het gereedschap waarmee u die storing onderzoekt.",
+    "breakGlassTitle": "Lokaal aanmelden blijft beschikbaar",
+    "cardDescription": "Wordt bij het aanmelden uit de directory gelezen. Velnox bewaart geen directorywachtwoorden.",
+    "clientId": "Toepassings-id (client)",
+    "clientSecret": "Clientgeheim",
+    "clientSecretHint": "Wordt versleuteld opgeslagen en na het opslaan nooit meer getoond.",
+    "clientSecretStored": "Er is een geheim opgeslagen. Laat leeg om het te behouden of voer een nieuw geheim in om het te vervangen.",
+    "discoveryUrl": "URL van het discovery-document",
+    "discoveryUrlHint": "Het OpenID-configuratie-eindpunt van uw tenant. Moet HTTPS zijn en publiek resolvebaar.",
+    "lastTested": "Laatst gecontroleerd op {time} — {message}",
+    "neverTested": "Nooit gecontroleerd",
+    "notAvailableBody": "Deze build kan de configuratie bewaren en controleren. Aanmelden via Entra ID komt in een latere fase, dus de knop staat nog niet op de aanmeldpagina.",
+    "notAvailableTitle": "Voorlopig alleen configuratie",
+    "subtitle": "Aanmelden met een Microsoft Entra ID-directory.",
+    "testConnection": "Verbinding testen",
+    "testFailed": "Laatste controle mislukt",
+    "testFailedDetail": "De controle is mislukt: {reason} ({detail})",
+    "testOk": "De provider antwoordde en het discovery-document is geldig.",
+    "testPassed": "Laatste controle geslaagd"
   }
 }

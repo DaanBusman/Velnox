@@ -3,11 +3,12 @@
 > **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `5b3fb43`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Fase 0 en fase 1 afgerond. Fase 2–15 wachten op goedkeuring.
+**Status:** Fase 0, 1 en 2 afgerond. Fase 3–15 wachten op goedkeuring.
 
-Fase 1 is geverifieerd in plaats van beweerd: `./scripts/verify-stack.sh` toetst de acceptatiecriteria
-tegen een draaiende stack — 27 controles over elke afhankelijkheid, de migratiestatus, security
-headers, beide talen, het bronaanbod, een echte wachtrij-rondgang, en het feit dat de datalaag niet
+Elke afgeronde fase is geverifieerd in plaats van beweerd: `./scripts/verify-stack.sh` toetst de
+acceptatiecriteria tegen een draaiende stack — 29 controles over elke afhankelijkheid, de
+migratiestatus, security headers, beide talen, het bronaanbod, het feit dat authenticatie anonieme
+aanroepers daadwerkelijk weigert, dat de installatie na afloop gesloten is, en dat de datalaag niet
 vanaf de host bereikbaar is. Het draait in CI bij elke wijziging.
 
 Elke fase eindigt met dezelfde poort. Een fase is **niet** klaar voordat dit alles waar is:
@@ -47,7 +48,7 @@ door de worker verwerkt en de voltooiing is zichtbaar; `/api/docs` toont OpenAPI
 Nederlands verandert elke zichtbare tekst; CI faalt op een ontbrekende vertaalsleutel of een misvormde
 rij in de woordenlijst; het Over-scherm toont versie, commit en een werkende bronlink.
 
-## Phase 2 — Authenticatie, installatiewizard, RBAC-basis · **XL**
+## Phase 2 — Authenticatie, installatiewizard, RBAC-basis · **XL** · ✅ afgerond
 
 Argon2id-hashing, JWT access + roterend refresh met hergebruikdetectie, CSRF double-submit,
 snelheidsbegrenzing, security headers. Installatiewizard: `GET /setup/status`, `POST /setup/initialize`
