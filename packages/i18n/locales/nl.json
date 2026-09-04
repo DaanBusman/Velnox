@@ -63,14 +63,14 @@
     "phaseNoticeTitle": "Deze installatie draait een fase 2-build",
     "subtitle": "Overzicht van de omgeving",
     "tiles": {
-      "tenants": "Tenants",
       "clusters": "Clusters",
       "nodes": "Nodes",
       "nodesNeedingUpdates": "Nodes met openstaande updates",
-      "upgradeBlockers": "Upgradeblokkades",
-      "unhealthyClusters": "Ongezonde clusters",
+      "recentFailures": "Recente fouten",
       "runningJobs": "Actieve jobs",
-      "recentFailures": "Recente fouten"
+      "tenants": "Tenants",
+      "unhealthyClusters": "Ongezonde clusters",
+      "upgradeBlockers": "Upgradeblokkades"
     },
     "tileUnavailable": "Beschikbaar vanaf fase {phase}",
     "title": "Dashboard"
@@ -92,10 +92,10 @@
   "errors": {
     "auth": {
       "invalid_credentials": "E-mailadres of wachtwoord is onjuist.",
-      "mfa_required": "Een tweede authenticatiefactor is vereist.",
       "mfa_invalid": "Deze code is niet geldig.",
-      "session_expired": "Je sessie is verlopen. Log opnieuw in.",
-      "rate_limited": "Te veel pogingen. Probeer het over {seconds, plural, one {# seconde} other {# seconden}} opnieuw."
+      "mfa_required": "Een tweede authenticatiefactor is vereist.",
+      "rate_limited": "Te veel pogingen. Probeer het over {seconds, plural, one {# seconde} other {# seconden}} opnieuw.",
+      "session_expired": "Je sessie is verlopen. Log opnieuw in."
     },
     "authz": {
       "forbidden": "Je hebt geen recht om deze actie uit te voeren.",
@@ -107,9 +107,9 @@
       "version_mismatch": "Niet alle Ceph-daemons draaien dezelfde versie. Voltooi eerst de lopende upgrade."
     },
     "cluster": {
-      "unreachable": "Cluster {cluster} is niet bereikbaar.",
+      "already_degraded": "Cluster {cluster} is niet gezond. Los dit op voordat je een wijziging start.",
       "quorum_at_risk": "Cluster {cluster} zou quorum verliezen: {available} van {required} stemmende nodes zouden beschikbaar blijven.",
-      "already_degraded": "Cluster {cluster} is niet gezond. Los dit op voordat je een wijziging start."
+      "unreachable": "Cluster {cluster} is niet bereikbaar."
     },
     "credential": {
       "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."
@@ -120,8 +120,8 @@
     "generic": "Er is iets misgegaan.",
     "job": {
       "concurrent_run": "Er draait al een job op {target}.",
-      "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is.",
-      "not_found": "Die job bestaat niet meer."
+      "not_found": "Die job bestaat niet meer.",
+      "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is."
     },
     "network": "De server is niet bereikbaar.",
     "node": {
@@ -284,52 +284,111 @@
     "clientSecretStored": "Er is een geheim opgeslagen. Laat leeg om het te behouden of voer een nieuw geheim in om het te vervangen.",
     "discoveryUrl": "URL van het discovery-document",
     "discoveryUrlHint": "Het OpenID-configuratie-eindpunt van uw tenant. Moet HTTPS zijn en publiek resolvebaar.",
+    "issuer": "Uitgever",
+    "lastCheck": "Laatste controle",
     "lastTested": "Laatst gecontroleerd op {time} — {message}",
     "neverTested": "Nooit gecontroleerd",
     "notAvailableBody": "Deze build kan de configuratie bewaren en controleren. Aanmelden via Entra ID komt in een latere fase, dus de knop staat nog niet op de aanmeldpagina.",
     "notAvailableTitle": "Voorlopig alleen configuratie",
+    "reconfigure": "Opnieuw instellen",
+    "secretMissing": "Niet ingesteld",
+    "secretStored": "Opgeslagen",
     "subtitle": "Aanmelden met een Microsoft Entra ID-directory.",
     "testConnection": "Verbinding testen",
     "testFailed": "Laatste controle mislukt",
     "testFailedDetail": "De controle is mislukt: {reason} ({detail})",
     "testOk": "De provider antwoordde en het discovery-document is geldig.",
-    "testPassed": "Laatste controle geslaagd"
+    "testPassed": "Laatste controle geslaagd",
+    "wizard": {
+      "back": "Vorige",
+      "done": "Klaar",
+      "identifiers": {
+        "body": "De pagina Overzicht van uw nieuwe app-registratie toont ze allebei. Plak ze hier.",
+        "clientHint": "Ook op de overzichtspagina. Niet de object-id.",
+        "clientLabel": "Toepassings-id (client)",
+        "derived": "Velnox gebruikt dit discovery-document, opgebouwd uit de tenant-id:",
+        "short": "Identificatoren",
+        "tenantHint": "Een GUID op de overzichtspagina van de app-registratie.",
+        "tenantLabel": "Map-id (tenant)",
+        "title": "Neem de twee identificatoren over"
+      },
+      "intro": {
+        "body": "Een directory koppelen betekent een paar keer wisselen tussen deze pagina en het Microsoft Entra-beheercentrum. Dit hebt u nodig.",
+        "need1": "Toegang tot het Microsoft Entra-beheercentrum op entra.microsoft.com.",
+        "need2": "Rechten om een app-registratie aan te maken — Toepassingsbeheerder, Cloudtoepassingsbeheerder of Globaal beheerder.",
+        "need3": "Een paar minuten zonder onderbreking: een clientgeheim wordt maar één keer getoond, direct nadat u het aanmaakt.",
+        "short": "Voorbereiding",
+        "title": "Voordat u begint"
+      },
+      "next": "Volgende",
+      "register": {
+        "accountTypes": "Kies bij accounttypen \"Alleen accounts in deze organisatiemap\", tenzij u bewust wilt dat gasten uit andere tenants kunnen aanmelden.",
+        "body": "Ga in het Entra-beheercentrum naar Identiteit → Toepassingen → App-registraties en kies Nieuwe registratie. Gebruik deze twee waarden.",
+        "nameLabel": "Naam",
+        "redirectHint": "Voeg hem toe onder platform \"Web\". Hij moet exact overeenkomen — een schuine streep aan het eind is voor Entra een andere URI.",
+        "redirectLabel": "Omleidings-URI",
+        "short": "App-registratie",
+        "title": "Maak de app-registratie aan"
+      },
+      "restrict": {
+        "body": "Optioneel. De e-maildomeinen beperken die mogen aanmelden is de moeite waard als uw directory gastaccounts bevat.",
+        "short": "Wie mag aanmelden",
+        "title": "Beperk wie mag aanmelden"
+      },
+      "saveAndTest": "Opslaan en testen",
+      "secret": {
+        "alreadyStored": "Er is al een geheim opgeslagen. Laat dit leeg om het te behouden, of plak een nieuw geheim om het te vervangen.",
+        "body": "Ga in de app-registratie naar Certificaten en geheimen → Clientgeheimen → Nieuw clientgeheim. Kopieer de Waarde, niet de Geheim-id.",
+        "hint": "Entra toont de waarde één keer. Navigeert u weg voordat u hem kopieert, verwijder het geheim dan en maak een nieuw aan.",
+        "short": "Clientgeheim",
+        "title": "Maak een clientgeheim aan"
+      },
+      "test": {
+        "anyDomain": "Elk domein dat de directory authenticeert",
+        "body": "Velnox slaat de configuratie op en vraagt de provider om het discovery-document, zodat u het nu weet en niet pas bij de eerste aanmelding.",
+        "secretEntered": "Er wordt een nieuw geheim opgeslagen",
+        "secretKept": "Het opgeslagen geheim blijft staan",
+        "secretMissing": "Geen — zonder geheim werkt de verbinding niet",
+        "short": "Controle",
+        "title": "Opslaan en de verbinding controleren"
+      }
+    }
   },
   "status": {
     "check": {
-      "pass": "Geslaagd",
-      "info": "Info",
-      "warning": "Waarschuwing",
       "blocker": "Blokkade",
-      "unknown": "Niet herkend — behandeld als blokkade"
+      "info": "Info",
+      "pass": "Geslaagd",
+      "unknown": "Niet herkend — behandeld als blokkade",
+      "warning": "Waarschuwing"
     },
     "dependency": {
-      "ok": "Operationeel",
       "degraded": "Verminderd",
-      "down": "Niet beschikbaar"
+      "down": "Niet beschikbaar",
+      "ok": "Operationeel"
     },
     "health": {
-      "ok": "OK",
-      "warning": "Waarschuwing",
       "critical": "Kritiek",
-      "unknown": "Onbekend"
+      "ok": "OK",
+      "unknown": "Onbekend",
+      "warning": "Waarschuwing"
     },
     "job": {
-      "queued": "In wachtrij",
-      "preflight": "Preflight",
-      "waiting_approval": "Wacht op goedkeuring",
-      "running": "Actief",
-      "validating": "Valideren",
-      "succeeded": "Geslaagd",
-      "partially_succeeded": "Deels geslaagd",
+      "cancelled": "Geannuleerd",
       "failed": "Mislukt",
+      "partially_succeeded": "Deels geslaagd",
+      "preflight": "Preflight",
+      "queued": "In wachtrij",
       "rolled_back": "Teruggedraaid",
-      "cancelled": "Geannuleerd"
+      "running": "Actief",
+      "succeeded": "Geslaagd",
+      "validating": "Valideren",
+      "waiting_approval": "Wacht op goedkeuring"
     },
     "node": {
-      "online": "Online",
-      "offline": "Offline",
       "maintenance": "Onderhoud",
+      "offline": "Offline",
+      "online": "Online",
       "unknown": "Onbekend"
     }
   },
@@ -338,17 +397,17 @@
     "checkName": "Component",
     "checks": {
       "database": "PostgreSQL",
+      "migrations": "Schemamigraties",
       "redis": "Redis",
-      "worker": "Worker",
-      "migrations": "Schemamigraties"
+      "worker": "Worker"
     },
     "checkStatus": "Status",
     "detail": {
-      "noHeartbeat": "Geen hartslag vastgelegd",
+      "connectionFailed": "Verbinding mislukt: {message}",
+      "heartbeatAge": "Hartslag {seconds}s geleden",
       "heartbeatInvalid": "Hartslag is geen tijdstempel",
       "heartbeatStale": "Hartslag is {seconds}s oud",
-      "heartbeatAge": "Hartslag {seconds}s geleden",
-      "connectionFailed": "Verbinding mislukt: {message}"
+      "noHeartbeat": "Geen hartslag vastgelegd"
     },
     "lastChecked": "Gecontroleerd om {time}",
     "latency": "{ms} ms",

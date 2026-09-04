@@ -18,7 +18,11 @@ export const REDACTED = '[redacted]';
 
 /** Object keys whose values are replaced wholesale, matched case-insensitively. */
 export const SECRET_KEY_PATTERNS: readonly RegExp[] = [
-  /pass(word|wd)?$/i,
+  // Unanchored on purpose. Anchoring to the end missed `passwordHash`, and a
+  // database error carrying the row it failed to write embeds exactly that —
+  // verified: an Argon2 hash reached the log untouched. Over-redacting a
+  // `passwordUpdatedAt` timestamp is a price worth paying for that.
+  /pass(word|wd)/i,
   /^secret/i,
   /secret$/i,
   /token$/i,

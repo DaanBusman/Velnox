@@ -1,6 +1,6 @@
 {
   "name": "@velnox/i18n",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Controlled vocabulary, message catalogues and locale resolution",

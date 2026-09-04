@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { IdentityProvider } from '@velnox/db';
+import type { ApiConfig } from '@velnox/config';
+import { API_CONFIG } from '../../config/config.module';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { SecretStoreService } from '../auth/secret-store.service';
@@ -25,6 +27,17 @@ import { fetchDiscoveryDocument } from './oidc-discovery';
 
 export const ENTRA_PROVIDER_NAME = 'Microsoft Entra ID';
 
+/**
+ * Where Entra ID sends the browser back after someone signs in.
+ *
+ * It has to be registered in the directory long before the flow that uses it
+ * exists, so it is defined once here and handed to the interface rather than
+ * typed by hand into both places. Changing it later means editing the app
+ * registration in Entra too — exactly the kind of two-sided change that should
+ * be visible in a diff.
+ */
+export const OIDC_CALLBACK_PATH = '/api/v1/auth/oidc/callback';
+
 export interface ProviderView {
   configured: boolean;
   enabled: boolean;
@@ -44,6 +57,11 @@ export interface ProviderView {
    * build, and reported rather than implied.
    */
   signInAvailable: boolean;
+
+  /** What to paste into the app registration. Derived, never stored. */
+  redirectUri: string;
+  /** A name for the app registration that says which installation it belongs to. */
+  suggestedAppName: string;
 }
 
 export interface ProviderUpdate {
@@ -58,15 +76,35 @@ export interface ProviderUpdate {
 
 @Injectable()
 export class IdentityService {
+  private readonly redirectUri: string;
+  private readonly suggestedAppName: string;
+
   constructor(
+    @Inject(API_CONFIG) config: ApiConfig,
     private readonly prisma: PrismaService,
     private readonly secrets: SecretStoreService,
     private readonly audit: AuditService,
-  ) {}
+  ) {
+    // Built from the address operators actually reach this installation on, so
+    // the value shown in the wizard is the value the flow will send. A URL
+    // assembled in the browser could differ — behind a reverse proxy it usually
+    // would — and a redirect URI that differs by one character is rejected by
+    // Entra with an error that says very little.
+    this.redirectUri = new URL(OIDC_CALLBACK_PATH, config.APP_URL).toString();
+
+    // Several Velnox installations can share one directory, so the name says
+    // which one this is.
+    this.suggestedAppName = `${config.VELNOX_PRODUCT_NAME} (${new URL(config.APP_URL).host})`;
+  }
+
+  /** The two values the wizard asks the operator to paste into Entra. */
+  private get derived() {
+    return { redirectUri: this.redirectUri, suggestedAppName: this.suggestedAppName };
+  }
 
   async view(): Promise<ProviderView> {
     const provider = await this.find();
-    return describe(provider);
+    return describe(provider, this.derived);
   }
 
   async update(
@@ -123,14 +161,16 @@ export class IdentityService {
        */
       metadata: {
         fieldsChanged: Object.keys(update).filter((key) => key !== 'clientSecret'),
-        // Named to survive redaction: any key containing "secret" is stripped,
-        // which is the right default. This is a boolean, not a secret.
-        credentialReplaced: update.clientSecret !== undefined,
+        // Named to survive redaction. The redactor strips any key starting with
+        // "secret" or "credential", which is right — but this is a boolean
+        // saying whether a rotation happened, and losing it makes the audit
+        // record less useful without making anything safer.
+        clientSecretRotated: update.clientSecret !== undefined,
         enabled: saved.enabled,
       },
     });
 
-    return describe(saved);
+    return describe(saved, this.derived);
   }
 
   /**
@@ -202,7 +242,10 @@ export class IdentityService {
   }
 }
 
-function describe(provider: IdentityProvider | null): ProviderView {
+function describe(
+  provider: IdentityProvider | null,
+  derived: { redirectUri: string; suggestedAppName: string },
+): ProviderView {
   return {
     configured: Boolean(provider?.discoveryUrl && provider.clientId),
     enabled: provider?.enabled ?? false,
@@ -219,5 +262,7 @@ function describe(provider: IdentityProvider | null): ProviderView {
     // Stated as a constant, not computed from configuration, because no amount
     // of configuration makes a flow exist that has not been written.
     signInAvailable: false,
+    redirectUri: derived.redirectUri,
+    suggestedAppName: derived.suggestedAppName,
   };
 }

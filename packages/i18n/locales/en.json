@@ -62,14 +62,14 @@
     "phaseNoticeTitle": "This installation is running a phase 2 build",
     "subtitle": "Fleet overview",
     "tiles": {
-      "tenants": "Tenants",
       "clusters": "Clusters",
       "nodes": "Nodes",
       "nodesNeedingUpdates": "Nodes needing updates",
-      "upgradeBlockers": "Upgrade blockers",
-      "unhealthyClusters": "Unhealthy clusters",
+      "recentFailures": "Recent failures",
       "runningJobs": "Running jobs",
-      "recentFailures": "Recent failures"
+      "tenants": "Tenants",
+      "unhealthyClusters": "Unhealthy clusters",
+      "upgradeBlockers": "Upgrade blockers"
     },
     "tileUnavailable": "Available from phase {phase}",
     "title": "Dashboard"
@@ -91,10 +91,10 @@
   "errors": {
     "auth": {
       "invalid_credentials": "Email address or password is incorrect.",
-      "mfa_required": "A second authentication factor is required.",
       "mfa_invalid": "That code is not valid.",
-      "session_expired": "Your session has expired. Please sign in again.",
-      "rate_limited": "Too many attempts. Try again in {seconds, plural, one {# second} other {# seconds}}."
+      "mfa_required": "A second authentication factor is required.",
+      "rate_limited": "Too many attempts. Try again in {seconds, plural, one {# second} other {# seconds}}.",
+      "session_expired": "Your session has expired. Please sign in again."
     },
     "authz": {
       "forbidden": "You do not have permission to perform this action.",
@@ -106,9 +106,9 @@
       "version_mismatch": "Not all Ceph daemons run the same version. Complete the running upgrade first."
     },
     "cluster": {
-      "unreachable": "Cluster {cluster} could not be reached.",
+      "already_degraded": "Cluster {cluster} is not healthy. Resolve this before starting a change.",
       "quorum_at_risk": "Cluster {cluster} would lose quorum: {available} of {required} voting nodes would remain available.",
-      "already_degraded": "Cluster {cluster} is not healthy. Resolve this before starting a change."
+      "unreachable": "Cluster {cluster} could not be reached."
     },
     "credential": {
       "rotation_verify_failed": "The new password was applied but could not be verified. Both versions have been kept and the credential is flagged for attention."
@@ -119,8 +119,8 @@
     "generic": "Something went wrong.",
     "job": {
       "concurrent_run": "Another job is already running against {target}.",
-      "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe.",
-      "not_found": "That job no longer exists."
+      "not_found": "That job no longer exists.",
+      "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe."
     },
     "network": "Could not reach the server.",
     "node": {
@@ -283,52 +283,111 @@
     "clientSecretStored": "A secret is stored. Leave blank to keep it, or enter a new one to replace it.",
     "discoveryUrl": "Discovery document URL",
     "discoveryUrlHint": "The OpenID configuration endpoint for your tenant. Must be HTTPS and publicly resolvable.",
+    "issuer": "Issuer",
+    "lastCheck": "Last check",
     "lastTested": "Last checked {time} — {message}",
     "neverTested": "Never checked",
     "notAvailableBody": "This build can hold and check the configuration. Signing in through Entra ID arrives in a later phase, so the button is not shown on the sign-in page yet.",
     "notAvailableTitle": "Configuration only, for now",
+    "reconfigure": "Reconfigure",
+    "secretMissing": "Not set",
+    "secretStored": "Stored",
     "subtitle": "Sign in with a Microsoft Entra ID directory.",
     "testConnection": "Test connection",
     "testFailed": "Last check failed",
     "testFailedDetail": "The check failed: {reason} ({detail})",
     "testOk": "The provider answered and the discovery document is valid.",
-    "testPassed": "Last check passed"
+    "testPassed": "Last check passed",
+    "wizard": {
+      "back": "Back",
+      "done": "Done",
+      "identifiers": {
+        "body": "The Overview page of your new app registration shows both. Paste them here.",
+        "clientHint": "Also on the Overview page. Not the object ID.",
+        "clientLabel": "Application (client) ID",
+        "derived": "Velnox will use this discovery document, built from the tenant ID:",
+        "short": "Identifiers",
+        "tenantHint": "A GUID on the Overview page of the app registration.",
+        "tenantLabel": "Directory (tenant) ID",
+        "title": "Copy the two identifiers back"
+      },
+      "intro": {
+        "body": "Connecting a directory means switching between this page and the Microsoft Entra admin center a few times. Here is what you will need.",
+        "need1": "Access to the Microsoft Entra admin center at entra.microsoft.com.",
+        "need2": "Permission to create an app registration — Application Administrator, Cloud Application Administrator or Global Administrator.",
+        "need3": "A few minutes without interruption: a client secret is shown only once, immediately after you create it.",
+        "short": "Before you start",
+        "title": "Before you start"
+      },
+      "next": "Next",
+      "register": {
+        "accountTypes": "For account types, choose \"Accounts in this organizational directory only\" unless you deliberately want guests from other tenants to sign in.",
+        "body": "In the Entra admin center go to Identity → Applications → App registrations, and choose New registration. Use these two values.",
+        "nameLabel": "Name",
+        "redirectHint": "Add it under platform \"Web\". It must match exactly — a trailing slash is a different URI to Entra.",
+        "redirectLabel": "Redirect URI",
+        "short": "App registration",
+        "title": "Create the app registration"
+      },
+      "restrict": {
+        "body": "Optional. Limiting the email domains that may sign in is worth doing if your directory contains guest accounts.",
+        "short": "Who may sign in",
+        "title": "Restrict who may sign in"
+      },
+      "saveAndTest": "Save and test",
+      "secret": {
+        "alreadyStored": "A secret is already stored. Leave this blank to keep it, or paste a new one to replace it.",
+        "body": "In the app registration go to Certificates & secrets → Client secrets → New client secret. Copy the Value, not the Secret ID.",
+        "hint": "Entra shows the value once. If you navigate away before copying it, delete the secret and create another.",
+        "short": "Client secret",
+        "title": "Create a client secret"
+      },
+      "test": {
+        "anyDomain": "Any domain the directory authenticates",
+        "body": "Velnox will store the configuration and ask the provider for its discovery document, so you find out now rather than at the first sign-in.",
+        "secretEntered": "A new secret will be stored",
+        "secretKept": "Keeping the stored secret",
+        "secretMissing": "None — the connection will not work without one",
+        "short": "Check",
+        "title": "Save and check the connection"
+      }
+    }
   },
   "status": {
     "check": {
-      "pass": "Pass",
-      "info": "Info",
-      "warning": "Warning",
       "blocker": "Blocker",
-      "unknown": "Unrecognised — treated as a blocker"
+      "info": "Info",
+      "pass": "Pass",
+      "unknown": "Unrecognised — treated as a blocker",
+      "warning": "Warning"
     },
     "dependency": {
-      "ok": "Operational",
       "degraded": "Degraded",
-      "down": "Unavailable"
+      "down": "Unavailable",
+      "ok": "Operational"
     },
     "health": {
-      "ok": "OK",
-      "warning": "Warning",
       "critical": "Critical",
-      "unknown": "Unknown"
+      "ok": "OK",
+      "unknown": "Unknown",
+      "warning": "Warning"
     },
     "job": {
-      "queued": "Queued",
-      "preflight": "Preflight",
-      "waiting_approval": "Waiting for approval",
-      "running": "Running",
-      "validating": "Validating",
-      "succeeded": "Succeeded",
-      "partially_succeeded": "Partially succeeded",
+      "cancelled": "Cancelled",
       "failed": "Failed",
+      "partially_succeeded": "Partially succeeded",
+      "preflight": "Preflight",
+      "queued": "Queued",
       "rolled_back": "Rolled back",
-      "cancelled": "Cancelled"
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "validating": "Validating",
+      "waiting_approval": "Waiting for approval"
     },
     "node": {
-      "online": "Online",
-      "offline": "Offline",
       "maintenance": "Maintenance",
+      "offline": "Offline",
+      "online": "Online",
       "unknown": "Unknown"
     }
   },
@@ -337,17 +396,17 @@
     "checkName": "Component",
     "checks": {
       "database": "PostgreSQL",
+      "migrations": "Schema migrations",
       "redis": "Redis",
-      "worker": "Worker",
-      "migrations": "Schema migrations"
+      "worker": "Worker"
     },
     "checkStatus": "Status",
     "detail": {
-      "noHeartbeat": "No heartbeat recorded",
+      "connectionFailed": "Connection failed: {message}",
+      "heartbeatAge": "Heartbeat {seconds}s ago",
       "heartbeatInvalid": "Heartbeat is not a timestamp",
       "heartbeatStale": "Heartbeat is {seconds}s old",
-      "heartbeatAge": "Heartbeat {seconds}s ago",
-      "connectionFailed": "Connection failed: {message}"
+      "noHeartbeat": "No heartbeat recorded"
     },
     "lastChecked": "Checked at {time}",
     "latency": "{ms} ms",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRedactor, REDACTED } from './redaction';
+import { createRedactor, REDACTED, rootRedactor } from './redaction';
 
 describe('redaction', () => {
   describe('by key', () => {
@@ -107,4 +107,43 @@ describe('redaction', () => {
       expect(JSON.stringify(r.value(deep))).toContain('depth-limit');
     });
   });
+});
+
+describe('audit metadata key names', () => {
+  /*
+   * The redactor is deliberately blunt: any key starting with "secret" or
+   * "credential", or ending in "secret", loses its value. That is the right
+   * default and is not changing.
+   *
+   * The consequence is easy to trip over. Three audit records were written with
+   * key names that described a *count* or a *boolean* and had their values
+   * replaced with [redacted], which cost information and protected nothing —
+   * `recoveryCodesIssued: 10`, `secretChanged: true`, `credentialReplaced: true`.
+   *
+   * This pins both halves: names that carry no secret survive, names that might
+   * do not. When a future audit record needs a name, this is the list to check
+   * it against.
+   */
+  const survives = ['clientSecretRotated', 'issuedCount', 'remaining', 'generation', 'rotated'];
+  const redacted = [
+    'secretChanged',
+    'credentialReplaced',
+    'clientSecret',
+    'recoveryCodesIssued',
+    'apiKey',
+    'passwordHash',
+    'totpSeed',
+  ];
+
+  for (const key of survives) {
+    it(`keeps ${key}, which names no secret`, () => {
+      expect(rootRedactor.value({ [key]: 7 })).toEqual({ [key]: 7 });
+    });
+  }
+
+  for (const key of redacted) {
+    it(`redacts ${key}`, () => {
+      expect(rootRedactor.value({ [key]: 'anything' })).toEqual({ [key]: REDACTED });
+    });
+  }
 });

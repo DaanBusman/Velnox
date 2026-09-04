@@ -58,4 +58,8 @@ export interface IdentityProviderView {
   lastTestMessage: string | null;
   /** Whether signing in through this provider works in this build. */
   signInAvailable: boolean;
+  /** What to register as the redirect URI in the directory. Derived server-side. */
+  redirectUri: string;
+  /** A name for the app registration that identifies this installation. */
+  suggestedAppName: string;
 }
