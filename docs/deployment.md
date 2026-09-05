@@ -177,11 +177,11 @@ All commands run from `/opt/velnox`.
 Status and logs:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
 ```
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
 ```
 
 Re-verify a running installation at any time:
@@ -193,7 +193,7 @@ bash scripts/verify-stack.sh https://velnox.example.internal
 Stop (data is preserved in named volumes):
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env down
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env down
 ```
 
 ---
@@ -206,8 +206,10 @@ the other two reversible.
 ### Step 1 — Back up the database. First.
 
 ```bash
-cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/root/velnox-$(date +%F).dump"
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
 ```
+
+The `| sudo tee` is not decoration. `sudo command > /var/backups/file` does not work: your shell opens the file *before* sudo runs, as you, and a directory you cannot write refuses it. Piping into `sudo tee` performs the write as root.
 
 This takes seconds, and it is the only way back. **Migrations only run forwards.** If the new version
 adds one and you then want the previous version again, the older code cannot run against the newer
@@ -217,7 +219,7 @@ forwards.
 ### Step 2 — See what you are about to get
 
 ```bash
-cd /opt/velnox && git fetch && git log --oneline HEAD..origin/main
+cd /opt/velnox && sudo git fetch && sudo git log --oneline HEAD..origin/main
 ```
 
 Skippable, but it costs a second and tells you whether you are picking up one small fix or a month of
@@ -278,7 +280,7 @@ That is enough **only if the upgrade added no migration**. If it did, restore yo
 then check out the older commit:
 
 ```bash
-cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /root/velnox-2026-09-01.dump
+cd /opt/velnox && sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
 ```
 
 ### Keeping several machines in step
@@ -295,7 +297,7 @@ takes about a minute.
 Two things, and one of them is not in the database:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "velnox-$(date +%F).dump"
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
 ```
 
 …and `/opt/velnox/.env`, which holds `MASTER_ENCRYPTION_KEY`. A database backup without it is
@@ -304,7 +306,7 @@ ciphertext you can never read.
 Restore by putting `.env` back, starting the stack so migrations create the schema, then:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < velnox-2026-09-01.dump
+sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
 ```
 
 Test the restore before you rely on it.
@@ -320,8 +322,8 @@ failure.
 |---|---|
 | Port 80 or 443 already in use | Another web server is installed. Remove it, or pass `--http-port` / `--https-port` |
 | `apt-get update` finds no `Release` file for Docker | Docker has not published packages for your release codename yet. Replace the codename in `/etc/apt/sources.list.d/docker.list` with the previous stable one |
-| Browser warns about the certificate | Expected with a self-signed certificate. Accept it, distribute Caddy's root CA from `docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`, or re-run with `--tls=you@example.com` and a public hostname |
-| `readyz` reports the worker as degraded | It reports degraded above 45 seconds without a heartbeat. Check `docker compose ... logs worker` |
+| Browser warns about the certificate | Expected with a self-signed certificate. Accept it, distribute Caddy's root CA from `sudo docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`, or re-run with `--tls=you@example.com` and a public hostname |
+| `readyz` reports the worker as degraded | It reports degraded above 45 seconds without a heartbeat. Check `sudo docker compose ... logs worker` |
 | Disk filling up | Almost always the Docker build cache. `docker builder prune -f` |
 
 ---

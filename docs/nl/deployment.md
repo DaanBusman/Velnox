@@ -181,11 +181,11 @@ Alle commando's draaien vanuit `/opt/velnox`.
 Status en logs:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
 ```
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
 ```
 
 Een draaiende installatie op elk moment opnieuw controleren:
@@ -197,7 +197,7 @@ bash scripts/verify-stack.sh https://velnox.example.internal
 Stoppen (data blijft behouden in named volumes):
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env down
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env down
 ```
 
 ---
@@ -210,8 +210,10 @@ die de andere twee terugdraaibaar maakt.
 ### Stap 1 — Back-up de database. Eerst.
 
 ```bash
-cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/root/velnox-$(date +%F).dump"
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
 ```
+
+De `| sudo tee` is geen opsmuk. `sudo commando > /var/backups/bestand` werkt niet: uw shell opent het bestand *voordat* sudo draait, als uzelf, en een map waarin u niet mag schrijven weigert dat. Doorsluizen naar `sudo tee` laat het schrijven wel als root gebeuren.
 
 Dit kost seconden, en het is de enige weg terug. **Migraties lopen alleen vooruit.** Voegt de nieuwe
 versie er een toe en wil je daarna weer de vorige versie, dan kan de oudere code niet tegen het
@@ -221,7 +223,7 @@ vooruit.
 ### Stap 2 — Bekijk wat je gaat krijgen
 
 ```bash
-cd /opt/velnox && git fetch && git log --oneline HEAD..origin/main
+cd /opt/velnox && sudo git fetch && sudo git log --oneline HEAD..origin/main
 ```
 
 Overslaan mag, maar het kost een seconde en laat zien of je één kleine fix ophaalt of een maand aan
@@ -284,7 +286,7 @@ Dat volstaat **alleen als de upgrade geen migratie toevoegde**. Deed hij dat wel
 dump uit stap 1 terug en check daarna pas de oudere commit uit:
 
 ```bash
-cd /opt/velnox && docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /root/velnox-2026-09-01.dump
+cd /opt/velnox && sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
 ```
 
 ### Meerdere machines gelijk houden
@@ -301,7 +303,7 @@ doet geen kwaad en kost ongeveer een minuut.
 Twee dingen, en één daarvan zit niet in de database:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "velnox-$(date +%F).dump"
+sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
 ```
 
 …en `/opt/velnox/.env`, waar `MASTER_ENCRYPTION_KEY` in staat. Een databaseback-up zonder die sleutel
@@ -311,7 +313,7 @@ Herstel door `.env` terug te zetten, de stack te starten zodat de migraties het 
 dan:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < velnox-2026-09-01.dump
+sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
 ```
 
 Test het herstel voordat je erop vertrouwt.
@@ -327,8 +329,8 @@ laatste regels daarvan.
 |---|---|
 | Poort 80 of 443 al in gebruik | Er staat een andere webserver op. Verwijder die, of geef `--http-port` / `--https-port` mee |
 | `apt-get update` vindt geen `Release`-bestand voor Docker | Docker heeft nog geen pakketten voor jouw releasecodenaam. Vervang de codenaam in `/etc/apt/sources.list.d/docker.list` door de vorige stabiele |
-| De browser waarschuwt over het certificaat | Verwacht bij een zelfondertekend certificaat. Accepteer het, verspreid de root-CA van Caddy uit `docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`, of draai opnieuw met `--tls=jij@example.com` en een publieke hostnaam |
-| `readyz` meldt de worker als verminderd | Dat gebeurt boven 45 seconden zonder hartslag. Kijk in `docker compose ... logs worker` |
+| De browser waarschuwt over het certificaat | Verwacht bij een zelfondertekend certificaat. Accepteer het, verspreid de root-CA van Caddy uit `sudo docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`, of draai opnieuw met `--tls=jij@example.com` en een publieke hostnaam |
+| `readyz` meldt de worker als verminderd | Dat gebeurt boven 45 seconden zonder hartslag. Kijk in `sudo docker compose ... logs worker` |
 | Schijf loopt vol | Vrijwel altijd de Docker build cache. `docker builder prune -f` |
 
 ---
