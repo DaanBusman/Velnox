@@ -22,7 +22,7 @@ Debian 12 or 13, or Ubuntu 22.04 or 24.04 LTS. 64-bit x86 only. A minimal server
 nothing else listening on ports 80 and 443.
 
 Disk is dominated by the container images (~2.3 GB) and, if you build on the host, the Docker build
-cache, which grows to well over 10 GB. `docker builder prune -f` reclaims it. After that, disk grows
+cache, which grows to well over 10 GB. `sudo docker builder prune -f` reclaims it. After that, disk grows
 with audit records, job logs and inventory history.
 
 ### Ports
@@ -177,23 +177,23 @@ All commands run from `/opt/velnox`.
 Status and logs:
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
 ```
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
 ```
 
 Re-verify a running installation at any time:
 
 ```bash
-bash scripts/verify-stack.sh https://velnox.example.internal
+cd /opt/velnox && bash scripts/verify-stack.sh https://velnox.example.internal
 ```
 
 Stop (data is preserved in named volumes):
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env down
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env down
 ```
 
 ---
@@ -257,7 +257,7 @@ every health check passes, so if the command completes, the upgrade worked.
 Reclaim the build cache afterwards, or it grows without limit:
 
 ```bash
-docker builder prune -f
+sudo docker builder prune -f
 ```
 
 ### If an upgrade goes wrong

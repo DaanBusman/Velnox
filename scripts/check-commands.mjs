@@ -17,7 +17,16 @@
  *   2. The executable bit going missing in the repository itself, which breaks
  *      `./install.sh` for anyone who prefers to run it that way.
  *
- * This asserts both. It runs in `pnpm run lint`.
+ *   3. A `docker` command without `sudo`. The installer deliberately adds nobody
+ *      to the `docker` group — membership of it is root by another name — so an
+ *      unprivileged shell cannot reach the daemon socket at all.
+ *
+ *   4. Two `sudo` invocations in one pipeline. Both halves start at once,
+ *      neither has a cached credential, and both ask for a password on the same
+ *      terminal, so the command hangs after one password is typed. Sequential
+ *      sudos joined by `&&` are fine: the first one caches for the rest.
+ *
+ * All four run in `pnpm run lint`.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -78,6 +87,63 @@ for (const file of DOCUMENTS) {
   });
 }
 
+/**
+ * A pipeline whose stages are separately sudo'd.
+ *
+ * `sudo a | sudo b` is the shape that breaks; `a | sudo b` is fine, because only
+ * one stage needs credentials.
+ */
+function hasConcurrentSudo(line) {
+  // Split the line into the commands the shell runs one after another first.
+  // `sudo apt-get ... && echo x | sudo tee y` is three sequential commands, and
+  // the first sudo caches credentials for the rest — only stages of a single
+  // pipeline actually start together.
+  return line
+    .split(/&&|\|\||;/)
+    .some((command) => {
+      const stages = command.split('|');
+      return (
+        stages.length > 1 && stages.filter((stage) => /(^|\s)sudo\s/.test(stage)).length > 1
+      );
+    });
+}
+
+for (const file of DOCUMENTS) {
+  let content;
+  try {
+    content = readFileSync(join(ROOT, file), 'utf8');
+  } catch {
+    continue;
+  }
+
+  let inBash = false;
+
+  content.split('\n').forEach((line, index) => {
+    // Only inside ```bash fences: prose mentions a command without meaning
+    // "paste this", and the surrounding sentence usually supplies the context.
+    if (line.startsWith('```')) {
+      inBash = line.startsWith('```bash');
+      return;
+    }
+    if (!inBash || line.trim() === '') return;
+
+    if (/(^|[;&|]\s*)docker\s/.test(line) && !/sudo\s+(sh\s+-c\s+.)?docker\s/.test(line)) {
+      problems.push(
+        `${file}:${index + 1}  ${line.trim().slice(0, 80)}\n` +
+          '    Runs docker without sudo. Nobody is in the docker group on a fresh install.',
+      );
+    }
+
+    if (hasConcurrentSudo(line)) {
+      problems.push(
+        `${file}:${index + 1}  ${line.trim().slice(0, 80)}\n` +
+          '    Two sudos in one pipeline: both prompt for a password at once. ' +
+          "Wrap the whole command in a single `sudo sh -c '...'`.",
+      );
+    }
+  });
+}
+
 // The executable bit as git records it, which is what a clone actually gets.
 try {
   const listing = execFileSync('git', ['ls-files', '-s', '--', ...ENTRY_POINTS], {
@@ -105,5 +171,6 @@ if (problems.length > 0) {
 }
 
 console.log(
-  `Commands OK — ${DOCUMENTS.length} documents scanned, ${ENTRY_POINTS.length} entry points executable.`,
+  `Commands OK — ${DOCUMENTS.length} documents scanned, ${ENTRY_POINTS.length} entry points executable, ` +
+    'no docker without sudo, no pipeline with two of them.',
 );

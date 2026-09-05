@@ -25,7 +25,7 @@ Debian 12 of 13, of Ubuntu 22.04 of 24.04 LTS. Uitsluitend 64-bits x86. Een mini
 serverinstallatie, met verder niets dat op poort 80 en 443 luistert.
 
 De schijf gaat vooral op aan de container-images (~2,3 GB) en, als je op de host bouwt, aan de Docker
-build cache, die ruim boven de 10 GB uitkomt. `docker builder prune -f` ruimt die op. Daarna groeit de
+build cache, die ruim boven de 10 GB uitkomt. `sudo docker builder prune -f` ruimt die op. Daarna groeit de
 schijf mee met auditrecords, joblogs en inventarishistorie.
 
 ### Poorten
@@ -181,23 +181,23 @@ Alle commando's draaien vanuit `/opt/velnox`.
 Status en logs:
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
 ```
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
 ```
 
 Een draaiende installatie op elk moment opnieuw controleren:
 
 ```bash
-bash scripts/verify-stack.sh https://velnox.example.internal
+cd /opt/velnox && bash scripts/verify-stack.sh https://velnox.example.internal
 ```
 
 Stoppen (data blijft behouden in named volumes):
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env down
+cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env down
 ```
 
 ---
@@ -263,7 +263,7 @@ terug, dan is de upgrade geslaagd.
 Ruim daarna de build cache op, anders groeit die eindeloos:
 
 ```bash
-docker builder prune -f
+sudo docker builder prune -f
 ```
 
 ### Als een upgrade misgaat
@@ -331,7 +331,7 @@ laatste regels daarvan.
 | `apt-get update` vindt geen `Release`-bestand voor Docker | Docker heeft nog geen pakketten voor jouw releasecodenaam. Vervang de codenaam in `/etc/apt/sources.list.d/docker.list` door de vorige stabiele |
 | De browser waarschuwt over het certificaat | Verwacht bij een zelfondertekend certificaat. Accepteer het, verspreid de root-CA van Caddy uit `sudo docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`, of draai opnieuw met `--tls=jij@example.com` en een publieke hostnaam |
 | `readyz` meldt de worker als verminderd | Dat gebeurt boven 45 seconden zonder hartslag. Kijk in `sudo docker compose ... logs worker` |
-| Schijf loopt vol | Vrijwel altijd de Docker build cache. `docker builder prune -f` |
+| Schijf loopt vol | Vrijwel altijd de Docker build cache. `sudo docker builder prune -f` |
 
 ---
 
