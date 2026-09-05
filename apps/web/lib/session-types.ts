@@ -37,7 +37,7 @@ export interface UserSummary {
   tenantName: string;
   mfaEnrolled: boolean;
   privileged: boolean;
-  roles: string[];
+  roles: { assignmentId: string; roleId: string; name: string; scopeType: string }[];
   lastLoginAt: string | null;
   createdAt: string;
 }
@@ -62,4 +62,30 @@ export interface IdentityProviderView {
   redirectUri: string;
   /** A name for the app registration that identifies this installation. */
   suggestedAppName: string;
+}
+
+export interface RoleSummary {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  mspOnly: boolean;
+  permissions: string[];
+  /** Stored against the role but not recognised by this build. */
+  unknownPermissions: string[];
+  assignmentCount: number;
+}
+
+export interface AuditEventView {
+  id: string;
+  at: string;
+  action: string;
+  result: 'SUCCESS' | 'FAILURE' | 'DENIED';
+  actorType: string;
+  actorLabel: string | null;
+  resourceType: string | null;
+  resourceLabel: string | null;
+  ip: string | null;
+  requestId: string | null;
+  metadata: unknown;
 }

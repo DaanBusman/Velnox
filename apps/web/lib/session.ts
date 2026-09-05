@@ -1,9 +1,17 @@
 import 'server-only';
 import { cookies } from 'next/headers';
-import type { IdentityProviderView, Session, UserSummary } from './session-types';
+import type {
+  AuditEventView,
+  IdentityProviderView,
+  RoleSummary,
+  Session,
+  UserSummary,
+} from './session-types';
 
 export type {
+  AuditEventView,
   IdentityProviderView,
+  RoleSummary,
   Session,
   SessionUser,
   UserSummary,
@@ -73,14 +81,22 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
   }
 }
 
-/** Reads as the signed-in user, so the API applies their permissions, not ours. */
-export async function listUsers(): Promise<
-  { ok: true; users: UserSummary[] } | { ok: false; code: string }
-> {
+
+
+/**
+ * One place for every authenticated read.
+ *
+ * Each of these forwards the caller's own cookies, so the API applies their
+ * permissions rather than the web app's — the interface never decides what
+ * someone may see. A 403 comes back as a code the page renders as an
+ * explanation, which is why the failure shape is part of the return type
+ * instead of an exception.
+ */
+async function readAs<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; code: string }> {
   const cookieHeader = await forwardedCookies();
 
   try {
-    const response = await fetch(`${INTERNAL_API_URL}/api/v1/users`, {
+    const response = await fetch(`${INTERNAL_API_URL}${path}`, {
       headers: { accept: 'application/json', cookie: cookieHeader },
       cache: 'no-store',
       signal: AbortSignal.timeout(5_000),
@@ -93,35 +109,36 @@ export async function listUsers(): Promise<
       return { ok: false, code: body?.error?.code ?? 'generic' };
     }
 
-    const body = (await response.json()) as { users: UserSummary[] };
-    return { ok: true, users: body.users };
+    return { ok: true, data: (await response.json()) as T };
   } catch {
     return { ok: false, code: 'network' };
   }
 }
 
+export function listRoles() {
+  return readAs<{ roles: RoleSummary[]; catalogue: string[] }>('/api/v1/roles');
+}
+
+export function listAuditEvents(params: { limit?: number; cursor?: string; action?: string } = {}) {
+  const query = new URLSearchParams();
+  query.set('limit', String(params.limit ?? 50));
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.action) query.set('action', params.action);
+
+  return readAs<{ events: AuditEventView[]; nextCursor: string | null }>(
+    `/api/v1/audit-events?${query.toString()}`,
+  );
+}
+
+export function listAuditActions() {
+  return readAs<{ actions: string[] }>('/api/v1/audit-events/actions');
+}
+
+export function listUsers() {
+  return readAs<{ users: UserSummary[] }>('/api/v1/users');
+}
+
 /** The Entra ID configuration. Requires system.manage, which the API enforces. */
-export async function getIdentityProvider(): Promise<
-  { ok: true; provider: IdentityProviderView } | { ok: false; code: string }
-> {
-  const cookieHeader = await forwardedCookies();
-
-  try {
-    const response = await fetch(`${INTERNAL_API_URL}/api/v1/identity-providers/oidc`, {
-      headers: { accept: 'application/json', cookie: cookieHeader },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(5_000),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as {
-        error?: { code?: string };
-      } | null;
-      return { ok: false, code: body?.error?.code ?? 'generic' };
-    }
-
-    return { ok: true, provider: (await response.json()) as IdentityProviderView };
-  } catch {
-    return { ok: false, code: 'network' };
-  }
+export function getIdentityProvider() {
+  return readAs<IdentityProviderView>('/api/v1/identity-providers/oidc');
 }

@@ -23,6 +23,20 @@
     "version": "Version",
     "viewSource": "Obtain the source of this build"
   },
+  "audit": {
+    "appendOnlyBody": "The database refuses UPDATE and DELETE on this table through a trigger, so an event cannot be altered or removed after the fact — including by Velnox itself.",
+    "appendOnlyTitle": "Append-only",
+    "columnAction": "Action",
+    "columnActor": "Actor",
+    "columnDetail": "Detail",
+    "columnResult": "Result",
+    "columnWhen": "When",
+    "empty": "No events match.",
+    "newest": "Back to newest",
+    "older": "Older events",
+    "recent": "Events",
+    "subtitle": "Every authentication and authorisation event, oldest kept, newest first."
+  },
   "auth": {
     "apiUnreachableBody": "The interface is running but the API did not answer. Signing in will not work until it does.",
     "apiUnreachableTitle": "Cannot reach the server",
@@ -33,6 +47,7 @@
     "mfaRecoveryPrompt": "Enter a recovery code",
     "or": "or",
     "password": "Password",
+    "restoringSession": "Restoring your session…",
     "signIn": "Sign in",
     "signInWithMicrosoft": "Sign in with Microsoft",
     "signOut": "Sign out"
@@ -240,6 +255,17 @@
     "plannedIn": "Planned for phase {phase}",
     "seeRoadmap": "The full phase plan is in docs/roadmap.md."
   },
+  "roles": {
+    "assigned": "{count, plural, =0 {Not assigned} one {# account} other {# accounts}}",
+    "editingPendingBody": "Custom roles and per-role permission editing arrive in a later phase. The roles above are read from the API and are what the guard actually enforces.",
+    "editingPendingTitle": "Creating and editing roles",
+    "mspOnly": "MSP only",
+    "noPermissions": "This role grants nothing.",
+    "subtitle": "What each role grants, read from this installation.",
+    "systemRolesBody": "Created at setup from a frozen catalogue of {count} permissions. A permission that is not in the catalogue does not exist — adding one is a code change, never a data-entry surface.",
+    "systemRolesTitle": "System roles",
+    "unknownTitle": "Stored permissions this build does not recognise"
+  },
   "security": {
     "subtitle": "Settings that apply to your own account."
   },
@@ -420,14 +446,26 @@
     "workerHint": "The worker has no network port by design; its liveness is reported through a heartbeat."
   },
   "users": {
+    "chooseRole": "Choose a role…",
     "columnLastLogin": "Last sign-in",
     "columnMfa": "Two-factor",
     "columnName": "Name",
     "columnRoles": "Roles",
+    "createAction": "Add an account",
+    "createBody": "Velnox sends no email, so there is no invitation. Set an initial password and pass it on yourself; the new account can change it after signing in.",
+    "createTitle": "Add an account",
+    "disable": "Disable",
+    "disabledNotice": "This account is disabled. Its sessions were revoked and it cannot sign in.",
+    "enable": "Enable",
+    "grantRole": "Grant a role:",
+    "initialPassword": "Initial password",
+    "initialPasswordHint": "At least {min} characters, held to the same rule as every other password.",
     "listTitle": "{count, plural, one {# account} other {# accounts}}",
     "managementPendingBody": "Inviting users, assigning roles and deactivating accounts arrive with the roles interface. The accounts above are read from the API.",
     "managementPendingTitle": "Creating and editing users",
     "mfaGapTitle": "{count, plural, one {# privileged account without a second factor} other {# privileged accounts without a second factor}}",
+    "noRoles": "No roles — this account can sign in but do nothing.",
+    "revokeRole": "Take away {role}",
     "subtitle": "Accounts that can sign in to this installation.",
     "you": "(you)"
   }

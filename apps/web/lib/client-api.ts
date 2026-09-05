@@ -39,8 +39,16 @@ export async function apiPut<T>(path: string, body?: unknown): Promise<ApiResult
   return send('PUT', path, body);
 }
 
+export async function apiPatch<T>(path: string, body?: unknown): Promise<ApiResult<T>> {
+  return send('PATCH', path, body);
+}
+
+export async function apiDelete<T>(path: string): Promise<ApiResult<T>> {
+  return send('DELETE', path);
+}
+
 async function send<T>(
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {

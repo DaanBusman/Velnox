@@ -24,6 +24,20 @@
     "version": "Versie",
     "viewSource": "Broncode van deze build opvragen"
   },
+  "audit": {
+    "appendOnlyBody": "De database weigert UPDATE en DELETE op deze tabel via een trigger, dus een gebeurtenis kan achteraf niet worden gewijzigd of verwijderd — ook niet door Velnox zelf.",
+    "appendOnlyTitle": "Alleen toevoegen",
+    "columnAction": "Actie",
+    "columnActor": "Actor",
+    "columnDetail": "Detail",
+    "columnResult": "Resultaat",
+    "columnWhen": "Wanneer",
+    "empty": "Geen gebeurtenissen gevonden.",
+    "newest": "Terug naar de nieuwste",
+    "older": "Oudere gebeurtenissen",
+    "recent": "Gebeurtenissen",
+    "subtitle": "Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst."
+  },
   "auth": {
     "apiUnreachableBody": "De interface draait, maar de API antwoordt niet. Inloggen werkt pas als dat wel het geval is.",
     "apiUnreachableTitle": "Server niet bereikbaar",
@@ -34,6 +48,7 @@
     "mfaRecoveryPrompt": "Voer een herstelcode in",
     "or": "of",
     "password": "Wachtwoord",
+    "restoringSession": "Uw sessie wordt hersteld…",
     "signIn": "Inloggen",
     "signInWithMicrosoft": "Inloggen met Microsoft",
     "signOut": "Uitloggen"
@@ -241,6 +256,17 @@
     "plannedIn": "Gepland voor fase {phase}",
     "seeRoadmap": "Het volledige faseplan staat in docs/roadmap.md."
   },
+  "roles": {
+    "assigned": "{count, plural, =0 {Niet toegewezen} one {# account} other {# accounts}}",
+    "editingPendingBody": "Eigen rollen en het bewerken van rechten per rol komen in een latere fase. De rollen hierboven worden uit de API gelezen en zijn wat de guard daadwerkelijk afdwingt.",
+    "editingPendingTitle": "Rollen aanmaken en bewerken",
+    "mspOnly": "Alleen MSP",
+    "noPermissions": "Deze rol verleent niets.",
+    "subtitle": "Wat elke rol verleent, gelezen uit deze installatie.",
+    "systemRolesBody": "Aangemaakt bij de installatie uit een bevroren catalogus van {count} rechten. Een recht dat niet in de catalogus staat, bestaat niet — er een toevoegen is een codewijziging, nooit een invoerscherm.",
+    "systemRolesTitle": "Systeemrollen",
+    "unknownTitle": "Opgeslagen rechten die deze build niet kent"
+  },
   "security": {
     "subtitle": "Instellingen die gelden voor uw eigen account."
   },
@@ -421,14 +447,26 @@
     "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld."
   },
   "users": {
+    "chooseRole": "Kies een rol…",
     "columnLastLogin": "Laatste aanmelding",
     "columnMfa": "Tweefactor",
     "columnName": "Naam",
     "columnRoles": "Rollen",
+    "createAction": "Account toevoegen",
+    "createBody": "Velnox verstuurt geen e-mail, dus er is geen uitnodiging. Stel een eerste wachtwoord in en geef dat zelf door; het nieuwe account kan het na aanmelden wijzigen.",
+    "createTitle": "Account toevoegen",
+    "disable": "Uitschakelen",
+    "disabledNotice": "Dit account is uitgeschakeld. De sessies zijn ingetrokken en aanmelden is niet mogelijk.",
+    "enable": "Inschakelen",
+    "grantRole": "Rol toekennen:",
+    "initialPassword": "Eerste wachtwoord",
+    "initialPasswordHint": "Minimaal {min} tekens, aan dezelfde eis gehouden als elk ander wachtwoord.",
     "listTitle": "{count, plural, one {# account} other {# accounts}}",
     "managementPendingBody": "Gebruikers uitnodigen, rollen toewijzen en accounts deactiveren komen met het rollenscherm. De accounts hierboven worden uit de API gelezen.",
     "managementPendingTitle": "Gebruikers aanmaken en bewerken",
     "mfaGapTitle": "{count, plural, one {# account met verhoogde rechten zonder tweede factor} other {# accounts met verhoogde rechten zonder tweede factor}}",
+    "noRoles": "Geen rollen — dit account kan aanmelden maar verder niets.",
+    "revokeRole": "{role} intrekken",
     "subtitle": "Accounts die kunnen inloggen op deze installatie.",
     "you": "(u)"
   }

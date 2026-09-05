@@ -23,19 +23,16 @@ PKCE flow that would actually sign someone in is not written. `signInAvailable` 
 says `false`, the sign-in page shows no Microsoft button, and the settings page says so in as many
 words. Nothing here pretends to work.
 
-### Users can be listed, not managed
-`GET /api/v1/users` is real and permission-checked. Inviting a user, assigning a role, deactivating
-an account and editing a role's permissions have no endpoints yet — the roles interface is where
-they land. The users page says this rather than showing controls that do nothing.
-
 ### Roles are seeded, not editable
-The seven system roles are created at setup from the frozen catalogue in `packages/shared`. There is
-no interface for creating a custom role or changing which permissions a role holds.
+The seven system roles are created at setup from the frozen catalogue in `packages/shared`, and the
+Roles & Permissions page shows exactly what each one grants. There is no interface for creating a
+custom role or changing which permissions a role holds — that arrives with multi-tenancy, where a
+tenant-defined role first has something to scope to.
 
-### The audit log has no interface
-Every authentication and authorization event is written, the table refuses UPDATE and DELETE at the
-database level, and the events are correct. There is no page to read them from: today that is
-`psql`. The Audit Log section in the sidebar is marked with the phase that fills it.
+### There is no self-service password change
+An administrator sets an account's initial password and passes it on out of band, because Velnox
+sends no email. The account cannot then change it from the interface: `changePassword` exists in the
+service, enforces the strength rule and revokes every other session, but has no endpoint yet.
 
 ### Recovery-code use is logged, not alerted
 Using a recovery code is written to the audit trail and emitted as a `warn`-level event with a
@@ -91,6 +88,15 @@ does not block.
 - **`VELNOX_DEV_ENDPOINTS` exposes a diagnostic endpoint.** The endpoint, the flag and the dashboard
   card that called it are all gone. The acceptance script's check for it had quietly become a
   permanent skip; it has been replaced with checks that assert authentication is enforced.
+- **Users can be listed, not managed.** Accounts can now be created, disabled and re-enabled, and
+  roles granted and taken away — each one audited. Disabling revokes the account's sessions
+  immediately rather than letting them run until their tokens expire.
+- **The audit log has no interface.** There is one, paged by cursor, filtered by the reader's own
+  tenant and permission.
+- **An expired access token does not refresh transparently.** It does now. An open tab refreshes
+  itself before the fifteen minutes are up, and a page loaded with a stale token asks the browser to
+  exchange the refresh cookie rather than redirecting to the sign-in form. Verified by invalidating
+  a live access token and reloading: the page came back without asking anyone to sign in again.
 
 ---
 

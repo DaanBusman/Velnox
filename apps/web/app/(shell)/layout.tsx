@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { SessionKeepAlive } from '@/components/session-keepalive';
+import { SessionRecovery } from '@/components/session-recovery';
 import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
 import { tryGetSystemInfo } from '@/lib/api';
@@ -22,7 +24,19 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   // in to yet.
   if (setup && !setup.initialized) redirect('/setup');
 
-  if (!session) redirect('/login');
+  /*
+   * No session, as far as the server can tell.
+   *
+   * That covers two very different situations. Either there is genuinely no
+   * session, or the access token expired while a perfectly good refresh token
+   * sits in the browser — which the server never sees, because that cookie is
+   * scoped to /api/v1/auth. Redirecting immediately would sign people out every
+   * fifteen minutes.
+   *
+   * So the browser is asked to try the exchange first, and only lands on the
+   * sign-in form when it fails.
+   */
+  if (!session) return <SessionRecovery />;
 
   // The session exists but still owes a second factor. The API would refuse
   // every request this page makes; sending the user somewhere they can actually
@@ -42,6 +56,8 @@ export default async function ShellLayout({ children }: { children: React.ReactN
 
   return (
     <>
+      <SessionKeepAlive />
+
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-accent focus:px-3 focus:py-1.5 focus:text-xs focus:text-accent-contrast"

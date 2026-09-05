@@ -36,7 +36,7 @@ export default async function SsoSettingsPage() {
   return (
     <>
       <PageHeader title={t('nav.sso')} description={t('sso.subtitle')} />
-      <SsoSettings initial={provider.provider} />
+      <SsoSettings initial={provider.data} />
     </>
   );
 }

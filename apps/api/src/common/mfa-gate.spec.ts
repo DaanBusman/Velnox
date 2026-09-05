@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { PATH_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
 import { RequestMethod } from '@nestjs/common';
 import { ALLOWS_UNSATISFIED_MFA, IS_PUBLIC } from './auth.guard';
+import { AuditController } from '../modules/audit/audit.controller';
 import { AuthController } from '../modules/auth/auth.controller';
 import { MfaController } from '../modules/auth/mfa.controller';
 import { HealthController } from '../modules/health/health.controller';
@@ -12,7 +13,9 @@ import { IdentityController } from '../modules/identity/identity.controller';
 import { SetupController } from '../modules/setup/setup.controller';
 import { MetricsController } from '../modules/system/metrics.controller';
 import { SystemController } from '../modules/system/system.controller';
+import { RolesController } from '../modules/roles/roles.controller';
 import { UsersController } from '../modules/users/users.controller';
+import { UsersAdminController } from '../modules/users/users-admin.controller';
 
 /**
  * What a half-authenticated session can reach.
@@ -78,6 +81,9 @@ const CONTROLLERS = [
   SystemController,
   UsersController,
   IdentityController,
+  AuditController,
+  RolesController,
+  UsersAdminController,
 ];
 
 function collectRoutes(): Route[] {

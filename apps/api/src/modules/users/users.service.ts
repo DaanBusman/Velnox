@@ -12,7 +12,8 @@ export interface UserSummary {
   mfaEnrolled: boolean;
   /** Whether this account can change customer infrastructure. */
   privileged: boolean;
-  roles: string[];
+  /** Grants, with the assignment id so one can be taken away again. */
+  roles: { assignmentId: string; roleId: string; name: string; scopeType: string }[];
   lastLoginAt: string | null;
   createdAt: string;
 }
@@ -59,7 +60,14 @@ export class UsersService {
         // Surfaced so the users list can recommend a second factor to exactly
         // the accounts whose compromise would be felt outside Velnox.
         privileged: holdsPrivilegedPermission(grants),
-        roles: [...new Set(user.roleAssignments.map((a) => a.role.name))].sort(),
+        roles: user.roleAssignments
+          .map((assignment) => ({
+            assignmentId: assignment.id,
+            roleId: assignment.roleId,
+            name: assignment.role.name,
+            scopeType: assignment.scopeType as string,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
         lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         createdAt: user.createdAt.toISOString(),
       };

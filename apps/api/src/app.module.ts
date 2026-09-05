@@ -10,6 +10,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SetupModule } from './modules/setup/setup.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
 
 /**
@@ -32,6 +33,7 @@ import { UsersModule } from './modules/users/users.module';
     SetupModule,
     UsersModule,
     IdentityModule,
+    RolesModule,
     HealthModule,
     SystemModule,
   ],

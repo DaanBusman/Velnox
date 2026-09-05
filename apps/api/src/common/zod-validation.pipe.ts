@@ -39,3 +39,13 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
 
 export const zodBody = <T>(schema: ZodSchema<T>): ZodValidationPipe<T> =>
   new ZodValidationPipe(schema);
+
+/**
+ * The same pipe, for query strings.
+ *
+ * A separate name only because reading `zodQuery(schema)` at a call site says
+ * where the data came from — query parameters arrive as strings and usually need
+ * `z.coerce`, which a reader should be prompted to think about.
+ */
+export const zodQuery = <T>(schema: ZodSchema<T>): ZodValidationPipe<T> =>
+  new ZodValidationPipe(schema);

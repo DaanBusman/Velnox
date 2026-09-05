@@ -27,21 +27,17 @@ geschreven. `signInAvailable` staat in het API-antwoord op `false`, de aanmeldpa
 Microsoft-knop, en de instellingenpagina zegt het met zoveel woorden. Niets hier doet alsof het
 werkt.
 
-### Gebruikers zijn te bekijken, niet te beheren
-`GET /api/v1/users` is echt en wordt op rechten gecontroleerd. Een gebruiker uitnodigen, een rol
-toewijzen, een account deactiveren en de rechten van een rol bewerken hebben nog geen endpoints —
-die komen bij het rollenscherm. De gebruikerspagina zegt dat, in plaats van knoppen te tonen die
-niets doen.
-
 ### Rollen worden aangemaakt, niet bewerkt
 De zeven systeemrollen worden bij de installatie aangemaakt uit de bevroren catalogus in
-`packages/shared`. Er is geen interface om een eigen rol te maken of te wijzigen welke rechten een
-rol heeft.
+`packages/shared`, en het scherm Rollen en rechten toont precies wat elke rol verleent. Er is geen
+interface om een eigen rol te maken of te wijzigen welke rechten een rol heeft — dat komt met
+multi-tenancy, waar een tenant-eigen rol pas iets heeft om zich toe te verhouden.
 
-### Het auditlogboek heeft geen interface
-Elke authenticatie- en autorisatiegebeurtenis wordt weggeschreven, de tabel weigert UPDATE en DELETE
-op databaseniveau, en de gebeurtenissen kloppen. Er is geen pagina om ze te lezen: vandaag is dat
-`psql`. De sectie Auditlogboek in de zijbalk is gemarkeerd met de fase die haar invult.
+### Een wachtwoord zelf wijzigen kan niet
+Een beheerder stelt het eerste wachtwoord van een account in en geeft dat buitenom door, omdat
+Velnox geen e-mail verstuurt. Het account kan het daarna niet zelf wijzigen vanuit de interface:
+`changePassword` bestaat in de service, dwingt de sterkte-eis af en trekt elke andere sessie in,
+maar heeft nog geen endpoint.
 
 ### Gebruik van een herstelcode wordt gelogd, niet gemeld
 Het gebruik van een herstelcode wordt naar het auditspoor geschreven en uitgestuurd als
@@ -101,6 +97,17 @@ waarschuwt, het blokkeert niet.
   dashboardkaart die hem aanriep zijn alle verdwenen. De controle erop in het acceptatiescript was
   stilletjes een permanente "skip" geworden; die is vervangen door controles die vaststellen dat
   authenticatie wordt afgedwongen.
+- **Gebruikers zijn te bekijken, niet te beheren.** Accounts kunnen nu worden aangemaakt,
+  uitgeschakeld en weer ingeschakeld, en rollen toegekend en ingetrokken — elk daarvan geaudit. Een
+  account uitschakelen trekt zijn sessies direct in, in plaats van ze te laten doorlopen tot de
+  tokens verlopen.
+- **Het auditlogboek heeft geen interface.** Die is er nu, gepagineerd op cursor en gefilterd op de
+  tenant en de rechten van de lezer zelf.
+- **Een verlopen access-token wordt niet transparant vernieuwd.** Nu wel. Een openstaand tabblad
+  vernieuwt zichzelf voordat de vijftien minuten om zijn, en een pagina die met een verouderd token
+  wordt geladen vraagt de browser om het refresh-cookie in te wisselen in plaats van door te sturen
+  naar het aanmeldscherm. Geverifieerd door een levend access-token ongeldig te maken en te
+  herladen: de pagina kwam terug zonder iemand opnieuw te laten aanmelden.
 
 ---
 
