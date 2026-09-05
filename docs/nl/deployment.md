@@ -210,10 +210,10 @@ die de andere twee terugdraaibaar maakt.
 ### Stap 1 — Back-up de database. Eerst.
 
 ```bash
-cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
+cd /opt/velnox && sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/var/backups/velnox-$(date +%F).dump"'
 ```
 
-De `| sudo tee` is geen opsmuk. `sudo commando > /var/backups/bestand` werkt niet: uw shell opent het bestand *voordat* sudo draait, als uzelf, en een map waarin u niet mag schrijven weigert dat. Doorsluizen naar `sudo tee` laat het schrijven wel als root gebeuren.
+De `sudo sh -c` eromheen is geen opsmuk, en geen van beide helften is optioneel. Rechtstreeks omleiden — `sudo commando > /var/backups/bestand` — mislukt, omdat uw shell het bestand opent voordat sudo draait, als uzelf. Het opsplitsen in twee sudo's met een pipe ertussen mislukt op een andere manier: beide helften starten tegelijk, geen van beide heeft een gecachete aanmelding, en allebei vragen ze om een wachtwoord op dezelfde terminal. Eén sudo om het geheel vraagt één keer en doet de omleiding als root.
 
 Dit kost seconden, en het is de enige weg terug. **Migraties lopen alleen vooruit.** Voegt de nieuwe
 versie er een toe en wil je daarna weer de vorige versie, dan kan de oudere code niet tegen het
@@ -286,7 +286,7 @@ Dat volstaat **alleen als de upgrade geen migratie toevoegde**. Deed hij dat wel
 dump uit stap 1 terug en check daarna pas de oudere commit uit:
 
 ```bash
-cd /opt/velnox && sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
+cd /opt/velnox && sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /var/backups/velnox-2026-09-01.dump'
 ```
 
 ### Meerdere machines gelijk houden
@@ -303,7 +303,7 @@ doet geen kwaad en kost ongeveer een minuut.
 Twee dingen, en één daarvan zit niet in de database:
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
+sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/var/backups/velnox-$(date +%F).dump"'
 ```
 
 …en `/opt/velnox/.env`, waar `MASTER_ENCRYPTION_KEY` in staat. Een databaseback-up zonder die sleutel
@@ -313,7 +313,7 @@ Herstel door `.env` terug te zetten, de stack te starten zodat de migraties het 
 dan:
 
 ```bash
-sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
+sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /var/backups/velnox-2026-09-01.dump'
 ```
 
 Test het herstel voordat je erop vertrouwt.

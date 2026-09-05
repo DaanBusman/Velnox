@@ -206,10 +206,10 @@ the other two reversible.
 ### Step 1 — Back up the database. First.
 
 ```bash
-cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
+cd /opt/velnox && sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/var/backups/velnox-$(date +%F).dump"'
 ```
 
-The `| sudo tee` is not decoration. `sudo command > /var/backups/file` does not work: your shell opens the file *before* sudo runs, as you, and a directory you cannot write refuses it. Piping into `sudo tee` performs the write as root.
+The `sudo sh -c` wrapper is not decoration, and neither half of it is optional. Redirecting directly — `sudo command > /var/backups/file` — fails, because your shell opens the file before sudo runs, as you. Splitting it into two sudos joined by a pipe fails differently: both halves start at once, neither has a cached credential, and both ask for a password on the same terminal. One sudo around the whole thing asks once and does the redirection as root.
 
 This takes seconds, and it is the only way back. **Migrations only run forwards.** If the new version
 adds one and you then want the previous version again, the older code cannot run against the newer
@@ -280,7 +280,7 @@ That is enough **only if the upgrade added no migration**. If it did, restore yo
 then check out the older commit:
 
 ```bash
-cd /opt/velnox && sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
+cd /opt/velnox && sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /var/backups/velnox-2026-09-01.dump'
 ```
 
 ### Keeping several machines in step
@@ -297,7 +297,7 @@ takes about a minute.
 Two things, and one of them is not in the database:
 
 ```bash
-sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom | sudo tee "/var/backups/velnox-$(date +%F).dump" > /dev/null
+sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/var/backups/velnox-$(date +%F).dump"'
 ```
 
 …and `/opt/velnox/.env`, which holds `MASTER_ENCRYPTION_KEY`. A database backup without it is
@@ -306,7 +306,7 @@ ciphertext you can never read.
 Restore by putting `.env` back, starting the stack so migrations create the schema, then:
 
 ```bash
-sudo cat /var/backups/velnox-2026-09-01.dump | sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists
+sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /var/backups/velnox-2026-09-01.dump'
 ```
 
 Test the restore before you rely on it.
