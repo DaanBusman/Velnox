@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { checkPasswordStrength, hashPassword } from '@velnox/crypto';
-import { ERROR_CODES, VelnoxError } from '@velnox/shared';
+import { ERROR_CODES, PERMISSIONS, VelnoxError } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { SessionService } from '../auth/session.service';
@@ -114,6 +114,26 @@ export class UserAdminService {
 
     this.assertSameTenant(user.tenantId, actor);
 
+    /*
+     * Disabling the founding administrator is allowed, but not when they are the
+     * last way in.
+     *
+     * Their grants cannot be taken away, so the account is the recovery path for
+     * the whole installation. Disabling it while nobody else can administer
+     * anything reproduces the lockout by a different route.
+     */
+    if (user.isFoundingAdministrator && status === 'DISABLED') {
+      const otherAdmins = await this.countOtherEnabledAdministrators(user.id);
+      if (otherAdmins === 0) {
+        throw new VelnoxError(ERROR_CODES.authzFoundingAdministrator, {
+          status: 409,
+          message:
+            'The founding administrator cannot be disabled while no other enabled account can administer this installation',
+          params: { reason: 'last_administrator' },
+        });
+      }
+    }
+
     await this.prisma.client.user.update({
       where: { id: userId },
       // The version bump invalidates every access token already issued, without
@@ -220,6 +240,26 @@ export class UserAdminService {
 
     this.assertSameTenant(assignment.user.tenantId, actor);
 
+    /*
+     * The founding administrator's grants are inalienable.
+     *
+     * Before this existed, an administrator could revoke their own last role.
+     * On an installation with one account — which is every installation on its
+     * first day — that removed the last permission in the system and locked
+     * every human out: signing in still worked, and nothing was allowed. The
+     * only way back was a psql prompt.
+     *
+     * Refused for everyone, including the account itself. Disabling it remains
+     * possible, because that is reversible by anyone who still has permissions;
+     * taking its permissions away is not.
+     */
+    if (assignment.user.isFoundingAdministrator) {
+      throw new VelnoxError(ERROR_CODES.authzFoundingAdministrator, {
+        status: 409,
+        message: 'The founding administrator cannot have roles removed',
+      });
+    }
+
     await this.prisma.client.roleAssignment.delete({ where: { id: assignmentId } });
     await this.prisma.client.user.update({
       where: { id: userId },
@@ -235,6 +275,32 @@ export class UserAdminService {
       resourceId: userId,
       resourceLabel: assignment.user.email,
       metadata: { role: assignment.role.name },
+    });
+  }
+
+  /**
+   * Enabled accounts other than this one that hold `roles.manage`.
+   *
+   * That is the permission recovery actually needs: granting a role back to
+   * whoever lost one. `system.manage` would have been the stricter test and the
+   * wrong one — it governs installation settings, and an account that can manage
+   * roles but not those settings can still put access back together. Counting
+   * role assignments instead would be wrong in the other direction, satisfied by
+   * a read-only role that can fix nothing.
+   */
+  private async countOtherEnabledAdministrators(excludeUserId: string): Promise<number> {
+    return this.prisma.client.user.count({
+      where: {
+        id: { not: excludeUserId },
+        status: 'ACTIVE',
+        deletedAt: null,
+        roleAssignments: {
+          some: {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            role: { permissions: { some: { permission: PERMISSIONS.rolesManage } } },
+          },
+        },
+      },
     });
   }
 

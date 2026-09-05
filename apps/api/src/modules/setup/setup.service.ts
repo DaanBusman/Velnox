@@ -106,6 +106,10 @@ export class SetupService {
             passwordHash,
             passwordUpdatedAt: new Date(),
             status: 'ACTIVE',
+            // The way back in. This account's grants cannot be revoked by
+            // anyone, including itself, so an installation can always be
+            // recovered without a database prompt.
+            isFoundingAdministrator: true,
           },
         });
 

@@ -37,6 +37,8 @@ export interface UserSummary {
   tenantName: string;
   mfaEnrolled: boolean;
   privileged: boolean;
+  /** The account setup created. Its roles cannot be revoked by anyone. */
+  isFoundingAdministrator: boolean;
   roles: { assignmentId: string; roleId: string; name: string; scopeType: string }[];
   lastLoginAt: string | null;
   createdAt: string;

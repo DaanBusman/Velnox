@@ -10,6 +10,8 @@ export interface UserSummary {
   tenantId: string;
   tenantName: string;
   mfaEnrolled: boolean;
+  /** The account setup created. Its roles cannot be revoked by anyone. */
+  isFoundingAdministrator: boolean;
   /** Whether this account can change customer infrastructure. */
   privileged: boolean;
   /** Grants, with the assignment id so one can be taken away again. */
@@ -57,6 +59,7 @@ export class UsersService {
         tenantId: user.tenantId,
         tenantName: user.tenant.name,
         mfaEnrolled: user.mfaEnrolled,
+        isFoundingAdministrator: user.isFoundingAdministrator,
         // Surfaced so the users list can recommend a second factor to exactly
         // the accounts whose compromise would be felt outside Velnox.
         privileged: holdsPrivilegedPermission(grants),

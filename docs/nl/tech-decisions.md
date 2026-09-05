@@ -429,6 +429,41 @@ een draaiende stack vast dat de gerapporteerde versie overeenkomt met de bron.
 
 ---
 
+## ADR-025 — De oprichtend beheerder kan niet uit zijn eigen installatie worden gesloten
+
+**Besluit:** Het account dat de installatiewizard aanmaakt draagt `users.is_founding_administrator`.
+De roltoewijzingen ervan kunnen door niemand worden ingetrokken, ook niet door het account zelf, en
+het kan niet worden uitgeschakeld zolang geen ander ingeschakeld account `roles.manage` heeft. Een
+partiële unieke index staat hoogstens één zo'n account toe.
+
+**Waarom:** Omdat het alternatief zich heeft voorgedaan. Een beheerder kon zijn eigen laatste rol
+intrekken, en op een installatie met één account — wat elke installatie op haar eerste dag is — haalde
+dat het laatste recht uit het systeem. Aanmelden werkte nog. Niets was toegestaan. De enige weg terug
+was een `psql`-prompt, in een product waarvan het hele uitgangspunt is dat beheerders die niet nodig
+zouden moeten hebben.
+
+Uitschakelen blijft mogelijk, omdat dat omkeerbaar is voor iedereen die nog rechten heeft, en een
+organisatie moet een vertrokken beheerder kunnen stoppen. De rechten afnemen is van binnenuit het
+product niet omkeerbaar, en daar zit het hele verschil.
+
+`roles.manage` en niet `system.manage` is de toets voor "is er nog een andere weg naar binnen".
+Herstellen betekent een rol terugtoekennen, en een account dat rollen kan beheren maar geen
+installatie-instellingen kan dat prima. Het strengere recht zou handelingen hebben geweigerd die
+volkomen veilig zijn.
+
+**Kosten:** Eén account in de installatie is permanent bevoorrecht, wat een echte concentratie van
+vertrouwen is — het wachtwoord en de tweede factor ervan wegen zwaarder dan die van elk ander account.
+Dat staat in de interface bij het account vermeld in plaats van dat iemand het moet ontdekken. Het
+alternatief, een product dat met één klik in zijn eigen UI onbruikbaar te maken is, is erger.
+
+Het herstel voor installaties die dit al hebben meegemaakt zit in de migratie zelf: die markeert de
+oprichtend beheerder en zet de toekenning terug als die ontbreekt. Daarmee krijgt een account rechten
+die het een moment eerder niet had, wat de argwaan verdient die het oproept — het dwingt de nieuwe
+invariant af op bestaande gegevens, het is geen achterdeur, en het verandert niets waar de toekenning
+er nog is.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

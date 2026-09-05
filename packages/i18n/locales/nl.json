@@ -114,6 +114,7 @@
     },
     "authz": {
       "forbidden": "Je hebt geen recht om deze actie uit te voeren.",
+      "founding_administrator": "Daarmee zou niemand deze installatie nog kunnen beheren.",
       "tenant_forbidden": "Deze resource hoort bij een andere tenant."
     },
     "ceph": {
@@ -458,6 +459,8 @@
     "disable": "Uitschakelen",
     "disabledNotice": "Dit account is uitgeschakeld. De sessies zijn ingetrokken en aanmelden is niet mogelijk.",
     "enable": "Inschakelen",
+    "foundingBody": "Dit is het account dat de installatiewizard heeft aangemaakt, en de weg terug in een verkeerd geconfigureerde installatie. De rollen ervan kunnen door niemand worden ingetrokken, ook niet door het account zelf. Een andere beheerder kan het uitschakelen — maar niet zolang geen ander ingeschakeld account deze installatie kan beheren.",
+    "foundingTitle": "De oprichtend beheerder",
     "grantRole": "Rol toekennen:",
     "initialPassword": "Eerste wachtwoord",
     "initialPasswordHint": "Minimaal {min} tekens, aan dezelfde eis gehouden als elk ander wachtwoord.",

@@ -23,6 +23,8 @@ export const ERROR_CODES = {
 
   authzForbidden: 'authz.forbidden',
   authzTenantForbidden: 'authz.tenant_forbidden',
+  /** Refused because it would leave the installation with nobody who can administer it. */
+  authzFoundingAdministrator: 'authz.founding_administrator',
 
   setupAlreadyInitialized: 'setup.already_initialized',
 

@@ -141,6 +141,13 @@ model User {
   /// Maintained by the application whenever a factor is confirmed or removed.
   mfaEnrolled Boolean @default(false) @map("mfa_enrolled")
 
+  /// The account the setup wizard created, and the way back into an installation
+  /// that has been misconfigured. Its role assignments cannot be revoked by
+  /// anyone, including itself — an administrator who could take away their own
+  /// last permission could lock every human out of the product, with no path
+  /// back that does not involve the database. At most one row carries this.
+  isFoundingAdministrator Boolean @default(false) @map("is_founding_administrator")
+
   locale   String?
   timezone String?
 

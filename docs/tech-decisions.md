@@ -413,6 +413,37 @@ the reported version matches the source.
 
 ---
 
+## ADR-025 — The founding administrator cannot be locked out of its own installation
+
+**Decision:** The account the setup wizard creates carries `users.is_founding_administrator`. Its
+role assignments cannot be revoked by anyone, including itself, and it cannot be disabled while no
+other enabled account holds `roles.manage`. A partial unique index allows at most one such account.
+
+**Why:** Because the alternative happened. An administrator could revoke their own last role, and on
+an installation with one account — which is every installation on its first day — that removed the
+last permission in the system. Signing in still worked. Nothing was allowed. The only way back was a
+`psql` prompt, on a product whose entire premise is that operators should not need one.
+
+Disabling stays possible because it is reversible by anyone who still holds permissions, and an
+organisation does need a way to stop a departed administrator's account. Removing its permissions is
+not reversible from inside the product, which is the whole difference.
+
+`roles.manage` rather than `system.manage` is the test for "is there another way in". Recovery means
+granting a role back, and an account that can manage roles but not installation settings can still do
+that. The stricter permission would have refused operations that are perfectly safe.
+
+**Cost:** One account in the installation is permanently privileged, which is a real concentration of
+trust — its password and second factor matter more than any other. That is stated in the interface
+next to the account rather than left to be discovered. The alternative, a product that can be bricked
+by one click in its own UI, is worse.
+
+The repair for installations that already hit this ships in the migration itself: it marks the
+founding administrator and restores the grant if it is missing. That hands an account permissions it
+did not have a moment earlier, which deserves the suspicion it invites — it is enforcing the new
+invariant on existing data, not a back door, and it changes nothing where the grant is still present.
+
+---
+
 ## Version targets
 
 | Component | Version |

@@ -113,6 +113,7 @@
     },
     "authz": {
       "forbidden": "You do not have permission to perform this action.",
+      "founding_administrator": "That would leave this installation with nobody able to administer it.",
       "tenant_forbidden": "This resource belongs to another tenant."
     },
     "ceph": {
@@ -457,6 +458,8 @@
     "disable": "Disable",
     "disabledNotice": "This account is disabled. Its sessions were revoked and it cannot sign in.",
     "enable": "Enable",
+    "foundingBody": "This is the account the setup wizard created, and the way back into a misconfigured installation. Its roles cannot be taken away by anyone, including itself. Another administrator can disable it — but not while no other enabled account can administer this installation.",
+    "foundingTitle": "The founding administrator",
     "grantRole": "Grant a role:",
     "initialPassword": "Initial password",
     "initialPasswordHint": "At least {min} characters, held to the same rule as every other password.",

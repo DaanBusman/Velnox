@@ -12,6 +12,20 @@ import { Card, Notice } from '@/components/ui/primitives';
 const PASSWORD_MIN_LENGTH = 12;
 
 /**
+ * Whether disabling this account would leave nobody able to administer anything.
+ *
+ * Only the founding administrator can reach that state, because only their roles
+ * cannot be taken away. The API refuses it regardless; hiding the button keeps
+ * someone from discovering the rule by being refused.
+ */
+function isLastWayIn(user: UserSummary, users: UserSummary[]): boolean {
+  if (!user.isFoundingAdministrator) return false;
+  return !users.some(
+    (other) => other.id !== user.id && other.status === 'ACTIVE' && other.privileged,
+  );
+}
+
+/**
  * Creating an account, and changing what it can do.
  *
  * There is no invitation email, because Velnox sends no email. An administrator
@@ -152,7 +166,7 @@ export function UserAdmin({
           title={user.displayName}
           description={user.email}
           actions={
-            canManageUsers && user.id !== currentUserId ? (
+            canManageUsers && user.id !== currentUserId && !isLastWayIn(user, users) ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -175,6 +189,14 @@ export function UserAdmin({
               <Notice tone="warn">{t('users.disabledNotice')}</Notice>
             )}
 
+            {/* Said out loud rather than left as a missing button. Someone
+                looking for the control needs to know it is absent on purpose. */}
+            {user.isFoundingAdministrator && (
+              <Notice tone="neutral" title={t('users.foundingTitle')}>
+                {t('users.foundingBody')}
+              </Notice>
+            )}
+
             <div>
               <p className="text-xs text-ink-muted">{t('users.columnRoles')}</p>
               <ul className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -187,7 +209,7 @@ export function UserAdmin({
                     className="flex items-center gap-1.5 rounded bg-surface-2 px-2 py-0.5 text-xs text-ink"
                   >
                     {role.name}
-                    {canManageRoles && (
+                    {canManageRoles && !user.isFoundingAdministrator && (
                       <button
                         type="button"
                         aria-label={t('users.revokeRole', { role: role.name })}
