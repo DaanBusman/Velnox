@@ -1,6 +1,6 @@
 # Velnox — Nederlandse documentatie
 
-> **Vertaling.** Bron: [README.md](../../README.md) @ `6f0fd09`.
+> **Vertaling.** Bron: [README.md](../../README.md) @ `04abd46`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.**
