@@ -281,6 +281,23 @@ alongside each new resource; **every new user-visible string added to `en.json` 
 same commit**; `.env.example` updated with any new variable; `docs/known-gaps.md` updated when
 something ships incomplete.
 
+**Operator documentation, in the same phase that ships the feature.** Every phase that adds
+something an operator does adds the how-to for it, in English and Dutch, to the guides that ship
+inside the product — not to a backlog. A phase is not finished while the only way to learn how to
+use what it built is to read its source. The guides are task-shaped (*creating a cluster*, *adding a
+node*) and separate from the reference documents, which explain how the system is put together; see
+ADR-026 in [tech-decisions.md](tech-decisions.md).
+
+| Phase | Guide it must produce |
+|---|---|
+| 3 | Creating a customer tenant; adding a site; scoping a grant below global |
+| 4 | Adding a cluster; adding a node; storing infrastructure credentials; reading inventory |
+| 5 | Watching, cancelling and approving jobs |
+| 6 | Reviewing and applying updates |
+| 7–9 | Running a rolling update; running a major upgrade; the Ceph and PVE 8 → 9 workflows |
+| 10 | Setting a rotation policy; break-glass reveal |
+| 11–12 | Assessing and running a VMware or Hyper-V migration |
+
 ---
 
 *Velnox™ is a trademark of The Velnox Foundation.*

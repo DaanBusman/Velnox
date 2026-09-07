@@ -119,6 +119,16 @@ certificaatvingerafdrukken vastlegt. Beide staan in `eslint.config.mjs`.
 
 ## Documentatie
 
+Beheerdersgidsen — taakgericht, en dezelfde pagina's die offline in het product meegaan:
+
+| Gids | Inhoud |
+|---|---|
+| [getting-started.md](getting-started.md) | Het eerste uur: installeren, de eerste beheerder aanmaken, de weg vinden, gezondheid controleren |
+| [managing-access.md](managing-access.md) | Accounts, rollen, meervoudige authenticatie, Entra ID single sign-on, het auditlog |
+| [permissions.md](permissions.md) | Elke rol tegen elk recht, wat elk recht toestaat, en welke fase het echt maakt |
+
+Referentie — hoe het systeem is gebouwd, en waarom:
+
 | Document | Inhoud |
 |---|---|
 | [deployment.md](deployment.md) | Uitrollen op Debian/Ubuntu met Docker, dimensionering, en VM-instellingen voor Proxmox, ESXi en Hyper-V |

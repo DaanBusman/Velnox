@@ -113,6 +113,16 @@ fingerprints instead. Both are enforced in `eslint.config.mjs`.
 
 ## Documentation
 
+Operator guides — task-shaped, and the same pages that ship offline inside the product:
+
+| Guide | Contents |
+|---|---|
+| [getting-started.md](docs/getting-started.md) | The first hour: installing, creating the first administrator, finding your way around, checking health |
+| [managing-access.md](docs/managing-access.md) | Accounts, roles, two-factor authentication, Entra ID single sign-on, the audit log |
+| [permissions.md](docs/permissions.md) | Every role against every permission, what each permission allows, and which phase makes it real |
+
+Reference — how the system is built, and why:
+
 | Document | Contents |
 |---|---|
 | [deployment.md](docs/deployment.md) | Deploying on Debian/Ubuntu with Docker, sizing, and VM settings for Proxmox, ESXi and Hyper-V |

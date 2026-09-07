@@ -464,6 +464,41 @@ er nog is.
 
 ---
 
+## ADR-026 — Beheerdersgidsen staan los van de referentiedocumenten en gaan mee met de functie
+
+**Besluit:** De meegeleverde documentatie is in tweeën gesplitst. **Gidsen** —
+`getting-started.md`, `managing-access.md`, `permissions.md` en hun opvolgers — zijn taakgericht en
+beantwoorden "hoe doe ik dit". **Referentiedocumenten** — architectuur, het schema, deze besluiten,
+de roadmap — beantwoorden "hoe is dit gebouwd en waarom". De gidsen staan vooraan in de
+leesvolgorde. Elke fase die iets toevoegt dat een beheerder doet, schrijft de bijbehorende gids in
+diezelfde fase, in beide talen, en `docs/roadmap.md` legt vast welke gids elke resterende fase nog
+schuldig is.
+
+**Waarom:** De offline documentatie was de eigen technische documentatie van de repository,
+weergegeven binnen het product. Dat is echt nuttig voor wie Velnox onderhoudt en vrijwel nutteloos
+voor wie het bedient: iemand die een node wil toevoegen zit niet te wachten op een ADR over waarom
+de worker de credentials bewaart. De twee doelgroepen willen verschillende documenten, en één
+document kan ze niet allebei bedienen zonder geen van beide te bedienen.
+
+De gids in dezelfde fase opleveren als de functie is het onderdeel dat verleidelijk is om over te
+slaan. Documentatie die een fase later wordt geschreven, wordt geschreven door iemand die
+reconstrueert wat hij deed, en zo komt het dat een gids een knop beschrijft die inmiddels anders
+heet. Documentatie die naar fase 15 wordt geschoven, arriveert na elk besluit dat ze had kunnen
+verbeteren.
+
+**Kosten:** Elke functiefase is nu groter met een gids in twee talen, en er is één ding bij dat uit
+de pas kan gaan lopen met de code. De tweede kostenpost is ondervangen waar het het meest telt: de
+rolmatrix in `permissions.md` wordt in beide talen door een test met de rechtencatalogus vergeleken,
+omdat het het document is waarop een beheerder toegangsbesluiten neemt en een verouderde matrix daar
+een beveiligingsprobleem is en geen documentatieprobleem. De lopende tekst wordt niet machinaal
+gecontroleerd en kan dat niet — `scripts/check-doc-sync.mjs` meldt vertaalachterstand, en daarbuiten
+is het review.
+
+De eerste kostenpost is de bedoeling en geen spijt. Een fase die de tijd niet kan missen om uit te
+leggen wat ze heeft gebouwd, is niet klaar met bouwen.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

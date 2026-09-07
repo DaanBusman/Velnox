@@ -444,6 +444,39 @@ invariant on existing data, not a back door, and it changes nothing where the gr
 
 ---
 
+## ADR-026 — Operator guides are separate from the reference documents, and ship with the feature
+
+**Decision:** The bundled documentation is split in two. **Guides** — `getting-started.md`,
+`managing-access.md`, `permissions.md` and their successors — are task-shaped and answer "how do I
+do this". **Reference documents** — architecture, the schema, these decisions, the roadmap — answer
+"how is this built and why". The guides come first in the reading order. Every phase that adds
+something an operator does writes the guide for it in that phase, in both languages, and
+`docs/roadmap.md` records which guide each remaining phase owes.
+
+**Why:** The offline documentation was the repository's own engineering documentation, rendered
+inside the product. That is genuinely useful to the person maintaining Velnox and close to useless
+to the person operating it: someone who wants to add a node does not want an ADR about why the
+worker holds the credentials. The two audiences want different documents, and one document cannot
+serve both without serving neither.
+
+Shipping the guide in the same phase as the feature is the part that will be tempting to skip.
+Documentation written a phase later is written by someone reconstructing what they did, which is how
+a guide comes to describe a button that was renamed. Documentation deferred to phase 15 is
+documentation that arrives after every decision it could have improved.
+
+**Cost:** Every feature phase is now larger by a guide in two languages, and there is one more thing
+that can fall out of step with the code. The second cost is mitigated where it matters most: the
+role matrix in `permissions.md` is compared to the permission catalogue by a test, in both
+languages, because it is the document an administrator makes access decisions from and a stale
+matrix there is a security problem rather than a documentation problem. The prose is not
+machine-checked and cannot be — `scripts/check-doc-sync.mjs` reports translation drift, and beyond
+that it is review.
+
+The first cost is the point rather than a regret. A phase that cannot spare the time to explain what
+it built has not finished building it.
+
+---
+
 ## Version targets
 
 | Component | Version |

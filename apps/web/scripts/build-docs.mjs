@@ -35,6 +35,11 @@ const OUT = join(ROOT, 'apps/web/generated/docs.json');
  * not know where to start, and a new document should be placed deliberately.
  */
 const DOCUMENTS = [
+  // The operator guides come first: someone opening this for the first time is
+  // trying to do something, not to understand how the system is put together.
+  'getting-started',
+  'managing-access',
+  'permissions',
   'deployment',
   'architecture',
   'service-diagram',

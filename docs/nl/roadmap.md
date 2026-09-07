@@ -293,6 +293,24 @@ elke nieuwe resource; **elke nieuwe zichtbare tekst in dezelfde commit toegevoeg
 `nl.json`**; `.env.example` bijgewerkt bij elke nieuwe variabele; `docs/known-gaps.md` bijgewerkt wanneer
 iets onvolledig wordt opgeleverd.
 
+**Beheerdersdocumentatie, in dezelfde fase die de functie oplevert.** Elke fase die iets toevoegt
+dat een beheerder doet, voegt de bijbehorende handleiding toe, in het Engels en het Nederlands, aan
+de gidsen die in het product zelf meegaan — niet aan een backlog. Een fase is niet af zolang de
+enige manier om te leren hoe je gebruikt wat ze heeft gebouwd, het lezen van de broncode is. De
+gidsen zijn taakgericht (*een cluster aanmaken*, *een node toevoegen*) en staan los van de
+referentiedocumenten, die uitleggen hoe het systeem in elkaar zit; zie ADR-026 in
+[tech-decisions.md](tech-decisions.md).
+
+| Fase | Handleiding die ze moet opleveren |
+|---|---|
+| 3 | Een klanttenant aanmaken; een locatie toevoegen; een toekenning onder globaal bereik brengen |
+| 4 | Een cluster toevoegen; een node toevoegen; infrastructuurcredentials opslaan; inventaris lezen |
+| 5 | Jobs volgen, annuleren en goedkeuren |
+| 6 | Updates beoordelen en toepassen |
+| 7–9 | Een rolling update uitvoeren; een major upgrade uitvoeren; de workflows voor Ceph en PVE 8 → 9 |
+| 10 | Een rotatiebeleid instellen; noodtoegang tot een wachtwoord |
+| 11–12 | Een VMware- of Hyper-V-migratie analyseren en uitvoeren |
+
 ---
 
 *Velnox™ is een handelsmerk van The Velnox Foundation.*
