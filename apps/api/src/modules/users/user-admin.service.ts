@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { checkPasswordStrength, hashPassword } from '@velnox/crypto';
-import { ERROR_CODES, PERMISSIONS, VelnoxError } from '@velnox/shared';
+import { ERROR_CODES, PERMISSIONS, VelnoxError, canResetMfa, type Grant } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { SessionService } from '../auth/session.service';
+import { MfaService } from '../auth/mfa.service';
 
 /**
  * Creating and changing accounts.
@@ -23,6 +24,12 @@ export interface Actor {
   email: string;
   tenantId: string;
   isMspRoot: boolean;
+  /**
+   * What the actor holds, for decisions a single `@RequirePermission` cannot
+   * express. The guard has already checked the permission the endpoint names;
+   * this is for the second question — whose account may it be used on.
+   */
+  grants: Grant[];
 }
 
 @Injectable()
@@ -31,6 +38,7 @@ export class UserAdminService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly sessions: SessionService,
+    private readonly mfa: MfaService,
   ) {}
 
   async create(
@@ -276,6 +284,107 @@ export class UserAdminService {
       resourceLabel: assignment.user.email,
       metadata: { role: assignment.role.name },
     });
+  }
+
+  /**
+   * Remove another account's second factor so they can enrol again.
+   *
+   * Velnox used to have no administrator override at all, and said so: an
+   * override is a standing bypass of the second factor for anyone who reaches an
+   * administrator account. The replacement for a colleague who had lost both
+   * their authenticator and their recovery codes was a new account, which loses
+   * nothing but is slow and leaves a disabled account behind for every mislaid
+   * phone. This is the deliberate reversal of that decision, narrowed so the
+   * bypass is as small as the problem.
+   *
+   * Three things keep it small.
+   *
+   * **Never your own account.** Checked first, and checked here rather than only
+   * in the interface. Self-service disable exists and asks for a valid code,
+   * which proves possession; if an administrator could clear their own factor,
+   * every privileged second factor would be removable by its own password.
+   *
+   * **A colleague is not a customer.** `users.reset_mfa` reaches customer
+   * accounts. Reaching an account in the MSP root tenant — one that can see
+   * every customer — additionally needs `users.reset_mfa_msp`, which only the
+   * Super Administrator holds. `canResetMfa` is where that lives, as a pure
+   * function with the whole matrix under test.
+   *
+   * **It is loud.** The target's sessions are revoked and the act is audited
+   * under its own action, separately from a self-service disable, because "an
+   * administrator removed someone's second factor" and "someone removed their
+   * own" are different events and an auditor should not have to infer which.
+   */
+  async resetMfa(userId: string, actor: Actor) {
+    const user = await this.prisma.client.user.findUnique({
+      where: { id: userId },
+      include: { tenant: { select: { kind: true } } },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
+    }
+
+    this.assertSameTenant(user.tenantId, actor);
+
+    const decision = canResetMfa({
+      actorId: actor.id,
+      targetId: user.id,
+      targetIsMspRoot: user.tenant.kind === 'MSP_ROOT',
+      targetTenantId: user.tenantId,
+      grants: actor.grants,
+    });
+
+    if (!decision.allowed) {
+      await this.audit.denied(AUDIT_ACTIONS.mfaResetByAdministrator, {
+        actorType: 'USER',
+        actorId: actor.id,
+        actorLabel: actor.email,
+        tenantId: user.tenantId,
+        resourceType: 'user',
+        resourceId: user.id,
+        resourceLabel: user.email,
+        metadata: { reason: decision.refusal },
+      });
+
+      throw new VelnoxError(ERROR_CODES.authzMfaResetForbidden, {
+        status: 403,
+        message: `Refused to reset the second factor: ${decision.refusal}`,
+        params: { reason: decision.refusal ?? 'no_permission' },
+      });
+    }
+
+    const { removed } = await this.mfa.clearFactor(user.id);
+
+    /*
+     * The account's authentication changed under it, so its sessions go.
+     *
+     * Leaving them would mean a session that already satisfied the old factor
+     * keeps running while the factor it satisfied no longer exists — and if the
+     * installation requires a second factor, the account must be sent back
+     * through enrolment rather than allowed to continue without one.
+     */
+    await this.prisma.client.user.update({
+      where: { id: user.id },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    await this.sessions.revokeAllForUser(user.id, 'mfa_reset');
+
+    await this.audit.success(AUDIT_ACTIONS.mfaResetByAdministrator, {
+      actorType: 'USER',
+      actorId: actor.id,
+      actorLabel: actor.email,
+      tenantId: user.tenantId,
+      resourceType: 'user',
+      resourceId: user.id,
+      resourceLabel: user.email,
+      // Named to survive redaction, and deliberately says whether there was
+      // anything to remove: a reset of an account that had no factor is a
+      // different fact from one that did.
+      metadata: { factorRemoved: removed },
+    });
+
+    return { id: user.id, mfaEnrolled: false };
   }
 
   /**

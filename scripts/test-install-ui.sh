@@ -28,9 +28,14 @@ fake_work() {
   sleep 1.2
 }
 
-fake_slow() {
-  echo "pretending to do something slower"
-  sleep 2.5
+# Stands in for the image build: several lines, over time, naming the image each
+# one belongs to. That is the shape step_streamed exists to render.
+fake_build() {
+  local line
+  for line in     '#3 [api internal] load metadata for docker.io/library/node:22-bookworm-slim'     '#7 [api builder 4/9] RUN pnpm install --frozen-lockfile'     '#7 8.4 Progress: resolved 394, reused 0, downloaded 120'     '#12 [web builder 3/7] RUN pnpm --filter @velnox/web build'     '#12 6.1 Route (app)                                 Size  First Load JS'     '#14 [api] exporting layers'; do
+    echo "$line"
+    sleep 0.4
+  done
 }
 
 fake_failure() {
@@ -51,7 +56,7 @@ step "Installing prerequisites" fake_work
 step_skip "Installing Docker Engine" "already present"
 step "Enabling time synchronisation" fake_work
 step "Generating configuration and secrets" fake_work
-step "Building images (this takes a few minutes)" fake_slow
+step_streamed "Building images (this takes a few minutes)" fake_build
 step "Starting services and waiting for health" fake_work
 
 clear_bar

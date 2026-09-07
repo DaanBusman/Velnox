@@ -408,6 +408,56 @@ export class MfaService {
     });
   }
 
+  /**
+   * Remove an account's second factor without asking it for a code.
+   *
+   * The self-service `disable` above verifies a TOTP code first, which proves
+   * the caller still holds the factor. That check is exactly what is impossible
+   * for someone who has lost their authenticator, so this path does not have
+   * one — which is why it is not reachable by the account itself and why the
+   * authorisation for it lives in `UserAdminService.resetMfa`, next to the rule
+   * that decides who may call it. Nothing here decides anything; it only takes
+   * the factor apart.
+   *
+   * Idempotent: an account with no active factor is not an error, because two
+   * administrators clicking the same button should not produce a failure.
+   */
+  async clearFactor(userId: string): Promise<{ removed: boolean }> {
+    const factor = await this.prisma.client.userMfaFactor.findFirst({
+      where: { userId, kind: 'TOTP', confirmedAt: { not: null }, disabledAt: null },
+    });
+
+    if (!factor) {
+      // Recovery codes are still cleared: an account whose factor was already
+      // gone must not keep single-use codes that would let it past a challenge.
+      await this.prisma.client.mfaRecoveryCode.deleteMany({ where: { userId, usedAt: null } });
+      await this.prisma.client.user.update({ where: { id: userId }, data: { mfaEnrolled: false } });
+      return { removed: false };
+    }
+
+    const secret = factor.secretRef
+      ? await this.prisma.client.credentialSecret.findUnique({
+          where: { id: factor.secretRef },
+          select: { credentialId: true },
+        })
+      : null;
+
+    await this.prisma.client.$transaction(async (tx) => {
+      await tx.userMfaFactor.update({
+        where: { id: factor.id },
+        data: { disabledAt: new Date(), secretRef: null },
+      });
+      await tx.mfaRecoveryCode.deleteMany({ where: { userId, usedAt: null } });
+      await tx.user.update({ where: { id: userId }, data: { mfaEnrolled: false } });
+    });
+
+    // Outside the transaction, as in `disable`: the seed is unreferenced by now,
+    // and failing to delete it must not roll back the reset that was asked for.
+    if (secret) await this.secrets.deleteCredential(secret.credentialId);
+
+    return { removed: true };
+  }
+
   async status(userId: string) {
     const [factor, remaining] = await Promise.all([
       this.prisma.client.userMfaFactor.findFirst({

@@ -76,6 +76,16 @@ Tenants, clusters, nodes and the rest show `—` with the phase that will popula
 placeholders for hidden data and they are not zeroes pretending to be measurements. The one card
 backed by real data is service status, and it is live.
 
+### The Users tenant filter has one option to choose from
+The accounts table filters by organisation, and until multi-tenancy lands in Phase 3 there is one:
+the MSP root tenant. The control is built and works — it is populated from the tenants the viewer is
+actually allowed to see, so it grows on its own the day a customer tenant exists — but today it can
+only narrow the list to the accounts it already shows.
+
+The same is true of the second-factor reset rule that distinguishes a customer's account from a
+colleague's. It is enforced and tested; there are simply no customer accounts yet for the permissive
+half of it to apply to.
+
 ### Documentation drift is now possible
 Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture.md` and
 `tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were

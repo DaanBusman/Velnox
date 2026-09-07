@@ -9,6 +9,14 @@ export interface UserSummary {
   status: string;
   tenantId: string;
   tenantName: string;
+  /**
+   * Whether this account lives in the MSP organisation rather than a customer's.
+   *
+   * The users list groups by it and the second-factor reset is gated on it, so
+   * it is reported rather than inferred from the tenant name — which an operator
+   * can rename to anything.
+   */
+  tenantIsMspRoot: boolean;
   mfaEnrolled: boolean;
   /** The account setup created. Its roles cannot be revoked by anyone. */
   isFoundingAdministrator: boolean;
@@ -30,7 +38,7 @@ export class UsersService {
       where: { deletedAt: null, ...(tenantId ? { tenantId } : {}) },
       orderBy: [{ displayName: 'asc' }],
       include: {
-        tenant: { select: { name: true } },
+        tenant: { select: { name: true, kind: true } },
         roleAssignments: {
           where: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
           include: { role: { select: { name: true, permissions: true } } },
@@ -58,6 +66,7 @@ export class UsersService {
         status: user.status,
         tenantId: user.tenantId,
         tenantName: user.tenant.name,
+        tenantIsMspRoot: user.tenant.kind === 'MSP_ROOT',
         mfaEnrolled: user.mfaEnrolled,
         isFoundingAdministrator: user.isFoundingAdministrator,
         // Surfaced so the users list can recommend a second factor to exactly

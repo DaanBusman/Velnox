@@ -11,6 +11,7 @@ import {
   isPermission,
   isPrivilegedPermission,
   systemRole,
+  canResetMfa,
   type Grant,
 } from './permissions';
 
@@ -219,5 +220,97 @@ describe('grantedPermissions', () => {
         grant(PERMISSIONS.auditRead, 'GLOBAL'),
       ]),
     ).toEqual([PERMISSIONS.auditRead, PERMISSIONS.nodesRead].sort());
+  });
+});
+
+describe('canResetMfa', () => {
+  const ACTOR = 'actor-1';
+  const TARGET = 'target-1';
+
+  const decide = (
+    grants: Grant[],
+    over: Partial<Parameters<typeof canResetMfa>[0]> = {},
+  ) => canResetMfa({ actorId: ACTOR, targetId: TARGET, targetIsMspRoot: false, grants, ...over });
+
+  const RESET = grant(PERMISSIONS.usersResetMfa, 'GLOBAL');
+  const RESET_MSP = grant(PERMISSIONS.usersResetMfaMsp, 'GLOBAL');
+
+  it('refuses the actor’s own account, whatever they hold', () => {
+    // The important one. Self-service disable asks for a valid code, which
+    // proves possession; an administrator clearing their own factor would make
+    // every privileged second factor removable by its own password.
+    expect(decide([RESET, RESET_MSP], { targetId: ACTOR })).toEqual({
+      allowed: false,
+      refusal: 'self',
+    });
+    expect(decide([RESET, RESET_MSP], { targetId: ACTOR, targetIsMspRoot: true })).toEqual({
+      allowed: false,
+      refusal: 'self',
+    });
+  });
+
+  it('refuses an account with neither permission', () => {
+    expect(decide([])).toEqual({ allowed: false, refusal: 'no_permission' });
+    expect(decide([grant(PERMISSIONS.usersManage, 'GLOBAL')])).toEqual({
+      allowed: false,
+      refusal: 'no_permission',
+    });
+  });
+
+  it('allows a customer account with users.reset_mfa alone', () => {
+    expect(decide([RESET])).toEqual({ allowed: true });
+  });
+
+  it('refuses an MSP account with users.reset_mfa alone', () => {
+    // MSP Administrator and MSP Engineer land here: they may put a customer
+    // back in, never a colleague.
+    expect(decide([RESET], { targetIsMspRoot: true })).toEqual({
+      allowed: false,
+      refusal: 'msp_target',
+    });
+  });
+
+  it('allows an MSP account only when both permissions are held', () => {
+    expect(decide([RESET, RESET_MSP], { targetIsMspRoot: true })).toEqual({ allowed: true });
+  });
+
+  it('does not let users.reset_mfa_msp stand in for users.reset_mfa', () => {
+    // The MSP permission widens the base one; it does not replace it. A grant of
+    // the wide one alone is a configuration mistake, not a licence.
+    expect(decide([RESET_MSP], { targetIsMspRoot: true })).toEqual({
+      allowed: false,
+      refusal: 'no_permission',
+    });
+    expect(decide([RESET_MSP])).toEqual({ allowed: false, refusal: 'no_permission' });
+  });
+
+  it('honours scope: a tenant-scoped grant does not reach another tenant', () => {
+    const scoped = [grant(PERMISSIONS.usersResetMfa, 'TENANT', 'tenant-a')];
+    expect(decide(scoped, { targetTenantId: 'tenant-a' })).toEqual({ allowed: true });
+    expect(decide(scoped, { targetTenantId: 'tenant-b' })).toEqual({
+      allowed: false,
+      refusal: 'no_permission',
+    });
+  });
+
+  describe('the system roles behave as specified', () => {
+    const grantsOf = (key: Parameters<typeof systemRole>[0]): Grant[] =>
+      systemRole(key).permissions.map((permission) => grant(permission, 'GLOBAL'));
+
+    it.each([
+      ['msp_super_administrator', true, true],
+      ['msp_administrator', true, false],
+      ['msp_engineer', true, false],
+      ['msp_read_only', false, false],
+      ['tenant_administrator', false, false],
+      ['tenant_operator', false, false],
+      ['tenant_read_only', false, false],
+    ] as const)('%s: customer=%s msp=%s', (key, customer, msp) => {
+      const grants = grantsOf(key);
+      expect(decide(grants).allowed, `${key} on a customer account`).toBe(customer);
+      expect(decide(grants, { targetIsMspRoot: true }).allowed, `${key} on an MSP account`).toBe(
+        msp,
+      );
+    });
   });
 });

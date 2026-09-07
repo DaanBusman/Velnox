@@ -57,7 +57,7 @@ function parseMatrix(markdown: string, file: string): Matrix {
   for (const line of lines.slice(start)) {
     if (line.trim() === '') break;
 
-    const match = /^\|\s*`([a-z]+\.[a-z]+)`\s*\|(.+)\|\s*$/.exec(line.trim());
+    const match = /^\|\s*`([a-z][a-z_]*\.[a-z][a-z_]*)`\s*\|(.+)\|\s*$/.exec(line.trim());
     const permission = match?.[1];
     const body = match?.[2];
     if (!permission || body === undefined) continue;
@@ -131,7 +131,7 @@ describe.each(FILES)('%s', (file) => {
     const end = rest.indexOf('\n## ');
     const section = end === -1 ? rest : rest.slice(0, end);
 
-    const listed = new Set([...section.matchAll(/`([a-z]+\.[a-z]+)`/g)].map((m) => m[1]));
+    const listed = new Set([...section.matchAll(/`([a-z][a-z_]*\.[a-z][a-z_]*)`/g)].map((m) => m[1]));
 
     for (const permission of PRIVILEGED_PERMISSIONS) {
       expect(listed.has(permission), `${permission} is privileged but not listed`).toBe(true);

@@ -84,6 +84,16 @@ Tenants, clusters, nodes en de rest tonen `—` met de fase die ze zal vullen. H
 plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. De ene kaart
 met echte gegevens is de servicestatus, en die is live.
 
+### Het organisatiefilter bij Gebruikers heeft één keuze
+De accounttabel filtert op organisatie, en tot multi-tenancy in fase 3 landt is er één: de
+MSP-hoofdtenant. Het filter is gebouwd en werkt — het wordt gevuld met de tenants die de kijker
+daadwerkelijk mag zien, dus het groeit vanzelf mee zodra er een klanttenant bestaat — maar vandaag
+kan het de lijst alleen beperken tot de accounts die er al staan.
+
+Hetzelfde geldt voor de regel bij het resetten van de tweede factor die een klantaccount onderscheidt
+van dat van een collega. Die wordt afgedwongen en is getest; er zijn alleen nog geen klantaccounts
+waarop de ruimere helft ervan van toepassing is.
+
 ### Documentatiedrift is nu mogelijk
 Fase 1 heeft twee besluiten uit fase 0 herzien (zie *Herzien in fase 1* in `architecture.md` en
 `tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen vast van welke Engelse

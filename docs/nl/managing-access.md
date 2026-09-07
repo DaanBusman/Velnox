@@ -156,21 +156,47 @@ nieuwe apparaat. Genereer meteen een nieuwe set herstelcodes.
 
 ---
 
-## Iemand helpen die zowel het apparaat als de herstelcodes kwijt is
+## De meervoudige authenticatie van iemand anders resetten
 
-Deze build kent geen beheerdersoverride. Niemand, ook een Super Administrator niet, kan de
-meervoudige authenticatie van een ander account vanuit de interface uitzetten, en dat is opzet: een
-override is een permanente omzeiling van de tweede factor voor iedereen die het beheerdersaccount kan
-bereiken.
+**Je hebt nodig:** `users.reset_mfa`, en voor een account in je eigen organisatie ook
+`users.reset_mfa_msp`. Zie [wie wie mag resetten](#wie-wie-mag-resetten) hieronder.
 
-Wat je wel kunt doen:
+Voor de collega of klant die zowel de authenticator als de herstelcodes kwijt is.
 
-1. **Schakel het account uit** zodat het niet gebruikt kan worden zolang de situatie onopgelost is.
-2. **Maak een vervangend account** aan en ken het dezelfde rollen toe.
-3. Bewaar het uitgeschakelde account om zijn audithistorie.
+1. Ga naar **Gebruikers** en zoek het account op.
+2. Kies **Tweede factor resetten**.
+3. Bevestig. Laat het diegene buiten Velnox om weten.
 
-Wil je liever een noodreset dan een vervangend account, zeg dat dan — het is een bewuste weglating en
-geen vergissing, en de afweging is het waard om opnieuw te bekijken met de redenering zichtbaar.
+De instelling van het account wordt verwijderd, de ongebruikte herstelcodes worden gewist, en de
+sessies worden ingetrokken. Bij de eerstvolgende aanmelding kan het account opnieuw instellen. Aan
+het wachtwoord en de rollen verandert niets.
+
+De handeling wordt onder een eigen actie naar het auditlog geschreven, apart van iemand die zijn
+eigen tweede factor uitzet, zodat een auditor de twee kan onderscheiden zonder te moeten afleiden.
+
+### Wie wie mag resetten
+
+| Jij bent | Account van een klant | Account in je eigen organisatie | Je eigen account |
+|---|:-:|:-:|:-:|
+| MSP Super Administrator | ja | ja | **nee** |
+| MSP Administrator | ja | nee | **nee** |
+| MSP Engineer | ja | nee | **nee** |
+| Alle anderen | nee | nee | **nee** |
+
+**Niemand kan zijn eigen tweede factor resetten.** Een Super Administrator niet, de oprichtend
+beheerder niet. Gebruik daarvoor **Beveiliging**, waar om een code uit je authenticator wordt
+gevraagd — die vraag bewijst dat je de factor nog hebt, en dat is precies waarom zelfbediening
+veilig is. Een beheerder die zijn eigen tweede factor kon wissen, zou elke bevoorrechte tweede
+factor verwijderbaar maken met het bijbehorende wachtwoord, en dat komt neer op er geen hebben.
+
+Ben jij dus degene die het apparaat kwijt is, dan moet een ander het voor je doen. Op een
+installatie met één beheerder is die ander er niet, wat nog een reden is om vroeg een tweede
+beheerder aan te maken — zie [De oprichtend beheerder](#de-oprichtend-beheerder).
+
+**Waarom een engineer het wel voor een klant mag en niet voor een collega.** Een account in je eigen
+organisatie kan bij elke klant die je beheert. De tweede factor daarvan verwijderen is een grotere
+handeling dan bij een klant, en vereist daarom een recht dat alleen de Super Administrator heeft.
+Velnox dwingt dat aan de serverzijde af, niet door de knop te verbergen.
 
 ---
 

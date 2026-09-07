@@ -34,6 +34,8 @@ export const AUDIT_ACTIONS = {
   mfaRecoveryCodeUsed: 'auth.mfa.recovery_code_used',
   mfaRecoveryCodesRegenerated: 'auth.mfa.recovery_codes_regenerated',
   mfaDisabled: 'auth.mfa.disabled',
+  /** An administrator removed someone else's factor. Never the actor's own. */
+  mfaResetByAdministrator: 'auth.mfa.reset_by_administrator',
 
   permissionDenied: 'authz.permission_denied',
 

@@ -35,6 +35,8 @@ export interface UserSummary {
   status: string;
   tenantId: string;
   tenantName: string;
+  /** True for an account in the MSP organisation, false for a customer's. */
+  tenantIsMspRoot: boolean;
   mfaEnrolled: boolean;
   privileged: boolean;
   /** The account setup created. Its roles cannot be revoked by anyone. */

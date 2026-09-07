@@ -38,6 +38,11 @@ The installer asks two questions — the address, and whether you want a self-si
 publicly trusted one — then builds and starts everything. Five to ten minutes, most of it building
 images.
 
+The build step prints BuildKit's own progress rather than a spinner, so you can see which image is
+being built and what it is doing. Lines are prefixed with the service they belong to — `[api ...]`
+for the backend image, `[web ...]` for the frontend — and both are built in parallel, so the two
+interleave. Everything on screen is also written to the install log.
+
 When it finishes it prints the URL, the `MASTER_ENCRYPTION_KEY`, and the result of a verification
 run against the installation it just created. **Read that verification result.** It is the
 difference between "the installer exited 0" and "the software works", and those are not the same

@@ -72,6 +72,23 @@ export class UsersAdminController {
     return this.users.setStatus(id, body.status, actorOf(request));
   }
 
+  @RequirePermission(PERMISSIONS.usersResetMfa)
+  @Delete(':id/mfa')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: "Remove an account's second factor",
+    description:
+      'For someone who has lost both their authenticator and their recovery codes. The account ' +
+      'can enrol again at its next sign-in; its sessions are revoked and the act is audited under ' +
+      'its own action. Never your own account — self-service disable exists for that and ' +
+      'asks for a valid code. `users.reset_mfa` reaches accounts in a customer tenant; an account ' +
+      'in the MSP root tenant additionally requires `users.reset_mfa_msp`, so an administrator or ' +
+      'engineer can put a customer back in but not a colleague.',
+  })
+  async resetMfa(@Param('id', uuidParam) id: string, @Req() request: Request) {
+    await this.users.resetMfa(id, actorOf(request));
+  }
+
   @RequirePermission(PERMISSIONS.rolesManage)
   @Post(':id/role-assignments')
   @HttpCode(201)
@@ -105,5 +122,6 @@ function actorOf(request: Request): Actor {
     email: principal.user.email,
     tenantId: principal.user.tenantId,
     isMspRoot: principal.isMspRoot,
+    grants: principal.grants,
   };
 }

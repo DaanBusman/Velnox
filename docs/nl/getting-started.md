@@ -41,6 +41,11 @@ Het installatieprogramma stelt twee vragen — het adres, en of je een zelfonder
 vertrouwd certificaat wilt — en bouwt en start daarna alles. Vijf tot tien minuten, grotendeels
 opgaand aan het bouwen van images.
 
+De bouwstap toont de eigen voortgang van BuildKit in plaats van een spinner, zodat je ziet welke
+image wordt gebouwd en wat die doet. Regels dragen de service waar ze bij horen — `[api ...]` voor
+de backend-image, `[web ...]` voor de frontend — en beide worden parallel gebouwd, dus ze lopen door
+elkaar. Alles wat op het scherm komt gaat ook naar het installatielog.
+
 Als het klaar is toont het de URL, de `MASTER_ENCRYPTION_KEY`, en het resultaat van een verificatie
 tegen de zojuist gemaakte installatie. **Lees dat verificatieresultaat.** Het is het verschil tussen
 "het installatieprogramma eindigde met 0" en "de software werkt", en dat zijn niet dezelfde

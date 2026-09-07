@@ -148,21 +148,47 @@ new device. Generate a fresh set of recovery codes at the same time.
 
 ---
 
-## Help someone who has lost both their device and their recovery codes
+## Reset someone else's two-factor authentication
 
-There is no administrator override in this build. Nobody, including a Super Administrator, can turn
-another account's two-factor authentication off from the interface, and that is on purpose: an
-override is a permanent bypass of the second factor for anyone who can reach the administrator
-account.
+**You need:** `users.reset_mfa`, and for an account in your own organisation also
+`users.reset_mfa_msp`. See [who may do it](#who-may-reset-whose) below.
 
-What you can do:
+For the colleague or customer who has lost both their authenticator and their recovery codes.
 
-1. **Disable the account** so it cannot be used while the situation is unresolved.
-2. **Create a replacement account** and grant it the same roles.
-3. Keep the disabled account for its audit history.
+1. Go to **Users** and find the account.
+2. Choose **Reset two-factor**.
+3. Confirm. Tell them out of band that it is done.
 
-If you would rather have a break-glass reset than a replacement account, say so — it is a deliberate
-omission, not an oversight, and the trade-off is worth revisiting with the reasoning visible.
+The account's enrolment is removed, its unused recovery codes are deleted, and its sessions are
+revoked. At its next sign-in it can enrol again from scratch. Nothing about its password or its
+roles changes.
+
+The act is written to the audit log under its own action, separately from someone disabling their
+own second factor, so an auditor can tell the two apart without inferring it.
+
+### Who may reset whose
+
+| You are | A customer's account | An account in your own organisation | Your own account |
+|---|:-:|:-:|:-:|
+| MSP Super Administrator | yes | yes | **no** |
+| MSP Administrator | yes | no | **no** |
+| MSP Engineer | yes | no | **no** |
+| Everyone else | no | no | **no** |
+
+**Nobody can reset their own.** Not a Super Administrator, not the founding administrator. Use
+**Security**, which asks for a code from your authenticator — that request proves you still hold the
+factor, and it is the whole reason self-service is safe. An administrator who could clear their own
+second factor would make every privileged second factor removable by its own password, which is the
+same as not having one.
+
+So if you are the one who lost the device, someone else has to do it for you. On an installation
+with a single administrator there is nobody else, which is another reason to create a second
+administrator early — see [The founding administrator](#the-founding-administrator).
+
+**Why an engineer can do it for a customer but not a colleague.** An account in your own
+organisation can reach every customer you manage. Removing its second factor is a larger act than
+removing a customer's, so it needs a grant that only the Super Administrator holds. Velnox enforces
+that server-side, not by hiding the button.
 
 ---
 

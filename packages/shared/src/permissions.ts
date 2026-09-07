@@ -21,6 +21,25 @@ export const PERMISSIONS = {
   // Identity and access
   usersRead: 'users.read',
   usersManage: 'users.manage',
+  /**
+   * Remove another account's second factor so they can enrol again.
+   *
+   * Separate from `users.manage` because it is a different kind of act: it
+   * weakens an account's authentication rather than administering it, and the
+   * people who should be able to do it for a customer are not the same people
+   * who should be able to do it for their own colleagues. It covers accounts in
+   * a customer tenant only.
+   */
+  usersResetMfa: 'users.reset_mfa',
+  /**
+   * The same, for accounts in the MSP root tenant.
+   *
+   * Held on its own so that resetting a colleague's factor — an account that can
+   * reach every customer — is a deliberately narrower grant than resetting a
+   * customer's. Both are required to reset an MSP account: this one widens
+   * `users.reset_mfa`, it does not replace it.
+   */
+  usersResetMfaMsp: 'users.reset_mfa_msp',
   rolesRead: 'roles.read',
   rolesManage: 'roles.manage',
 
@@ -91,6 +110,8 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = Object.freeze([
   PERMISSIONS.tenantsManage,
   PERMISSIONS.sitesManage,
   PERMISSIONS.usersManage,
+  PERMISSIONS.usersResetMfa,
+  PERMISSIONS.usersResetMfaMsp,
   PERMISSIONS.rolesManage,
   PERMISSIONS.clustersManage,
   PERMISSIONS.nodesManage,
@@ -176,6 +197,52 @@ export function grantedPermissions(grants: readonly Grant[]): Permission[] {
 export const holdsPrivilegedPermission = (grants: readonly Grant[]): boolean =>
   grants.some((g) => isPrivilegedPermission(g.permission));
 
+/** Why a second-factor reset was refused. Rendered by the frontend, never as a sentence. */
+export type MfaResetRefusal = 'self' | 'no_permission' | 'msp_target';
+
+/**
+ * May this principal remove that account's second factor?
+ *
+ * A pure function for the same reason `isAllowed` is one: this decides whether
+ * an authentication factor can be taken off someone else's account, and the
+ * whole matrix of actor, target and grant needs to be testable without a
+ * database or a running server.
+ *
+ * Three rules, in this order:
+ *
+ * 1. **Never yourself.** Self-service disable exists and asks for a valid code,
+ *    which proves you still hold the factor. Letting an administrator clear
+ *    their own would turn every privileged account's second factor into
+ *    something its own password could remove, which is the same as not having
+ *    one. Checked first so the refusal is precise rather than leaking whether
+ *    the actor would otherwise have been allowed.
+ * 2. **`users.reset_mfa`** covers accounts in a customer tenant.
+ * 3. **`users.reset_mfa_msp`** is additionally required for an account in the
+ *    MSP root tenant — a colleague who can reach every customer.
+ */
+export function canResetMfa(input: {
+  actorId: string;
+  targetId: string;
+  targetIsMspRoot: boolean;
+  grants: readonly Grant[];
+  /** The target's tenant, so the grant is checked at the scope it applies to. */
+  targetTenantId?: string | null;
+}): { allowed: boolean; refusal?: MfaResetRefusal } {
+  if (input.actorId === input.targetId) return { allowed: false, refusal: 'self' };
+
+  const target: TargetScope = { tenantId: input.targetTenantId ?? null };
+
+  if (!isAllowed(input.grants, PERMISSIONS.usersResetMfa, target)) {
+    return { allowed: false, refusal: 'no_permission' };
+  }
+
+  if (input.targetIsMspRoot && !isAllowed(input.grants, PERMISSIONS.usersResetMfaMsp, target)) {
+    return { allowed: false, refusal: 'msp_target' };
+  }
+
+  return { allowed: true };
+}
+
 // ---------------------------------------------------------------------------
 // System roles
 // ---------------------------------------------------------------------------
@@ -205,6 +272,10 @@ const P = PERMISSIONS;
 /** Operating a fleet: everything except identity, tenancy and system settings. */
 const ENGINEER_PERMISSIONS: readonly Permission[] = [
   ...READ_PERMISSIONS.filter((p) => p !== P.auditRead),
+  // An engineer handling a customer's incident can put them back in without
+  // waiting for an administrator. Customer accounts only — `users.reset_mfa_msp`
+  // is what would extend it to colleagues, and an engineer does not hold it.
+  P.usersResetMfa,
   P.clustersManage,
   P.nodesManage,
   P.updatesExecute,
@@ -230,15 +301,20 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
     key: 'msp_administrator',
     name: 'MSP Administrator',
     description:
-      'Broad access across all tenants, including user and role management, but not installation-wide system settings.',
+      'Broad access across all tenants, including user and role management, but not installation-wide system settings or resetting a colleague’s second factor.',
     mspOnly: true,
-    permissions: ALL_PERMISSIONS.filter((p) => p !== P.systemManage),
+    // Not `users.reset_mfa_msp`: an administrator can put a customer back into
+    // their account, but removing the second factor from an MSP colleague — an
+    // account that reaches every customer — stays with the Super Administrator.
+    permissions: ALL_PERMISSIONS.filter(
+      (p) => p !== P.systemManage && p !== P.usersResetMfaMsp,
+    ),
   },
   {
     key: 'msp_engineer',
     name: 'MSP Engineer',
     description:
-      'Manages clusters and nodes and runs updates, upgrades and migrations. No user, role or system administration.',
+      'Manages clusters and nodes and runs updates, upgrades and migrations. May reset a customer’s second factor. No user, role or system administration.',
     mspOnly: true,
     permissions: ENGINEER_PERMISSIONS,
   },

@@ -25,6 +25,8 @@ export const ERROR_CODES = {
   authzTenantForbidden: 'authz.tenant_forbidden',
   /** Refused because it would leave the installation with nobody who can administer it. */
   authzFoundingAdministrator: 'authz.founding_administrator',
+  /** A second-factor reset was refused: your own account, or an MSP colleague's. */
+  authzMfaResetForbidden: 'authz.mfa_reset_forbidden',
 
   setupAlreadyInitialized: 'setup.already_initialized',
 

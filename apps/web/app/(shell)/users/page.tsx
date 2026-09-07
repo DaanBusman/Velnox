@@ -40,6 +40,15 @@ export default async function UsersPage() {
   const permissions = new Set(session?.user.permissions ?? []);
   const canManageUsers = permissions.has('users.manage');
   const canManageRoles = permissions.has('roles.manage');
+  /*
+   * Two permissions, not one. `users.reset_mfa` reaches a customer's account;
+   * reaching one in the MSP organisation additionally needs
+   * `users.reset_mfa_msp`, which only the Super Administrator holds. Both are
+   * passed down so the row can say why a button is absent instead of simply
+   * omitting it.
+   */
+  const canResetMfa = permissions.has('users.reset_mfa');
+  const canResetMfaMsp = permissions.has('users.reset_mfa_msp');
 
   /*
    * Recommending a second factor to the accounts that most need one.
@@ -66,6 +75,8 @@ export default async function UsersPage() {
           roles={roles.ok ? roles.data.roles : []}
           canManageUsers={canManageUsers}
           canManageRoles={canManageRoles && roles.ok}
+          canResetMfa={canResetMfa}
+          canResetMfaMsp={canResetMfaMsp}
           currentUserId={session?.user.id ?? null}
         />
       </div>

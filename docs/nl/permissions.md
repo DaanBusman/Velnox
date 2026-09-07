@@ -61,9 +61,9 @@ in je eigen organisatie.
 
 | Rol | Sleutel | Alleen MSP | Kent toe | Voor |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | ja | 34 van 34 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
-| MSP Administrator | `msp_administrator` | ja | 33 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen. |
-| MSP Engineer | `msp_engineer` | ja | 27 | Runt het landschap. Geen identiteitsbeheer, geen auditlog. |
+| MSP Super Administrator | `msp_super_administrator` | ja | 36 van 36 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
+| MSP Administrator | `msp_administrator` | ja | 34 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, en niet de tweede factor van een collega. |
+| MSP Engineer | `msp_engineer` | ja | 28 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
 | MSP Read Only | `msp_read_only` | ja | 18 | Ziet alles over alle tenants, wijzigt niets. |
 | Tenant Administrator | `tenant_administrator` | nee | 32 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
 | Tenant Operator | `tenant_operator` | nee | 22 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
@@ -71,8 +71,9 @@ in je eigen organisatie.
 
 De twee verschillen die mensen verrassen:
 
-- **MSP Administrator verschilt van MSP Super Administrator door precies één recht:**
-  `system.manage`. Al het overige — elke tenant, elke gebruiker, elke rol — is gelijk.
+- **MSP Administrator verschilt van MSP Super Administrator door precies twee rechten:**
+  `system.manage`, en `users.reset_mfa_msp` — de tweede factor van een collega verwijderen. Al het
+  overige — elke tenant, elke gebruiker, elke rol — is gelijk.
 - **MSP Engineer kan het auditlog niet lezen.** Het landschap bedienen en nagaan wie wat heeft
   gedaan zijn gescheiden taken, en het auditlog is waar het handelen van de engineer zelf wordt
   vastgelegd.
@@ -92,6 +93,8 @@ Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only
 | `sites.manage` | ✓ | ✓ | · | · | ✓ | · | · |
 | `users.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `users.manage` | ✓ | ✓ | · | · | ✓ | · | · |
+| `users.reset_mfa` | ✓ | ✓ | ✓ | · | · | · | · |
+| `users.reset_mfa_msp` | ✓ | · | · | · | · | · | · |
 | `roles.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `roles.manage` | ✓ | ✓ | · | · | ✓ | · | · |
 | `clusters.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -140,6 +143,8 @@ vandaag toekenbaar en bewaakt nog niets.
 | `sites.manage` | Locaties aanmaken en wijzigen | 3 |
 | `users.read` | Accounts, hun rollen en hun status voor meervoudige authenticatie zien | **2** |
 | `users.manage` | Accounts aanmaken, in- en uitschakelen | **2** |
+| `users.reset_mfa` | De tweede factor verwijderen van een account in een **klant**tenant | **2** |
+| `users.reset_mfa_msp` | Hetzelfde voor een account in de **MSP-hoofdtenant**. Vereist naast `users.reset_mfa` | **2** |
 | `roles.read` | Rollen zien en wat ze toekennen | **2** |
 | `roles.manage` | Rollen toekennen en intrekken | **2** |
 | `clusters.read` | Proxmox-clusters en hun gezondheid zien | 4 |
@@ -179,14 +184,14 @@ worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
 
 ## Bevoorrechte rechten en meervoudige authenticatie
 
-Deze veertien rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
+Deze zestien rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
 van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige
 authenticatie op uitkomt:
 
-`tenants.manage` · `sites.manage` · `users.manage` · `roles.manage` · `clusters.manage` ·
-`nodes.manage` · `updates.execute` · `upgrades.execute` · `automation.manage` ·
-`credentials.manage` · `credentials.rotate` · `migrations.execute` · `jobs.approve` ·
-`system.manage`
+`tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
+`roles.manage` · `clusters.manage` · `nodes.manage` · `updates.execute` · `upgrades.execute` ·
+`automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
+`jobs.approve` · `system.manage`
 
 Het is een expliciete lijst en niet "alles wat op `.manage` eindigt", want die twee zijn niet
 hetzelfde. **`alerts.manage` ontbreekt bewust:** meldingen bevestigen en afhandelen verandert het

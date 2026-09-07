@@ -57,9 +57,9 @@ organisation.
 
 | Role | Key | MSP only | Grants | For |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | yes | 34 of 34 | The first administrator. The only role with installation-wide settings. |
-| MSP Administrator | `msp_administrator` | yes | 33 | Runs the MSP day to day, including people. Not installation settings. |
-| MSP Engineer | `msp_engineer` | yes | 27 | Runs the fleet. No identity administration, no audit log. |
+| MSP Super Administrator | `msp_super_administrator` | yes | 36 of 36 | The first administrator. The only role with installation-wide settings. |
+| MSP Administrator | `msp_administrator` | yes | 34 | Runs the MSP day to day, including people. Not installation settings, and not a colleague’s second factor. |
+| MSP Engineer | `msp_engineer` | yes | 28 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
 | MSP Read Only | `msp_read_only` | yes | 18 | Sees everything across all tenants, changes nothing. |
 | Tenant Administrator | `tenant_administrator` | no | 32 | Full control within one tenant, including that tenant's own people. |
 | Tenant Operator | `tenant_operator` | no | 22 | Day-to-day work on one tenant's resources. No identity administration. |
@@ -67,8 +67,9 @@ organisation.
 
 The two differences that surprise people:
 
-- **MSP Administrator differs from MSP Super Administrator by exactly one permission:**
-  `system.manage`. Everything else — every tenant, every user, every role — is the same.
+- **MSP Administrator differs from MSP Super Administrator by exactly two permissions:**
+  `system.manage`, and `users.reset_mfa_msp` — removing the second factor from a colleague.
+  Everything else — every tenant, every user, every role — is the same.
 - **MSP Engineer cannot read the audit log.** Operating the fleet and reviewing who did what are
   separate jobs, and the audit log is where the engineer's own actions are recorded.
 
@@ -87,6 +88,8 @@ Administrator, MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operato
 | `sites.manage` | ✓ | ✓ | · | · | ✓ | · | · |
 | `users.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `users.manage` | ✓ | ✓ | · | · | ✓ | · | · |
+| `users.reset_mfa` | ✓ | ✓ | ✓ | · | · | · | · |
+| `users.reset_mfa_msp` | ✓ | · | · | · | · | · | · |
 | `roles.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `roles.manage` | ✓ | ✓ | · | · | ✓ | · | · |
 | `clusters.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -135,6 +138,8 @@ granted today and guards nothing yet.
 | `sites.manage` | Create and change sites | 3 |
 | `users.read` | See accounts, their roles and their two-factor status | **2** |
 | `users.manage` | Create accounts, enable and disable them | **2** |
+| `users.reset_mfa` | Remove the second factor from an account in a **customer** tenant | **2** |
+| `users.reset_mfa_msp` | The same for an account in the **MSP root** tenant. Required in addition to `users.reset_mfa` | **2** |
 | `roles.read` | See roles and what they grant | **2** |
 | `roles.manage` | Grant and revoke roles | **2** |
 | `clusters.read` | See Proxmox clusters and their health | 4 |
@@ -173,13 +178,13 @@ they are used. See [Technical decisions](tech-decisions.md), ADR-009 and ADR-023
 
 ## Privileged permissions and two-factor authentication
 
-These fourteen permissions let a principal change customer infrastructure or the security posture of
+These sixteen permissions let a principal change customer infrastructure or the security posture of
 the installation. They are what the `REQUIRED_FOR_PRIVILEGED` two-factor policy resolves to:
 
-`tenants.manage` · `sites.manage` · `users.manage` · `roles.manage` · `clusters.manage` ·
-`nodes.manage` · `updates.execute` · `upgrades.execute` · `automation.manage` ·
-`credentials.manage` · `credentials.rotate` · `migrations.execute` · `jobs.approve` ·
-`system.manage`
+`tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
+`roles.manage` · `clusters.manage` · `nodes.manage` · `updates.execute` · `upgrades.execute` ·
+`automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
+`jobs.approve` · `system.manage`
 
 It is an explicit list rather than "everything ending in `.manage`", because the two are not the
 same. **`alerts.manage` is deliberately absent:** acknowledging and resolving alerts changes

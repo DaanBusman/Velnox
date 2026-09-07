@@ -192,6 +192,55 @@ step() {
   fail_with_log "$title"
 }
 
+# Runs one step with its output on screen as well as in the log.
+#
+# The spinner exists because most steps produce output nobody wants to read. The
+# image build is the exception: it is the longest part of an installation by a
+# wide margin, and a spinner on it says only "still going" for five minutes. The
+# operator running this wants to know which image is building and what it is
+# doing — so BuildKit's own progress goes to the terminal, indented to stay
+# inside the frame, and to the log at the same time.
+step_streamed() {
+  local title="$1"
+  shift
+  STEP_INDEX=$((STEP_INDEX + 1))
+  local start
+  start=$(date +%s)
+
+  clear_bar
+  if [[ $TTY -eq 1 ]]; then
+    printf '  %s[%d/%d]%s %s
+' "$C_DIM" "$STEP_INDEX" "$TOTAL_STEPS" "$C_RESET" "$title"
+  else
+    printf '  [%d/%d] %s
+' "$STEP_INDEX" "$TOTAL_STEPS" "$title"
+  fi
+  echo "=== [$STEP_INDEX/$TOTAL_STEPS] $title" >>"$LOG_FILE"
+
+  # `set -o pipefail` is on, so the pipeline's status is the command's, not the
+  # reader's. Without it a failed build would be reported as a success.
+  local status=0
+  if ! "$@" 2>&1 | while IFS= read -r line; do
+    printf '%s
+' "$line" >>"$LOG_FILE"
+    printf '      %s%s%s
+' "$C_DIM" "$line" "$C_RESET"
+  done; then
+    status=1
+  fi
+
+  local elapsed=$(($(date +%s) - start))
+  if [[ $status -ne 0 ]]; then
+    printf '  %s[%d/%d]%s %-*s  %s%s%s
+'       "$C_DIM" "$STEP_INDEX" "$TOTAL_STEPS" "$C_RESET" "$LABEL_WIDTH" "$title"       "$C_RED" "$MARK_FAIL" "$C_RESET"
+    fail_with_log "$title"
+  fi
+
+  printf '  %s[%d/%d]%s %-*s  %s%s%s %s%s%s
+'     "$C_DIM" "$STEP_INDEX" "$TOTAL_STEPS" "$C_RESET" "$LABEL_WIDTH" "$title"     "$C_GREEN" "$MARK_OK" "$C_RESET" "$C_DIM" "$(human_time "$elapsed")" "$C_RESET"
+  draw_bar
+}
+
 # Marks a step as deliberately skipped without running anything.
 step_skip() {
   local title="$1" reason="$2"
@@ -505,8 +554,21 @@ generate_configuration() {
   chmod 600 "$ENV_FILE"
 }
 
+# Which images this stack actually builds. The other four services run stock
+# upstream images and are pulled, not built.
+BUILT_SERVICES=(api web)
+
 build_images() {
-  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build --pull
+  # `--progress=plain` rather than the default grouped renderer: the output is
+  # streamed through a reader, so stdout is a pipe and BuildKit would fall back
+  # to plain anyway — asking for it explicitly means the same lines land in the
+  # log as on the screen. Each line carries the service it belongs to, which is
+  # the per-image progress this exists to show.
+  #
+  # Both services are named in one invocation so BuildKit still builds them in
+  # parallel. Building them as two steps would have read more tidily and roughly
+  # doubled the longest part of the installation.
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build     --pull --progress=plain "${BUILT_SERVICES[@]}"
 }
 
 start_services() {
@@ -598,7 +660,7 @@ main() {
 
   step "Enabling time synchronisation" enable_time_sync
   step "Generating configuration and secrets" generate_configuration
-  step "Building images (this takes a few minutes)" build_images
+  step_streamed "Building images (this takes a few minutes)" build_images
   step "Starting services and waiting for health" start_services
 
   [[ $SKIP_VERIFY -eq 1 ]] || step "Verifying the installation" verify_installation
