@@ -34,14 +34,20 @@
 }
 
 {$VELNOX_SITE_ADDRESS:localhost} {
-	# `internal` issues a certificate from Caddy's own CA, which is right for an
-	# appliance reached by hostname or IP on a management network.
+	# One generated line: `tls internal`, `tls <acme-email>`, or
+	# `tls <cert> <key>`. scripts/lib/tls-config.sh writes it from VELNOX_TLS,
+	# and scripts/tls.sh changes it after an installation is running.
 	#
-	# Set VELNOX_TLS to an email address to switch to publicly trusted
-	# certificates via ACME — the address is the ACME account contact, so no
-	# separate email option is needed. That requires VELNOX_SITE_ADDRESS to be a
-	# publicly resolvable name reachable on ports 80 and 443.
-	tls {$VELNOX_TLS:internal}
+	# A file rather than `tls {$VELNOX_TLS}` because an operator-supplied
+	# certificate needs two arguments, and how a `{$VAR}` expansion splits into
+	# tokens is a detail of Caddy's parser this project should not depend on.
+	#
+	# A fixed filename rather than a glob: if it is missing, Caddy stops with a
+	# clear error. That is the right failure for a TLS misconfiguration — the
+	# alternative is no `tls` directive at all, and Caddy then decides for
+	# itself, which for a public hostname means an unexpected attempt at a real
+	# certificate.
+	import /etc/caddy/tls/tls.caddy
 
 	encode zstd gzip
 

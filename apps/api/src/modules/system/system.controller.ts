@@ -1,15 +1,29 @@
 import { Controller, Get } from '@nestjs/common';
-import { Public } from '../../common/auth.guard';
+import { Public, RequirePermission } from '../../common/auth.guard';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { SourceOfferResponse, SystemInfoResponse } from '@velnox/shared';
+import { PERMISSIONS, type SourceOfferResponse, type SystemInfoResponse, type TlsStatusResponse } from '@velnox/shared';
 import { SystemService } from './system.service';
+import { TlsService } from './tls.service';
 
-@Public()
+/*
+ * `@Public()` is on the two methods that are public, not on the class.
+ *
+ * The guard resolves it with getAllAndOverride([handler, class]), so a class-
+ * level @Public() is inherited by every method — including one that also
+ * carries @RequirePermission, which the guard never reaches because it returns
+ * early on public. This class used to be annotated that way, and adding the
+ * certificate endpoint to it would have published the installation's TLS
+ * configuration to anonymous callers.
+ */
 @ApiTags('system')
 @Controller('system')
 export class SystemController {
-  constructor(private readonly system: SystemService) {}
+  constructor(
+    private readonly system: SystemService,
+    private readonly tls: TlsService,
+  ) {}
 
+  @Public()
   @Get('info')
   @ApiOperation({
     summary: 'Installation information',
@@ -22,6 +36,7 @@ export class SystemController {
     return this.system.info();
   }
 
+  @Public()
   @Get('source')
   @ApiOperation({
     summary: 'Corresponding Source offer (AGPL section 13)',
@@ -47,4 +62,26 @@ export class SystemController {
     return this.system.source();
   }
 
+  /*
+   * Not @Public, unlike the two above.
+   *
+   * The certificate itself is offered to anyone who opens a browser, so it is
+   * not secret — but this reports the configured mode, the ACME account address
+   * and whether the proxy is answering at all, which together describe how the
+   * installation is exposed. That belongs behind the same permission as the rest
+   * of the installation settings.
+   */
+  @RequirePermission(PERMISSIONS.systemManage)
+  @Get('tls')
+  @ApiOperation({
+    summary: 'The certificate being served',
+    description:
+      'Read by opening a TLS connection to the proxy and inspecting the certificate it presents, ' +
+      'not from configuration — so a change that was written but never picked up is visible ' +
+      'rather than reported as success. Read-only: certificates are changed with scripts/tls.sh ' +
+      'on the host, which is what keeps writing private keys out of an HTTP endpoint.',
+  })
+  tlsStatus(): Promise<TlsStatusResponse> {
+    return this.tls.status();
+  }
 }

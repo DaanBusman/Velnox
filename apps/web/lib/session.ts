@@ -1,4 +1,5 @@
 import 'server-only';
+import type { TlsStatusResponse } from '@velnox/shared';
 import { cookies } from 'next/headers';
 import type {
   AuditEventView,
@@ -113,6 +114,11 @@ async function readAs<T>(path: string): Promise<{ ok: true; data: T } | { ok: fa
   } catch {
     return { ok: false, code: 'network' };
   }
+}
+
+/** The certificate being served. Requires system.manage, which the API enforces. */
+export function getTlsStatus() {
+  return readAs<TlsStatusResponse>('/api/v1/system/tls');
 }
 
 export function listRoles() {

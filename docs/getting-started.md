@@ -52,6 +52,10 @@ If you chose a self-signed certificate, your browser warns you once when you fir
 That is expected, and not a sign that something went wrong: the certificate was issued by the
 installation's own certificate authority, which your browser has never heard of.
 
+You are not stuck with that choice. A running installation can be switched to a Let's Encrypt
+certificate, or given one you already hold, at any time — see [Certificates](deployment.md#certificates),
+and **Settings → Certificate** in the product for what is being served right now.
+
 ---
 
 ## Create the first administrator

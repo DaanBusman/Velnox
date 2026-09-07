@@ -14,6 +14,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=lib/env-file.sh
 source "${ROOT}/scripts/lib/env-file.sh"
+# shellcheck source=lib/tls-config.sh
+source "${ROOT}/scripts/lib/tls-config.sh"
 
 ENV_FILE="${ROOT}/.env"
 EXAMPLE_FILE="${ROOT}/.env.example"
@@ -86,6 +88,10 @@ if command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --git-dir >/dev/nu
 fi
 
 chmod 600 "$ENV_FILE"
+
+# The file deploy/caddy/Caddyfile imports. Without it Caddy will not start, and
+# `pnpm docker:up` after a bare gen-env.sh is a documented way in.
+write_tls_config "$ROOT" "$(get_env_var "$ENV_FILE" VELNOX_TLS)"
 
 if [[ $QUIET -eq 0 ]]; then
   cat <<'BANNER'

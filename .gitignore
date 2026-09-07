@@ -18,3 +18,7 @@ apps/web/next-env.d.ts
 # Built from docs/*.md by apps/web/scripts/build-docs.mjs at build time.
 # Two committed inputs; committing the output would make a third thing to keep in step.
 apps/web/generated/
+
+# TLS material for the running installation: the generated mode file, and any
+# certificate and private key the operator supplied. Never committed.
+deploy/caddy/tls/

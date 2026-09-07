@@ -166,6 +166,30 @@ check "web: the dashboard shell is served over HTTPS" bash -c "
   [[ \"\$body\" == *'<html'* ]] || exit 1
 "
 
+# The certificate has to be valid *now*, not merely present. An expired one
+# still completes a handshake and is refused by every browser, so a check that
+# only asked "is TLS up" would pass on an installation nobody can reach.
+#
+# `check` has no skip code — it fails on any non-zero — so the openssl guard is
+# out here, where `skip` can be used for what it means.
+TLS_AUTHORITY="${BASE#https://}"
+TLS_AUTHORITY="${TLS_AUTHORITY%%/*}"
+TLS_HOST="${TLS_AUTHORITY%%:*}"
+# The port from the URL, not a hard-coded 443: --https-port is a documented
+# installer option, and probing 443 on an installation published on 8443 tests
+# whatever else happens to be listening there.
+TLS_PORT="${TLS_AUTHORITY##*:}"
+[[ "$TLS_PORT" == "$TLS_AUTHORITY" ]] && TLS_PORT=443
+
+if command -v openssl >/dev/null 2>&1; then
+  check "tls: the certificate is currently valid" bash -c "
+    cert=\$(echo | openssl s_client -connect '${TLS_HOST}:${TLS_PORT}' -servername '${TLS_HOST}' 2>/dev/null) || exit 1
+    printf '%s' \"\$cert\" | openssl x509 -noout -checkend 0 >/dev/null 2>&1
+  "
+else
+  skip "tls: the certificate is currently valid (openssl not installed)"
+fi
+
 # --- 2. The API answers through the reverse proxy ----------------------------
 HEALTH_JSON="$("${CURL[@]}" "${BASE}/api/v1/health" 2>/dev/null)"
 check "api: /api/v1/health responds through Caddy" expect_equals \

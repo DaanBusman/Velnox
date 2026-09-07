@@ -55,6 +55,11 @@ Bij een zelfondertekend certificaat waarschuwt je browser eenmalig wanneer je he
 eerst opent. Dat hoort zo en is geen teken dat er iets misging: het certificaat is uitgegeven door
 de eigen certificaatautoriteit van de installatie, waar je browser nog nooit van heeft gehoord.
 
+Aan die keuze zit je niet vast. Een draaiende installatie kan op elk moment overstappen op een
+Let's Encrypt-certificaat, of er een krijgen die je al hebt — zie
+[Certificaten](deployment.md#certificaten), en **Instellingen → Certificaat** in het product voor wat
+er op dit moment geserveerd wordt.
+
 ---
 
 ## De eerste beheerder aanmaken

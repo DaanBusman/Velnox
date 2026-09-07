@@ -198,6 +198,78 @@ cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env
 
 ---
 
+## Certificates
+
+Velnox serves HTTPS through Caddy in one of three modes. Change it at any time, on a running
+installation, with `scripts/tls.sh`. Nothing is written until the material has been validated, so a
+certificate that would not have worked is refused while the working one is still serving.
+
+```bash
+cd /opt/velnox && sudo bash scripts/tls.sh --status
+```
+
+| Mode | What it is | Renewal |
+|---|---|---|
+| `internal` | A certificate from Caddy's own CA. Browsers warn once. The installer's default. | Automatic |
+| Let's Encrypt | A publicly trusted certificate obtained over ACME. | Automatic |
+| Your own | A certificate you already hold, from your CA or a commercial issuer. | **Yours** |
+
+The same information is in the product under **Settings → Certificate**, which additionally shows
+the certificate the proxy is *actually* presenting — read from a real handshake rather than from
+configuration, so a change that was written and never picked up is visible instead of being reported
+as success.
+
+### Switch to Let's Encrypt
+
+```bash
+cd /opt/velnox && sudo bash scripts/tls.sh --letsencrypt=you@example.com
+```
+
+The address is the ACME account contact; no separate option is needed. This requires
+`VELNOX_SITE_ADDRESS` to be a name that resolves publicly and reaches this host on ports 80 and 443.
+Let's Encrypt does not issue certificates for IP addresses, and the script refuses rather than
+letting Caddy fail quietly.
+
+Issuance takes up to a minute. Caddy renews on its own from then on.
+
+### Install a certificate you already have
+
+```bash
+cd /opt/velnox && sudo bash scripts/tls.sh --certificate=/path/to/fullchain.pem --key=/path/to/privkey.pem
+```
+
+Both files must be PEM. An encrypted private key has to be decrypted first — Caddy cannot prompt for
+a passphrase. If your issuer gave you the leaf and the chain separately, pass `--chain=` as well, or
+concatenate them yourself; most browsers reject a leaf served without its issuers.
+
+Before writing anything the script checks that the key belongs to the certificate, that the
+certificate has not expired, and that one of its names covers `VELNOX_SITE_ADDRESS`. A name mismatch
+is a warning rather than a refusal, because installing ahead of a DNS change is legitimate — but
+browsers will refuse the connection until the two agree.
+
+The certificate and key are written to `deploy/caddy/tls/`, the key mode 0600, and the directory is
+mounted read-only into the Caddy container. **Renewal is yours in this mode.** Velnox warns on the
+certificate screen from 30 days out, and `scripts/verify-stack.sh` fails once it has expired.
+
+### Go back to a self-signed certificate
+
+```bash
+cd /opt/velnox && sudo bash scripts/tls.sh --self-signed
+```
+
+### Why this is not a button in the interface
+
+Installing a certificate means writing a private key to disk and restarting the proxy. Velnox does
+neither from an HTTP endpoint: the API holds no TLS material, runs no shell commands, and has no way
+to restart a container. Moving that into a web form would mean giving the API container the ability
+to reconfigure the proxy, which is a much larger thing to have than the convenience is worth. The
+host is where it belongs, under the same trust model as the installer.
+
+Each change restarts Caddy, which costs about a second of downtime on the console. Nothing else is
+interrupted: the worker holds no connection through Caddy.
+
+---
+
 ## Upgrading
 
 Three steps, in this order. Step 1 is the one that is tempting to skip, and it is the one that makes

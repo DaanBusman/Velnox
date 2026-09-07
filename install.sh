@@ -27,6 +27,10 @@ ENV_FILE="${ROOT}/.env"
 # drift apart on escaping rules.
 # shellcheck source=scripts/lib/env-file.sh
 source "${ROOT}/scripts/lib/env-file.sh"
+# write_tls_config / tls_mode_of, shared with scripts/tls.sh so an install and a
+# later certificate change cannot disagree about what a mode means.
+# shellcheck source=scripts/lib/tls-config.sh
+source "${ROOT}/scripts/lib/tls-config.sh"
 LOG_FILE="/var/log/velnox-install-$(date +%Y%m%d-%H%M%S).log"
 
 SITE_ADDRESS=""
@@ -526,6 +530,10 @@ generate_configuration() {
   set_env_var "$ENV_FILE" VELNOX_SITE_ADDRESS "$SITE_ADDRESS"
   set_env_var "$ENV_FILE" APP_URL "https://${SITE_ADDRESS}"
   set_env_var "$ENV_FILE" VELNOX_TLS "$TLS_MODE"
+
+  # The file Caddy imports. Written on every run, so an upgrade cannot leave a
+  # Caddyfile importing something that is not there.
+  write_tls_config "$ROOT" "$TLS_MODE"
   set_env_var "$ENV_FILE" CADDY_HTTP_PORT "$HTTP_PORT"
   set_env_var "$ENV_FILE" CADDY_HTTPS_PORT "$HTTPS_PORT"
 

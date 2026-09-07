@@ -12,7 +12,7 @@
 name: velnox
 
 x-build-args: &build-args
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.7.0}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.8.0}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_BUILD_TIME: ${VELNOX_BUILD_TIME:-}
 
@@ -24,7 +24,7 @@ x-backend-env: &backend-env
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD}
   MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.7.0}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.8.0}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_SOURCE_URL: ${VELNOX_SOURCE_URL:-https://github.com/DaanBusman/Velnox}
   VELNOX_DEFAULT_LOCALE: ${VELNOX_DEFAULT_LOCALE:-en}
@@ -99,6 +99,10 @@ services:
       <<: *backend-env
       API_PORT: 4000
       APP_URL: ${APP_URL:-https://localhost}
+      # Reported by the certificate screen. The API never reads TLS material;
+      # it inspects the certificate Caddy actually presents and says whether
+      # that matches what is configured here.
+      VELNOX_TLS: ${VELNOX_TLS:-internal}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — run ./scripts/gen-env.sh}
       METRICS_ENABLED: ${METRICS_ENABLED:-false}
     command: ['node', 'apps/api/dist/main.js']
@@ -160,6 +164,10 @@ services:
       VELNOX_TLS: ${VELNOX_TLS:-internal}
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # The TLS mode, and any certificate the operator supplied. Read-only:
+      # Caddy has no reason to write here, and the private key is 0600 on the
+      # host. Written by scripts/tls.sh, never by a container.
+      - ../caddy/tls:/etc/caddy/tls:ro
       - caddydata:/data
       - caddyconfig:/config
     networks: [app]

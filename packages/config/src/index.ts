@@ -87,6 +87,19 @@ const apiSchema = baseSchema
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     APP_URL: z.string().url().default('https://localhost'),
+    /**
+     * How TLS is configured: `internal`, `certificate`, or the ACME account
+     * email address. Reported by the certificate screen alongside the
+     * certificate actually being served, so an operator can see when the two
+     * disagree — which is what a configuration change that never reached Caddy
+     * looks like.
+     *
+     * Not a secret, and not used for anything: the API neither reads nor writes
+     * TLS material. Changing it is `scripts/tls.sh` on the host.
+     */
+    VELNOX_TLS: z.string().min(1).default('internal'),
+    /** Where to reach Caddy from inside the app network, to inspect its certificate. */
+    VELNOX_PROXY_HOST: z.string().min(1).default('caddy'),
     JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
     MASTER_ENCRYPTION_KEY: base64Key32,
   });

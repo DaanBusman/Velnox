@@ -71,6 +71,43 @@ export interface SourceOfferResponse {
   notice: string;
 }
 
+/** How TLS is configured. Not how it is working — that is the certificate below. */
+export type TlsMode = 'internal' | 'acme' | 'certificate';
+
+export interface TlsCertificateView {
+  subject: string;
+  issuer: string;
+  /** Every name a browser will accept this certificate for. */
+  names: string[];
+  notBefore: string | null;
+  notAfter: string | null;
+  /** Negative once it has expired. Null when the date could not be read. */
+  daysRemaining: number | null;
+  selfSigned: boolean;
+  fingerprintSha256: string | null;
+}
+
+/**
+ * The certificate Velnox is actually serving, next to the mode configured for
+ * it.
+ *
+ * Read by opening a TLS connection to the proxy rather than from a file: the
+ * usual failure after changing a certificate is that the proxy never picked the
+ * new one up, and a screen sourced from configuration reports success for
+ * exactly that case. Requires `system.manage`.
+ */
+export interface TlsStatusResponse {
+  mode: TlsMode;
+  siteAddress: string;
+  /** The ACME account address, in `acme` mode only. */
+  acmeAccount: string | null;
+  /** Whether the proxy completed a TLS handshake at all. */
+  reachable: boolean;
+  certificate: TlsCertificateView | null;
+  /** Translatable detail when there is nothing to report. */
+  problem: { code: string; params?: Record<string, string | number> } | null;
+}
+
 export interface SystemInfoResponse {
   product: string;
   version: string;
