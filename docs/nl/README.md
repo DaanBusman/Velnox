@@ -55,13 +55,20 @@ De versie staat in de root-`package.json` en nergens anders:
 
 ```bash
 pnpm run version:show          # wat dit is
-pnpm run version:bump patch    # een correctie
-pnpm run version:bump minor    # functionaliteit
+pnpm run version:bump patch    # een uitgeleverde wijziging
+pnpm run version:phase 3       # een afgeronde fase: 0.2.7 -> 0.3.0
 pnpm run validate:version      # faalt zodra een manifest uit de pas loopt
 ```
 
-Elke wijziging die wordt uitgeleverd hoogt hem op. **1.0.0** bereiken is een productbesluit, en het
-script weigert dat uit zichzelf te doen.
+**Onder 1.0.0 is het minor-nummer het fasenummer.** Velnox wordt in vijftien fasen gebouwd en 1.0.0
+is de eerste echte release, dus die twee laten we samenvallen: een build die `0.4.6` meldt is de
+zesde uitgeleverde wijziging sinds fase 4 klaar was. Fase 15 eindigt dus op `0.15.x`.
+
+Elke uitgeleverde wijziging hoogt het patch-nummer op. Alleen het afronden van een fase verzet het
+minor-nummer, en `version:phase` weigert zolang [docs/roadmap.md](roadmap.md) die fase niet als
+afgerond markeert — de versie volgt de roadmap, hij loopt er niet op vooruit. `validate:version`
+controleert dat de twee het eens zijn. **1.0.0** bereiken is een productbesluit, en het script
+weigert dat uit zichzelf te doen.
 
 ---
 

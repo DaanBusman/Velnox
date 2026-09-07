@@ -1,6 +1,6 @@
 {
   "name": "velnox",
-  "version": "0.8.0",
+  "version": "0.2.4",
   "private": true,
   "description": "Self-hosted MSP management platform for Proxmox VE fleets",
   "license": "AGPL-3.0-or-later",
@@ -28,6 +28,7 @@
     "validate:licenses": "node scripts/check-licenses.mjs",
     "validate:version": "node scripts/version.mjs check",
     "version:bump": "node scripts/version.mjs bump",
+    "version:phase": "node scripts/version.mjs phase",
     "version:set": "node scripts/version.mjs set",
     "version:show": "node scripts/version.mjs"
   },

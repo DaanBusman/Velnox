@@ -281,6 +281,12 @@ alongside each new resource; **every new user-visible string added to `en.json` 
 same commit**; `.env.example` updated with any new variable; `docs/known-gaps.md` updated when
 something ships incomplete.
 
+**Marking a phase complete is what moves the version.** The `✅ complete` marker on the headings
+above is read by `scripts/version.mjs`: below 1.0.0 the minor number is the phase number, so
+finishing Phase N is what makes the product `0.N.0`. `pnpm run validate:version` fails when the two
+disagree, and `version:phase` refuses to run ahead of this file. Mark it here, in the change that
+finishes the phase.
+
 **Operator documentation, in the same phase that ships the feature.** Every phase that adds
 something an operator does adds the how-to for it, in English and Dutch, to the guides that ship
 inside the product — not to a backlog. A phase is not finished while the only way to learn how to

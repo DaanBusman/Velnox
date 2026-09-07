@@ -293,6 +293,12 @@ elke nieuwe resource; **elke nieuwe zichtbare tekst in dezelfde commit toegevoeg
 `nl.json`**; `.env.example` bijgewerkt bij elke nieuwe variabele; `docs/known-gaps.md` bijgewerkt wanneer
 iets onvolledig wordt opgeleverd.
 
+**Een fase als afgerond markeren is wat de versie verzet.** De markering `✅ complete` op de
+koppen hierboven wordt gelezen door `scripts/version.mjs`: onder 1.0.0 is het minor-nummer het
+fasenummer, dus fase N afronden is wat het product `0.N.0` maakt. `pnpm run validate:version` faalt
+wanneer de twee het oneens zijn, en `version:phase` weigert vooruit te lopen op dit bestand. Markeer
+het hier, in de wijziging die de fase afmaakt.
+
 **Beheerdersdocumentatie, in dezelfde fase die de functie oplevert.** Elke fase die iets toevoegt
 dat een beheerder doet, voegt de bijbehorende handleiding toe, in het Engels en het Nederlands, aan
 de gidsen die in het product zelf meegaan — niet aan een backlog. Een fase is niet af zolang de

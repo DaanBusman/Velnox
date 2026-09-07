@@ -400,9 +400,25 @@ scheiden zou een tweede KEK en een sleutelbeheerverhaal vergen die fase 2 niet h
 **Besluit:** Het veld `version` in de root-`package.json` is de enige plek waar een versie wordt
 geschreven. `scripts/version.mjs` zet hem in de negen andere manifesten, de twee compose-defaults en
 `.env.example`; `pnpm run validate:version` laat de lint-taak falen zodra er iets uit de pas loopt.
-Elke wijziging die wordt uitgeleverd hoogt hem op — `bump patch` voor een correctie, `bump minor`
-voor functionaliteit — en `bump major` wordt door het script geweigerd, omdat 1.0.0 bereiken een
-besluit van de opdrachtgever is en geen rekensom.
+
+**Onder 1.0.0 is het minor-nummer het fasenummer.** Elke uitgeleverde wijziging hoogt het
+patch-nummer op; het afronden van een fase gebeurt met `version:phase <n>`, het enige dat het
+minor-nummer verzet, en dat weigert zolang `docs/roadmap.md` die fase niet als afgerond markeert.
+`validate:version` faalt wanneer de twee het oneens zijn. `bump minor` en `bump major` worden allebei
+geweigerd door het script — de eerste omdat die stilletjes een fasenummer zou opmaken, de tweede
+omdat 1.0.0 bereiken een besluit van de opdrachtgever is en geen rekensom.
+
+**Gewijzigd:** de oorspronkelijke regel was `bump patch` voor een correctie en `bump minor` voor
+functionaliteit. Dat is gewone semver en was verkeerd voor een product met een genummerd plan: het
+kwam tijdens fase 2 al op 0.8.0 uit — het grootste deel van de nummering opgemaakt aan een vijfde van
+het werk, met fase 15 op koers voorbij 0.20.0 en 1.0.0 nergens in zicht. De versie is eenmalig
+achteruit hernummerd, van 0.8.0 naar 0.2.4. Dat kost echt iets, en dat is bewust betaald: een
+installatie die daaroverheen wordt bijgewerkt ziet zijn versienummer dalen, wat op een downgrade
+lijkt en het niet is. In fase 2 is dat zo goedkoop als het ooit wordt.
+
+Met dit schema beantwoordt de versie de vraag "hoe ver is dit", en dat is bij een product met een
+gepubliceerde roadmap de vraag die mensen daadwerkelijk stellen. Fase 9 is gesplitst in 9A en 9B;
+beide zijn fase 9, dus 9B wordt uitgeleverd als patches op minor 9.
 
 De documentatie onder `docs/` wordt tijdens de build omgezet naar HTML en meegeleverd in de
 web-image, en elke pagina toont **"Deze Documentatie is toepasbaar voor versie VX.Y.Z"** (in het

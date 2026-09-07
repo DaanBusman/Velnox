@@ -14,12 +14,26 @@
  *   node scripts/version.mjs                 print the current version
  *   node scripts/version.mjs check           fail if anything has drifted
  *   node scripts/version.mjs set 0.3.0       write it everywhere
- *   node scripts/version.mjs bump minor      0.2.0 -> 0.3.0
  *   node scripts/version.mjs bump patch      0.2.0 -> 0.2.1
+ *   node scripts/version.mjs phase 3         0.2.7 -> 0.3.0
  *
- * `bump major` is refused below 1.0.0 on purpose: reaching 1.0.0 is a product
- * decision the owner makes, not something a script does because the number was
- * next.
+ * ## Below 1.0.0, the minor number is the phase number
+ *
+ * Velnox is built in fifteen phases and 1.0.0 is the first real release, so the
+ * two have to meet. Spending a minor on every feature does not get there: at one
+ * minor per change this reached 0.8.0 during Phase 2, and Phase 15 would have
+ * landed past 0.20.0 — a number saying nothing about how far along the product
+ * is, and nowhere near the release it is supposed to arrive at.
+ *
+ * So the minor *is* the phase. A build reporting 0.4.6 is the sixth shipped
+ * change since Phase 4 was completed. Every change bumps the patch; completing a
+ * phase runs `phase <n>`, which is the only thing that moves the minor and which
+ * refuses unless docs/roadmap.md marks that phase complete. Phase 15 therefore
+ * ends at 0.15.x, and 1.0.0 is one deliberate step from there.
+ *
+ * `bump minor` is refused because it would silently spend a phase number.
+ * `bump major` is refused because reaching 1.0.0 is a product decision the owner
+ * makes, not something a script does because the number was next.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -59,6 +73,12 @@ const ENV_PATTERN = /^(VELNOX_VERSION=)(.+)$/gm;
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$/;
 
+/** Where "how far along is this" is recorded. The version follows it, never leads. */
+const ROADMAP = 'docs/roadmap.md';
+
+/** Phases 1 to 15, and then 1.0.0. */
+const MAX_PHASE = 15;
+
 const read = (file) => readFileSync(join(ROOT, file), 'utf8');
 const write = (file, content) => writeFileSync(join(ROOT, file), content);
 
@@ -85,6 +105,31 @@ function findAll() {
   return found;
 }
 
+/**
+ * The highest phase docs/roadmap.md marks complete.
+ *
+ * Parsed from the roadmap rather than recorded separately, because a second
+ * record of "how far along are we" is a second thing to forget to update. The
+ * headings look like:
+ *
+ *     ## Phase 2 — Authentication, setup wizard, RBAC core · **XL** · ✅ complete
+ *
+ * Phase 9 is split into 9A and 9B. Both are phase 9, so both live under minor 9
+ * and 9B ships as patches on it.
+ */
+export function completedPhase() {
+  let highest = 0;
+
+  for (const line of read(ROADMAP).split('\n')) {
+    const match = /^##\s+Phase\s+(\d+)[AB]?\b/.exec(line);
+    if (!match) continue;
+    if (!/✅\s*complete/i.test(line)) continue;
+    highest = Math.max(highest, Number(match[1]));
+  }
+
+  return highest;
+}
+
 function check() {
   const expected = currentVersion();
   const drifted = findAll().filter((entry) => entry.version !== expected);
@@ -94,6 +139,36 @@ function check() {
     for (const entry of drifted) console.error(`  ${entry.file} says ${entry.version}`);
     console.error('\nRun: node scripts/version.mjs set ' + expected);
     process.exit(1);
+  }
+
+  /*
+   * The minor number has to be the phase the roadmap says is finished.
+   *
+   * Not checked from 1.0.0 on: after the first real release the number stops
+   * tracking phases and starts meaning what semver says it means.
+   */
+  const parts = SEMVER.exec(expected);
+  const major = Number(parts?.[1]);
+  const minor = Number(parts?.[2]);
+
+  if (major === 0) {
+    const phase = completedPhase();
+    if (minor !== phase) {
+      console.error(
+        `Version ${expected} does not match the roadmap. Phase ${phase} is the highest one ` +
+          `marked complete, so the minor number should be ${phase}.`,
+      );
+      console.error(`\nJust finished a phase?   node scripts/version.mjs phase ${phase}`);
+      console.error(
+        'Otherwise the roadmap and the version disagree about how far along this is,\n' +
+          'which is worth resolving before shipping either.',
+      );
+      process.exit(1);
+    }
+    console.log(
+      `Version OK — ${expected} in ${findAll().length} places, minor matches completed Phase ${phase}.`,
+    );
+    return;
   }
 
   console.log(`Version OK — ${expected} in ${findAll().length} places.`);
@@ -120,6 +195,57 @@ function set(version) {
   console.log(`Next: rebuild so the documentation bundle carries it too.`);
 }
 
+/**
+ * Completing a phase: the one thing that moves the minor number.
+ *
+ * Refuses to run ahead of the roadmap. The version is a claim about how far
+ * along the product is, and the roadmap is where that claim is actually made —
+ * so marking the phase complete there is part of finishing it, not paperwork
+ * afterwards.
+ */
+function phase(requested) {
+  const number = Number(requested);
+  if (!Number.isInteger(number) || number < 1 || number > MAX_PHASE) {
+    console.error(`Not a phase: ${requested}. Velnox has phases 1 to ${MAX_PHASE}.`);
+    process.exit(1);
+  }
+
+  const current = currentVersion();
+  const parts = SEMVER.exec(current);
+  const major = Number(parts?.[1]);
+  const minor = Number(parts?.[2]);
+
+  if (major !== 0) {
+    console.error(`Already at ${current}. Phase numbering applies below 1.0.0 only.`);
+    process.exit(1);
+  }
+
+  if (number < minor) {
+    console.error(`Refusing to go backwards: ${current} is already Phase ${minor}.`);
+    process.exit(1);
+  }
+
+  const marked = completedPhase();
+  if (number > marked) {
+    console.error(
+      `docs/roadmap.md does not mark Phase ${number} complete — the highest it marks is ` +
+        `${marked || 'none'}.`,
+    );
+    console.error(
+      '\nMark it complete there first, in the change that finishes it.\n' +
+        'The version follows the roadmap; it does not lead it.',
+    );
+    process.exit(1);
+  }
+
+  set(`0.${number}.0`);
+  console.log(
+    number === MAX_PHASE
+      ? 'Phase 15 complete. 1.0.0 is now one deliberate step away — run `set 1.0.0` when the owner says so.'
+      : `Phase ${number} complete. Changes from here bump the patch until Phase ${number + 1} lands.`,
+  );
+}
+
 function bump(part) {
   const current = currentVersion();
   const match = SEMVER.exec(current);
@@ -140,8 +266,20 @@ function bump(part) {
     process.exit(1);
   }
 
-  const next =
-    part === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
+  if (part === 'minor' && major === 0) {
+    // Below 1.0.0 the minor is the phase number. Bumping it for a feature is how
+    // this reached 0.8.0 during Phase 2 — spending most of the numbering before
+    // a fifth of the work was done.
+    console.error(
+      'Refusing to bump the minor version: below 1.0.0 it is the phase number, not a\n' +
+        'feature counter.\n',
+    );
+    console.error('  A shipped change:   node scripts/version.mjs bump patch');
+    console.error('  A completed phase:  node scripts/version.mjs phase <n>');
+    process.exit(1);
+  }
+
+  const next = part === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
 
   set(next);
 }
@@ -164,13 +302,20 @@ switch (command) {
     break;
   case 'bump':
     if (!['major', 'minor', 'patch'].includes(argument ?? '')) {
-      console.error('Usage: node scripts/version.mjs bump <major|minor|patch>');
+      console.error('Usage: node scripts/version.mjs bump patch');
       process.exit(1);
     }
     bump(argument);
     break;
+  case 'phase':
+    if (!argument) {
+      console.error(`Usage: node scripts/version.mjs phase <1-${MAX_PHASE}>`);
+      process.exit(1);
+    }
+    phase(argument);
+    break;
   default:
     console.error(`Unknown command: ${command}`);
-    console.error(`Try: check | set <version> | bump <minor|patch>`);
+    console.error('Try: check | set <version> | bump patch | phase <n>');
     process.exit(1);
 }

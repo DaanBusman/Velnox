@@ -384,10 +384,25 @@ second KEK and a key-management story that Phase 2 does not have; it is recorded
 
 **Decision:** The `version` field in the root `package.json` is the only place a version is
 authored. `scripts/version.mjs` writes it into the nine other manifests, the two compose defaults
-and `.env.example`; `pnpm run validate:version` fails the lint task if any of them drift. Every
-change that ships bumps it — `bump patch` for a fix, `bump minor` for a feature — and `bump major`
-is refused by the script, because reaching 1.0.0 is a decision the product owner makes rather than
-an arithmetic step.
+and `.env.example`; `pnpm run validate:version` fails the lint task if any of them drift.
+
+**Below 1.0.0 the minor number is the phase number.** Every shipped change bumps the patch;
+completing a phase runs `version:phase <n>`, which is the only thing that moves the minor, and which
+refuses unless `docs/roadmap.md` marks that phase complete. `validate:version` fails when the two
+disagree. `bump minor` and `bump major` are both refused by the script — the first because it would
+silently spend a phase number, the second because reaching 1.0.0 is a decision the product owner
+makes rather than an arithmetic step.
+
+**Amended:** the original rule was `bump patch` for a fix and `bump minor` for a feature, which is
+ordinary semver and was wrong for a product with a numbered plan. It reached 0.8.0 during Phase 2 —
+most of the numbering spent on a fifth of the work, with Phase 15 heading somewhere past 0.20.0 and
+1.0.0 nowhere in sight. The version was renumbered once, backwards, from 0.8.0 to 0.2.4. That is a
+real cost, paid deliberately: an installation upgraded across it sees its version go down, which
+looks like a downgrade and is not. Doing it at Phase 2 is as cheap as it will ever be.
+
+The scheme means the version answers "how far along is this", which for a product built to a
+published roadmap is the question people actually ask. Phase 9 is split into 9A and 9B; both are
+phase 9, so 9B ships as patches on minor 9.
 
 The documentation set under `docs/` is converted to HTML at build time and bundled into the web
 image, and every page renders **"This Documentation applies to version VX.Y.Z"** (in Dutch,

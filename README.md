@@ -50,13 +50,19 @@ The version lives in the root `package.json` and nowhere else:
 
 ```bash
 pnpm run version:show          # what this is
-pnpm run version:bump patch    # a fix
-pnpm run version:bump minor    # a feature
+pnpm run version:bump patch    # a shipped change
+pnpm run version:phase 3       # a completed phase: 0.2.7 -> 0.3.0
 pnpm run validate:version      # fails if any manifest has drifted
 ```
 
-Every change that ships bumps it. Reaching **1.0.0** is a product decision, and the script refuses to
-do it on its own.
+**Below 1.0.0 the minor number is the phase number.** Velnox is built in fifteen phases and 1.0.0 is
+the first real release, so the two are made to meet: a build reporting `0.4.6` is the sixth shipped
+change since Phase 4 was finished. Phase 15 therefore ends at `0.15.x`.
+
+Every change that ships bumps the patch. Only completing a phase moves the minor, and
+`version:phase` refuses unless [docs/roadmap.md](docs/roadmap.md) actually marks that phase complete
+— the version follows the roadmap rather than leading it. `validate:version` checks the two agree.
+Reaching **1.0.0** is a product decision, and the script refuses to do it on its own.
 
 ---
 
