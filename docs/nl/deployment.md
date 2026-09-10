@@ -1,6 +1,6 @@
 # Velnox — Uitrolhandleiding
 
-> **Vertaling.** Bron: [docs/deployment.md](../deployment.md) @ `9db085f`.
+> **Vertaling.** Bron: [docs/deployment.md](../deployment.md) @ `5d8f049`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 Velnox draait als een set Docker-containers op een Debian- of Ubuntu-host. Dimensioneer de machine,

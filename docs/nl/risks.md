@@ -1,6 +1,6 @@
 # Velnox — Technisch risicoregister
 
-> **Vertaling.** Bron: [docs/risks.md](../risks.md) @ `5fd136a`.
+> **Vertaling.** Bron: [docs/risks.md](../risks.md) @ `5d8f049`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Phase 0. Risico's zijn gerangschikt op *verwachte schade*, niet op waarschijnlijkheid
