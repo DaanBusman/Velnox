@@ -74,6 +74,10 @@ export function TextInput({
       {...props}
       className={clsx(
         'h-9 w-full rounded border border-line bg-surface px-2.5 text-sm text-ink',
+        // Recessed rather than flat: an input is a hole in the surface, not a
+        // panel on it, and the inset edge is what says so.
+        'shadow-[inset_0_1px_2px_rgb(13_18_25_/_0.05)] dark:shadow-[inset_0_1px_2px_rgb(0_0_0_/_0.35)]',
+        'transition-[border-color,box-shadow] duration-100',
         'placeholder:text-ink-muted',
         'focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30',
         'disabled:cursor-not-allowed disabled:opacity-60',
@@ -128,12 +132,18 @@ export function Button({
       aria-busy={pending || undefined}
       disabled={props.disabled || pending}
       className={clsx(
-        'inline-flex h-9 items-center justify-center gap-2 rounded px-3 text-sm font-medium',
+        'inline-flex h-9 items-center justify-center gap-2 rounded px-3.5 text-sm font-medium',
+        'transition-[background-color,border-color,box-shadow,transform] duration-100',
         'focus:outline-none focus:ring-2 focus:ring-accent/40',
-        'disabled:cursor-not-allowed disabled:opacity-60',
-        variant === 'primary' && 'bg-accent text-accent-contrast hover:bg-accent/90',
-        variant === 'secondary' && 'border border-line bg-surface text-ink hover:bg-surface-2',
-        variant === 'quiet' && 'text-ink-muted hover:text-ink',
+        'disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none',
+        // Pressed states move a pixel. It is the cheapest way for a control to
+        // feel like a physical thing rather than a coloured rectangle.
+        'active:translate-y-px',
+        variant === 'primary' &&
+          'bg-accent text-accent-contrast shadow-raised velnox-lit hover:bg-accent/90 active:shadow-card',
+        variant === 'secondary' &&
+          'border border-line bg-surface text-ink shadow-card velnox-lit hover:border-line-strong hover:bg-surface-2 active:shadow-none',
+        variant === 'quiet' && 'text-ink-muted hover:bg-surface-2 hover:text-ink active:translate-y-0',
         className,
       )}
     >

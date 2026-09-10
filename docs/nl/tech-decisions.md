@@ -515,6 +515,65 @@ leggen wat ze heeft gebouwd, is niet klaar met bouwen.
 
 ---
 
+## ADR-027 — Serverbeheer is een venster, geen sectie, en is afgeschermd met `system.manage`
+
+**Besluit:** Alles over de Velnox-installatie *zelf* — het auditspoor, het certificaat dat hij
+serveert, de build die draait — is één venster dat vanaf de onderkant van de zijbalk opent over
+waar de beheerder mee bezig was, en dat sluit met een ✕ of Escape. Het wordt alleen weergegeven bij
+`system.manage`, wat in de uitgeleverde catalogus uitsluitend de MSP Super Administrator is.
+
+**Waarom een venster en geen sectie:** dit zijn geen bestemmingen. Je komt een certificaat
+controleren of een auditspoor lezen, en gaat daarna terug naar de tenant, het cluster of het account
+waar je mee bezig was. Een route had daar een navigatie heen en terug van gemaakt, met verlies van
+de toestand van de pagina erachter, voor iets dat twintig seconden duurt. Het is ook de eerlijke
+vorm van de groepering: de server is niet nóg een ding in het landschap, het is het ding waar het
+landschap *vandaan* wordt beheerd.
+
+**Waarom die groepering:** het auditlog, het certificaat en de versie stonden tussen tenant- en
+landschapsbeheer in één platte lijst, waardoor "wie heeft zich aangemeld" naast "welke build draait"
+naast "geef deze persoon een rol" kwam te staan. Dat zijn verschillende taken, meestal gedaan door
+verschillende mensen.
+
+**Kosten, en wat het níét met het auditlog doet.** Het venster afschermen met `system.manage` zou
+het auditlog hebben afgenomen van MSP Read Only en Tenant Administrator, die `audit.read` hebben en
+geen enkel beheerrecht — en juist de alleen-lezenrol bestaat om na te gaan wat er is gebeurd. Daarom
+houdt het auditlog zijn plek in de zijbalk voor wie `audit.read` heeft *zonder* `system.manage`, en
+draagt het venster hetzelfde paneel voor alle anderen. Eén component, op twee plekken weergegeven;
+het alternatief waren twee audittabellen die uit elkaar lopen, en die welke uit de pas gaat lopen is
+juist degene waar niemand naar kijkt.
+
+De route `/settings/certificate` is verwijderd in plaats van naast het paneel te blijven bestaan.
+Iedereen die hem kon bereiken kan het venster openen, dus een tweede implementatie zou voor niemand
+zijn onderhouden.
+
+---
+
+## ADR-028 — De interface heeft een elevatieschaal
+
+**Besluit:** Vlakken zijn gelaagd in plaats van plat. Er is een schaduwschaal van vier stappen, een
+verlichte bovenrand op alles wat verhoogd is, zachtere hoeken, en een flauwe waas op de
+applicatieachtergrond. Diepte wordt in de twee thema's anders opgebouwd: op licht doet de schaduw
+het werk; op donker wordt het vlak *lichter* naarmate het stijgt en draagt de highlight de rand,
+waarbij schaduw alleen de scheiding verdiept.
+
+**Waarom:** de oorspronkelijke regel was "platte vlakken, nergens gradiënten", geschreven om te
+voorkomen dat dit op een marketingpagina zou lijken. Dat is gelukt, en het leverde iets op dat
+overkwam als onaf — elk vlak op dezelfde diepte, dus niets zei wat waar bovenop lag, en een dialoog
+zag eruit als een deel van de pagina in plaats van als iets ervoor. Prima tijdens het bouwen, fout
+om uit te leveren.
+
+De identiteit verandert niet. Nog steeds één accentkleur, nog steeds semantische kleuren alleen voor
+status, nog steeds geen glassmorphism en geen decoratieve gradiënt. Wat wél verandert is dat een
+kaart er nu uitziet als een object en een venster eruitziet alsof het ervoor staat.
+
+**Kosten:** meer tokens om consistent te houden, en twee themaspecifieke elevatierecepten in plaats
+van één. Een component die naar een rauwe kleur grijpt in plaats van naar de schaal ziet er in één
+thema subtiel verkeerd uit en komt in het andere door de review — dat is het faalpatroon om op te
+letten, en de reden dat de recepten in `globals.css` als benoemde tokens staan en niet als
+utility-strings die tussen componenten worden gekopieerd.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

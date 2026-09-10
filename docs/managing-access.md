@@ -259,7 +259,13 @@ out that the configuration is wrong now rather than at someone's first sign-in.
 **You need:** `audit.read` — Super Administrator, Administrator, MSP Read Only or Tenant
 Administrator.
 
-Go to **Audit log** under Administration. Events are newest first, and can be filtered by action.
+Open **Server management** at the bottom of the sidebar and choose **Audit log**. Events are newest
+first, can be filtered by action, and older pages are appended rather than replacing what you are
+reading.
+
+If you hold `audit.read` but not `system.manage` — MSP Read Only, or a Tenant Administrator — there
+is no Server management window for you, and **Audit log** stays in the sidebar under Administration
+instead. Same panel, same data; only the way in differs.
 
 Every authentication and authorisation event is recorded: sign-ins and their failures, sign-outs,
 refused permissions, role grants and revocations, account status changes, two-factor enrolment and

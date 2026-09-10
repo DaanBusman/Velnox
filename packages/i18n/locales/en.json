@@ -290,6 +290,41 @@
     "succeeded": "Completed by {host} in {ms} ms",
     "title": "Queue self-test"
   },
+  "server": {
+    "audit": {
+      "allActions": "All actions",
+      "loadedCount": "{count, plural, one {# event loaded} other {# events loaded}}"
+    },
+    "close": "Close",
+    "forbiddenTitle": "Not available to this account",
+    "open": "Server management",
+    "sections": "Sections",
+    "subtitle": "This Velnox installation itself — not the infrastructure it manages.",
+    "tab": {
+      "audit": "Audit log",
+      "certificate": "Certificate",
+      "updates": "Updates"
+    },
+    "title": "Server management",
+    "updates": {
+      "afterwards": "Five to ten minutes, most of it rebuilding images. Your .env is never regenerated, so secrets, the site address, the TLS mode and the ports all survive. Named volumes are untouched, so the database and the queue survive.",
+      "backupBody": "This is the step people skip, and it is the one that makes the other two reversible. An upgrade applies migrations, and a migration is not undone by checking out the previous commit.",
+      "backupTitle": "Back up the database first",
+      "procedureBody": "Three commands, in this order, from a shell on the host as a user with sudo.",
+      "procedureTitle": "Upgrade procedure",
+      "runningBody": "Reported by the API, so it is the software actually serving this page.",
+      "runningTitle": "The build that is running",
+      "step1": "1. Back up the database",
+      "step1Hint": "Writes a dated dump to /var/backups. Copy it somewhere that is not this machine.",
+      "step2": "2. See what you are about to get",
+      "step2Hint": "Lists the commits between the running build and the upstream branch. Read them before pulling.",
+      "step3": "3. Upgrade",
+      "step3Hint": "The installer rebuilds the images, applies migrations, restarts the services and verifies the result.",
+      "verifyBody": "The same verification the installer runs at the end. Worth running again on its own after any change to the machine.",
+      "verifyLabel": "Verify a running installation",
+      "verifyTitle": "Check the result"
+    }
+  },
   "setup": {
     "complete": "Setup complete",
     "createAccount": "Create administrator account",

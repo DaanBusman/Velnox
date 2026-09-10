@@ -54,7 +54,7 @@ installation's own certificate authority, which your browser has never heard of.
 
 You are not stuck with that choice. A running installation can be switched to a Let's Encrypt
 certificate, or given one you already hold, at any time — see [Certificates](deployment.md#certificates),
-and **Settings → Certificate** in the product for what is being served right now.
+and **Server management → Certificate** in the product for what is being served right now.
 
 ---
 
@@ -133,8 +133,14 @@ Working today:
 | **Audit log** | Every authentication and authorisation event, newest first |
 | **Security** | Two-factor authentication for your own account |
 | **Single sign-on** | The Microsoft Entra ID wizard |
+| **Server management** | The installation itself: its audit log, its certificate, its version |
 | **Settings → About** | Version, build commit, licence and the source offer |
 | **Documentation** | This documentation, offline, stamped with the running version |
+
+**Server management** opens as a window over whatever you were doing, from the bottom of the
+sidebar, and closes back onto it. It groups everything about the Velnox server itself, as opposed to
+the infrastructure it manages, and it appears only for an MSP Super Administrator — every panel in
+it needs `system.manage`.
 
 Waiting on a later phase: tenants and sites (phase 3); clusters, nodes, virtual machines,
 containers, storage and networks (phase 4); jobs (phase 5); updates (phase 6); major upgrades

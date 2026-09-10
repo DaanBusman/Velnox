@@ -492,6 +492,59 @@ it built has not finished building it.
 
 ---
 
+## ADR-027 — Server management is a window, not a section, and it is gated on `system.manage`
+
+**Decision:** Everything about the Velnox installation *itself* — its audit trail, the certificate it
+serves, the build it is running — is one window opened from the bottom of the sidebar, over whatever
+the operator was doing, closed with an ✕ or Escape. It is rendered only for `system.manage`, which in
+the shipped catalogue is the MSP Super Administrator alone.
+
+**Why a window rather than a section:** these are not destinations. You come to check a certificate
+or read an audit trail, and then you go back to the tenant, cluster or account you were actually
+working on. A route would have made that a navigation away and back, losing the page state behind it
+for something that takes twenty seconds. It is also the honest shape of the grouping: the server is
+not another thing in the fleet, it is the thing the fleet is managed *from*.
+
+**Why the grouping at all:** the audit log, the certificate and the version sat among tenant and
+fleet administration in one flat list, which put "who signed in" next to "which build is running"
+next to "grant this person a role". Those are different jobs, usually done by different people.
+
+**Cost, and what it does not do to the audit log.** Gating the window on `system.manage` would have
+taken the audit log away from MSP Read Only and Tenant Administrator, who hold `audit.read` and no
+management permission — and the read-only role exists precisely to review what happened. So the
+audit log keeps its sidebar entry for whoever holds `audit.read` *without* `system.manage`, and the
+window carries the same panel for everyone else. One component rendered in two places; the
+alternative was two audit tables drifting apart, and the one that drifts is the one nobody is
+looking at.
+
+The `/settings/certificate` route was removed rather than kept alongside the panel. Everyone who
+could reach it can open the window, so a second implementation would have been maintained for nobody.
+
+---
+
+## ADR-028 — The interface has an elevation scale
+
+**Decision:** Surfaces are layered rather than flat. There is a four-step shadow scale, a lit top
+edge on anything raised, softer radii, and a shallow wash on the application background. Depth is
+built differently in the two themes: on light, shadow does the work; on dark, the surface gets
+*lighter* as it rises and the highlight carries the edge, with shadow only deepening the separation.
+
+**Why:** the original rule was "flat surfaces, no gradients anywhere", written to keep this from
+looking like a marketing page. It succeeded at that and produced something that read as unfinished —
+every plane at the same depth, so nothing said what sat on top of what, and a dialog looked like a
+region of the page rather than something over it. That is fine while building and wrong to ship.
+
+The identity does not change. Still one accent colour, still semantic colours used only for status,
+still no glassmorphism and no decorative gradient. What changed is that a card now looks like an
+object and a modal looks like it is in front.
+
+**Cost:** more tokens to keep consistent, and two theme-specific elevation recipes rather than one.
+A component that reaches for a raw colour instead of the scale will look subtly wrong in one theme
+and pass review in the other — which is the failure mode to watch for, and the reason the recipes
+live in `globals.css` as named tokens rather than as utility strings copied between components.
+
+---
+
 ## Version targets
 
 | Component | Version |

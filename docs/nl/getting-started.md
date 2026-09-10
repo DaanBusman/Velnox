@@ -57,7 +57,7 @@ de eigen certificaatautoriteit van de installatie, waar je browser nog nooit van
 
 Aan die keuze zit je niet vast. Een draaiende installatie kan op elk moment overstappen op een
 Let's Encrypt-certificaat, of er een krijgen die je al hebt — zie
-[Certificaten](deployment.md#certificaten), en **Instellingen → Certificaat** in het product voor wat
+[Certificaten](deployment.md#certificaten), en **Serverbeheer → Certificaat** in het product voor wat
 er op dit moment geserveerd wordt.
 
 ---
@@ -138,8 +138,14 @@ Werkt vandaag:
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
 | **Beveiliging** | Meervoudige authenticatie voor je eigen account |
 | **Single sign-on** | De wizard voor Microsoft Entra ID |
+| **Serverbeheer** | De installatie zelf: het auditlog, het certificaat, de versie |
 | **Instellingen → Over** | Versie, buildcommit, licentie en het bronaanbod |
 | **Documentatie** | Deze documentatie, offline, gestempeld met de draaiende versie |
+
+**Serverbeheer** opent als een venster over waar je mee bezig was, vanaf de onderkant van de
+zijbalk, en sluit daar weer op terug. Het groepeert alles over de Velnox-server zelf, tegenover de
+infrastructuur die ermee beheerd wordt, en het verschijnt alleen voor een MSP Super Administrator —
+elk onderdeel erin vereist `system.manage`.
 
 Wacht op een latere fase: tenants en locaties (fase 3); clusters, nodes, virtuele machines,
 containers, opslag en netwerken (fase 4); jobs (fase 5); updates (fase 6); major upgrades (fase 8);

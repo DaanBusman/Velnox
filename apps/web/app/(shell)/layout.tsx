@@ -66,7 +66,13 @@ export default async function ShellLayout({ children }: { children: React.ReactN
       </a>
 
       <div className="flex h-dvh overflow-hidden">
-        <Sidebar product={product} />
+        <Sidebar
+          product={product}
+          version={version}
+          // The sidebar hides what this account cannot use — a courtesy, not the
+          // control. The API refuses every one of these regardless.
+          permissions={session.user.permissions}
+        />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar locale={locale} user={session.user} />

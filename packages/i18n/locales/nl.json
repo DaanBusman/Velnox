@@ -291,6 +291,41 @@
     "succeeded": "Voltooid door {host} in {ms} ms",
     "title": "Zelftest van de wachtrij"
   },
+  "server": {
+    "audit": {
+      "allActions": "Alle acties",
+      "loadedCount": "{count, plural, one {# gebeurtenis geladen} other {# gebeurtenissen geladen}}"
+    },
+    "close": "Sluiten",
+    "forbiddenTitle": "Niet beschikbaar voor dit account",
+    "open": "Serverbeheer",
+    "sections": "Onderdelen",
+    "subtitle": "Deze Velnox-installatie zelf — niet de infrastructuur die ermee beheerd wordt.",
+    "tab": {
+      "audit": "Auditlog",
+      "certificate": "Certificaat",
+      "updates": "Updates"
+    },
+    "title": "Serverbeheer",
+    "updates": {
+      "afterwards": "Vijf tot tien minuten, grotendeels het opnieuw bouwen van images. Je .env wordt nooit opnieuw gegenereerd, dus secrets, het adres, de TLS-modus en de poorten blijven allemaal behouden. Named volumes blijven onaangeroerd, dus de database en de wachtrij blijven bestaan.",
+      "backupBody": "Dit is de stap die mensen overslaan, en juist die maakt de andere twee omkeerbaar. Een upgrade voert migraties uit, en een migratie draai je niet terug door de vorige commit uit te checken.",
+      "backupTitle": "Maak eerst een back-up van de database",
+      "procedureBody": "Drie commando's, in deze volgorde, vanaf een shell op de host als gebruiker met sudo.",
+      "procedureTitle": "Upgradeprocedure",
+      "runningBody": "Gerapporteerd door de API, dus het is de software die deze pagina daadwerkelijk serveert.",
+      "runningTitle": "De draaiende build",
+      "step1": "1. Back-up van de database",
+      "step1Hint": "Schrijft een gedateerde dump naar /var/backups. Kopieer die naar een plek die niet deze machine is.",
+      "step2": "2. Bekijk wat je gaat krijgen",
+      "step2Hint": "Toont de commits tussen de draaiende build en de upstream-branch. Lees ze voordat je pullt.",
+      "step3": "3. Upgraden",
+      "step3Hint": "Het installatieprogramma bouwt de images opnieuw, voert migraties uit, herstart de services en verifieert het resultaat.",
+      "verifyBody": "Dezelfde verificatie die het installatieprogramma aan het eind uitvoert. De moeite waard om ook los te draaien na elke wijziging aan de machine.",
+      "verifyLabel": "Een draaiende installatie verifiëren",
+      "verifyTitle": "Controleer het resultaat"
+    }
+  },
   "setup": {
     "complete": "Installatie voltooid",
     "createAccount": "Beheerdersaccount aanmaken",

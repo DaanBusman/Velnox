@@ -271,7 +271,13 @@ achter dat de configuratie fout is, en niet bij iemands eerste aanmelding.
 **Je hebt nodig:** `audit.read` — Super Administrator, Administrator, MSP Read Only of Tenant
 Administrator.
 
-Ga naar **Auditlog** onder Beheer. Gebeurtenissen staan nieuwste eerst en zijn te filteren op actie.
+Open **Serverbeheer** onderaan de zijbalk en kies **Auditlog**. Gebeurtenissen staan nieuwste eerst,
+zijn te filteren op actie, en oudere pagina's worden aangevuld in plaats van dat ze vervangen wat je
+aan het lezen bent.
+
+Heb je `audit.read` maar geen `system.manage` — MSP Read Only, of een Tenant Administrator — dan is
+er voor jou geen Serverbeheer-venster, en blijft **Auditlog** onder Beheer in de zijbalk staan.
+Zelfde paneel, zelfde gegevens; alleen de weg ernaartoe verschilt.
 
 Elke authenticatie- en autorisatiegebeurtenis wordt vastgelegd: aanmeldingen en mislukte pogingen,
 afmeldingen, geweigerde rechten, toekenningen en intrekkingen van rollen, statuswijzigingen van

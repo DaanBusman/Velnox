@@ -219,7 +219,7 @@ cd /opt/velnox && sudo bash scripts/tls.sh --status
 | Let's Encrypt | Een publiek vertrouwd certificaat, verkregen via ACME. | Automatisch |
 | Je eigen | Een certificaat dat je al hebt, van je eigen CA of een commerciële uitgever. | **Van jou** |
 
-Dezelfde informatie staat in het product onder **Instellingen → Certificaat**, dat daarnaast toont
+Dezelfde informatie staat in het product onder **Serverbeheer → Certificaat**, dat daarnaast toont
 welk certificaat de proxy *daadwerkelijk* aanbiedt — gelezen uit een echte handshake en niet uit de
 configuratie, zodat een wijziging die is weggeschreven maar nooit is opgepakt zichtbaar is in plaats
 van als succes gemeld.

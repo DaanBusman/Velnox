@@ -214,7 +214,7 @@ cd /opt/velnox && sudo bash scripts/tls.sh --status
 | Let's Encrypt | A publicly trusted certificate obtained over ACME. | Automatic |
 | Your own | A certificate you already hold, from your CA or a commercial issuer. | **Yours** |
 
-The same information is in the product under **Settings → Certificate**, which additionally shows
+The same information is in the product under **Server management → Certificate**, which additionally shows
 the certificate the proxy is *actually* presenting — read from a real handshake rather than from
 configuration, so a change that was written and never picked up is visible instead of being reported
 as success.

@@ -6,6 +6,10 @@
  * resolve to a page that says so and names the phase — rather than being hidden
  * (which would misrepresent the product's shape) or filled with sample data
  * (which would misrepresent reality).
+ *
+ * Permission gating here is a courtesy, never the control: the API refuses the
+ * request regardless. What it buys is a sidebar that does not offer an
+ * administrator's colleague six links that all end in a refusal.
  */
 
 export interface NavItem {
@@ -14,6 +18,18 @@ export interface NavItem {
   href: string;
   /** Phase that implements this section. `null` means it works in this build. */
   phase: number | null;
+  /** Shown only to someone holding this permission. Absent means everyone. */
+  requiresPermission?: string;
+  /**
+   * Hidden from someone holding this permission, because a better home for it
+   * exists for them.
+   *
+   * One use: the audit log. It lives in Server management for whoever can open
+   * that, and stays in the sidebar for an auditor who holds `audit.read` and
+   * nothing else — otherwise moving it would have taken the audit log away from
+   * exactly the role that exists to read it.
+   */
+  supersededBy?: string;
 }
 
 export interface NavGroup {
@@ -62,10 +78,18 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { key: 'users', href: '/users', phase: null },
       { key: 'rolesPermissions', href: '/roles', phase: null },
-      { key: 'auditLog', href: '/audit-log', phase: null },
+      {
+        key: 'auditLog',
+        href: '/audit-log',
+        phase: null,
+        requiresPermission: 'audit.read',
+        supersededBy: 'system.manage',
+      },
       { key: 'security', href: '/settings/security', phase: null },
-      { key: 'sso', href: '/settings/sso', phase: null },
-      { key: 'certificate', href: '/settings/certificate', phase: null },
+      { key: 'sso', href: '/settings/sso', phase: null, requiresPermission: 'system.manage' },
+      // About stays open to everyone: AGPL section 13 requires the source offer
+      // to be reachable by anyone interacting with the software, not only by an
+      // administrator.
       { key: 'settings', href: '/settings/about', phase: null },
     ],
   },
@@ -76,6 +100,13 @@ export const NAVIGATION: NavGroup[] = [
     items: [{ key: 'documentation', href: '/docs', phase: null }],
   },
 ];
+
+/** Whether this entry should appear for someone holding these permissions. */
+export function isNavItemVisible(item: NavItem, permissions: ReadonlySet<string>): boolean {
+  if (item.requiresPermission && !permissions.has(item.requiresPermission)) return false;
+  if (item.supersededBy && permissions.has(item.supersededBy)) return false;
+  return true;
+}
 
 const BY_HREF = new Map<string, NavItem>(
   NAVIGATION.flatMap((group) => group.items).map((item) => [item.href, item]),

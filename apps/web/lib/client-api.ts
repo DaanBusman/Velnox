@@ -31,6 +31,47 @@ function readCsrfToken(): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * A read, from the browser.
+ *
+ * Almost everything reads through Server Components instead, which keeps the
+ * data fetch on the server and the page cheap. This exists for the one place
+ * that cannot: Server management opens over whatever you were looking at, and
+ * fetching its three panels on every page load — an audit query among them — to
+ * serve a window most visits never open would be a poor trade.
+ *
+ * No CSRF header: this is a safe method, and the cookie is the credential.
+ */
+export async function apiGet<T>(path: string): Promise<ApiResult<T>> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1${path}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { accept: 'application/json' },
+      cache: 'no-store',
+    });
+  } catch {
+    return { ok: false, error: { code: 'network', status: 0 } };
+  }
+
+  const payload = (await response.json().catch(() => null)) as { error?: ApiFailure } | null;
+
+  if (!response.ok) {
+    const error = payload?.error;
+    return {
+      ok: false,
+      error: {
+        code: error?.code ?? 'generic',
+        status: response.status,
+        ...(error?.params ? { params: error.params } : {}),
+      },
+    };
+  }
+
+  return { ok: true, data: payload as T };
+}
+
 export async function apiPost<T>(path: string, body?: unknown): Promise<ApiResult<T>> {
   return send('POST', path, body);
 }
