@@ -545,6 +545,53 @@ live in `globals.css` as named tokens rather than as utility strings copied betw
 
 ---
 
+## ADR-029 — pnpm 12, and the four things that broke on the way
+
+**Decision:** The workspace runs pnpm 12.3.4. `packageManager` in the root
+`package.json` is the single pin, honoured by CI through `pnpm/action-setup` and by both images
+through corepack.
+
+**Why:** there was never a reason for the previous pin. `pnpm@10.33.4` was written in the Phase 1
+bootstrap commit and never revisited, so it was drift rather than a decision. pnpm skipped 11
+entirely; 12 is the supported line.
+
+**What it cost.** Four things broke, and none of them is a version number:
+
+1. **The build-script allowlist was renamed and moved.** `pnpm.onlyBuiltDependencies` in
+   `package.json` — a list — became `allowBuilds` in `pnpm-workspace.yaml`, a map. pnpm 12 ignores
+   the old key. It fails the install rather than warning when a package wants a build script it has
+   no ruling on, so the control could not silently lapse — but `pnpm config get onlyBuiltDependencies`
+   still echoed the old value back, which looks exactly like the setting working. It reads the
+   settings map without validating the key. That is worth remembering the next time one moves.
+
+2. **Two packages had been silently ignored.** pnpm 10 warned about a blocked build script; pnpm 12
+   errors. `@scarf/scarf` (install telemetry, via `swagger-ui-dist`) and `msgpackr-extract` (an
+   optional native accelerator, via BullMQ) had never been on the allowlist and nobody had noticed.
+   Both are now denied explicitly, with the reason next to them.
+
+3. **corepack no longer bakes pnpm into the image.** pnpm 12 ships as a native binary that its shim
+   downloads on *first use*, so `corepack prepare --activate` leaves a 5 MB shim and no pnpm. The
+   first thing to discover that would have been the migrate container — on the internal network,
+   with no route off the host, during an upgrade. Both Dockerfiles now invoke `pnpm --version` in
+   the same layer, which pulls the binary into `COREPACK_HOME` where the runtime stage inherits it.
+   Verified by building the image and running the migrate command under `--network none`.
+
+4. **An older global pnpm cannot hand off to 12 on Windows.** It downloads the package without
+   running the install script that replaces the placeholder with the native binary, and the shim
+   then points at a text file. Not fixable from this repository; the README says to install
+   `@pnpm/exe@12.3.4` once.
+
+**What did not change:** the lockfile diff is purely additive — 101 lines, no deletions, not one
+dependency version moved. `lockfileVersion` is still `9.0`; pnpm 12 prepends a second YAML document
+recording the package manager itself.
+
+**The general lesson, which is the reason this is written down:** a pinned tool that has not been
+revisited in a while is not a stable dependency, it is a deferred migration. Four behaviours changed
+under a field that looks like a version number, and three of them would have surfaced as a broken
+production install rather than a failed test.
+
+---
+
 ## Version targets
 
 | Component | Version |

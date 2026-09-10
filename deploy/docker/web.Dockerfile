@@ -12,10 +12,14 @@ ENV PNPM_HOME=/pnpm \
 WORKDIR /app
 
 # See the note in backend.Dockerfile: corepack downloads the package manager on
-# first use, which fails on a network-isolated or air-gapped host.
+# first use, which fails on a network-isolated or air-gapped host — and since
+# pnpm 12 the same is true a second time over, because corepack then fetches
+# only a shim and pnpm's own native binary arrives on first invocation. The
+# `pnpm --version` is what pulls it in here rather than at runtime.
 COPY package.json ./
 RUN corepack enable && \
     corepack prepare --activate && \
+    pnpm --version && \
     chmod -R a+rX "$COREPACK_HOME"
 
 # ---------------------------------------------------------------------------

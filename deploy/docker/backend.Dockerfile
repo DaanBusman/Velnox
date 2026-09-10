@@ -29,12 +29,23 @@ WORKDIR /app
 # air-gapped installation fails the same way, for the same reason. Pinning pnpm
 # here means no runtime container ever needs the network to find its tools.
 #
+# `pnpm --version` below is not a sanity check, it is the bake.
+#
+# pnpm 12 ships as a native binary that its shim downloads on *first use*, so
+# `corepack prepare` alone leaves a 5 MB shim and no pnpm. The first thing to
+# discover that would be the migrate container — on the internal network, with
+# no route off the host, at the moment of an upgrade. Invoking pnpm here pulls
+# the binary into COREPACK_HOME (about 44 MB) inside this layer, where the
+# runtime stage inherits it. Verified by building this image and running it with
+# `--network none`.
+#
 # The version comes from package.json's `packageManager` field, so it cannot
 # drift from what the workspace declares. COREPACK_HOME is made world-readable
 # because the runtime stage drops to the unprivileged `node` user.
 COPY package.json ./
 RUN corepack enable && \
     corepack prepare --activate && \
+    pnpm --version && \
     chmod -R a+rX "$COREPACK_HOME"
 
 # ---------------------------------------------------------------------------

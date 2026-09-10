@@ -102,6 +102,17 @@ set, both languages served, the licence offer published, and the data tier not e
 pnpm install && pnpm build
 ```
 
+The package manager is pinned in `packageManager`, and pnpm 12 is a native
+binary rather than a Node script. If your global pnpm is older than 12, it will
+try to hand off to the pinned version and — on Windows — fail with *"is not
+recognized as an internal or external command"*, because it downloads pnpm 12
+without running the install script that puts the binary in place. Install a
+matching pnpm once and the handoff stops being needed:
+
+```bash
+npm install -g @pnpm/exe@12.3.4
+```
+
 | Command | What it does |
 |---|---|
 | `pnpm lint` | ESLint plus glossary and locale validation |

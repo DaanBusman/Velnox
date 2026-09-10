@@ -109,6 +109,17 @@ host is blootgesteld.
 pnpm install && pnpm build
 ```
 
+De package manager staat vast in `packageManager`, en pnpm 12 is een native
+binary in plaats van een Node-script. Is je globale pnpm ouder dan 12, dan
+probeert die door te schakelen naar de vastgezette versie en faalt dat op Windows
+met *"is not recognized as an internal or external command"* — hij haalt pnpm 12
+op zonder het installatiescript te draaien dat de binary op zijn plek zet.
+Installeer eenmalig een passende pnpm en de doorschakeling is niet meer nodig:
+
+```bash
+npm install -g @pnpm/exe@12.3.4
+```
+
 | Commando | Wat het doet |
 |---|---|
 | `pnpm lint` | ESLint plus validatie van woordenlijst en taalcatalogi |

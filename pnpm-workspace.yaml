@@ -1,3 +1,40 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# Which dependencies may run install scripts.
+#
+# A postinstall script is arbitrary code from the registry running on a build
+# machine, so the default is no. Eight packages ask; six get it.
+#
+# pnpm fails the install rather than warning when a package that wants a build
+# script is not listed either way, so this allowlist cannot quietly stop
+# applying — which is exactly what it did before. Under pnpm 10 the setting was
+# `pnpm.onlyBuiltDependencies` in package.json, a list, and the two denials
+# below were simply absent from it and silently ignored. pnpm 12 ignores that
+# key entirely and blocks every build, so the migration announces itself.
+#
+# One trap worth recording: `pnpm config get onlyBuiltDependencies` still echoed
+# the old value back after the upgrade, because it reads the settings map
+# without validating the key. It is not evidence that a setting is in effect.
+#
+# Denied, and why:
+#
+#   @scarf/scarf      install-time telemetry, pulled in by swagger-ui-dist. It
+#                     reports installations to a third party from the build
+#                     machine. On a self-hosted product for management networks
+#                     that is the wrong default twice over.
+#   msgpackr-extract  an optional native accelerator for msgpackr, which arrives
+#                     under BullMQ. It ships prebuilt binaries for every platform
+#                     as optional dependencies and msgpackr falls back to its
+#                     JavaScript path without it, so the build script buys a
+#                     compiler on the build host and nothing else.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  esbuild: true
+  msgpackr-extract: false
+  prisma: true
+  sharp: true
+  unrs-resolver: true
