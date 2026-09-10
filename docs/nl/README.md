@@ -1,3 +1,5 @@
+<img src="../../assets/velnox-banner.png" alt="Velnox — MSP Proxmox Multi-tenant Node-management" width="100%">
+
 # Velnox — Nederlandse documentatie
 
 > **Vertaling.** Bron: [README.md](../../README.md) @ `eacfc4f`.
@@ -207,12 +209,15 @@ zelf — **Instellingen → Over** en `GET /api/v1/system/source` tonen de versi
 bronlink, aangestuurd door de build-variabele `VELNOX_SOURCE_URL`. Draai je een aangepaste build, wijs
 die dan naar je eigen broncode.
 
-## Handelsmerken
+## Naam en logo
 
-Velnox™ en het Velnox-logo zijn handelsmerken van **The Velnox Foundation**. De AGPLv3 verleent geen
-rechten op handelsmerken — zie [TRADEMARK.md](../../TRADEMARK.md). Je mag vrij forken; geef je fork
-alsjeblieft een eigen naam. Velnox is zo gebouwd dat dat eenvoudig is: de productnaam komt uit
-`system_settings.product_name`, niet uit vastgelegde teksten in de code.
+**Er is geen merk geregistreerd of geclaimd.** De naam en het logo van Velnox worden gebruikt door
+**The Velnox Foundation**, en de AGPLv3 verleent daar geen rechten op — zie
+[TRADEMARK.md](../../TRADEMARK.md).
+
+Je mag vrij forken; geef je fork alsjeblieft een eigen naam. Velnox is zo gebouwd dat dat eenvoudig
+is: de productnaam komt uit `system_settings.product_name`, niet uit vastgelegde teksten in de code
+— met als enige uitzondering de naamsvermelding hierboven, die blijft staan.
 
 Proxmox®, VMware®, Microsoft®, Hyper-V®, Ceph®, Debian®, Docker® en PostgreSQL® zijn handelsmerken van
 hun respectieve eigenaren. Velnox is niet gelieerd aan, onderschreven door of gesponsord door een van

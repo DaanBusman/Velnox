@@ -4,7 +4,7 @@
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 > Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.
-> Velnox™ is een handelsmerk van **The Velnox Foundation**.
+> De naam en het logo van Velnox worden gebruikt door **The Velnox Foundation**. Er is geen merk geregistreerd of geclaimd.
 
 **Status:** Fase 1 geïmplementeerd. Secties over latere fasen blijven ontwerpvoorstellen; waar fase 1
 een keuze uit fase 0 heeft gewijzigd, staat dat ter plekke gemarkeerd als *Gewijzigd in fase 1*.
@@ -609,5 +609,5 @@ kan schoon van merknaam wisselen en wordt geacht dat te doen.
 
 ---
 
-*Velnox™ en het Velnox-logo zijn handelsmerken van The Velnox Foundation.
+*De naam en het logo van Velnox worden gebruikt door The Velnox Foundation. Er is geen merk geregistreerd of geclaimd; de AGPLv3 verleent daar geen rechten op.
 Velnox is vrije software onder de AGPLv3; de licentie verleent geen rechten op handelsmerken.*

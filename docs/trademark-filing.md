@@ -1,7 +1,14 @@
 # Velnox — trademark filing dossier
 
-**Status: prepared, not filed.** Everything here is ready to submit; the filing itself, the fee and
-the choice of applicant are decisions and actions for the owner.
+**Status: prepared, deliberately not filed.** The owner has decided not to register for now, and
+every trademark assertion has been removed from the project accordingly — no ™, no "is a trademark
+of". This dossier stays because the groundwork keeps its value: if the decision changes, the classes,
+the specifications, the route and the risks are already worked out.
+
+Until then, the position is the honest one: **no trademark is registered or claimed.** The name is
+protected only to the extent trade-name and unfair-competition law protect a name in use, and
+AGPLv3 section 7(e) still declines to license the name and logo with the code — which grants nothing
+rather than asserting anything.
 
 This is not product documentation and is deliberately not bundled into the application — it is not
 in the `DOCUMENTS` list in `apps/web/scripts/build-docs.mjs`.
@@ -10,14 +17,15 @@ in the `DOCUMENTS` list in `apps/web/scripts/build-docs.mjs`.
 
 ## Why a registration is wanted
 
-[TRADEMARK.md](../TRADEMARK.md) already asserts **Velnox™** as an unregistered mark, and
-[NOTICE](../NOTICE) now declines to license it under AGPLv3 section 7(e). Both are worth having and
-neither is a registration.
+[TRADEMARK.md](../TRADEMARK.md) sets out what the Foundation asks of others, and
+[NOTICE](../NOTICE) declines to license the name and logo under AGPLv3 section 7(e). Both are worth
+having and neither is a registration.
 
 The distinction matters in practice. An unregistered mark in the Benelux gives you almost nothing:
 unlike the UK or the US, the Benelux has **no protection for unregistered trademarks** — rights come
-from registration, not from use. Until it is filed, "Velnox™" is a statement of intent, and the
-first party to register the name owns it, potentially against you.
+from registration, not from use. Until something is filed, the first party to register the name owns
+it, potentially against you. (The Netherlands does protect a *handelsnaam* through use under the
+Handelsnaamwet, which is narrower than a trademark and does not travel across the EU.)
 
 That is the whole argument for filing: the AGPLv3 lets anyone fork and rename, and the licence terms
 in NOTICE make them keep attributing you. The trademark is what stops someone using *your* name.
@@ -30,7 +38,7 @@ Together those are the two halves of "you may not sell my software as your own".
 **This is the open question and it blocks the filing.**
 
 An application needs a real applicant — a natural person or a registered legal entity. Every file in
-this repository attributes the marks and the copyright to **"The Velnox Foundation"**. If that
+this repository attributes the name and the copyright to **"The Velnox Foundation"**. If that
 entity does not legally exist, it cannot own a trademark, and filing in its name is at best void and
 at worst a problem later when the ownership is examined.
 
@@ -146,9 +154,9 @@ the name survives an EU examination at all.
 
 ## After filing
 
-- Change **™** to **®** in `TRADEMARK.md`, `NOTICE`, the About screen and the footer of every
-  document — but only after registration. Using ® before then is a false claim and in some
-  jurisdictions an offence.
+- Add **®** in `TRADEMARK.md`, `NOTICE`, the About screen and the footer of every document — but
+  only after registration completes. Using ® before then is a false claim and in some jurisdictions
+  an offence. That is why the project currently carries no symbol at all rather than ™.
 - Record the registration number and date in `TRADEMARK.md`.
 - Renew every ten years. Diarise it; a lapsed mark is worse than none, because the lapse is public.
 - Use the mark, and keep evidence. A Benelux or EU mark unused for five consecutive years can be

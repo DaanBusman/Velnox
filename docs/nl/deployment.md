@@ -422,4 +422,4 @@ een beheernetwerk achter een firewall, en nergens waar onvertrouwde mensen bij k
 
 ---
 
-*Velnox™ is een handelsmerk van The Velnox Foundation. Velnox is vrije software onder de AGPLv3.*
+*De naam en het logo van Velnox worden gebruikt door The Velnox Foundation. Er is geen merk geregistreerd of geclaimd; de AGPLv3 verleent daar geen rechten op. Velnox is vrije software onder de AGPLv3.*

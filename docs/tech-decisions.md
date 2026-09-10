@@ -614,4 +614,4 @@ production install rather than a failed test.
 
 ---
 
-*Velnox™ is a trademark of The Velnox Foundation. Velnox is free software under the AGPLv3.*
+*The Velnox name and logo are used by The Velnox Foundation. No trademark is registered or claimed; the AGPLv3 grants no rights in either. Velnox is free software under the AGPLv3.*

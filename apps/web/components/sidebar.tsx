@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import clsx from 'clsx';
 import { NAVIGATION, isNavItemVisible } from '@/lib/nav';
 import { NAV_ICONS } from '@/components/ui/icons';
+import { ProductMark } from '@/components/ui/product-mark';
 import { ServerManagement } from '@/components/server-management';
 
 export function Sidebar({
@@ -28,15 +29,7 @@ export function Sidebar({
       className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-surface"
     >
       <div className="flex h-14 items-center gap-2.5 border-b border-line px-4">
-        <span
-          aria-hidden
-          className={clsx(
-            'grid size-7 place-items-center rounded-md text-[12px] font-bold',
-            'bg-accent text-accent-contrast shadow-raised velnox-lit',
-          )}
-        >
-          V
-        </span>
+        <ProductMark product={product} size={28} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold tracking-tight text-ink">
             {product}

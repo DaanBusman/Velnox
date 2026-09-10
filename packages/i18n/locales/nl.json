@@ -21,7 +21,7 @@
     "sourceHeading": "Aanbod van broncode",
     "subtitle": "Buildgegevens en licentie",
     "title": "Over",
-    "trademarkNotice": "{product} en het {product}-logo zijn handelsmerken van The Velnox Foundation. De AGPLv3 verleent geen rechten op handelsmerken.",
+    "trademarkNotice": "De naam en het logo van {product} worden gebruikt door The Velnox Foundation. Er is geen merk geregistreerd of geclaimd, en de AGPLv3 verleent daar geen rechten op.",
     "unmodifiedNotice": "Deze build meldt zichzelf als ongewijzigd: de bronlink verwijst naar de upstream-repository.",
     "version": "Versie",
     "viewSource": "Broncode van deze build opvragen"

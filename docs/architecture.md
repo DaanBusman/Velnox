@@ -1,7 +1,7 @@
 # Velnox — Architecture
 
 > Velnox is a self-hosted MSP management platform for Proxmox VE fleets.
-> Velnox™ is a trademark of **The Velnox Foundation**.
+> The Velnox name and logo are used by **The Velnox Foundation**. No trademark is registered or claimed.
 
 **Status:** Phase 1 implemented. Sections describing later phases remain design proposals; where
 Phase 1 changed a Phase 0 decision, the change is marked *Amended in Phase 1* in place.
@@ -601,5 +601,5 @@ rebrand cleanly and is expected to.
 
 ---
 
-*Velnox™ and the Velnox logo are trademarks of The Velnox Foundation.
+*The Velnox name and logo are used by The Velnox Foundation. No trademark is registered or claimed; the AGPLv3 grants no rights in either.
 Velnox is free software under the AGPLv3; the licence grants no trademark rights.*

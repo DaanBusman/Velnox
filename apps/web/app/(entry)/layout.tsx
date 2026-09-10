@@ -1,6 +1,7 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { ProductMark } from '@/components/ui/product-mark';
 import { tryGetSystemInfo } from '@/lib/api';
 
 /**
@@ -22,7 +23,7 @@ export default async function EntryLayout({ children }: { children: React.ReactN
   const version = info?.version ?? '';
 
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas">
+    <div className="flex min-h-dvh flex-col bg-bg">
       <div className="flex items-center justify-end gap-2 px-4 py-3">
         <LocaleSwitcher current={locale} />
         <ThemeToggle />
@@ -33,7 +34,8 @@ export default async function EntryLayout({ children }: { children: React.ReactN
         className="flex flex-1 items-start justify-center px-4 pb-10 pt-4 sm:items-center sm:pt-0"
       >
         <div className="w-full max-w-md">
-          <div className="mb-6 text-center">
+          <div className="mb-6 flex flex-col items-center gap-3">
+            <ProductMark product={product} size={56} />
             <p className="text-lg font-semibold tracking-tight text-ink">{product}</p>
           </div>
           {children}

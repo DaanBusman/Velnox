@@ -20,7 +20,7 @@
     "sourceHeading": "Source code offer",
     "subtitle": "Build identity and licence",
     "title": "About",
-    "trademarkNotice": "{product} and the {product} logo are trademarks of The Velnox Foundation. The AGPLv3 grants no trademark rights.",
+    "trademarkNotice": "The {product} name and logo are used by The Velnox Foundation. No trademark is registered or claimed, and the AGPLv3 grants no rights in either.",
     "unmodifiedNotice": "This build reports itself as unmodified: the source link points at the upstream repository.",
     "version": "Version",
     "viewSource": "Obtain the source of this build"

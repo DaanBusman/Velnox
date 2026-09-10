@@ -65,14 +65,21 @@ require is that you do not present it as having originated with you.
      the original — the AGPLv3 already requires this of modified files under
      section 5(a); this extends it to how the work is presented to its users.
 
-  3. TRADEMARKS (section 7(e))
+  3. NAME AND LOGO (section 7(e))
 
      No rights are granted under trademark law. "Velnox", the Velnox name and
-     the Velnox logo are trademarks of The Velnox Foundation and are not
-     licensed by the AGPLv3 or by these terms. Nominative use — saying
-     truthfully that your product is based on, derived from or compatible with
-     Velnox — is always permitted and is in fact how term 2 is satisfied.
-     TRADEMARK.md sets out what needs permission and what does not.
+     the Velnox logo are used by The Velnox Foundation and are not licensed by
+     the AGPLv3 or by these terms.
+
+     No trademark is registered, and none is claimed. This term grants nothing
+     rather than asserting anything: whatever rights exist in the name and the
+     logo under trade-name or unfair-competition law stay where they are, and
+     the software licence does not hand them over with the code.
+
+     Nominative use — saying truthfully that your product is based on, derived
+     from or compatible with Velnox — is always permitted and is in fact how
+     term 2 is satisfied. TRADEMARK.md sets out what needs permission and what
+     does not.
 
 Section 7 requires that source files state these terms or indicate where to find
 them. The entry point of each package carries that pointer, and this file is the
@@ -81,8 +88,9 @@ statement it points to.
 --------------------------------------------------------------------------------
 Trademarks
 
-Velnox(TM) and the Velnox logo are trademarks of The Velnox Foundation.
-The AGPLv3 grants no trademark rights.  See TRADEMARK.md.
+The Velnox name and the Velnox logo are used by The Velnox Foundation.  No
+trademark is registered or claimed.  The AGPLv3 grants no rights in either --
+see TRADEMARK.md and term 3 above.
 
 Proxmox(R), VMware(R), Microsoft(R), Hyper-V(R), Ceph(R), Debian(R), Docker(R)
 and PostgreSQL(R) are trademarks of their respective owners.  Velnox is not

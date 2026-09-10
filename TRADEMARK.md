@@ -1,14 +1,22 @@
-# Velnox Trademark Policy
+# Velnox name and logo policy
 
 Velnox is free software licensed under the **GNU Affero General Public License, version 3**
 (see [LICENSE](LICENSE)). That licence grants broad rights to use, modify and redistribute the
-*software*. It grants **no rights to the trademarks**. This document explains the difference.
+*software*. It grants **no rights to the name or the logo**. This document explains the difference.
 
 ---
 
-## Marks
+## The name and the logo
 
-**Velnox™**, the Velnox name, and the Velnox logo are trademarks of **The Velnox Foundation**.
+The **Velnox** name and the Velnox logo are used by **The Velnox Foundation**.
+
+**No trademark is registered, and none is claimed.** Nothing here asserts a mark; this document sets
+out what the Foundation asks of you, and what the software licence does and does not hand over with
+the code. Where the name is protected at all, it is by trade-name and unfair-competition law rather
+than by a registration.
+
+Registration has been prepared but deliberately not filed — see
+[docs/trademark-filing.md](docs/trademark-filing.md) for the dossier and the two open questions.
 
 ---
 
@@ -23,7 +31,7 @@ Velnox is free software licensed under the **GNU Affero General Public License, 
   always permitted.
 - Publish articles, tutorials, reviews, screenshots and training material about Velnox.
 
-## What requires permission from The Velnox Foundation
+## What we ask you not to do without asking
 
 - Using "Velnox" (or a confusingly similar name) as the **name of your own product or service**, or
   in a domain name, company name or app-store listing.

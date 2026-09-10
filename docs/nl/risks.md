@@ -205,4 +205,4 @@ worden); stappen zijn idempotent, zodat een operator veilig kan hervatten.
 
 ---
 
-*Velnox™ is een handelsmerk van The Velnox Foundation.*
+*De naam en het logo van Velnox worden gebruikt door The Velnox Foundation. Er is geen merk geregistreerd of geclaimd; de AGPLv3 verleent daar geen rechten op.*

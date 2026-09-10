@@ -1,3 +1,5 @@
+<img src="assets/velnox-banner.png" alt="Velnox — MSP Proxmox Multi-tenant Node-management" width="100%">
+
 # Velnox
 
 **Self-hosted MSP management platform for Proxmox VE fleets.**
@@ -237,13 +239,14 @@ modifications — a commercial licence is available. The Velnox Foundation is th
 holder, which is what makes that possible; [CLA.md](CLA.md) explains how contributions keep it that
 way.
 
-## Trademarks
+## Name and logo
 
-Velnox™ and the Velnox logo are trademarks of **The Velnox Foundation**. The AGPLv3 grants no
-trademark rights — see [TRADEMARK.md](TRADEMARK.md). You are free to fork; please give your fork its
-own name. Velnox is built to make that easy: the product name comes from
-`system_settings.product_name`, not from hardcoded strings — with the one exception of the
-attribution notice above, which stays.
+**No trademark is registered or claimed.** The Velnox name and logo are used by The Velnox
+Foundation, and the AGPLv3 grants no rights in either — see [TRADEMARK.md](TRADEMARK.md).
+
+You are free to fork; please give your fork its own name. Velnox is built to make that easy: the
+product name comes from `system_settings.product_name`, not from hardcoded strings — with the one
+exception of the attribution notice above, which stays.
 
 Proxmox®, VMware®, Microsoft®, Hyper-V®, Ceph®, Debian®, Docker® and PostgreSQL® are trademarks of
 their respective owners. Velnox is not affiliated with, endorsed by, or sponsored by any of them.
