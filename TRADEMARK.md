@@ -43,9 +43,34 @@ the user interface and from your marketing. Velnox is built to make this easy: t
 read at runtime from `system_settings.product_name` rather than hardcoded, and all branding assets
 are isolated so they can be replaced without touching application code.
 
+**One thing stays.** The AGPLv3 permits requiring that certain notices be preserved, and Velnox
+exercises that (section 7(b) — the terms are in [NOTICE](NOTICE)). Whatever you call your version,
+the Appropriate Legal Notices must keep showing:
+
+> Powered by Velnox — Copyright (C) The Velnox Foundation.
+> Free software under the GNU Affero General Public License, version 3 or later.
+
+Velnox displays it on **Settings → About** and returns it from `GET /api/v1/system/source`. It comes
+from a constant in the source rather than from any setting, precisely so that the party it binds
+cannot configure it away.
+
+This is not a trademark restriction and it does not conflict with anything above — it is nominative
+use, which this policy already permits without asking. Renaming the product is your right; erasing
+where it came from is not.
+
+## Commercial licensing
+
+The AGPLv3 is not the only way to have Velnox. If you want to distribute it, embed it, or offer it
+as a service **without** the AGPLv3's obligation to publish your modifications and offer source to
+your users, that is available under a separate commercial licence — including under your own name
+and branding.
+
+The Velnox Foundation is the sole copyright holder, which is what makes that possible. See
+[CLA.md](CLA.md) for how contributions keep it possible.
+
 ## Contact
 
-Trademark questions and permission requests: The Velnox Foundation.
+Trademark questions, permission requests and commercial licensing: The Velnox Foundation.
 
 ---
 

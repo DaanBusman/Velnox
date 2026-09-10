@@ -63,6 +63,20 @@ export default async function AboutPage() {
           </dl>
         </Card>
 
+        {/*
+          The attribution required by AGPLv3 section 7(b), rendered verbatim from
+          the API rather than composed here.
+
+          Not translated, and not built from `product`: it is a legal notice, and
+          its wording is the thing the licence term names. A rebranded
+          installation shows its own name everywhere else on this page and still
+          shows this. See NOTICE.
+        */}
+        <Card title={t('about.attributionHeading')}>
+          <p className="text-sm text-ink">{source.attribution}</p>
+          <p className="mt-2 text-xs text-ink-muted">{t('about.attributionBody')}</p>
+        </Card>
+
         <Card title={t('about.sourceHeading')}>
           <div className="space-y-3">
             <p className="text-sm text-ink-muted">{t('about.agplNotice', { product })}</p>

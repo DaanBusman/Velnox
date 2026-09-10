@@ -96,6 +96,14 @@ set, both languages served, the licence offer published, and the data tier not e
 
 ---
 
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the workflow and what a change is expected to carry.
+Contributions need the [Contributor Licence Agreement](CLA.md) — you keep your copyright.
+
+**Security issues do not go in an issue.** [SECURITY.md](SECURITY.md) has the private channels, the
+response times and the safe harbour.
+
 ## Development
 
 ```bash
@@ -207,14 +215,35 @@ offered that version's source. Velnox implements this in the product — **Setti
 `GET /api/v1/system/source` show the version, build commit and a source link, driven by the
 build-time `VELNOX_SOURCE_URL`. If you run a modified build, point that at your own source.
 
-See [NOTICE](NOTICE) for the copyright notice and the §13 statement.
+### Additional terms under §7
+
+The AGPLv3 permits a limited set of additional terms, and Velnox uses three of them. They add no
+restriction to any freedom the licence grants — you may still run, study, modify, redistribute and
+sell it, including under a different name:
+
+| Term | §7 | What it requires |
+|---|---|---|
+| **Attribution** | 7(b) | The Appropriate Legal Notices keep showing *"Powered by Velnox — Copyright © The Velnox Foundation"* |
+| **Origin** | 7(c) | You do not misrepresent where the software came from |
+| **Trademarks** | 7(e) | No rights are granted in the Velnox name or logo |
+
+The attribution is served from a constant in the source rather than from any setting, so a rebranded
+installation still shows it. The full terms are in [NOTICE](NOTICE), along with the §13 statement.
+
+### Commercial licence
+
+If you cannot accept the AGPLv3 — you want to distribute or host Velnox without publishing your
+modifications — a commercial licence is available. The Velnox Foundation is the sole copyright
+holder, which is what makes that possible; [CLA.md](CLA.md) explains how contributions keep it that
+way.
 
 ## Trademarks
 
 Velnox™ and the Velnox logo are trademarks of **The Velnox Foundation**. The AGPLv3 grants no
 trademark rights — see [TRADEMARK.md](TRADEMARK.md). You are free to fork; please give your fork its
 own name. Velnox is built to make that easy: the product name comes from
-`system_settings.product_name`, not from hardcoded strings.
+`system_settings.product_name`, not from hardcoded strings — with the one exception of the
+attribution notice above, which stays.
 
 Proxmox®, VMware®, Microsoft®, Hyper-V®, Ceph®, Debian®, Docker® and PostgreSQL® are trademarks of
 their respective owners. Velnox is not affiliated with, endorsed by, or sponsored by any of them.

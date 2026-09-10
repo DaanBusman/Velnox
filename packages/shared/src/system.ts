@@ -52,6 +52,30 @@ export interface ReadinessResponse {
 }
 
 /**
+ * The attribution that must survive rebranding.
+ *
+ * Velnox is deliberately white-labellable: `system_settings.product_name` drives
+ * the name in the interface, so an MSP can present it to its customers as its
+ * own console. That is a legitimate use and it stays.
+ *
+ * This string is the boundary of it. AGPLv3 section 7(b) permits requiring that
+ * specified legal notices and author attributions be preserved in the
+ * Appropriate Legal Notices, and section 7(c) permits prohibiting
+ * misrepresentation of origin. Velnox exercises both — see NOTICE — so a fork or
+ * a rebranded deployment may carry any name it likes and must still show this.
+ *
+ * It is a constant rather than a setting for exactly that reason. Anything read
+ * from the database could be edited by the operator whose obligation it is, and
+ * a notice its subject can delete is not a notice.
+ */
+export const REQUIRED_ATTRIBUTION =
+  'Powered by Velnox — Copyright © The Velnox Foundation. ' +
+  'Free software under the GNU Affero General Public License, version 3 or later.';
+
+/** The upstream name, for comparing against a rebranded `product`. */
+export const UPSTREAM_PRODUCT_NAME = 'Velnox';
+
+/**
  * AGPL section 13 source offer.
  *
  * Anyone interacting with a modified Velnox over a network must be able to
@@ -69,6 +93,14 @@ export interface SourceOfferResponse {
   /** False when the operator has not changed VELNOX_SOURCE_URL from the upstream default. */
   modified: boolean;
   notice: string;
+  /**
+   * `REQUIRED_ATTRIBUTION`, verbatim.
+   *
+   * Sent rather than assumed by the frontend so that any client — the web app,
+   * a machine reading the source offer, an operator's own interface built on
+   * this API — receives the same notice from the same place.
+   */
+  attribution: string;
 }
 
 /** How TLS is configured. Not how it is working — that is the certificate below. */

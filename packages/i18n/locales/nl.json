@@ -8,6 +8,8 @@
   },
   "about": {
     "agplNotice": "{product} is vrije software onder de GNU Affero General Public License v3 of later. Artikel 13 vereist dat wie een gewijzigde versie via een netwerk gebruikt, de bijbehorende broncode aangeboden krijgt. Dat aanbod is de link hierboven, en de build-commit maakt het verifieerbaar.",
+    "attributionBody": "Vereist door artikel 7(b) van de GNU Affero General Public License en behouden in elke kopie, ook in een die onder een andere naam wordt verspreid. Zie NOTICE voor de volledige voorwaarden.",
+    "attributionHeading": "Naamsvermelding",
     "builtAt": "Gebouwd op",
     "commit": "Build-commit",
     "environment": "Omgeving",

@@ -30,6 +30,55 @@ pointing at their own modified source. Removing the notice does not remove the
 obligation.
 
 --------------------------------------------------------------------------------
+Additional terms under AGPLv3 section 7
+
+Section 7 of the GNU Affero General Public License permits a limited set of
+additional terms. Velnox is distributed under the AGPLv3 supplemented with the
+three below. They are permitted terms under 7(b), 7(c) and 7(e) — not "further
+restrictions" within the meaning of section 10 — so a downstream recipient may
+not strip them, and they travel with every copy and every modified version.
+
+None of them limits any freedom the AGPLv3 grants. You may run Velnox for any
+purpose, study and modify it, and redistribute it modified or unmodified,
+including commercially and including under a different name. What these terms
+require is that you do not present it as having originated with you.
+
+  1. ATTRIBUTION (section 7(b))
+
+     You must preserve, in the Appropriate Legal Notices displayed by the work,
+     the notice:
+
+         Powered by Velnox — Copyright (C) The Velnox Foundation.
+         Free software under the GNU Affero General Public License,
+         version 3 or later.
+
+     Velnox displays it on the Settings > About screen and returns it from
+     GET /api/v1/system/source as the `attribution` field. The product name in
+     the rest of the interface is configurable and may be changed freely; this
+     notice is not, and is served from a constant in the source rather than from
+     any setting, so that it cannot be edited away by the party it binds.
+
+  2. ORIGIN (section 7(c))
+
+     You may not misrepresent the origin of this software. If you distribute a
+     modified version, you must mark it in a reasonable way as different from
+     the original — the AGPLv3 already requires this of modified files under
+     section 5(a); this extends it to how the work is presented to its users.
+
+  3. TRADEMARKS (section 7(e))
+
+     No rights are granted under trademark law. "Velnox", the Velnox name and
+     the Velnox logo are trademarks of The Velnox Foundation and are not
+     licensed by the AGPLv3 or by these terms. Nominative use — saying
+     truthfully that your product is based on, derived from or compatible with
+     Velnox — is always permitted and is in fact how term 2 is satisfied.
+     TRADEMARK.md sets out what needs permission and what does not.
+
+Section 7 requires that source files state these terms or indicate where to find
+them. The entry point of each package carries that pointer, and this file is the
+statement it points to.
+
+--------------------------------------------------------------------------------
 Trademarks
 
 Velnox(TM) and the Velnox logo are trademarks of The Velnox Foundation.

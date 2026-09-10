@@ -1,7 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UPSTREAM_SOURCE_URL, type ApiConfig } from '@velnox/config';
 import { ensureSystemSettings } from '@velnox/db';
-import { LOCALES, type Locale, type SourceOfferResponse, type SystemInfoResponse } from '@velnox/shared';
+import {
+  LOCALES,
+  REQUIRED_ATTRIBUTION,
+  type Locale,
+  type SourceOfferResponse,
+  type SystemInfoResponse,
+} from '@velnox/shared';
 import { API_CONFIG } from '../../config/config.module';
 import { PrismaService } from '../infrastructure/prisma.service';
 
@@ -57,6 +63,9 @@ export class SystemService {
       license: 'AGPL-3.0-or-later',
       url,
       modified: url !== UPSTREAM_SOURCE_URL,
+      // From the constant, never from `settings.productName`. The whole point of
+      // this line is that the operator it binds cannot edit it away.
+      attribution: REQUIRED_ATTRIBUTION,
       notice:
         'Velnox is free software under the GNU Affero General Public License v3 or later. ' +
         'Section 13 requires that users interacting with a modified version over a network be ' +

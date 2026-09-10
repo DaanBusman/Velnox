@@ -7,6 +7,8 @@
   },
   "about": {
     "agplNotice": "{product} is free software under the GNU Affero General Public License v3 or later. Section 13 requires that anyone interacting with a modified version over a network be offered its Corresponding Source. That offer is the link above, and the build commit makes it verifiable.",
+    "attributionBody": "Required by section 7(b) of the GNU Affero General Public License and preserved by every copy, including one distributed under another name. See NOTICE for the full terms.",
+    "attributionHeading": "Attribution",
     "builtAt": "Built at",
     "commit": "Build commit",
     "environment": "Environment",

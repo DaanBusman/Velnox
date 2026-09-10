@@ -98,7 +98,11 @@ export function UpdatesPanel() {
       </Card>
 
       <Card title={t('about.sourceHeading')}>
-        <p className="text-sm text-ink-muted">{t('about.agplNotice', { product: build.product })}</p>
+        {/* Verbatim from the API. AGPLv3 section 7(b) — see NOTICE. */}
+        <p className="text-sm text-ink">{build.attribution}</p>
+        <p className="mt-2 text-sm text-ink-muted">
+          {t('about.agplNotice', { product: build.product })}
+        </p>
         <p className="mt-3">
           <a
             href={build.url}
