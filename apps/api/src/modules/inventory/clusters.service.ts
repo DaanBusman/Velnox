@@ -271,16 +271,22 @@ export class ClustersService {
         VERIFY_TIMEOUT_MS,
       );
     } catch (error) {
-      const translated = translate(error, cluster.endpointHost);
-      await this.prisma.client.cluster.update({
-        where: { id: cluster.id },
-        data: {
-          connectionState: 'FAILED',
-          lastErrorCode: translated.code,
-          lastErrorDetail: translated.message,
-        },
-      });
-      throw translated;
+      /*
+       * Adding it did not work, so nothing is added.
+       *
+       * The first version left the row behind marked FAILED, which contradicted
+       * the reason this step exists: the operator got their refusal *and* a
+       * broken cluster in the list, and re-adding it with a corrected
+       * fingerprint was then refused as a duplicate. Found by
+       * `verify-proxmox.sh`, which could not add the cluster a second time.
+       *
+       * A cluster that has been added and later stops answering is a different
+       * thing entirely, and that one does keep its row — see `processDiscover`.
+       */
+      await this.prisma.client.cluster.delete({ where: { id: cluster.id } });
+      await this.secrets.deleteCredential(credentialId);
+
+      throw translate(error, cluster.endpointHost);
     }
 
     // Verified. The full inventory takes longer than a request should, so it
@@ -457,9 +463,17 @@ function translate(error: unknown, host: string): VelnoxError {
     });
   }
 
+  /*
+   * The worker's error arrives across a queue, so only its *message* survives —
+   * BullMQ rebuilds a plain `Error` on the other side and the class name is
+   * gone. Matching on the class was the obvious thing to write and matched
+   * nothing, so a mismatched fingerprint came back as "unreachable". These
+   * patterns are therefore against the message text, and each one is a string
+   * the corresponding error class is asserted to produce.
+   */
   const message = error instanceof Error ? error.message : String(error);
 
-  if (/FingerprintMismatch/i.test(message)) {
+  if (/fingerprint mismatch/i.test(message)) {
     return new VelnoxError(ERROR_CODES.nodeFingerprintMismatch, {
       status: 409,
       message,
@@ -467,7 +481,7 @@ function translate(error: unknown, host: string): VelnoxError {
     });
   }
 
-  if (/ProxmoxAuthError|refused the credentials/i.test(message)) {
+  if (/refused the credentials/i.test(message)) {
     return new VelnoxError(ERROR_CODES.clusterAuthFailed, {
       status: 401,
       message,
@@ -475,7 +489,7 @@ function translate(error: unknown, host: string): VelnoxError {
     });
   }
 
-  if (/not a Proxmox|data envelope|not JSON/i.test(message)) {
+  if (/data envelope|not JSON|does not implement/i.test(message)) {
     return new VelnoxError(ERROR_CODES.clusterNotProxmox, {
       status: 502,
       message,

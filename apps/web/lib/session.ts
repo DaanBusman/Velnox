@@ -2,24 +2,42 @@ import 'server-only';
 import type { TlsStatusResponse } from '@velnox/shared';
 import { cookies } from 'next/headers';
 import type {
+  AlertRow,
   AuditEventView,
+  CephDaemonSummary,
+  ClusterSummary,
+  DiscoveryRunRow,
   IdentityProviderView,
+  InterfaceRow,
+  NodeDetail,
+  NodeSummary,
   RoleSummary,
   Session,
   SiteSummary,
+  StorageRow,
   TenantSummary,
   UserSummary,
+  WorkloadSummary,
 } from './session-types';
 
 export type {
+  AlertRow,
   AuditEventView,
+  CephDaemonSummary,
+  ClusterSummary,
+  DiscoveryRunRow,
   IdentityProviderView,
+  InterfaceRow,
+  NodeDetail,
+  NodeSummary,
   RoleSummary,
   Session,
   SessionUser,
   SiteSummary,
+  StorageRow,
   TenantSummary,
   UserSummary,
+  WorkloadSummary,
 } from './session-types';
 
 /**
@@ -86,8 +104,6 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
   }
 }
 
-
-
 /**
  * One place for every authenticated read.
  *
@@ -97,7 +113,9 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
  * explanation, which is why the failure shape is part of the return type
  * instead of an exception.
  */
-async function readAs<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; code: string }> {
+async function readAs<T>(
+  path: string,
+): Promise<{ ok: true; data: T } | { ok: false; code: string }> {
   const cookieHeader = await forwardedCookies();
 
   try {
@@ -169,4 +187,73 @@ export function listSites(tenantId?: string | null) {
 /** The Entra ID configuration. Requires system.manage, which the API enforces. */
 export function getIdentityProvider() {
   return readAs<IdentityProviderView>('/api/v1/identity-providers/oidc');
+}
+
+/**
+ * Proxmox inventory.
+ *
+ * Every one of these is scoped by the API to what the caller may reach, so a
+ * filter here can only narrow. `clusterId` in a query string is therefore safe
+ * to take from a URL: an id the account cannot see returns an empty list rather
+ * than somebody else's nodes.
+ */
+export function listClusters(params: { tenantId?: string | null; siteId?: string | null } = {}) {
+  const query = new URLSearchParams();
+  if (params.tenantId) query.set('tenantId', params.tenantId);
+  if (params.siteId) query.set('siteId', params.siteId);
+  const suffix = query.toString();
+  return readAs<{ clusters: ClusterSummary[] }>(`/api/v1/clusters${suffix ? `?${suffix}` : ''}`);
+}
+
+export function getCluster(id: string) {
+  return readAs<ClusterSummary>(`/api/v1/clusters/${encodeURIComponent(id)}`);
+}
+
+export function listClusterCeph(id: string) {
+  return readAs<{ daemons: CephDaemonSummary[] }>(
+    `/api/v1/clusters/${encodeURIComponent(id)}/ceph`,
+  );
+}
+
+export function listDiscoveryRuns(id: string) {
+  return readAs<{ runs: DiscoveryRunRow[] }>(
+    `/api/v1/clusters/${encodeURIComponent(id)}/discovery-runs`,
+  );
+}
+
+export function listNodes(params: { clusterId?: string | null; tenantId?: string | null } = {}) {
+  const query = new URLSearchParams();
+  if (params.clusterId) query.set('clusterId', params.clusterId);
+  if (params.tenantId) query.set('tenantId', params.tenantId);
+  const suffix = query.toString();
+  return readAs<{ nodes: NodeSummary[] }>(`/api/v1/nodes${suffix ? `?${suffix}` : ''}`);
+}
+
+export function getNode(id: string) {
+  return readAs<NodeDetail>(`/api/v1/nodes/${encodeURIComponent(id)}`);
+}
+
+export function listWorkloads(
+  params: { kind?: 'QEMU' | 'LXC'; clusterId?: string | null; nodeId?: string | null } = {},
+) {
+  const query = new URLSearchParams();
+  if (params.kind) query.set('kind', params.kind);
+  if (params.clusterId) query.set('clusterId', params.clusterId);
+  if (params.nodeId) query.set('nodeId', params.nodeId);
+  const suffix = query.toString();
+  return readAs<{ workloads: WorkloadSummary[] }>(`/api/v1/workloads${suffix ? `?${suffix}` : ''}`);
+}
+
+export function listStorages(params: { clusterId?: string | null } = {}) {
+  const query = params.clusterId ? `?clusterId=${encodeURIComponent(params.clusterId)}` : '';
+  return readAs<{ storages: StorageRow[] }>(`/api/v1/storage${query}`);
+}
+
+export function listInterfaces(params: { clusterId?: string | null } = {}) {
+  const query = params.clusterId ? `?clusterId=${encodeURIComponent(params.clusterId)}` : '';
+  return readAs<{ interfaces: InterfaceRow[] }>(`/api/v1/networks${query}`);
+}
+
+export function listAlerts() {
+  return readAs<{ alerts: AlertRow[] }>('/api/v1/alerts');
 }

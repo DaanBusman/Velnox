@@ -105,6 +105,42 @@ export interface WorkloadSummary {
   lastSeenAt: string | null;
 }
 
+export interface StorageRow {
+  id: string;
+  name: string;
+  type: string;
+  enabled: boolean;
+  active: boolean;
+  shared: boolean;
+  content: string[];
+  totalBytes: string | null;
+  usedBytes: string | null;
+  availableBytes: string | null;
+  nodeId: string;
+  nodeName: string;
+  clusterId: string;
+  clusterName: string;
+}
+
+export interface InterfaceRow {
+  id: string;
+  name: string;
+  type: string;
+  active: boolean;
+  autostart: boolean;
+  method: string | null;
+  cidr: string | null;
+  gateway: string | null;
+  bridgePorts: string[];
+  bondMode: string | null;
+  slaves: string[];
+  comment: string | null;
+  nodeId: string;
+  nodeName: string;
+  clusterId: string;
+  clusterName: string;
+}
+
 export interface CephDaemonSummary {
   id: string;
   kind: string;
@@ -204,6 +240,76 @@ export class InventoryReadService {
     });
 
     return workloads.map(summariseWorkload);
+  }
+
+  /**
+   * Every storage on every node the caller can reach.
+   *
+   * A fleet-wide question — "where is the disk" — so it is a flat list rather
+   * than something you have to open a cluster to find. The node and cluster
+   * names come along because a storage called `local` on its own tells you
+   * nothing.
+   */
+  async listStorages(filter: { clusterId?: string; nodeId?: string }): Promise<StorageRow[]> {
+    const storages = await this.prisma.client.nodeStorage.findMany({
+      where: {
+        ...(filter.nodeId ? { nodeId: filter.nodeId } : {}),
+        ...(filter.clusterId ? { node: { clusterId: filter.clusterId } } : {}),
+      },
+      include: {
+        node: { select: { name: true, clusterId: true, cluster: { select: { name: true } } } },
+      },
+      orderBy: [{ name: 'asc' }],
+    });
+
+    return storages.map((storage) => ({
+      id: storage.id,
+      name: storage.name,
+      type: storage.type,
+      enabled: storage.enabled,
+      active: storage.active,
+      shared: storage.shared,
+      content: storage.content,
+      totalBytes: bytes(storage.totalBytes),
+      usedBytes: bytes(storage.usedBytes),
+      availableBytes: bytes(storage.availableBytes),
+      nodeId: storage.nodeId,
+      nodeName: storage.node.name,
+      clusterId: storage.node.clusterId,
+      clusterName: storage.node.cluster.name,
+    }));
+  }
+
+  async listInterfaces(filter: { clusterId?: string; nodeId?: string }): Promise<InterfaceRow[]> {
+    const interfaces = await this.prisma.client.nodeInterface.findMany({
+      where: {
+        ...(filter.nodeId ? { nodeId: filter.nodeId } : {}),
+        ...(filter.clusterId ? { node: { clusterId: filter.clusterId } } : {}),
+      },
+      include: {
+        node: { select: { name: true, clusterId: true, cluster: { select: { name: true } } } },
+      },
+      orderBy: [{ name: 'asc' }],
+    });
+
+    return interfaces.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      type: entry.type,
+      active: entry.active,
+      autostart: entry.autostart,
+      method: entry.method,
+      cidr: entry.cidr,
+      gateway: entry.gateway,
+      bridgePorts: entry.bridgePorts,
+      bondMode: entry.bondMode,
+      slaves: entry.slaves,
+      comment: entry.comment,
+      nodeId: entry.nodeId,
+      nodeName: entry.node.name,
+      clusterId: entry.node.clusterId,
+      clusterName: entry.node.cluster.name,
+    }));
   }
 
   async listCephDaemons(clusterId: string): Promise<CephDaemonSummary[]> {

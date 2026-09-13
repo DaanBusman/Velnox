@@ -13,9 +13,8 @@ import { DOCS_VERSION, DOC_SLUGS, getDoc, listDocs } from './docs';
  */
 
 const repoRoot = join(__dirname, '..', '..', '..');
-const packageVersion = JSON.parse(
-  readFileSync(join(repoRoot, 'package.json'), 'utf8'),
-).version as string;
+const packageVersion = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'))
+  .version as string;
 
 describe('documentation bundle', () => {
   it('is stamped with the version in the root package.json', () => {

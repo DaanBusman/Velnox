@@ -98,7 +98,7 @@ async function clientFor(
 export function processVerify(job: Job<DiscoverJobData>, context: InventoryContext) {
   return withSystemScope('a discovery job belongs to no request', async () => {
     const { cluster, client } = await clientFor(context, job.data.clusterId);
-    const version = await client.version();
+    const version = await client.version().finally(() => client.close());
 
     await context.prisma.cluster.update({
       where: { id: cluster.id },
@@ -137,7 +137,25 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
     });
 
     try {
-      const discovered = await discoverCluster(client);
+      const discovered = await discoverCluster(client).finally(() => client.close());
+
+      /*
+       * A run that learned nothing is a failure, not an empty cluster.
+       *
+       * `discoverCluster` records problems rather than throwing, so that one
+       * unreachable node does not lose the other fourteen. Taken to its
+       * conclusion that is wrong: a cluster that answered nothing at all comes
+       * back as a perfectly well-formed inventory of zero nodes, and writing it
+       * would replace a customer's fleet with "no infrastructure" because of a
+       * DNS blip. Seen in `verify-proxmox.sh`, which pulls the plug on the
+       * fixture and expects the previous inventory to survive.
+       */
+      if (discovered.nodes.length === 0 && discovered.problems.length > 0) {
+        throw new Error(
+          `Learned nothing about ${cluster.name}: ${discovered.problems[0] ?? 'no detail'}`,
+        );
+      }
+
       const counts = await persistDiscovery(context.prisma, cluster, discovered);
 
       const problems = [

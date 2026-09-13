@@ -1,9 +1,5 @@
 import 'server-only';
-import type {
-  ReadinessResponse,
-  SourceOfferResponse,
-  SystemInfoResponse,
-} from '@velnox/shared';
+import type { ReadinessResponse, SourceOfferResponse, SystemInfoResponse } from '@velnox/shared';
 
 /**
  * Server-side API access.

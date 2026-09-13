@@ -3,6 +3,8 @@ import { AuthModule } from '../auth/auth.module';
 import { ClustersController } from './clusters.controller';
 import { NodesController } from './nodes.controller';
 import { WorkloadsController } from './workloads.controller';
+import { ResourcesController } from './resources.controller';
+import { AlertsService } from './alerts.service';
 import { ClustersService } from './clusters.service';
 import { InventoryReadService } from './inventory-read.service';
 
@@ -15,8 +17,8 @@ import { InventoryReadService } from './inventory-read.service';
  */
 @Module({
   imports: [AuthModule],
-  controllers: [ClustersController, NodesController, WorkloadsController],
-  providers: [ClustersService, InventoryReadService],
-  exports: [ClustersService, InventoryReadService],
+  controllers: [ClustersController, NodesController, WorkloadsController, ResourcesController],
+  providers: [ClustersService, InventoryReadService, AlertsService],
+  exports: [ClustersService, InventoryReadService, AlertsService],
 })
 export class InventoryModule {}

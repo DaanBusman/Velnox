@@ -1,4 +1,4 @@
-import { request as httpsRequest, type RequestOptions } from 'node:https';
+import { Agent, request as httpsRequest, type RequestOptions } from 'node:https';
 import type { TLSSocket } from 'node:tls';
 import { fingerprintsMatch, normaliseFingerprint, type Fingerprint } from '@velnox/shared';
 
@@ -9,10 +9,26 @@ import { fingerprintsMatch, normaliseFingerprint, type Fingerprint } from '@veln
  * peer certificate, and `fetch` does not expose the socket. Everything else
  * about this file would be shorter with `fetch`.
  *
- * How the pin is enforced matters. The check happens on `secureConnect`, before
- * the request body — including the API token — is written to the socket. A pin
- * verified after the response has arrived is not a pin; it is a report that you
- * have already sent your credentials to the wrong host.
+ * How the pin is enforced matters, and getting it wrong is quiet. The check
+ * happens before the request line — and therefore the API token — is written to
+ * the socket. A pin verified after the response has arrived is not a pin; it is
+ * a report that you have already sent your credentials to the wrong host.
+ *
+ * ## Connection reuse is the trap
+ *
+ * The first version of this listened for `secureConnect` and checked the
+ * fingerprint there. That is correct exactly once per socket. Node's global
+ * HTTPS agent keeps connections alive by default, so the *second* request
+ * reuses the socket, `secureConnect` never fires again, and the pin is silently
+ * never checked. A cluster added with a deliberately wrong fingerprint was
+ * accepted, connected and fully discovered — found by `verify-proxmox.sh`
+ * against a fixture, and invisible to every unit test, because the bug is in
+ * the socket lifecycle rather than in the comparison.
+ *
+ * So a verified socket is *marked*, and every request checks the mark rather
+ * than assuming a handshake it did not see. Sockets are pooled per client — one
+ * agent per host and pin — so a marked socket can only ever have been verified
+ * against the same fingerprint.
  */
 
 export type VerifyMode =
@@ -92,6 +108,15 @@ export interface TransportOptions {
   tls: TlsPolicy;
   /** Per-attempt, not for the whole call including retries. */
   timeoutMs?: number;
+  /**
+   * The connection pool to use, or `false` for a fresh connection every time.
+   *
+   * Defaults to `false`. Pooling is opt-in because a pool shared between hosts
+   * would hand back a socket verified against somebody else's certificate —
+   * which is how the pin was defeated the first time. {@link createAgent} builds
+   * one that is safe to share, and only within a single client.
+   */
+  agent?: Agent | false;
 }
 
 export interface RawResponse {
@@ -103,6 +128,47 @@ export interface RawResponse {
 }
 
 const DEFAULT_TIMEOUT_MS = 20_000;
+
+/**
+ * Set on a socket once its certificate has been checked against a fingerprint.
+ *
+ * The value is the fingerprint it was checked against, not `true`: a socket
+ * verified for one pin says nothing about another, and storing which one makes
+ * that impossible to get wrong even if a pool is later shared.
+ */
+const VERIFIED_FOR = Symbol.for('velnox.pinnedFingerprint');
+
+type MarkedSocket = TLSSocket & { [VERIFIED_FOR]?: string };
+
+/**
+ * A connection pool for one host and one pin.
+ *
+ * Keep-alive is worth having: a discovery run against a fifteen-node cluster is
+ * forty-odd requests, and a TLS handshake each time is most of its wall clock.
+ * What makes it safe is that the pool belongs to one client — never the global
+ * agent, which is shared with every other host in the process.
+ *
+ * ## `maxCachedSessions: 0`, and why pinning requires it
+ *
+ * Node caches TLS sessions per agent and resumes them on new connections. A
+ * resumed session skips the certificate exchange — the server has no reason to
+ * send again what the client already agreed to — so `getPeerCertificate()`
+ * returns an empty object, and there is nothing to compare a fingerprint
+ * against.
+ *
+ * That is not a theory. Discovery opens six requests per node at once; the first
+ * reused an open connection and worked, and the other five resumed sessions and
+ * failed with "completed a TLS handshake with no certificate" — which is the
+ * *correct* failure direction, and still meant five of six calls per node came
+ * back empty. Found by `verify-proxmox.sh`; invisible to a unit test, because it
+ * is a property of a real TLS stack talking to a real server.
+ *
+ * So sessions are not cached. Every new connection does a full handshake and
+ * presents its certificate, which is the price of being able to check it. Open
+ * connections are still reused, which is where most of the saving was anyway.
+ */
+export const createAgent = (): Agent =>
+  new Agent({ keepAlive: true, maxSockets: 8, maxCachedSessions: 0, timeout: 30_000 });
 
 function describeCertificate(socket: TLSSocket): PeerCertificate | null {
   const certificate = socket.getPeerCertificate(false);
@@ -173,6 +239,13 @@ export function rawRequest(
       // eslint-disable-next-line no-restricted-syntax
       rejectUnauthorized: verified,
       ...(options.tls.ca ? { ca: options.tls.ca } : {}),
+      /*
+       * `false` unless a client supplies its own pool. Never Node's global
+       * agent: it keeps connections alive across every host in the process, so
+       * a request to a pinned host could be handed a socket opened for another
+       * one. That is not a hypothetical — it is how the pin was first defeated.
+       */
+      agent: options.agent ?? false,
     };
 
     const request = httpsRequest(requestOptions);
@@ -187,13 +260,15 @@ export function rawRequest(
       reject(error);
     };
 
-    request.on('socket', (socket) => {
-      socket.on('secureConnect', () => {
-        certificate = describeCertificate(socket as TLSSocket);
+    request.on('socket', (rawSocket) => {
+      const socket = rawSocket as MarkedSocket;
 
+      const inspect = (): void => {
+        certificate = describeCertificate(socket);
         if (!pinned) return;
 
-        const expected = options.tls.fingerprint as string;
+        const expected = normaliseFingerprint(options.tls.fingerprint as string);
+
         if (!certificate) {
           fail(new Error(`${options.host} completed a TLS handshake with no certificate.`));
           return;
@@ -202,15 +277,36 @@ export function rawRequest(
         if (!fingerprintsMatch(certificate.fingerprint, expected)) {
           // Destroying here is the whole point: the request line and headers,
           // which carry the API token, have not been written yet.
-          fail(
-            new FingerprintMismatchError(
-              normaliseFingerprint(expected),
-              certificate.fingerprint,
-              options.host,
-            ),
-          );
+          fail(new FingerprintMismatchError(expected, certificate.fingerprint, options.host));
+          return;
         }
-      });
+
+        socket[VERIFIED_FOR] = expected;
+      };
+
+      /*
+       * A socket handed back by a pool has already completed its handshake, so
+       * `secureConnect` will never fire on it again. Checking the mark rather
+       * than waiting for an event is what makes reuse safe — and reading the
+       * certificate here is also what keeps `certificate` populated on a reused
+       * connection, which the probe depends on.
+       */
+      let alreadyShookHands = false;
+      try {
+        // A socket mid-handshake answers with an empty object; a completed one
+        // answers with the certificate. A plain socket has no such method at
+        // all, which is what the catch is for.
+        alreadyShookHands = Object.keys(socket.getPeerCertificate(false) ?? {}).length > 0;
+      } catch {
+        alreadyShookHands = false;
+      }
+
+      if (alreadyShookHands) {
+        inspect();
+        return;
+      }
+
+      socket.once('secureConnect', inspect);
     });
 
     request.on('timeout', () => {

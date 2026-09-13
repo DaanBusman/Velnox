@@ -53,12 +53,17 @@ export const NAVIGATION: NavGroup[] = [
   {
     labelKey: 'sectionInfrastructure',
     items: [
-      { key: 'clusters', href: '/clusters', phase: 4 },
-      { key: 'nodes', href: '/nodes', phase: 4 },
-      { key: 'virtualMachines', href: '/virtual-machines', phase: 4 },
-      { key: 'containers', href: '/containers', phase: 4 },
-      { key: 'storage', href: '/storage', phase: 4 },
-      { key: 'networks', href: '/networks', phase: 4 },
+      { key: 'clusters', href: '/clusters', phase: null, requiresPermission: 'clusters.read' },
+      { key: 'nodes', href: '/nodes', phase: null, requiresPermission: 'nodes.read' },
+      {
+        key: 'virtualMachines',
+        href: '/virtual-machines',
+        phase: null,
+        requiresPermission: 'workloads.read',
+      },
+      { key: 'containers', href: '/containers', phase: null, requiresPermission: 'workloads.read' },
+      { key: 'storage', href: '/storage', phase: null, requiresPermission: 'storage.read' },
+      { key: 'networks', href: '/networks', phase: null, requiresPermission: 'networks.read' },
     ],
   },
   {
@@ -69,7 +74,7 @@ export const NAVIGATION: NavGroup[] = [
       { key: 'migrations', href: '/migrations', phase: 11 },
       { key: 'automation', href: '/automation', phase: 8 },
       { key: 'jobs', href: '/jobs', phase: 5 },
-      { key: 'alerts', href: '/alerts', phase: 4 },
+      { key: 'alerts', href: '/alerts', phase: null, requiresPermission: 'alerts.read' },
       { key: 'reports', href: '/reports', phase: 8 },
     ],
   },

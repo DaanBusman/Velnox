@@ -17,6 +17,7 @@ import { RolesController } from '../modules/roles/roles.controller';
 import { ClustersController } from '../modules/inventory/clusters.controller';
 import { NodesController } from '../modules/inventory/nodes.controller';
 import { WorkloadsController } from '../modules/inventory/workloads.controller';
+import { ResourcesController } from '../modules/inventory/resources.controller';
 import { SitesController } from '../modules/tenancy/sites.controller';
 import { TenantsController } from '../modules/tenancy/tenants.controller';
 import { UsersController } from '../modules/users/users.controller';
@@ -94,6 +95,7 @@ const CONTROLLERS = [
   ClustersController,
   NodesController,
   WorkloadsController,
+  ResourcesController,
 ];
 
 function collectRoutes(): Route[] {

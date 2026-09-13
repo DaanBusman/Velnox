@@ -1,6 +1,8 @@
+import type { Agent } from 'node:https';
 import {
   DEFAULT_RETRY,
   ProxmoxHttpError,
+  createAgent,
   rawRequest,
   withRetries,
   type PeerCertificate,
@@ -85,12 +87,23 @@ interface Ticket {
 
 export class ProxmoxClient {
   private readonly port: number;
+  /**
+   * One connection pool, belonging to this client and therefore to one host and
+   * one pin. Never the global agent — see the note in `transport.ts`.
+   */
+  private readonly agent: Agent;
   private ticket: Ticket | null = null;
   /** The certificate seen on the most recent connection. */
   private lastCertificate: PeerCertificate | null = null;
 
   constructor(private readonly options: ProxmoxClientOptions) {
     this.port = options.port ?? DEFAULT_PORT;
+    this.agent = createAgent();
+  }
+
+  /** Close the pool. A discovery run holds connections open until it does. */
+  close(): void {
+    this.agent.destroy();
   }
 
   get certificate(): PeerCertificate | null {
@@ -216,6 +229,7 @@ export class ProxmoxClient {
             port: this.port,
             tls: this.options.tls,
             timeoutMs: this.options.timeoutMs,
+            agent: this.agent,
           },
           {
             method,
@@ -300,6 +314,7 @@ export class ProxmoxClient {
         port: this.port,
         tls: this.options.tls,
         timeoutMs: this.options.timeoutMs,
+        agent: this.agent,
       },
       {
         method: 'POST',
