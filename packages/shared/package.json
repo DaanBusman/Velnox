@@ -1,6 +1,6 @@
 {
   "name": "@velnox/shared",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Shared contracts, error codes and redaction used by the API, the worker and the web app",

@@ -77,8 +77,16 @@ fi
 JARS="$(mktemp -d)"
 trap 'rm -rf "$JARS"' EXIT
 
-# Method, path, body, and the jar to use. Prints the body; sets LAST_STATUS.
-LAST_STATUS=""
+# Method, path, body, and the jar to use. Prints the body; records the status.
+#
+# The status goes to a file rather than a variable, because almost every call is
+# read as `X="$(call …)"` — a subshell, whose variables are gone by the time the
+# caller looks. Written the obvious way first, this file reported 35 of 35
+# passing while every status assertion was in fact comparing against the status
+# of the *first* request, which happened to be a 201. A harness that can pass for
+# the wrong reason is worse than no harness.
+STATUS_FILE="${JARS}/status"
+
 call() {
   local who="$1" method="$2" path="$3" body="${4:-}"
   local jar="${JARS}/${who}.jar"
@@ -101,13 +109,16 @@ call() {
     --write-out '\n%{http_code}' \
     "${BASE}${path}")"
 
-  LAST_STATUS="${response##*$'\n'}"
+  printf '%s' "${response##*$'\n'}" > "$STATUS_FILE"
   printf '%s' "${response%$'\n'*}"
 }
 
+# The status of the most recent `call`, wherever it ran.
+last_status() { cat "$STATUS_FILE"; }
+
 status() {
   call "$@" >/dev/null
-  printf '%s' "$LAST_STATUS"
+  last_status
 }
 
 sign_in() {
@@ -115,7 +126,7 @@ sign_in() {
   rm -f "${JARS}/${who}.jar"
   call "$who" POST /api/v1/auth/login \
     "{\"email\":\"${email}\",\"password\":\"${password}\"}" >/dev/null
-  printf '%s' "$LAST_STATUS"
+  last_status
 }
 
 # ---------------------------------------------------------------------------
@@ -132,7 +143,7 @@ if [[ "$INITIALIZED" != "true" ]]; then
   info "Running setup, because this installation has none."
   call anon POST /api/v1/setup/initialize \
     "{\"organisationName\":\"Tenancy Verification\",\"displayName\":\"Verification Admin\",\"email\":\"${RUN}-admin@example.invalid\",\"password\":\"${PASSWORD}\"}" >/dev/null
-  check "setup: initialize accepted" 201 "$LAST_STATUS"
+  check "setup: initialize accepted" 201 "$(last_status)"
   ADMIN_EMAIL="${RUN}-admin@example.invalid"
   ADMIN_PASSWORD="$PASSWORD"
 else
@@ -154,19 +165,19 @@ check "admin: signs in" 200 "$(sign_in msp "$ADMIN_EMAIL" "$ADMIN_PASSWORD")"
 info "Creating two tenants, a site each, and an administrator in the first."
 
 TENANT_A="$(call msp POST /api/v1/tenants "{\"name\":\"${RUN} Alpha\"}" | json id)"
-check "msp: creates tenant A" 201 "$LAST_STATUS"
+check "msp: creates tenant A" 201 "$(last_status)"
 TENANT_B="$(call msp POST /api/v1/tenants "{\"name\":\"${RUN} Beta\"}" | json id)"
-check "msp: creates tenant B" 201 "$LAST_STATUS"
+check "msp: creates tenant B" 201 "$(last_status)"
 
 SITE_A="$(call msp POST /api/v1/sites "{\"tenantId\":\"${TENANT_A}\",\"name\":\"${RUN} Site A\"}" | json id)"
-check "msp: creates a site in tenant A" 201 "$LAST_STATUS"
+check "msp: creates a site in tenant A" 201 "$(last_status)"
 SITE_B="$(call msp POST /api/v1/sites "{\"tenantId\":\"${TENANT_B}\",\"name\":\"${RUN} Site B\"}" | json id)"
-check "msp: creates a site in tenant B" 201 "$LAST_STATUS"
+check "msp: creates a site in tenant B" 201 "$(last_status)"
 
 ALPHA_EMAIL="${RUN}-alpha@example.invalid"
 ALPHA_ID="$(call msp POST /api/v1/users \
   "{\"email\":\"${ALPHA_EMAIL}\",\"displayName\":\"Alpha Administrator\",\"password\":\"${PASSWORD}\",\"tenantId\":\"${TENANT_A}\"}" | json id)"
-check "msp: creates an account inside tenant A" 201 "$LAST_STATUS"
+check "msp: creates an account inside tenant A" 201 "$(last_status)"
 
 # The Tenant Administrator role, granted at tenant scope — the grant this whole
 # phase exists to make possible.
