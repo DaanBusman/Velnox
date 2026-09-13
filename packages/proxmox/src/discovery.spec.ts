@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { NodeFacts } from './discovery';
 import {
   assembleCluster,
   mapCeph,
@@ -352,9 +353,19 @@ describe('assembling a cluster', () => {
   it('keeps an offline node in the inventory, carrying why it knows nothing about it', () => {
     // Dropping it would make a node disappear at the moment it most needs
     // looking at.
-    const offline = node('pve3', '8.2.4', 'offline');
-    offline.status = null as never;
-    offline.problems = ['node is offline; per-node detail was not collected'];
+    // Built rather than mutated from the helper: an offline node is exactly one
+    // that could not be asked anything, so its per-node detail is all null.
+    const offline: NodeFacts = {
+      entry: { node: 'pve3', status: 'offline' },
+      status: null,
+      subscription: null,
+      repositories: null,
+      updates: null,
+      storages: null,
+      interfaces: null,
+      clusterEntry: null,
+      problems: ['node is offline; per-node detail was not collected'],
+    };
 
     const cluster = assembleCluster({
       version: { version: '8.2.4' },

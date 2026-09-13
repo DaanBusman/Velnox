@@ -153,6 +153,17 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   Role: (ids) => ({ OR: [{ tenantId: null }, { tenantId: { in: ids } }] }),
   Credential: (ids) => ({ OR: [{ tenantId: null }, { tenantId: { in: ids } }] }),
   AuditEvent: (ids) => ({ tenantId: { in: ids } }),
+
+  // Phase 4 inventory. Every one of these carries a non-null tenant, so the
+  // rule is the plain one — and every one of them is a row describing somebody
+  // else's infrastructure, which is the thing this layer exists for.
+  Cluster: (ids) => ({ tenantId: { in: ids } }),
+  Node: (ids) => ({ tenantId: { in: ids } }),
+  NodeStorage: (ids) => ({ tenantId: { in: ids } }),
+  NodeInterface: (ids) => ({ tenantId: { in: ids } }),
+  Workload: (ids) => ({ tenantId: { in: ids } }),
+  CephDaemon: (ids) => ({ tenantId: { in: ids } }),
+  DiscoveryRun: (ids) => ({ tenantId: { in: ids } }),
 };
 
 /** Models whose `tenantId` on a create must be inside the scope. */
@@ -162,6 +173,13 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   Role: 'optional',
   Credential: 'optional',
   AuditEvent: 'optional',
+  Cluster: 'required',
+  Node: 'required',
+  NodeStorage: 'required',
+  NodeInterface: 'required',
+  Workload: 'required',
+  CephDaemon: 'required',
+  DiscoveryRun: 'required',
 };
 
 export const tenantScopedModels = (): string[] => Object.keys(TENANT_SCOPED).sort();

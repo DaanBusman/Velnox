@@ -58,9 +58,24 @@ export class SecretStoreService {
     tenantId?: string | null;
     label?: string;
     username?: string;
+    scopeType?: 'GLOBAL' | 'TENANT' | 'SITE' | 'CLUSTER';
+    scopeId?: string | null;
   }): Promise<{ credentialId: string; secretRef: string }> {
-    this.assertReadable(params.kind);
-
+    /*
+     * Writing is allowed for every kind. Reading is not.
+     *
+     * This used to call `assertReadable` here too, which was the wrong shape of
+     * the same rule: ADR-009 says the API must not *decrypt* material belonging
+     * to managed infrastructure, and encrypting a Proxmox token on its way in
+     * breaks nothing. When phase 4 needed a cluster's token stored from an HTTP
+     * request, the choice was either to relax this or to send the plaintext
+     * through the job queue to be encrypted by the worker — which would put the
+     * secret in Redis to avoid putting it in Postgres.
+     *
+     * So the boundary stays where it matters. `get` below still refuses every
+     * kind the API has no business reading, and a Proxmox token that goes in
+     * here can only come out in the worker.
+     */
     return this.prisma.client.$transaction(async (tx) => {
       const credential = await tx.credential.create({
         data: {
@@ -69,6 +84,8 @@ export class SecretStoreService {
           label: params.label ?? null,
           username: params.username ?? null,
           status: 'ACTIVE',
+          ...(params.scopeType ? { scopeType: params.scopeType } : {}),
+          ...(params.scopeId ? { scopeId: params.scopeId } : {}),
         },
       });
 
@@ -97,7 +114,12 @@ export class SecretStoreService {
     });
   }
 
-  /** Read material, refusing kinds the API has no business decrypting. */
+  /**
+   * Read material, refusing kinds the API has no business decrypting.
+   *
+   * This is where ADR-009 actually lives. Asking for a Proxmox password here
+   * throws, and there is no flag to turn it off.
+   */
   async get(secretRef: string): Promise<Buffer> {
     const record = await this.prisma.client.credentialSecret.findUnique({
       where: { id: secretRef },

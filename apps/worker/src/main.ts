@@ -7,7 +7,7 @@
  * licence covering attribution, origin and trademarks. See LICENSE and NOTICE.
  */
 import 'reflect-metadata';
-import { Worker, type Job } from 'bullmq';
+import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import pino from 'pino';
 import { loadWorkerConfig, redisConnection, secretValues } from '@velnox/config';
@@ -15,6 +15,20 @@ import { createPrismaClient } from '@velnox/db';
 import { JOB_NAMES, QUEUE_NAMES, rootRedactor } from '@velnox/shared';
 import { Heartbeat } from './heartbeat';
 import { processPing, type PingJobData, type PingJobResult } from './processors/ping.processor';
+import { CredentialReader } from './inventory/credentials';
+import {
+  processDiscover,
+  processProbe,
+  processVerify,
+  type DiscoverJobData,
+  type InventoryContext,
+  type ProbeJobData,
+} from './inventory/inventory.processor';
+import {
+  SCHEDULER_TICK_INTERVAL_MS,
+  SCHEDULER_TICK_JOB,
+  runSchedulerTick,
+} from './inventory/scheduler';
 
 /**
  * Velnox worker.
@@ -24,8 +38,9 @@ import { processPing, type PingJobData, type PingJobResult } from './processors/
  * listening port: nothing on the network can reach it, and its liveness is
  * reported through a Redis heartbeat.
  *
- * Phase 1 runs a single processor whose only purpose is to prove the api ->
- * Redis -> worker path end to end. The playbook runner arrives in Phase 5.
+ * From phase 4 it runs a second queue: everything that talks to a hypervisor.
+ * Its own queue because that work is slow and bursty and must not sit behind the
+ * things an operator is waiting on. The playbook runner arrives in phase 5.
  */
 async function bootstrap(): Promise<void> {
   const config = loadWorkerConfig();
@@ -96,9 +111,77 @@ async function bootstrap(): Promise<void> {
     logger.error({ err: rootRedactor.value(error) }, 'Worker error');
   });
 
+  // ------------------------------------------------------------------
+  // Inventory
+  // ------------------------------------------------------------------
+
+  const inventoryContext: InventoryContext = {
+    prisma,
+    credentials: new CredentialReader(prisma, config.MASTER_ENCRYPTION_KEY),
+    log: (fields, message) => logger.info(fields, message),
+  };
+
+  const inventoryQueue = new Queue(QUEUE_NAMES.inventory, {
+    connection: { ...redisConnection(config), maxRetriesPerRequest: null },
+  });
+
+  const inventoryWorker = new Worker(
+    QUEUE_NAMES.inventory,
+    async (job: Job) => {
+      switch (job.name) {
+        case JOB_NAMES.inventoryProbe:
+          return processProbe(job as Job<ProbeJobData>);
+        case JOB_NAMES.inventoryVerify:
+          return processVerify(job as Job<DiscoverJobData>, inventoryContext);
+        case JOB_NAMES.inventoryDiscover:
+          return processDiscover(job as Job<DiscoverJobData>, inventoryContext);
+        case SCHEDULER_TICK_JOB:
+          return runSchedulerTick(prisma, inventoryQueue);
+        default:
+          throw new Error(`Unknown inventory job "${job.name}"`);
+      }
+    },
+    {
+      connection: {
+        ...redisConnection(config),
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+      },
+      concurrency: config.WORKER_CONCURRENCY,
+    },
+  );
+
+  inventoryWorker.on('failed', (job, error) => {
+    // A discovery failure is a fact about somebody's cluster, not about Velnox,
+    // so it is a warning here and a recorded run in the database. The error
+    // level is reserved for the worker itself being broken.
+    logger.warn(
+      { jobId: job?.id, jobName: job?.name, err: rootRedactor.value(error) },
+      'Inventory job failed',
+    );
+  });
+
+  inventoryWorker.on('error', (error) => {
+    logger.error({ err: rootRedactor.value(error) }, 'Inventory worker error');
+  });
+
+  /*
+   * One repeating tick drives every cluster's schedule.
+   *
+   * `upsertJobScheduler` replaces the previous definition rather than adding a
+   * second, so a worker restart — or a changed interval in a later release —
+   * cannot leave two schedulers running.
+   */
+  await inventoryQueue.upsertJobScheduler(
+    'inventory-tick',
+    { every: SCHEDULER_TICK_INTERVAL_MS },
+    { name: SCHEDULER_TICK_JOB },
+  );
+
   logger.info(
     {
       queue: QUEUE_NAMES.system,
+      inventoryQueue: QUEUE_NAMES.inventory,
       concurrency: config.WORKER_CONCURRENCY,
       version: config.VELNOX_VERSION,
       commit: config.VELNOX_BUILD_COMMIT,
@@ -115,6 +198,8 @@ async function bootstrap(): Promise<void> {
     // Let an in-flight job finish. From Phase 7 this matters a great deal: a
     // dist-upgrade must never be killed part-way through.
     await worker.close();
+    await inventoryWorker.close();
+    await inventoryQueue.close();
     await heartbeat.stop();
     heartbeatRedis.disconnect();
     await prisma.$disconnect();

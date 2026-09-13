@@ -106,6 +106,7 @@ model Tenant {
 
   users           User[]
   sites           Site[]
+  clusters        Cluster[]
   roles           Role[]
   roleAssignments RoleAssignment[]
   auditEvents     AuditEvent[]
@@ -145,7 +146,8 @@ model Site {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clusters Cluster[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -173,9 +175,9 @@ model User {
   status      UserStatus @default(ACTIVE)
 
   /// Argon2id PHC string. Null for users that authenticate only through SSO.
-  passwordHash        String?  @map("password_hash")
-  mustChangePassword  Boolean  @default(false) @map("must_change_password")
-  passwordUpdatedAt   DateTime? @map("password_updated_at") @db.Timestamptz(3)
+  passwordHash       String?   @map("password_hash")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  passwordUpdatedAt  DateTime? @map("password_updated_at") @db.Timestamptz(3)
 
   /// Maintained by the application whenever a factor is confirmed or removed.
   mfaEnrolled Boolean @default(false) @map("mfa_enrolled")
@@ -202,7 +204,7 @@ model User {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   sessions        Session[]
   roleAssignments RoleAssignment[]
   identities      UserIdentity[]
@@ -229,10 +231,10 @@ model IdentityProvider {
   name    String
   enabled Boolean              @default(false)
 
-  discoveryUrl      String? @map("discovery_url")
-  issuer            String?
-  clientId          String? @map("client_id")
-  clientSecretRef   String? @map("client_secret_ref") @db.Uuid
+  discoveryUrl        String?  @map("discovery_url")
+  issuer              String?
+  clientId            String?  @map("client_id")
+  clientSecretRef     String?  @map("client_secret_ref") @db.Uuid
   allowedEmailDomains String[] @default([]) @map("allowed_email_domains")
 
   /// Whether an unknown but successfully authenticated identity may create a user.
@@ -260,10 +262,10 @@ model UserIdentity {
   userId     String @map("user_id") @db.Uuid
   providerId String @map("provider_id") @db.Uuid
 
-  subject      String
-  emailAtLink  String? @map("email_at_link")
-  linkedAt     DateTime @default(now()) @map("linked_at") @db.Timestamptz(3)
-  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  subject     String
+  emailAtLink String?   @map("email_at_link")
+  linkedAt    DateTime  @default(now()) @map("linked_at") @db.Timestamptz(3)
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(3)
 
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider IdentityProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
@@ -296,11 +298,11 @@ model Session {
   /// session can reach only enrolment and logout.
   mfaSatisfiedAt DateTime? @map("mfa_satisfied_at") @db.Timestamptz(3)
 
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  lastUsedAt   DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
-  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
-  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
-  revokedReason String?  @map("revoked_reason")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt    DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedReason String?   @map("revoked_reason")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -358,7 +360,7 @@ model MfaRecoveryCode {
   userId   String @map("user_id") @db.Uuid
   codeHash String @map("code_hash")
 
-  generation Int      @default(1)
+  generation Int       @default(1)
   usedAt     DateTime? @map("used_at") @db.Timestamptz(3)
   usedIp     String?   @map("used_ip")
 
@@ -449,6 +451,398 @@ model RoleAssignment {
   @@index([userId])
   @@index([tenantId])
   @@map("role_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Proxmox inventory
+// ---------------------------------------------------------------------------
+
+/// A standalone node is modelled as a cluster of one. That keeps every
+/// downstream path — rolling updates, upgrade plans, guards — uniform instead of
+/// branching on "is this standalone" in a dozen places.
+enum ClusterKind {
+  CLUSTER
+  STANDALONE
+
+  @@map("cluster_kind")
+}
+
+enum HealthState {
+  OK
+  WARNING
+  CRITICAL
+  UNKNOWN
+
+  @@map("health_state")
+}
+
+/// How Velnox decides it is talking to the right machine. There is deliberately
+/// no INSECURE value, and adding one would be a schema change somebody has to
+/// argue for in a migration.
+enum TlsVerifyMode {
+  PINNED_FINGERPRINT
+  CA_BUNDLE
+  SYSTEM
+
+  @@map("tls_verify_mode")
+}
+
+/// Where a cluster is in the process of being added and kept current.
+enum ConnectionState {
+  /// Created, fingerprint pinned, nothing has been proven yet.
+  PENDING
+  /// Credentials work and the last discovery run completed.
+  CONNECTED
+  /// The last attempt failed. `last_error_code` says how.
+  FAILED
+
+  @@map("connection_state")
+}
+
+enum ProxmoxAuthKind {
+  API_TOKEN
+  TICKET
+
+  @@map("proxmox_auth_kind")
+}
+
+enum NodeState {
+  ONLINE
+  OFFLINE
+  UNKNOWN
+
+  @@map("node_state")
+}
+
+enum WorkloadKind {
+  QEMU
+  LXC
+
+  @@map("workload_kind")
+}
+
+enum WorkloadState {
+  RUNNING
+  STOPPED
+  PAUSED
+  UNKNOWN
+
+  @@map("workload_state")
+}
+
+enum CephDaemonKind {
+  MON
+  MGR
+  OSD
+  MDS
+  RGW
+
+  @@map("ceph_daemon_kind")
+}
+
+enum DiscoveryState {
+  RUNNING
+  SUCCEEDED
+  /// Finished, with something it could not learn. The inventory it did collect
+  /// is still written — a cluster with one unreachable node is not a failed run.
+  PARTIAL
+  FAILED
+
+  @@map("discovery_state")
+}
+
+/// A Proxmox VE cluster, or a single node presented as a cluster of one.
+model Cluster {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  siteId   String? @map("site_id") @db.Uuid
+
+  name String
+  kind ClusterKind @default(CLUSTER)
+
+  // --- how to reach it ---
+  /// Hostname or address of one node. Proxmox answers cluster-wide from any of them.
+  endpointHost String @map("endpoint_host")
+  endpointPort Int    @default(8006) @map("endpoint_port")
+
+  tlsVerifyMode  TlsVerifyMode @default(PINNED_FINGERPRINT) @map("tls_verify_mode")
+  /// SHA-256, colon-separated uppercase. Null only when verification is CA-based.
+  tlsFingerprint String?       @map("tls_fingerprint")
+
+  authKind      ProxmoxAuthKind @default(API_TOKEN) @map("auth_kind")
+  /// The credential row holding the token or password. Never the material itself.
+  credentialId  String?         @map("credential_id") @db.Uuid
+  /// `root@pam!velnox`, or `user@realm`. Shown so an operator can revoke it there.
+  authPrincipal String?         @map("auth_principal")
+
+  // --- what discovery found ---
+  connectionState ConnectionState @default(PENDING) @map("connection_state")
+  health          HealthState     @default(UNKNOWN)
+
+  pveVersion  String?  @map("pve_version")
+  /// Every distinct PVE version across the nodes. More than one is mid-upgrade.
+  pveVersions String[] @default([]) @map("pve_versions")
+  quorate     Boolean?
+  nodeCount   Int      @default(0) @map("node_count")
+
+  cephPresent             Boolean  @default(false) @map("ceph_present")
+  cephHealth              String?  @map("ceph_health")
+  cephHealthDetail        Json     @default("[]") @map("ceph_health_detail")
+  cephVersions            String[] @default([]) @map("ceph_versions")
+  cephVersionsHomogeneous Boolean? @map("ceph_versions_homogeneous")
+  cephOsdsTotal           Int?     @map("ceph_osds_total")
+  cephOsdsUp              Int?     @map("ceph_osds_up")
+  cephOsdsIn              Int?     @map("ceph_osds_in")
+  cephPgsTotal            Int?     @map("ceph_pgs_total")
+  cephPgsClean            Boolean? @map("ceph_pgs_clean")
+  cephMonQuorum           Int?     @map("ceph_mon_quorum")
+  cephMonTotal            Int?     @map("ceph_mon_total")
+  /// Set flags, such as `noout`. A cluster left with one after an aborted
+  /// maintenance window is a silent time bomb, so it is inventoried and shown.
+  cephFlags               String[] @default([]) @map("ceph_flags")
+
+  lastSeenAt      DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  lastDiscoveryAt DateTime? @map("last_discovery_at") @db.Timestamptz(3)
+  /// An error code, never a sentence: the frontend renders it in the reader's language.
+  lastErrorCode   String?   @map("last_error_code")
+  lastErrorDetail String?   @map("last_error_detail")
+
+  /// How often scheduled discovery runs. Zero turns it off for this cluster.
+  discoveryIntervalMinutes Int @default(30) @map("discovery_interval_minutes")
+
+  /// No soft delete. Removing a cluster removes Velnox's cache of somebody
+  /// else's infrastructure — the infrastructure is untouched and the audit trail
+  /// is unaffected, so keeping a hidden copy of stale inventory would serve
+  /// nobody and would keep the endpoint reserved against re-adding it.
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  site          Site?          @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  nodes         Node[]
+  workloads     Workload[]
+  cephDaemons   CephDaemon[]
+  discoveryRuns DiscoveryRun[]
+
+  @@index([tenantId])
+  @@index([siteId])
+  @@map("clusters")
+}
+
+model Node {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  clusterId String @map("cluster_id") @db.Uuid
+
+  /// The name Proxmox knows it by. Unique within a cluster, which is a Proxmox rule.
+  name    String
+  /// The cluster's own node id. Null on a standalone node.
+  nodeId  Int?    @map("node_id")
+  address String?
+
+  state  NodeState   @default(UNKNOWN)
+  health HealthState @default(UNKNOWN)
+
+  pveVersion         String? @map("pve_version")
+  kernelVersion      String? @map("kernel_version")
+  subscriptionStatus String? @map("subscription_status")
+  subscriptionLevel  String? @map("subscription_level")
+
+  cpuCount         Int?    @map("cpu_count")
+  cpuModel         String? @map("cpu_model")
+  cpuUsage         Float?  @map("cpu_usage")
+  memoryTotalBytes BigInt? @map("memory_total_bytes")
+  memoryUsedBytes  BigInt? @map("memory_used_bytes")
+  rootfsTotalBytes BigInt? @map("rootfs_total_bytes")
+  rootfsUsedBytes  BigInt? @map("rootfs_used_bytes")
+  uptimeSeconds    Int?    @map("uptime_seconds")
+
+  /// How many packages apt would install. Classification arrives in phase 6.
+  updatesAvailable Int? @map("updates_available")
+
+  /// The apt sources, as discovered. Phase 9B reads these to plan a repository
+  /// remediation; phase 4 only records them.
+  repositories Json @default("[]")
+
+  /// What discovery could not learn about this node, so one bad node is visible
+  /// rather than silently thin.
+  problems Json @default("[]")
+
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster     Cluster         @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  storages    NodeStorage[]
+  interfaces  NodeInterface[]
+  workloads   Workload[]
+  cephDaemons CephDaemon[]
+
+  @@unique([clusterId, name])
+  @@index([tenantId])
+  @@index([clusterId])
+  @@map("nodes")
+}
+
+model NodeStorage {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  nodeId   String @map("node_id") @db.Uuid
+
+  name    String
+  type    String
+  enabled Boolean  @default(true)
+  active  Boolean  @default(false)
+  shared  Boolean  @default(false)
+  content String[] @default([])
+
+  totalBytes     BigInt? @map("total_bytes")
+  usedBytes      BigInt? @map("used_bytes")
+  availableBytes BigInt? @map("available_bytes")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, name])
+  @@index([tenantId])
+  @@map("node_storages")
+}
+
+model NodeInterface {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  nodeId   String @map("node_id") @db.Uuid
+
+  name        String
+  type        String
+  active      Boolean  @default(false)
+  autostart   Boolean  @default(false)
+  method      String?
+  cidr        String?
+  gateway     String?
+  bridgePorts String[] @default([]) @map("bridge_ports")
+  bondMode    String?  @map("bond_mode")
+  slaves      String[] @default([])
+  comment     String?
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, name])
+  @@index([tenantId])
+  @@map("node_interfaces")
+}
+
+/// QEMU virtual machines and LXC containers in one table, discriminated by
+/// `kind`. They share almost every column and every consumer treats them the
+/// same way; the API still exposes them as two filtered resources. Recorded as a
+/// deliberate deviation from the brief in docs/database-schema.md.
+model Workload {
+  id        String  @id @default(uuid()) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  clusterId String  @map("cluster_id") @db.Uuid
+  nodeId    String? @map("node_id") @db.Uuid
+
+  vmid      Int
+  kind      WorkloadKind
+  name      String?
+  state     WorkloadState @default(UNKNOWN)
+  /// Proxmox's own word, kept verbatim beside the enum: a state Velnox does not
+  /// recognise is visible rather than flattened into UNKNOWN with no trace.
+  rawStatus String?       @map("raw_status")
+
+  template Boolean  @default(false)
+  tags     String[] @default([])
+  pool     String?
+
+  cpuCount       Int?    @map("cpu_count")
+  cpuUsage       Float?  @map("cpu_usage")
+  memoryBytes    BigInt? @map("memory_bytes")
+  memoryMaxBytes BigInt? @map("memory_max_bytes")
+  diskBytes      BigInt? @map("disk_bytes")
+  diskMaxBytes   BigInt? @map("disk_max_bytes")
+  uptimeSeconds  Int?    @map("uptime_seconds")
+
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  node    Node?   @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+
+  @@unique([clusterId, vmid])
+  @@index([tenantId])
+  @@index([clusterId])
+  @@index([nodeId])
+  @@map("workloads")
+}
+
+/// A Ceph daemon. First-class rows because a Ceph upgrade restarts **daemons**,
+/// not nodes: they are the unit of work for the phase 9A playbook, the unit its
+/// guards evaluate, and the unit its report is written against.
+model CephDaemon {
+  id        String  @id @default(uuid()) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  clusterId String  @map("cluster_id") @db.Uuid
+  nodeId    String? @map("node_id") @db.Uuid
+
+  kind     CephDaemonKind
+  /// `osd.7`, `mon.pve1`. Unique within the cluster.
+  daemonId String         @map("daemon_id")
+  host     String?
+  version  String?
+
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  node    Node?   @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+
+  @@unique([clusterId, daemonId])
+  @@index([tenantId])
+  @@index([clusterId])
+  @@map("ceph_daemons")
+}
+
+/// One attempt to read a cluster's inventory.
+///
+/// Kept because "when did this last work" and "what did it fail on" are the two
+/// questions an operator asks about stale inventory, and neither is answerable
+/// from the inventory itself.
+model DiscoveryRun {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  clusterId String @map("cluster_id") @db.Uuid
+
+  state       DiscoveryState @default(RUNNING)
+  /// Who or what asked for it: a user id, or null for the scheduler.
+  requestedBy String?        @map("requested_by") @db.Uuid
+
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+  durationMs Int?      @map("duration_ms")
+
+  nodesSeen     Int? @map("nodes_seen")
+  workloadsSeen Int? @map("workloads_seen")
+
+  /// Every problem the run recorded, verbatim. Never a secret: the discovery
+  /// code builds these from endpoint names and error classes, not from bodies.
+  problems Json @default("[]")
+
+  errorCode   String? @map("error_code")
+  errorDetail String? @map("error_detail")
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clusterId, startedAt])
+  @@map("discovery_runs")
 }
 
 // ---------------------------------------------------------------------------
@@ -581,10 +975,10 @@ model AuditEvent {
 
   tenantId String? @map("tenant_id") @db.Uuid
 
-  actorType     ActorType @map("actor_type")
-  actorId       String?   @map("actor_id") @db.Uuid
-  actorLabel    String?   @map("actor_label")
-  impersonatedBy String?  @map("impersonated_by") @db.Uuid
+  actorType      ActorType @map("actor_type")
+  actorId        String?   @map("actor_id") @db.Uuid
+  actorLabel     String?   @map("actor_label")
+  impersonatedBy String?   @map("impersonated_by") @db.Uuid
 
   action        String
   resourceType  String? @map("resource_type")

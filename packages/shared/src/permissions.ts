@@ -306,9 +306,7 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
     // Not `users.reset_mfa_msp`: an administrator can put a customer back into
     // their account, but removing the second factor from an MSP colleague — an
     // account that reaches every customer — stays with the Super Administrator.
-    permissions: ALL_PERMISSIONS.filter(
-      (p) => p !== P.systemManage && p !== P.usersResetMfaMsp,
-    ),
+    permissions: ALL_PERMISSIONS.filter((p) => p !== P.systemManage && p !== P.usersResetMfaMsp),
   },
   {
     key: 'msp_engineer',

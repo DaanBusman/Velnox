@@ -38,7 +38,9 @@ describe('redaction', () => {
       const generated = 'S3cret-Rotation-Value-9x';
       r.remember(generated);
 
-      expect(r.text(`chpasswd wrote ${generated} to root`)).toBe(`chpasswd wrote ${REDACTED} to root`);
+      expect(r.text(`chpasswd wrote ${generated} to root`)).toBe(
+        `chpasswd wrote ${REDACTED} to root`,
+      );
       expect(r.value({ note: `old was ${generated}` })).toEqual({ note: `old was ${REDACTED}` });
       expect(r.value([`${generated}!`])).toEqual([`${REDACTED}!`]);
     });

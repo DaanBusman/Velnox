@@ -31,6 +31,12 @@ export const ERROR_CODES = {
   setupAlreadyInitialized: 'setup.already_initialized',
 
   clusterUnreachable: 'cluster.unreachable',
+  /** Something answered, but it is not a Proxmox API. */
+  clusterNotProxmox: 'cluster.not_proxmox',
+  /** The token or password was refused. */
+  clusterAuthFailed: 'cluster.auth_failed',
+  /** A cluster with this endpoint is already registered in this tenant. */
+  clusterDuplicate: 'cluster.duplicate',
   clusterQuorumAtRisk: 'cluster.quorum_at_risk',
   clusterAlreadyDegraded: 'cluster.already_degraded',
 

@@ -1,6 +1,6 @@
 import { request as httpsRequest, type RequestOptions } from 'node:https';
 import type { TLSSocket } from 'node:tls';
-import { fingerprintsMatch, normaliseFingerprint, type Fingerprint } from './fingerprint';
+import { fingerprintsMatch, normaliseFingerprint, type Fingerprint } from '@velnox/shared';
 
 /**
  * The HTTPS transport, with certificate pinning.

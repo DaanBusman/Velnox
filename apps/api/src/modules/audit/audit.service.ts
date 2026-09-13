@@ -48,6 +48,13 @@ export const AUDIT_ACTIONS = {
   tenantUpdated: 'tenant.updated',
   tenantArchived: 'tenant.archived',
 
+  clusterProbed: 'cluster.probed',
+  clusterAdded: 'cluster.added',
+  clusterUpdated: 'cluster.updated',
+  clusterRemoved: 'cluster.removed',
+  clusterDiscovered: 'cluster.discovered',
+  clusterDiscoveryFailed: 'cluster.discovery_failed',
+
   siteCreated: 'site.created',
   siteUpdated: 'site.updated',
   siteDeleted: 'site.deleted',

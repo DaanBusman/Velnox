@@ -39,7 +39,9 @@ describe('permission catalogue', () => {
 
 describe('isAllowed', () => {
   it('grants nothing without a matching permission', () => {
-    expect(isAllowed([grant(PERMISSIONS.nodesRead, 'GLOBAL')], PERMISSIONS.nodesManage)).toBe(false);
+    expect(isAllowed([grant(PERMISSIONS.nodesRead, 'GLOBAL')], PERMISSIONS.nodesManage)).toBe(
+      false,
+    );
     expect(isAllowed([], PERMISSIONS.nodesRead)).toBe(false);
   });
 
@@ -69,7 +71,10 @@ describe('isAllowed', () => {
       isAllowed(grants, PERMISSIONS.nodesManage, { tenantId: 'tenant-b', clusterId: 'cluster-dr' }),
     ).toBe(true);
     expect(
-      isAllowed(grants, PERMISSIONS.nodesManage, { tenantId: 'tenant-b', clusterId: 'cluster-prod' }),
+      isAllowed(grants, PERMISSIONS.nodesManage, {
+        tenantId: 'tenant-b',
+        clusterId: 'cluster-prod',
+      }),
     ).toBe(false);
     expect(isAllowed(grants, PERMISSIONS.nodesManage, { tenantId: 'tenant-b' })).toBe(false);
   });
@@ -227,10 +232,8 @@ describe('canResetMfa', () => {
   const ACTOR = 'actor-1';
   const TARGET = 'target-1';
 
-  const decide = (
-    grants: Grant[],
-    over: Partial<Parameters<typeof canResetMfa>[0]> = {},
-  ) => canResetMfa({ actorId: ACTOR, targetId: TARGET, targetIsMspRoot: false, grants, ...over });
+  const decide = (grants: Grant[], over: Partial<Parameters<typeof canResetMfa>[0]> = {}) =>
+    canResetMfa({ actorId: ACTOR, targetId: TARGET, targetIsMspRoot: false, grants, ...over });
 
   const RESET = grant(PERMISSIONS.usersResetMfa, 'GLOBAL');
   const RESET_MSP = grant(PERMISSIONS.usersResetMfaMsp, 'GLOBAL');

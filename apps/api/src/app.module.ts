@@ -13,6 +13,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 
 /**
  * Application composition root.
@@ -21,8 +22,9 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
  * then protected by default and must opt out with @Public(). The alternative
  * fails silently exactly once, and the failure is an open endpoint.
  *
- * Still deliberately absent is any module that reaches a managed node — SSH,
- * Proxmox and WinRM adapters exist only in the worker image (ADR-009).
+ * Still deliberately absent is any module that reaches a managed node. The
+ * inventory module submits work and reads what came back; the SSH, Proxmox and
+ * WinRM adapters exist only in the worker image (ADR-009).
  */
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     AuthModule,
     SetupModule,
     TenancyModule,
+    InventoryModule,
     UsersModule,
     IdentityModule,
     RolesModule,

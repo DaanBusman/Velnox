@@ -7,6 +7,7 @@
  * licence covering attribution, origin and trademarks. See LICENSE and NOTICE.
  */
 export * from './errors';
+export * from './fingerprint';
 export * from './permissions';
 export * from './redaction';
 export * from './slug';
@@ -20,6 +21,15 @@ export * from './system';
  */
 export const QUEUE_NAMES = {
   system: 'velnox-system',
+  /**
+   * Everything that talks to a hypervisor.
+   *
+   * Its own queue rather than a job name on the system queue, because its jobs
+   * are slow, bursty and network-bound: a discovery run against fifteen nodes
+   * must not sit behind a queue that also carries the things an operator is
+   * waiting on.
+   */
+  inventory: 'velnox-inventory',
 } as const;
 
 /** BullMQ's constraint on queue names, asserted in tests so it cannot regress. */
@@ -27,6 +37,18 @@ export const isValidQueueName = (name: string): boolean => name.length > 0 && !n
 
 export const JOB_NAMES = {
   ping: 'system.ping',
+
+  /**
+   * Read a host's certificate without authenticating to it.
+   *
+   * The first half of adding a cluster: an operator cannot confirm a
+   * fingerprint they have not been shown. Carries no credential, by design.
+   */
+  inventoryProbe: 'inventory.probe',
+  /** Prove the stored credential works against the pinned certificate. */
+  inventoryVerify: 'inventory.verify',
+  /** Read a cluster's whole inventory and write it down. */
+  inventoryDiscover: 'inventory.discover',
 } as const;
 
 /** Redis keys owned by the worker. The health check reads the heartbeat. */

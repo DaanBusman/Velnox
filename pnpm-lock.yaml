@@ -285,9 +285,15 @@ importers:
       '@velnox/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@velnox/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@velnox/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@velnox/proxmox':
+        specifier: workspace:*
+        version: link:../../packages/proxmox
       '@velnox/shared':
         specifier: workspace:*
         version: link:../../packages/shared

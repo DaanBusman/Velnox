@@ -49,9 +49,7 @@ function parseMatrix(markdown: string, file: string): Matrix {
    * the anchor because they are identical in every translation, so this does not
    * need a per-language heading.
    */
-  const start = lines.findIndex(
-    (line) => line.includes('| Super |') && line.includes('| T-RO |'),
-  );
+  const start = lines.findIndex((line) => line.includes('| Super |') && line.includes('| T-RO |'));
   if (start === -1) throw new Error(`${file}: the role matrix table is missing`);
 
   for (const line of lines.slice(start)) {
@@ -117,7 +115,9 @@ describe.each(FILES)('%s', (file) => {
       // by the same pattern.
       const row = new RegExp(`\`${role.key}\`[^\\n]*`).exec(markdown)?.[0];
       expect(row, `${role.key} is missing from the summary table`).toBeTruthy();
-      expect(row, `${role.key} summary row`).toMatch(new RegExp(`\\|\\s*${role.permissions.length}(\\s|\\||of)`));
+      expect(row, `${role.key} summary row`).toMatch(
+        new RegExp(`\\|\\s*${role.permissions.length}(\\s|\\||of)`),
+      );
     }
   });
 
@@ -131,7 +131,9 @@ describe.each(FILES)('%s', (file) => {
     const end = rest.indexOf('\n## ');
     const section = end === -1 ? rest : rest.slice(0, end);
 
-    const listed = new Set([...section.matchAll(/`([a-z][a-z_]*\.[a-z][a-z_]*)`/g)].map((m) => m[1]));
+    const listed = new Set(
+      [...section.matchAll(/`([a-z][a-z_]*\.[a-z][a-z_]*)`/g)].map((m) => m[1]),
+    );
 
     for (const permission of PRIVILEGED_PERMISSIONS) {
       expect(listed.has(permission), `${permission} is privileged but not listed`).toBe(true);
