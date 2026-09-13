@@ -61,6 +61,17 @@ export default tseslint.config(
           message:
             'Disabling TLS verification is not permitted. Velnox pins the certificate fingerprint per endpoint (tls_verify_mode) or uses a supplied CA bundle.',
         },
+        {
+          // The second half of the same rule. `rejectUnauthorized: someVariable`
+          // is not a literal `false` and used to walk straight past the selector
+          // above — which is exactly the shape the Proxmox transport needed once
+          // pinning and CA verification became a choice at runtime. A rule a
+          // variable defeats is not a rule, so anything that is not a literal
+          // has to be argued with inline.
+          selector: 'Property[key.name="rejectUnauthorized"] > .value:not(Literal)',
+          message:
+            'TLS verification is being decided at runtime. That is only acceptable when something else identifies the peer — a pinned fingerprint, checked before anything is sent. Disable this rule inline and say what replaces it.',
+        },
       ],
     },
   },

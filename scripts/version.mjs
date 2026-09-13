@@ -52,6 +52,7 @@ const MANIFESTS = [
   'packages/crypto/package.json',
   'packages/db/package.json',
   'packages/i18n/package.json',
+  'packages/proxmox/package.json',
   'packages/shared/package.json',
 ];
 

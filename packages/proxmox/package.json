@@ -1,9 +1,9 @@
 {
-  "name": "@velnox/config",
+  "name": "@velnox/proxmox",
   "version": "0.3.1",
   "private": true,
   "license": "AGPL-3.0-or-later",
-  "description": "Typed, validated environment configuration",
+  "description": "Proxmox VE API client with certificate pinning, retries and task polling",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
@@ -16,7 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "zod": "^3.24.1"
+    "@velnox/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
