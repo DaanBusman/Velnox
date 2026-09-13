@@ -1,6 +1,6 @@
 # Velnox — Architectuur
 
-> **Vertaling.** Bron: [docs/architecture.md](../architecture.md) @ `5d8f049`.
+> **Vertaling.** Bron: [docs/architecture.md](../architecture.md) @ `4321aad`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 > Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.
@@ -172,11 +172,30 @@ interface RequestContext {
 en aan de `AuthorizationService` vraagt of een toekenning dat recht op of boven dat bereik dekt.
 Weigeringen worden geaudit.
 
-**Laag 2 — verplichte query-afbakening.** Een Prisma client-extensie onderschept elke query op een
-tenant-gebonden model en injecteert `tenantId IN (...)`. Zij gooit een fout wanneer een tenant-gebonden
-model wordt bevraagd zonder `RequestContext`, tenzij de aanroeper expliciet en doorzoekbaar
-`withSystemScope()` gebruikt (alleen door workers, migraties en de installatiewizard). *Vergeten* van
-een autorisatiecontrole lekt daardoor niets; je moet er actief omheen werken.
+**Laag 2 — verplichte query-afbakening.** *(Geland in fase 3.)* Een Prisma client-extensie
+onderschept elke query op een tenant-gebonden model en injecteert het bereik van de aanroeper. Zij
+**gooit een fout** wanneer een tenant-gebonden model wordt bevraagd zonder vastgesteld bereik, tenzij
+de aanroeper expliciet en doorzoekbaar `withSystemScope("waarom")` gebruikt — dat een geschreven
+reden vereist en vier aanroepers heeft: authenticatie, de installatiewizard, het schrijven van het
+auditspoor, en de guard die een principal vaststelt. *Vergeten* van een autorisatiecontrole lekt
+daardoor niets; je moet er actief omheen werken.
+
+Het bereik wordt door de auth-guard ingevuld zodra de principal bekend is. Tot dat moment verkeert
+elk verzoek in de foutwerpende toestand, en dat is wat de gevaarlijke standaard "weigeren" maakt in
+plaats van "alle rijen". Wat het filter opheft is een **GLOBAL-recht**, niet lidmaatschap van de
+MSP-organisatie: een account dat in de MSP-tenant woont maar één klant kreeg toegewezen, bereikt
+precies die klant.
+
+Drie details zijn dragend en staan als commentaar in `packages/db/src/tenancy.ts`: het bereik wordt
+aan `where.AND` toegevoegd terwijl de sleutels van de aanroeper op het bovenste niveau blijven
+(Prisma eist daar een uniek veld bij `findUnique`/`update`/`delete`); een `AND` die de aanroeper zelf
+meegaf wordt aangevuld in plaats van vervangen (vervangen zou zijn query *verbreden*); en
+`role_assignments` wordt afgebakend via het account waar het recht op zit in plaats van via de eigen
+`tenant_id`, die bij een GLOBAL-recht null is en dus elk MSP-breed recht aan elke tenant zou tonen.
+
+`scripts/verify-tenancy.sh` toetst de grens tegen een draaiende stack: het meldt zich aan als twee
+verschillende mensen en probeert de grens te passeren via lijsten, filters, directe id-opvragingen en
+schrijfacties.
 
 **Ruwe SQL is verboden** in applicatiecode via een ESLint-regel (`no-restricted-properties` op
 `$queryRaw`/`$executeRaw`) met een gedocumenteerde uitzonderingslijst, omdat ruwe SQL laag 2 omzeilt.

@@ -1,9 +1,9 @@
 # Velnox — Implementatieroadmap
 
-> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `5d8f049`.
+> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `4321aad`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Fase 0, 1 en 2 afgerond. Fase 3–15 wachten op goedkeuring.
+**Status:** Fase 0 tot en met 3 afgerond. Fase 4–15 wachten op goedkeuring.
 
 Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
 acceptatiecriteria tegen een draaiende stack — 29 controles over elke afhankelijkheid, de
@@ -74,7 +74,7 @@ endpoint in plaats van een steekproef; een herstelcode werkt precies één keer 
 en gealarmeerd; de TOTP-seed wordt via de credential store opgeslagen en komt in geen enkele API-respons,
 logregel of auditrecord voor.
 
-## Phase 3 — Multi-tenancy · **L**
+## Phase 3 — Multi-tenancy · **L** · ✅ afgerond
 
 CRUD voor tenants en locaties. Prisma-tenancy-extensie met de regel dat een ontbrekende context een fout
 gooit, en de expliciete uitweg `withSystemScope()`. Bereikbewuste roltoekenningen

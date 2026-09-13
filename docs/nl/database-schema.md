@@ -1,6 +1,6 @@
 # Velnox — Voorstel databaseschema
 
-> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `5d8f049`.
+> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `4321aad`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Phase 0 ontwerpvoorstel. PostgreSQL 16, Prisma-migraties.
@@ -85,8 +85,29 @@ erDiagram
 wordt door de installatiewizard aangemaakt en kan nooit worden verwijderd.
 
 ### `sites`
-`id, tenant_id, name, code, address, timezone, contact, notes` — een fysieke of logische locatie.
-Clusters en standalone nodes horen bij een locatie; een locatie hoort bij precies één tenant.
+| Kolom | Type | Toelichting |
+|---|---|---|
+| id | uuid | |
+| tenant_id | uuid | not null; een locatie hoort levenslang bij precies één tenant |
+| name | text | |
+| slug | text | uniek **binnen de tenant**, niet globaal |
+| description | text null | |
+| locality, country, timezone | text null | waar hij staat; vrije tekst, voor wie dit tijdens een storing leest |
+| contact_name, contact_email, contact_phone | text null | een notitie — Velnox verstuurt geen e-mail |
+
+**Geland in fase 3.** De slug is per tenant omdat twee klanten allebei redelijkerwijs een locatie
+`hq` kunnen hebben. De tenant ligt bewust vast: een locatie verplaatsen zou elk recht dat eraan hangt
+— en vanaf fase 4 elk cluster eronder — naar een andere klant verhuizen zonder dat iemand daartoe
+besloten heeft.
+
+Met deze tabel kwamen twee triggers op `role_assignments` mee, omdat `scope_id` polymorf is en geen
+foreign key hem kan dekken:
+
+- `role_assignments_scope_target_exists` weigert een recht waarvan `scope_id` geen tenant of locatie
+  aanwijst. Een recht dat een niet-bestaande rij dekt ziet er precies zo uit als een recht dat nog
+  niet gegeven is.
+- `role_assignments_tenant_follows_scope` vult de gedenormaliseerde `tenant_id` vanuit het bereik in
+  in plaats van de aanroeper te vertrouwen, zodat de kopie niet met het origineel kan verschillen.
 
 ---
 

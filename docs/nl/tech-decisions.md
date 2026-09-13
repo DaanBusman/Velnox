@@ -1,6 +1,6 @@
 # Velnox — Technologiekeuzes (ADR-log)
 
-> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `5d8f049`.
+> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `4321aad`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Phase 0. Deze keuzes zijn voorstellen in afwachting van goedkeuring; er is nog niets
@@ -574,12 +574,70 @@ utility-strings die tussen componenten worden gekopieerd.
 
 ---
 
+## ADR-030 — Tenantscheiding is een filter in de datalaag dat een fout gooit als het ontbreekt
+
+**Context.** Fase 2 handhaafde tenancy door te onthouden. `UsersController` berekende
+`isMspRoot ? null : eigenTenantId` en gaf dat door; elk toekomstig lijst-endpoint had hetzelfde
+moeten doen. Dat klopt precies zolang niemand het vergeet, en de faalwijze van vergeten is de rij van
+een andere klant in een antwoord — de ergste fout die dit product kan hebben.
+
+**Besluit.** Verplaats het filter naar onder de applicatie. Een Prisma client-extensie herschrijft
+elke query op een tenant-gebonden model zodat die het bereik van de aanroeper meedraagt, en een query
+die draait **zonder enig vastgesteld bereik gooit een fout** in plaats van alles terug te geven. Het
+bereik wordt door de auth-guard ingevuld zodra de principal bekend is; tot dat moment verkeert elk
+verzoek in de foutwerpende toestand.
+
+`withSystemScope("reden")` is de enige weg eromheen. Het vereist een geschreven reden, is bewust goed
+doorzoekbaar, en heeft vier aanroepers — authenticatie (een account op e-mailadres vinden is juist
+wat *bepaalt* bij welke tenant een verzoek hoort), de installatiewizard (die maakt de eerste tenant
+die er is), het schrijven van het auditspoor, en de guard die een principal vaststelt.
+
+**Waarom de standaard "fout" is en niet "leeg".** Een leeg resultaat is niet te onderscheiden van een
+tenant zonder rijen, dus een ontbrekend bereik zou eruitzien als een werkende functie zonder inhoud.
+Een fout is een stacktrace in een test, en daar hoort hij. De prijs is dat elk nieuw codepad buiten
+een verzoek luid faalt tot iemand besluit waartoe het afgebakend hoort te zijn, en dat is de bedoeling.
+
+**Waarom een GLOBAL-recht het filter opheft en niet `isMspRoot`.** Lidmaatschap van de
+MSP-organisatie is waar iemands account woont; een GLOBAL-recht is wat diegene daadwerkelijk kreeg.
+Een account in de MSP-tenant dat één klant kreeg toegewezen hoort precies die klant te bereiken. Een
+databasetrigger weigert een GLOBAL-recht al voor iedereen buiten de MSP-roottenant, dus de smallere
+toets is ook de veilige.
+
+**Wat het kostte.** Drie dingen die pas duidelijk werden toen ze braken:
+
+- Het bereik moet in `where.AND`, met de eigen sleutels van de aanroeper op het *bovenste* niveau.
+  Het hele filter inpakken leest prettiger en breekt `findUnique`, `update` en `delete`, omdat Prisma
+  daar een uniek veld op het bovenste niveau eist en anders *"Argument where needs at least one of
+  id"* antwoordt. Eerst verkeerd geschreven.
+- Een `AND` die de aanroeper zelf meegaf moet aangevuld worden, niet vervangen. Vervangen laat zijn
+  voorwaarde vallen en *verbreedt* de query — de enige richting waarin een beveiligingsfilter nooit
+  mag bewegen.
+- `role_assignments.tenant_id` is null bij een GLOBAL-recht, dus filteren op die kolom zou elk
+  MSP-breed recht aan elke tenant hebben getoond. Rechten worden afgebakend via het account waar ze
+  op zitten.
+
+**Verder.** `@RequirePermission` zonder bereiksoplosser betekent stilzwijgend "een globaal recht of
+niets", omdat een leeg doel alleen op GLOBAL matcht. Elk beheer-endpoint was zo geschreven, waardoor
+een tenantbeheerder met `users.manage` op TENANT-bereik de accounts van zijn eigen tenant niet kon
+beheren — onzichtbaar op een installatie met één tenant. `RequirePermissionSomewhere` is de oplossing
+voor endpoints waarvan het bereik een eigenschap is van een rij die nog niemand gelezen heeft: de
+guard weigert wie het recht nergens heeft, en de service toetst het precieze bereik zodra de rij
+geladen is. Het klopt alleen als paar; de zwakkere decorator alleen zou een echte verzwakking zijn.
+
+**Gevolgen.** Een vergeten autorisatiecontrole lekt geen gegevens meer; hij verzuimt alleen te
+controleren of de aanroeper het mocht vragen. Ruwe SQL blijft door ESLint verboden met een
+gedocumenteerde uitzonderingslijst, omdat die deze laag volledig omzeilt. Row-level security in
+PostgreSQL blijft uitgesteld tot fase 15 als derde laag, vastgelegd in known-gaps.md in plaats van
+stilzwijgend overgeslagen.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |
 |---|---|
 | Node.js | 22 LTS |
-| pnpm | 10.x (fase 0 noemde 9.x; 10 is wat de toolchain oploste) |
+| pnpm | 12.x (fase 0 noemde 9.x; zie ADR-029 voor de stap 10 → 12) |
 | NestJS | 11.x |
 | Next.js | 15.x |
 | React | 19.x |

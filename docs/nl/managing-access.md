@@ -1,6 +1,6 @@
 # Gebruikers en toegang beheren
 
-> **Vertaling.** Bron: [docs/managing-access.md](../managing-access.md) @ `9db085f`.
+> **Vertaling.** Bron: [docs/managing-access.md](../managing-access.md) @ `4321aad`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Alles over wie zich kan aanmelden bij Velnox en wat diegene mag.** Elk hoofdstuk is één taak,
@@ -40,16 +40,33 @@ geauthenticeerd maar niet geautoriseerd. Geef het hierna een rol.
 
 ## Iemand een rol geven
 
-**Je hebt nodig:** `roles.manage`.
+**Je hebt nodig:** `roles.manage`, dekkend voor wat de toekenning gaat dekken.
 
 1. Ga naar **Gebruikers** en zoek het account op.
 2. Kies een rol bij **Rol toekennen**.
-3. De toekenning geldt vanaf het eerstvolgende verzoek van het account — er is verder niets toe te
-   passen.
+3. Kies waarvoor die **geldt** — alle tenants, één tenant, of één locatie.
+4. **Toekennen**. Het geldt vanaf het eerstvolgende verzoek van het account; er is verder niets toe
+   te passen.
+
+**De tweede keuze is de belangrijke.** Een rol zegt op zichzelf wat iemand mag doen; het bereik zegt
+bij wie. "MSP Engineer" zegt niets nuttigs tot je weet of het één klant bereikt of allemaal, en
+daarom staan de rollen van een account met hun bereik ernaast.
+
+Er gelden drie regels, alle drie aan de serverzijde afgedwongen:
+
+- **Je kunt niet toekennen wat je zelf niet hebt.** Een rol toekennen die een klant dekt vereist
+  `roles.manage` dat diezelfde klant dekt — zo kan delegeren toegang nooit verbreden.
+- **Het account van een klant blijft binnen de eigen tenant.** Alleen accounts in je eigen
+  MSP-organisatie mogen een recht hebben dat naar de tenant van iemand anders wijst.
+- **"Alle tenants" vereist een thuis in de MSP-organisatie**, en de optie wordt anders niet
+  aangeboden.
 
 Rollen met de aanduiding **alleen MSP** kunnen alleen worden toegekend aan accounts in je eigen
-organisatie, niet aan medewerkers van een klant. Velnox dwingt dat aan de serverzijde af, dus het
+organisatie, niet aan medewerkers van een klant. Velnox dwingt ook dat aan de serverzijde af, dus het
 geldt ongeacht wat de interface aanbiedt.
+
+[Je omgeving indelen](organising-your-fleet.md) bevat een uitgewerkt voorbeeld van een engineer die
+tot één locatie beperkt wordt.
 
 [Rollen en rechten](permissions.md) beschrijft precies wat elke rol toekent. Lees dat voordat je er
 voor het eerst een toekent: het verschil tussen MSP Engineer en MSP Administrator is niet
@@ -313,6 +330,7 @@ Nuttig om te weten wanneer iets wordt geweigerd en je probeert te achterhalen wa
 ## Waar je hierna naartoe kunt
 
 - [Rollen en rechten](permissions.md) — de volledige matrix van wat elke rol toekent
+- [Je omgeving indelen](organising-your-fleet.md) — tenants, locaties en het beperken van een recht
 - [Aan de slag](getting-started.md) — het eerste uur na de installatie
 - [Bekende hiaten](known-gaps.md) — wat er op dit moment bewust ontbreekt
 - [Technische besluiten](tech-decisions.md) — waarom deze keuzes, en wat ze kosten
