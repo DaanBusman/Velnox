@@ -1,5 +1,5 @@
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { createPrismaClient, type PrismaClient } from '@velnox/db';
+import { createPrismaClient, type VelnoxPrismaClient } from '@velnox/db';
 import type { ApiConfig } from '@velnox/config';
 import { API_CONFIG } from '../../config/config.module';
 
@@ -16,7 +16,7 @@ import { API_CONFIG } from '../../config/config.module';
  */
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
-  readonly client: PrismaClient;
+  readonly client: VelnoxPrismaClient;
 
   constructor(@Inject(API_CONFIG) config: ApiConfig) {
     this.client = createPrismaClient({

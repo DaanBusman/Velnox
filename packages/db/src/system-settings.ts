@@ -1,4 +1,5 @@
-import type { PrismaClient, SystemSettings } from '@prisma/client';
+import type { SystemSettings } from '@prisma/client';
+import type { VelnoxPrismaClient } from './client';
 
 /** The settings singleton always has id = 1; a CHECK constraint forbids any other. */
 export const SYSTEM_SETTINGS_ID = 1;
@@ -11,7 +12,7 @@ export const SYSTEM_SETTINGS_ID = 1;
  * `initialized` stays false: only the Phase 2 setup wizard may set it, and only
  * in the same transaction that creates the first administrator.
  */
-export async function ensureSystemSettings(prisma: PrismaClient): Promise<SystemSettings> {
+export async function ensureSystemSettings(prisma: VelnoxPrismaClient): Promise<SystemSettings> {
   return prisma.systemSettings.upsert({
     where: { id: SYSTEM_SETTINGS_ID },
     update: {},
@@ -19,6 +20,8 @@ export async function ensureSystemSettings(prisma: PrismaClient): Promise<System
   });
 }
 
-export async function getSystemSettings(prisma: PrismaClient): Promise<SystemSettings | null> {
+export async function getSystemSettings(
+  prisma: VelnoxPrismaClient,
+): Promise<SystemSettings | null> {
   return prisma.systemSettings.findUnique({ where: { id: SYSTEM_SETTINGS_ID } });
 }

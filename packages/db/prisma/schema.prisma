@@ -105,12 +105,51 @@ model Tenant {
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
 
   users           User[]
+  sites           Site[]
   roles           Role[]
   roleAssignments RoleAssignment[]
   auditEvents     AuditEvent[]
   credentials     Credential[]
 
+  @@index([kind])
   @@map("tenants")
+}
+
+/// A physical or logical location belonging to one tenant: a datacentre, an
+/// office, a colocation rack. Sites exist so a grant can be narrower than a whole
+/// customer and so infrastructure has somewhere to hang that is not the tenant
+/// itself — an engineer responsible for one building should not inherit the
+/// other three.
+model Site {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  name String
+  /// Unique within the tenant, not globally: two customers may both have a "hq".
+  slug String
+
+  description String?
+
+  /// Where it physically is. Free text on purpose — an address is for a human
+  /// reading an incident, not for geocoding.
+  locality String?
+  country  String? @db.Char(2)
+  timezone String?
+
+  /// Who to call about this site. No email is sent by Velnox; this is a note.
+  contactName  String? @map("contact_name")
+  contactEmail String? @map("contact_email")
+  contactPhone String? @map("contact_phone")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("sites")
 }
 
 // ---------------------------------------------------------------------------

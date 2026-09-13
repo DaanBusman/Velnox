@@ -1,6 +1,6 @@
 {
   "name": "@velnox/worker",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox worker. The only service that performs outbound automation and decrypts credentials.",

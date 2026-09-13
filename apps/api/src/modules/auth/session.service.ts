@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { Prisma, Session } from '@velnox/db';
+import type { Session, VelnoxTransactionClient } from '@velnox/db';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { REFRESH_TOKEN_TTL_SECONDS, TokenService, hashRefreshToken } from './token.service';
 
@@ -162,7 +162,7 @@ export class SessionService {
   /** Works against both the client and a transaction, so reuse detection can
    *  revoke inside the same transaction that discovered it. */
   private async revokeFamily(
-    client: Prisma.TransactionClient | PrismaService['client'],
+    client: VelnoxTransactionClient | PrismaService['client'],
     familyId: string,
     reason: string,
   ): Promise<number> {

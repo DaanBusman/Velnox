@@ -9,6 +9,7 @@
 export * from './errors';
 export * from './permissions';
 export * from './redaction';
+export * from './slug';
 export * from './system';
 
 /**
@@ -22,8 +23,7 @@ export const QUEUE_NAMES = {
 } as const;
 
 /** BullMQ's constraint on queue names, asserted in tests so it cannot regress. */
-export const isValidQueueName = (name: string): boolean =>
-  name.length > 0 && !name.includes(':');
+export const isValidQueueName = (name: string): boolean => name.length > 0 && !name.includes(':');
 
 export const JOB_NAMES = {
   ping: 'system.ping',

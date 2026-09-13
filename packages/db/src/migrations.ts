@@ -1,6 +1,6 @@
 import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { PrismaClient } from '@prisma/client';
+import type { RawCapableClient } from './client';
 
 /**
  * Migration state, for the readiness probe.
@@ -41,7 +41,7 @@ interface MigrationRow {
   rolled_back_at: Date | null;
 }
 
-export async function readMigrationState(prisma: PrismaClient): Promise<MigrationState> {
+export async function readMigrationState(prisma: RawCapableClient): Promise<MigrationState> {
   const expected = expectedMigrations();
 
   // `_prisma_migrations` is Prisma's own bookkeeping table. It has no model, no
