@@ -59,6 +59,14 @@ ENV VELNOX_VERSION=${VELNOX_VERSION} \
 
 # The tracer was rooted at the repository, so the standalone bundle mirrors the
 # workspace layout: server.js sits under apps/web, node_modules at the top.
+#
+# These two are the whole runtime. Note what is NOT here: `apps/web/public`.
+# Next's standalone output does not include it, so anything placed there is
+# served in development and 404s in the container — which is exactly how the
+# brand mark shipped broken once. If this project ever grows a `public/`
+# directory, it needs its own COPY line added here; a statically imported asset
+# lands in `.next/static/media` and rides along on the second line instead,
+# which is why the mark is imported rather than referenced by path.
 COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
 

@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import clsx from 'clsx';
 import { UPSTREAM_PRODUCT_NAME } from '@velnox/shared';
+import mark from '@/assets/velnox-mark.png';
 
 /**
  * The Velnox mark — shown only when this installation is still Velnox.
@@ -33,16 +34,32 @@ export function ProductMark({
   if (isUpstream) {
     return (
       <Image
-        src="/velnox-mark.png"
+        /*
+         * A static import, not `/velnox-mark.png` from `public/`.
+         *
+         * The first attempt put it in `public/` and it rendered as a broken
+         * image in the container while working perfectly in development: Next's
+         * standalone output does not include `public/`, and the web Dockerfile
+         * copies `.next/standalone` and `.next/static` and nothing else. A
+         * statically imported image is emitted into `.next/static/media`, which
+         * is already on that list — so it ships by the same route as the CSS and
+         * cannot be forgotten separately.
+         */
+        src={mark}
         alt=""
         aria-hidden
         width={size}
         height={size}
+        /*
+         * Unoptimized on purpose. The source is 128px and is rendered at 28 or
+         * 56, so the optimizer would save nothing worth having — and it would
+         * add a runtime dependency on sharp inside the standalone bundle for one
+         * decorative icon.
+         */
+        unoptimized
         // The mark carries its own dark ground, so it needs no plate behind it
         // and reads the same in both themes.
         className={clsx('shrink-0 rounded-md shadow-raised', className)}
-        // Small, above the fold, and on every page of the shell.
-        priority
       />
     );
   }
