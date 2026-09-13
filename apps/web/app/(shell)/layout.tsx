@@ -5,7 +5,8 @@ import { SessionRecovery } from '@/components/session-recovery';
 import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
 import { tryGetSystemInfo } from '@/lib/api';
-import { getSession, getSetupStatus } from '@/lib/session';
+import { getSession, getSetupStatus, listTenants } from '@/lib/session';
+import { resolveSelection, selectedTenantId } from '@/lib/tenant-selection';
 
 /**
  * The signed-in application.
@@ -43,11 +44,23 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   // finish is the only useful thing to do.
   if (!session.mfaSatisfied) redirect('/mfa');
 
-  const [locale, t, info] = await Promise.all([
+  const [locale, t, info, tenants, selected] = await Promise.all([
     getLocale(),
     getTranslations(),
     tryGetSystemInfo(),
+    /*
+     * The tenant list drives the selector in the top bar, and it is read here
+     * rather than per page so the selection is the same on all of them.
+     *
+     * A failure is not fatal: someone without `tenants.read` gets a 403, which
+     * is a perfectly ordinary state for a customer's own operator. The selector
+     * simply does not appear.
+     */
+    listTenants(),
+    selectedTenantId(),
   ]);
+
+  const selectableTenants = tenants.ok ? tenants.data.tenants : [];
 
   // Read from the installation, not hardcoded, so rebranding is a settings
   // change (docs/architecture.md section 15).
@@ -75,7 +88,12 @@ export default async function ShellLayout({ children }: { children: React.ReactN
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar locale={locale} user={session.user} />
+          <Topbar
+            locale={locale}
+            user={session.user}
+            tenants={selectableTenants}
+            selectedTenantId={resolveSelection(selected, selectableTenants)}
+          />
 
           <main id="main" className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>

@@ -46,8 +46,8 @@ export const NAVIGATION: NavGroup[] = [
   {
     labelKey: null,
     items: [
-      { key: 'tenants', href: '/tenants', phase: 3 },
-      { key: 'sites', href: '/sites', phase: 3 },
+      { key: 'tenants', href: '/tenants', phase: null, requiresPermission: 'tenants.read' },
+      { key: 'sites', href: '/sites', phase: null, requiresPermission: 'sites.read' },
     ],
   },
   {

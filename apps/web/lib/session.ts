@@ -6,6 +6,8 @@ import type {
   IdentityProviderView,
   RoleSummary,
   Session,
+  SiteSummary,
+  TenantSummary,
   UserSummary,
 } from './session-types';
 
@@ -15,6 +17,8 @@ export type {
   RoleSummary,
   Session,
   SessionUser,
+  SiteSummary,
+  TenantSummary,
   UserSummary,
 } from './session-types';
 
@@ -140,8 +144,26 @@ export function listAuditActions() {
   return readAs<{ actions: string[] }>('/api/v1/audit-events/actions');
 }
 
-export function listUsers() {
-  return readAs<{ users: UserSummary[] }>('/api/v1/users');
+/**
+ * `tenantId` narrows the list; it cannot widen it.
+ *
+ * The API applies the caller's own scope underneath, so passing an id they
+ * cannot reach returns an empty list rather than somebody else's accounts. That
+ * is what lets the tenant selector be a plain query parameter instead of
+ * something the interface has to be trusted to get right.
+ */
+export function listUsers(tenantId?: string | null) {
+  const query = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
+  return readAs<{ users: UserSummary[] }>(`/api/v1/users${query}`);
+}
+
+export function listTenants() {
+  return readAs<{ tenants: TenantSummary[] }>('/api/v1/tenants');
+}
+
+export function listSites(tenantId?: string | null) {
+  const query = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
+  return readAs<{ sites: SiteSummary[] }>(`/api/v1/sites${query}`);
 }
 
 /** The Entra ID configuration. Requires system.manage, which the API enforces. */

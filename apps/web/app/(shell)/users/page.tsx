@@ -1,7 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { Notice, PageHeader } from '@/components/ui/primitives';
 import { UserAdmin } from '@/components/user-admin';
-import { getSession, listRoles, listUsers } from '@/lib/session';
+import { getSession, listRoles, listSites, listTenants, listUsers } from '@/lib/session';
+import { resolveSelection, selectedTenantId } from '@/lib/tenant-selection';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,12 +12,26 @@ export async function generateMetadata() {
 }
 
 export default async function UsersPage() {
-  const [t, session, users, roles] = await Promise.all([
+  const [t, session, roles, tenants, selected] = await Promise.all([
     getTranslations(),
     getSession(),
-    listUsers(),
     listRoles(),
+    listTenants(),
+    selectedTenantId(),
   ]);
+
+  /*
+   * The tenant selector in the top bar narrows this page.
+   *
+   * Resolved against the tenants this account can actually reach, so a cookie
+   * left behind by an archived customer shows an empty list for a visible
+   * reason rather than for none at all. Selecting the MSP organisation shows
+   * only MSP accounts, which is the whole point of the control.
+   */
+  const selectable = tenants.ok ? tenants.data.tenants : [];
+  const tenantId = resolveSelection(selected, selectable);
+
+  const [users, sites] = await Promise.all([listUsers(tenantId), listSites()]);
 
   if (!users.ok) {
     return (
@@ -73,6 +88,8 @@ export default async function UsersPage() {
         <UserAdmin
           users={users.data.users}
           roles={roles.ok ? roles.data.roles : []}
+          tenants={selectable}
+          sites={sites.ok ? sites.data.sites : []}
           canManageUsers={canManageUsers}
           canManageRoles={canManageRoles && roles.ok}
           canResetMfa={canResetMfa}

@@ -592,12 +592,68 @@ production install rather than a failed test.
 
 ---
 
+## ADR-030 — Tenant isolation is a data-layer filter that throws when it is absent
+
+**Context.** Phase 2 enforced tenancy by remembering. `UsersController` computed
+`isMspRoot ? null : ownTenantId` and passed it down; every future list endpoint would have had to do
+the same. That is correct exactly as long as nobody forgets, and the failure mode of forgetting is
+another customer's rows in a response — the single worst bug this product can have.
+
+**Decision.** Move the filter underneath the application. A Prisma client extension rewrites every
+query against a tenant-scoped model to carry the caller's scope, and a query that runs with **no
+scope resolved at all throws** rather than returning everything. The scope is filled in by the auth
+guard once the principal is known; until then every request is in the throwing state.
+
+`withSystemScope("reason")` is the only way past. It takes a written reason, it is deliberately
+greppable, and it has four callers — authentication (finding an account by email is what *decides*
+which tenant a request belongs to), the setup wizard (it creates the first tenant there is), the
+audit writer, and the guard resolving a principal.
+
+**Why the default is "throw" rather than "empty".** An empty result is indistinguishable from a
+tenant with no rows, so a missing scope would look like a working feature with nothing in it. A
+throw is a stack trace in a test, which is where it belongs. The cost is that any new code path
+running outside a request fails loudly until someone decides what it should be scoped to, and that
+is the point.
+
+**Why a GLOBAL grant lifts the filter, not `isMspRoot`.** Membership of the MSP organisation is where
+someone's account lives; a GLOBAL grant is what they were actually given. An account in the MSP
+tenant that was granted one customer should reach exactly that customer. A database trigger already
+refuses a GLOBAL grant to anyone outside the MSP root tenant, so the narrower test is also the safe
+one.
+
+**What it cost.** Three things that were not obvious until they broke:
+
+- The scope has to go into `where.AND` with the caller's own keys left at the *top level*. Wrapping
+  the whole filter reads better and breaks `findUnique`, `update` and `delete`, because Prisma
+  requires a unique field at the top level and answers *"Argument where needs at least one of id"*
+  when it is nested. Written the wrong way first.
+- An `AND` the caller already supplied must be appended to, not replaced. Replacing it drops their
+  condition, which *widens* the query — the one direction a security filter must never move.
+- `role_assignments.tenant_id` is null for a GLOBAL grant, so filtering on that column would have
+  shown every MSP-wide grant to every tenant. Grants are scoped through the account they sit on.
+
+**Also.** `@RequirePermission` with no scope resolver silently means "a global grant or nothing",
+because an empty target matches only GLOBAL. Every administration endpoint was written that way,
+which meant a tenant administrator holding `users.manage` at TENANT scope could not administer their
+own tenant's accounts — invisible on an installation with one tenant. `RequirePermissionSomewhere`
+is the fix for endpoints whose scope is a property of a row nobody has read yet: the guard refuses
+anyone who does not hold the permission anywhere, and the service checks the precise scope once it
+has the row. It is only ever correct as a pair, and the weaker decorator alone would be a real
+weakening.
+
+**Consequences.** Forgetting an authorization check no longer leaks data; it only fails to check
+whether the caller was allowed to ask. Raw SQL remains banned by ESLint with a documented allowlist,
+because it bypasses this layer entirely. PostgreSQL row-level security stays deferred to phase 15 as
+a third layer, recorded in known-gaps.md rather than silently skipped.
+
+---
+
 ## Version targets
 
 | Component | Version |
 |---|---|
 | Node.js | 22 LTS |
-| pnpm | 10.x (Phase 0 said 9.x; 10 is what the toolchain resolved to) |
+| pnpm | 12.x (Phase 0 said 9.x; see ADR-029 for the 10 → 12 move) |
 | NestJS | 11.x |
 | Next.js | 15.x |
 | React | 19.x |

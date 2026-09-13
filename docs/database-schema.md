@@ -81,8 +81,27 @@ erDiagram
 created by the setup wizard and can never be deleted.
 
 ### `sites`
-`id, tenant_id, name, code, address, timezone, contact, notes` — a physical or logical location.
-Clusters and standalone nodes belong to a site; a site belongs to exactly one tenant.
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | |
+| tenant_id | uuid | not null; a site belongs to exactly one tenant, for life |
+| name | text | |
+| slug | text | unique **within the tenant**, not globally |
+| description | text null | |
+| locality, country, timezone | text null | where it is; free text, for a person reading an incident |
+| contact_name, contact_email, contact_phone | text null | a note — Velnox sends no mail |
+
+**Landed in phase 3.** The slug is per tenant because two customers may both reasonably have a site
+called `hq`. The tenant is deliberately immutable: moving a site would move every grant scoped to it,
+and — from phase 4 — every cluster beneath it, into another customer without anyone deciding to.
+
+Two triggers on `role_assignments` arrived with this table, because `scope_id` is polymorphic and no
+foreign key can cover it:
+
+- `role_assignments_scope_target_exists` refuses a grant whose `scope_id` names no tenant or site. A
+  grant covering a row that does not exist looks exactly like a grant that has not been given yet.
+- `role_assignments_tenant_follows_scope` fills in the denormalised `tenant_id` from the scope
+  rather than trusting the caller, so the copy cannot disagree with its original.
 
 ---
 

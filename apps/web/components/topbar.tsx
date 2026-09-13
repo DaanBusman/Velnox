@@ -3,30 +3,34 @@
 import { useTranslations } from 'next-intl';
 import type { SessionUser } from '@/lib/session-types';
 import { LocaleSwitcher } from './locale-switcher';
+import { TenantSelector, type SelectableTenant } from './tenant-selector';
 import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
 
 /**
  * Top bar.
  *
- * The tenant selector, global search and notifications from the brief's layout
- * are present but disabled, each stating the phase that makes it work. A control
- * that looks live and does nothing is worse than one that explains itself — so
- * the two that do not work yet are visibly recessed and carry the phase, rather
- * than sitting there looking clickable.
+ * The tenant selector works from Phase 3. Global search is still present and
+ * disabled, stating the phase that makes it work: a control that looks live and
+ * does nothing is worse than one that explains itself, so it is visibly recessed
+ * and carries the phase rather than sitting there looking clickable.
  */
-export function Topbar({ locale, user }: { locale: string; user: SessionUser }) {
+export function Topbar({
+  locale,
+  user,
+  tenants,
+  selectedTenantId,
+}: {
+  locale: string;
+  user: SessionUser;
+  tenants: SelectableTenant[];
+  selectedTenantId: string | null;
+}) {
   const t = useTranslations();
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur-sm">
-      <div
-        className="flex h-8 items-center gap-2 rounded border border-dashed border-line bg-surface-2 px-2.5 text-xs text-ink-muted"
-        title={t('layout.tenantSelectorUnavailable')}
-      >
-        <span className="font-medium">{t('layout.tenantSelector')}</span>
-        <span className="opacity-60">—</span>
-      </div>
+      <TenantSelector tenants={tenants} selected={selectedTenantId} />
 
       <label className="relative flex min-w-0 flex-1 items-center">
         <span className="sr-only">{t('common.search')}</span>

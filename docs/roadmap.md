@@ -1,6 +1,6 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phases 0, 1 and 2 complete. Phases 3–15 await approval.
+**Status:** Phases 0 to 3 complete. Phases 4–15 await approval.
 
 Each landed phase is verified rather than asserted: `bash scripts/verify-stack.sh` asserts its acceptance criteria
 against a running stack — 29 checks covering every dependency, the migration state, security headers,
@@ -69,7 +69,7 @@ endpoint rather than a sample; a recovery code works exactly once and its use is
 alerted; the TOTP seed is stored via the credential store and appears in no API response, log or
 audit record.
 
-## Phase 3 — Multi-tenancy · **L**
+## Phase 3 — Multi-tenancy · **L** · ✅ complete
 
 Tenants and sites CRUD. Prisma tenancy extension with the throw-on-missing-context rule and the
 explicit `withSystemScope()` escape. Scope-aware role assignments (GLOBAL/TENANT/SITE/CLUSTER).

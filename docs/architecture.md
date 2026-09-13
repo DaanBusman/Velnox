@@ -171,11 +171,27 @@ interface RequestContext {
 asks the `AuthorizationService` whether any grant covers that permission at or above that scope.
 Denials are audited.
 
-**Layer 2 — mandatory query scoping.** A Prisma client extension intercepts every query against a
-tenant-scoped model and injects `tenantId IN (...)`. It throws at runtime if a tenant-scoped model
-is queried with no `RequestContext` present, unless the caller opted in via an explicit, grep-able
-`withSystemScope()` wrapper (used only by workers, migrations and the setup wizard). This means
+**Layer 2 — mandatory query scoping.** *(Landed in phase 3.)* A Prisma client extension intercepts
+every query against a tenant-scoped model and injects the caller's scope. It **throws** at runtime if
+a tenant-scoped model is queried with no scope resolved, unless the caller opted in via an explicit,
+grep-able `withSystemScope("why")` wrapper — which takes a written reason and has four callers:
+authentication, the setup wizard, the audit writer and the guard resolving a principal. This means
 *forgetting* an authorization check leaks nothing; you must actively bypass it.
+
+The scope is filled in by the auth guard once the principal is known. Until that point every request
+is in the throwing state, which is what makes the dangerous default "refuse" rather than "all rows".
+What lifts the filter is a **GLOBAL grant**, not membership of the MSP organisation: an account that
+lives in the MSP tenant but was granted one customer reaches exactly that customer.
+
+Three details are load-bearing and are commented in `packages/db/src/tenancy.ts`: the scope is
+appended to `where.AND` with the caller's own keys left at the top level (Prisma requires a unique
+field at the top of a `findUnique`/`update`/`delete` filter); an `AND` the caller already supplied is
+appended to rather than replaced (replacing it would *widen* their query); and `role_assignments` is
+scoped through the account the grant sits on rather than through its own `tenant_id`, which is null
+for a GLOBAL grant and would therefore expose every MSP-wide grant to every tenant.
+
+`scripts/verify-tenancy.sh` asserts the boundary against a running stack: it signs in as two
+different people and tries to cross it through lists, filters, direct-id lookups and writes.
 
 **Raw SQL is banned** in application code by an ESLint rule (`no-restricted-properties` on
 `$queryRaw`/`$executeRaw`) with a documented allowlist, because raw SQL bypasses layer 2.

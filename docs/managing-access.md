@@ -35,15 +35,31 @@ authenticated but not authorised. Give it a role next.
 
 ## Give someone a role
 
-**You need:** `roles.manage`.
+**You need:** `roles.manage` covering whatever the grant will cover.
 
 1. Go to **Users** and find the account.
-2. Pick a role from **Grant a role**.
-3. The grant takes effect on the account's next request — there is nothing else to apply.
+2. Pick a role from **Grant role**.
+3. Choose what it **covers** — every tenant, one tenant, or one site.
+4. **Grant**. It takes effect on the account's next request; there is nothing else to apply.
+
+**The second choice is the important one.** A role on its own says what someone can do; the scope
+says to whom. "MSP Engineer" tells you nothing useful until you know whether it reaches one customer
+or all of them, which is why the account's roles are listed with their scope beside them.
+
+Three rules apply, all of them enforced server-side:
+
+- **You cannot grant what you do not hold.** Granting a role covering a customer requires
+  `roles.manage` covering that same customer — so delegating access can never widen it.
+- **A customer's account stays inside its own tenant.** Only accounts in your own MSP organisation
+  may hold a grant pointing at somebody else's tenant.
+- **"Every tenant" needs a home in the MSP organisation**, and the option is not offered otherwise.
 
 Roles marked **MSP only** can be granted only to accounts in your own organisation, not to a
-customer's staff. Velnox enforces that server-side, so it holds regardless of what the interface
+customer's staff. Velnox enforces that server-side too, so it holds regardless of what the interface
 offers.
+
+[Organising your fleet](organising-your-fleet.md) has a worked example of scoping an engineer to one
+site.
 
 [Roles and permissions](permissions.md) lists exactly what each role grants. Read it before granting
 one for the first time: the difference between MSP Engineer and MSP Administrator is not user
@@ -299,6 +315,7 @@ Worth knowing when something is refused and you are trying to work out why.
 ## Where to go next
 
 - [Roles and permissions](permissions.md) — the full matrix of what each role grants
+- [Organising your fleet](organising-your-fleet.md) — tenants, sites and scoping a grant
 - [Getting started](getting-started.md) — the first hour after installing
 - [Known gaps](known-gaps.md) — what is deliberately missing right now
 - [Technical decisions](tech-decisions.md) — why these designs, and what they cost

@@ -28,6 +28,36 @@ export interface Session {
   mfaSatisfied: boolean;
 }
 
+export interface TenantSummary {
+  id: string;
+  name: string;
+  slug: string;
+  kind: 'MSP_ROOT' | 'CUSTOMER';
+  status: 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
+  mfaPolicy: 'OPTIONAL' | 'REQUIRED_FOR_PRIVILEGED' | 'REQUIRED';
+  userCount: number;
+  siteCount: number;
+  createdAt: string;
+}
+
+export interface SiteSummary {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  locality: string | null;
+  country: string | null;
+  timezone: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  /** Grants scoped to this site. A site carrying grants cannot be removed. */
+  grantCount: number;
+  createdAt: string;
+}
+
 export interface UserSummary {
   id: string;
   email: string;
@@ -41,7 +71,15 @@ export interface UserSummary {
   privileged: boolean;
   /** The account setup created. Its roles cannot be revoked by anyone. */
   isFoundingAdministrator: boolean;
-  roles: { assignmentId: string; roleId: string; name: string; scopeType: string }[];
+  roles: {
+    assignmentId: string;
+    roleId: string;
+    name: string;
+    scopeType: string;
+    scopeId: string | null;
+    /** The tenant or site the scope names. Null for a grant at global scope. */
+    scopeLabel: string | null;
+  }[];
   lastLoginAt: string | null;
   createdAt: string;
 }

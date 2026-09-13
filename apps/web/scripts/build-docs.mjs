@@ -39,6 +39,7 @@ const DOCUMENTS = [
   // trying to do something, not to understand how the system is put together.
   'getting-started',
   'managing-access',
+  'organising-your-fleet',
   'permissions',
   'deployment',
   'architecture',

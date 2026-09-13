@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Fragment, useMemo, useState, type FormEvent } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
-import type { RoleSummary, UserSummary } from '@/lib/session-types';
+import type { RoleSummary, SiteSummary, TenantSummary, UserSummary } from '@/lib/session-types';
 import { apiDelete, apiPatch, apiPost, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
 import { Button, Field, FormError, TextInput } from '@/components/ui/form';
@@ -69,6 +69,8 @@ function canOfferMfaReset(
 export function UserAdmin({
   users,
   roles,
+  tenants,
+  sites,
   canManageUsers,
   canManageRoles,
   canResetMfa,
@@ -77,6 +79,9 @@ export function UserAdmin({
 }: {
   users: UserSummary[];
   roles: RoleSummary[];
+  /** Scopes a grant can name. Exactly what this account can reach, no more. */
+  tenants: TenantSummary[];
+  sites: SiteSummary[];
   canManageUsers: boolean;
   canManageRoles: boolean;
   canResetMfa: boolean;
@@ -106,7 +111,7 @@ export function UserAdmin({
    * tenants the viewer is allowed to see, so it cannot offer a filter that
    * returns nothing or hint at the existence of a tenant they cannot read.
    */
-  const tenants = useMemo(() => {
+  const tenantsInList = useMemo(() => {
     const byId = new Map<string, { id: string; name: string; isMspRoot: boolean }>();
     for (const user of users) {
       if (!byId.has(user.tenantId)) {
@@ -123,6 +128,7 @@ export function UserAdmin({
     });
   }, [users]);
 
+
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return users.filter((user) => {
@@ -135,13 +141,18 @@ export function UserAdmin({
     });
   }, [users, tenantFilter, search]);
 
-  async function run(key: string, action: () => Promise<{ ok: boolean; error?: ApiFailure }>) {
+  /** Returns whether it worked, so a form can clear itself only on success. */
+  async function run(
+    key: string,
+    action: () => Promise<{ ok: boolean; error?: ApiFailure }>,
+  ): Promise<boolean> {
     setPending(key);
     setFailure(null);
     const result = await action();
     if (!result.ok && result.error) setFailure(result.error);
     setPending(null);
     router.refresh();
+    return result.ok;
   }
 
   async function createUser(event: FormEvent) {
@@ -245,9 +256,9 @@ export function UserAdmin({
             className="h-8 min-w-48 rounded border border-line bg-surface-2 px-2 text-sm text-ink"
           >
             <option value={ALL_TENANTS}>
-              {t('users.filterAllTenants', { count: tenants.length })}
+              {t('users.filterAllTenants', { count: tenantsInList.length })}
             </option>
-            {tenants.map((tenant) => (
+            {tenantsInList.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>
                 {tenant.isMspRoot ? t('users.mspOrganisation', { name: tenant.name }) : tenant.name}
               </option>
@@ -453,7 +464,18 @@ export function UserAdmin({
                                   key={role.assignmentId}
                                   className="flex items-center gap-1.5 rounded bg-surface px-2 py-0.5 text-xs text-ink"
                                 >
-                                  {role.name}
+                                  <span>
+                                    {role.name}
+                                    {/* The scope is the interesting half once a
+                                        grant can be narrower than everything:
+                                        "MSP Engineer" says nothing about which
+                                        customer it reaches. */}
+                                    <span className="ml-1 text-ink-muted">
+                                      {role.scopeType === 'GLOBAL'
+                                        ? t('users.scopeGlobal')
+                                        : (role.scopeLabel ?? t('users.scopeUnknown'))}
+                                    </span>
+                                  </span>
                                   {canManageRoles && !user.isFoundingAdministrator && (
                                     <button
                                       type="button"
@@ -477,33 +499,18 @@ export function UserAdmin({
                           </div>
 
                           {canManageRoles && (
-                            <label className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                              {t('users.grantRole')}
-                              <select
-                                defaultValue=""
-                                disabled={pending === `assign:${user.id}`}
-                                onChange={(event) => {
-                                  const roleId = event.target.value;
-                                  event.target.value = '';
-                                  if (!roleId) return;
-                                  void run(`assign:${user.id}`, () =>
-                                    apiPost(`/users/${user.id}/role-assignments`, { roleId }),
-                                  );
-                                }}
-                                className="h-7 rounded border border-line bg-surface px-1.5 text-xs text-ink"
-                              >
-                                <option value="">{t('users.chooseRole')}</option>
-                                {roles
-                                  .filter(
-                                    (role) => !user.roles.some((held) => held.roleId === role.id),
-                                  )
-                                  .map((role) => (
-                                    <option key={role.id} value={role.id}>
-                                      {role.name}
-                                    </option>
-                                  ))}
-                              </select>
-                            </label>
+                            <GrantForm
+                              roles={roles}
+                              tenants={tenants}
+                              sites={sites}
+                              user={user}
+                              pending={pending === `assign:${user.id}`}
+                              onGrant={(body) =>
+                                run(`assign:${user.id}`, () =>
+                                  apiPost(`/users/${user.id}/role-assignments`, body),
+                                )
+                              }
+                            />
                           )}
                         </div>
                       </td>
@@ -516,5 +523,127 @@ export function UserAdmin({
         </table>
       </div>
     </div>
+  );
+}
+
+/** `GLOBAL`, or `TENANT:<id>` / `SITE:<id>`. One `<select>`, two fields. */
+function parseScope(value: string): { scopeType: string; scopeId: string | null } {
+  const [scopeType, scopeId] = value.split(':');
+  return { scopeType: scopeType ?? 'GLOBAL', scopeId: scopeId ?? null };
+}
+
+/**
+ * Granting a role, at a scope.
+ *
+ * Two choices rather than one, because a grant without a scope is what Phase 2
+ * had: every grant reaching every customer. The scope list is built from what
+ * this account can itself reach, so it cannot offer access to a tenant the
+ * person doing the granting cannot see — and the API refuses it regardless,
+ * holding the caller to `roles.manage` at that same scope.
+ *
+ * Global is offered only for an account in the MSP organisation. A database
+ * trigger refuses it for anyone else, and an option whose only outcome is a
+ * refusal is worse than no option at all.
+ */
+function GrantForm({
+  roles,
+  tenants,
+  sites,
+  user,
+  pending,
+  onGrant,
+}: {
+  roles: RoleSummary[];
+  tenants: TenantSummary[];
+  sites: SiteSummary[];
+  user: UserSummary;
+  pending: boolean;
+  onGrant: (body: {
+    roleId: string;
+    scopeType: string;
+    scopeId: string | null;
+  }) => Promise<boolean>;
+}) {
+  const t = useTranslations();
+  const [roleId, setRoleId] = useState('');
+  const [scope, setScope] = useState(user.tenantIsMspRoot ? 'GLOBAL' : `TENANT:${user.tenantId}`);
+
+  /*
+   * A customer's account may only hold scopes inside its own tenant — the API
+   * refuses anything else with `scope_outside_home_tenant`. For an MSP account
+   * every reachable tenant and site is fair game; that is what managing other
+   * people's infrastructure means.
+   */
+  const reachableTenants = user.tenantIsMspRoot
+    ? tenants
+    : tenants.filter((tenant) => tenant.id === user.tenantId);
+  const reachableSites = user.tenantIsMspRoot
+    ? sites
+    : sites.filter((site) => site.tenantId === user.tenantId);
+
+  const scopeId = parseScope(scope).scopeId;
+  const available = roles.filter(
+    (role) => !user.roles.some((held) => held.roleId === role.id && held.scopeId === scopeId),
+  );
+
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2 text-xs text-ink-muted"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        if (!roleId) return;
+        const ok = await onGrant({ roleId, ...parseScope(scope) });
+        if (ok) setRoleId('');
+      }}
+    >
+      <label className="flex flex-col gap-1">
+        {t('users.grantRole')}
+        <select
+          value={roleId}
+          disabled={pending}
+          onChange={(event) => setRoleId(event.target.value)}
+          className="h-7 rounded border border-line bg-surface px-1.5 text-xs text-ink"
+        >
+          <option value="">{t('users.chooseRole')}</option>
+          {available.map((role) => (
+            <option key={role.id} value={role.id}>
+              {role.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1">
+        {t('users.grantScope')}
+        <select
+          value={scope}
+          disabled={pending}
+          onChange={(event) => setScope(event.target.value)}
+          className="h-7 max-w-[16rem] truncate rounded border border-line bg-surface px-1.5 text-xs text-ink"
+        >
+          {user.tenantIsMspRoot && <option value="GLOBAL">{t('users.scopeGlobal')}</option>}
+          {reachableTenants.map((tenant) => (
+            <option key={tenant.id} value={`TENANT:${tenant.id}`}>
+              {t('users.scopeTenant', { tenant: tenant.name })}
+            </option>
+          ))}
+          {reachableSites.map((site) => (
+            <option key={site.id} value={`SITE:${site.id}`}>
+              {t('users.scopeSite', { site: site.name, tenant: site.tenantName })}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <Button
+        type="submit"
+        variant="secondary"
+        className="h-7 text-xs"
+        disabled={!roleId}
+        pending={pending}
+      >
+        {t('users.grant')}
+      </Button>
+    </form>
   );
 }
