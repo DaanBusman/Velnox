@@ -4,7 +4,7 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import { ERROR_CODES, PERMISSIONS, VelnoxError } from '@velnox/shared';
 import { zodQuery } from '../../common/zod-validation.pipe';
-import { RequirePermission } from '../../common/auth.guard';
+import { RequirePermissionSomewhere } from '../../common/auth.guard';
 import { AuditQueryService } from './audit-query.service';
 
 const listSchema = z.object({
@@ -19,7 +19,7 @@ const listSchema = z.object({
 export class AuditController {
   constructor(private readonly audit: AuditQueryService) {}
 
-  @RequirePermission(PERMISSIONS.auditRead)
+  @RequirePermissionSomewhere(PERMISSIONS.auditRead)
   @Get()
   @ApiOperation({
     summary: 'Read the audit trail',
@@ -28,7 +28,10 @@ export class AuditController {
       'page shifts under the reader as events arrive. Metadata was redacted on the way in, so ' +
       'what is stored is what is safe to read.',
   })
-  async list(@Query(zodQuery(listSchema)) query: z.infer<typeof listSchema>, @Req() request: Request) {
+  async list(
+    @Query(zodQuery(listSchema)) query: z.infer<typeof listSchema>,
+    @Req() request: Request,
+  ) {
     const principal = request.velnoxPrincipal;
     if (!principal) throw new VelnoxError(ERROR_CODES.authSessionExpired, { status: 401 });
 
@@ -43,7 +46,7 @@ export class AuditController {
     });
   }
 
-  @RequirePermission(PERMISSIONS.auditRead)
+  @RequirePermissionSomewhere(PERMISSIONS.auditRead)
   @Get('actions')
   @ApiOperation({ summary: 'Action names present in the trail, for filtering' })
   async actions() {

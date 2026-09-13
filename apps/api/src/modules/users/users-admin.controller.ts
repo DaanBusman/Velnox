@@ -12,20 +12,50 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { ERROR_CODES, PERMISSIONS, VelnoxError } from '@velnox/shared';
+import { PERMISSIONS, SCOPE_TYPES } from '@velnox/shared';
 import { PASSWORD_MIN_LENGTH } from '@velnox/crypto';
 import { zodBody } from '../../common/zod-validation.pipe';
-import { RequirePermission } from '../../common/auth.guard';
-import { UserAdminService, type Actor } from './user-admin.service';
+import { RequirePermissionSomewhere } from '../../common/auth.guard';
+import { actorOf } from '../../common/actor';
+import { UserAdminService } from './user-admin.service';
 
 const createSchema = z.object({
   email: z.string().email().max(320),
   displayName: z.string().trim().min(2).max(120),
   password: z.string().min(PASSWORD_MIN_LENGTH).max(256),
+  /** Which tenant the account belongs to. Defaults to the caller's own. */
+  tenantId: z.string().uuid().optional(),
 });
 
 const statusSchema = z.object({ status: z.enum(['ACTIVE', 'DISABLED']) });
-const assignSchema = z.object({ roleId: z.string().uuid() });
+/**
+ * A grant names what it covers.
+ *
+ * `scopeType` defaults to nothing on purpose — there is no sensible default. The
+ * old endpoint granted at GLOBAL implicitly, which on a single-tenant
+ * installation was invisible and on a fifty-tenant one meant every grant reached
+ * every customer.
+ */
+const assignSchema = z
+  .object({
+    roleId: z.string().uuid(),
+    scopeType: z.enum(SCOPE_TYPES),
+    scopeId: z.string().uuid().nullish(),
+  })
+  .refine((value) => (value.scopeType === 'GLOBAL') === (value.scopeId == null), {
+    message: 'A global grant has no scope id; every other scope needs one',
+    path: ['scopeId'],
+  });
+
+/*
+ * These routes use `RequirePermissionSomewhere` rather than `RequirePermission`.
+ *
+ * The scope that matters is the *target account's* tenant, which is not in the
+ * request — only its id is. With `RequirePermission` and no scope resolver the
+ * guard falls back to "global grants only", which locked tenant administrators
+ * out of administering their own tenant's accounts. Each service method checks
+ * the precise scope once it has loaded the row.
+ */
 
 /**
  * Every id in a path is a uuid, and anything else is rejected before it can
@@ -42,7 +72,7 @@ const uuidParam = new ParseUUIDPipe({ version: '4' });
 export class UsersAdminController {
   constructor(private readonly users: UserAdminService) {}
 
-  @RequirePermission(PERMISSIONS.usersManage)
+  @RequirePermissionSomewhere(PERMISSIONS.usersManage)
   @Post()
   @HttpCode(201)
   @ApiOperation({
@@ -56,7 +86,7 @@ export class UsersAdminController {
     return this.users.create(body, actorOf(request));
   }
 
-  @RequirePermission(PERMISSIONS.usersManage)
+  @RequirePermissionSomewhere(PERMISSIONS.usersManage)
   @Patch(':id/status')
   @ApiOperation({
     summary: 'Enable or disable an account',
@@ -72,7 +102,7 @@ export class UsersAdminController {
     return this.users.setStatus(id, body.status, actorOf(request));
   }
 
-  @RequirePermission(PERMISSIONS.usersResetMfa)
+  @RequirePermissionSomewhere(PERMISSIONS.usersResetMfa)
   @Delete(':id/mfa')
   @HttpCode(204)
   @ApiOperation({
@@ -89,19 +119,25 @@ export class UsersAdminController {
     await this.users.resetMfa(id, actorOf(request));
   }
 
-  @RequirePermission(PERMISSIONS.rolesManage)
+  @RequirePermissionSomewhere(PERMISSIONS.rolesManage)
   @Post(':id/role-assignments')
   @HttpCode(201)
-  @ApiOperation({ summary: 'Grant a role to an account' })
+  @ApiOperation({
+    summary: 'Grant a role to an account, at a scope',
+    description:
+      'GLOBAL covers every tenant and is only possible for an account in the MSP organisation. ' +
+      'TENANT and SITE name what the grant covers. The caller must already hold `roles.manage` ' +
+      'at that same scope, so delegating access can never widen it.',
+  })
   assignRole(
     @Param('id', uuidParam) id: string,
     @Body(zodBody(assignSchema)) body: z.infer<typeof assignSchema>,
     @Req() request: Request,
   ) {
-    return this.users.assignRole(id, body.roleId, actorOf(request));
+    return this.users.assignRole(id, body, actorOf(request));
   }
 
-  @RequirePermission(PERMISSIONS.rolesManage)
+  @RequirePermissionSomewhere(PERMISSIONS.rolesManage)
   @Delete(':id/role-assignments/:assignmentId')
   @HttpCode(204)
   @ApiOperation({ summary: 'Take a role away from an account' })
@@ -112,16 +148,4 @@ export class UsersAdminController {
   ) {
     await this.users.revokeRole(id, assignmentId, actorOf(request));
   }
-}
-
-function actorOf(request: Request): Actor {
-  const principal = request.velnoxPrincipal;
-  if (!principal) throw new VelnoxError(ERROR_CODES.authSessionExpired, { status: 401 });
-  return {
-    id: principal.user.id,
-    email: principal.user.email,
-    tenantId: principal.user.tenantId,
-    isMspRoot: principal.isMspRoot,
-    grants: principal.grants,
-  };
 }

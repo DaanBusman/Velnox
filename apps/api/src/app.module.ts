@@ -12,6 +12,7 @@ import { SetupModule } from './modules/setup/setup.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
+import { TenancyModule } from './modules/tenancy/tenancy.module';
 
 /**
  * Application composition root.
@@ -31,6 +32,7 @@ import { UsersModule } from './modules/users/users.module';
     AuditModule,
     AuthModule,
     SetupModule,
+    TenancyModule,
     UsersModule,
     IdentityModule,
     RolesModule,

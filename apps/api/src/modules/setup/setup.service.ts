@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { withSystemScope } from '@velnox/db';
 import { checkPasswordStrength, hashPassword } from '@velnox/crypto';
 import {
   ERROR_CODES,
   FIRST_ADMINISTRATOR_ROLE,
   SYSTEM_ROLES,
   VelnoxError,
+  slugify,
 } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -47,7 +49,23 @@ export class SetupService {
     return { initialized: settings.initialized, productName: settings.productName };
   }
 
-  async initialize(input: InitializeInput): Promise<{ userId: string; tenantId: string }> {
+  /**
+   * Create the MSP root tenant, the system roles and the first administrator.
+   *
+   * Unscoped by necessity: this is the transaction that creates the first tenant
+   * there has ever been, so there is nothing for a tenant filter to be relative
+   * to. It runs exactly once in an installation's life and is closed permanently
+   * afterwards, which is what keeps the exemption narrow.
+   */
+  initialize(input: InitializeInput): Promise<{ userId: string; tenantId: string }> {
+    return withSystemScope('the setup wizard creates the first tenant there is', () =>
+      this.runInitialize(input),
+    );
+  }
+
+  private async runInitialize(
+    input: InitializeInput,
+  ): Promise<{ userId: string; tenantId: string }> {
     const email = input.email.trim().toLowerCase();
 
     const strength = checkPasswordStrength(input.password, { email });
@@ -73,7 +91,7 @@ export class SetupService {
         const tenant = await tx.tenant.create({
           data: {
             name: input.organisationName.trim(),
-            slug: slugify(input.organisationName),
+            slug: slugify(input.organisationName, 'msp'),
             kind: 'MSP_ROOT',
           },
         });
@@ -160,15 +178,4 @@ export class SetupService {
       throw new VelnoxError(ERROR_CODES.setupAlreadyInitialized, { status: 409 });
     }
   }
-}
-
-function slugify(value: string): string {
-  const slug = value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48);
-  return slug || 'msp';
 }

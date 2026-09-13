@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '@velnox/shared';
-import { RequirePermission } from '../../common/auth.guard';
+import { RequirePermissionSomewhere } from '../../common/auth.guard';
 import { RolesService } from './roles.service';
 
 @ApiTags('roles')
@@ -9,7 +9,7 @@ import { RolesService } from './roles.service';
 export class RolesController {
   constructor(private readonly roles: RolesService) {}
 
-  @RequirePermission(PERMISSIONS.rolesRead)
+  @RequirePermissionSomewhere(PERMISSIONS.rolesRead)
   @Get()
   @ApiOperation({
     summary: 'The roles this installation has, and what each one grants',

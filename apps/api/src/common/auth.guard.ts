@@ -14,6 +14,7 @@ import {
   type Permission,
   type TargetScope,
 } from '@velnox/shared';
+import { setTenantScope } from '@velnox/db';
 import { AuthService, type Principal } from '../modules/auth/auth.service';
 import { SessionService } from '../modules/auth/session.service';
 import { TokenService } from '../modules/auth/token.service';
@@ -31,6 +32,7 @@ import { setPrincipal } from './request-context';
 
 export const IS_PUBLIC = 'velnox:public';
 export const REQUIRED_PERMISSION = 'velnox:permission';
+export const REQUIRED_PERMISSION_SOMEWHERE = 'velnox:permission_somewhere';
 export const ALLOWS_UNSATISFIED_MFA = 'velnox:mfa_optional';
 
 /** No authentication at all. Login, setup status, health. */
@@ -45,10 +47,32 @@ export const Public = () => SetMetadata(IS_PUBLIC, true);
 export const AllowsUnsatisfiedMfa = () => SetMetadata(ALLOWS_UNSATISFIED_MFA, true);
 
 /** Requires a permission, optionally at a scope resolved from the request. */
-export const RequirePermission = (
-  permission: Permission,
-  scope?: (req: Request) => TargetScope,
-) => applyDecorators(SetMetadata(REQUIRED_PERMISSION, { permission, scope }));
+export const RequirePermission = (permission: Permission, scope?: (req: Request) => TargetScope) =>
+  applyDecorators(SetMetadata(REQUIRED_PERMISSION, { permission, scope }));
+
+/**
+ * Requires the permission *somewhere*, with the precise scope checked later.
+ *
+ * For endpoints where the scope is a property of a row nobody has read yet:
+ * renaming a site tells you the site's id, not which tenant it belongs to, so
+ * the guard cannot resolve a scope from the request and `RequirePermission`
+ * would fall back to "global grants only" — refusing an MSP administrator who
+ * was given exactly that customer.
+ *
+ * This is the weaker half of a pair, and it is only ever correct with the other
+ * half present: the service loads the row and calls `assertAllowedAt` with the
+ * scope it actually has. What this buys is an early, cheap refusal for someone
+ * who does not hold the permission at all, and an endpoint that still declares
+ * in its own source what it needs.
+ *
+ * Two independent things keep the pair honest if the second half is forgotten:
+ * the row was loaded through the tenancy extension, so it could not have come
+ * from another tenant in the first place; and `tenancy.spec.ts` asserts that
+ * every route using this decorator sits in a service that calls
+ * `assertAllowedAt`.
+ */
+export const RequirePermissionSomewhere = (permission: Permission) =>
+  applyDecorators(SetMetadata(REQUIRED_PERMISSION_SOMEWHERE, { permission }));
 
 export const ACCESS_COOKIE = 'velnox_at';
 export const REFRESH_COOKIE = 'velnox_rt';
@@ -88,6 +112,19 @@ export class AuthGuard implements CanActivate {
     }
 
     // --- permission -------------------------------------------------------
+    const somewhere = this.reflector.getAllAndOverride<{ permission: Permission }>(
+      REQUIRED_PERMISSION_SOMEWHERE,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (somewhere) {
+      const held = principal.grants.some((grant) => grant.permission === somewhere.permission);
+      if (!held) {
+        await this.denyPermission(request, principal, somewhere.permission, {});
+      }
+      return true;
+    }
+
     const requirement = this.reflector.getAllAndOverride<{
       permission: Permission;
       scope?: (req: Request) => TargetScope;
@@ -97,22 +134,30 @@ export class AuthGuard implements CanActivate {
 
     const target = requirement.scope ? requirement.scope(request) : {};
     if (!isAllowed(principal.grants, requirement.permission, target)) {
-      await this.audit.denied(AUDIT_ACTIONS.permissionDenied, {
-        actorType: 'USER',
-        actorId: principal.user.id,
-        actorLabel: principal.user.email,
-        tenantId: principal.user.tenantId,
-        resourceType: 'endpoint',
-        resourceLabel: `${request.method} ${request.path}`,
-        metadata: { permission: requirement.permission, target },
-      });
-      throw new VelnoxError(ERROR_CODES.authzForbidden, {
-        status: 403,
-        params: { permission: requirement.permission },
-      });
+      await this.denyPermission(request, principal, requirement.permission, target);
     }
 
     return true;
+  }
+
+  /** Audit the denial, then refuse. Never returns. */
+  private async denyPermission(
+    request: Request,
+    principal: Principal,
+    permission: Permission,
+    target: TargetScope,
+  ): Promise<never> {
+    await this.audit.denied(AUDIT_ACTIONS.permissionDenied, {
+      actorType: 'USER',
+      actorId: principal.user.id,
+      actorLabel: principal.user.email,
+      tenantId: principal.user.tenantId,
+      resourceType: 'endpoint',
+      resourceLabel: `${request.method} ${request.path}`,
+      metadata: { permission, target },
+    });
+
+    throw new VelnoxError(ERROR_CODES.authzForbidden, { status: 403, params: { permission } });
   }
 
   private async authenticate(request: Request): Promise<Principal> {
@@ -161,6 +206,25 @@ export class AuthGuard implements CanActivate {
       sessionId: session.id,
       isMspRoot: principal.isMspRoot,
     });
+
+    /*
+     * Layer 2 starts here.
+     *
+     * Until this line every query against a tenant-scoped model throws. From
+     * here the Prisma extension filters them to what this principal may reach,
+     * so a controller that forgets `@RequirePermission` still cannot return
+     * another customer's rows — it can only fail to check whether this one was
+     * allowed to ask.
+     *
+     * A GLOBAL grant is what lifts the filter, not membership of the MSP
+     * organisation: an account that lives in the MSP tenant but was only given
+     * one customer should reach exactly that customer.
+     */
+    setTenantScope(
+      principal.hasGlobalGrant
+        ? { kind: 'all' }
+        : { kind: 'tenants', tenantIds: principal.accessibleTenantIds },
+    );
 
     return principal;
   }

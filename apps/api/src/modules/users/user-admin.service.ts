@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { checkPasswordStrength, hashPassword } from '@velnox/crypto';
-import { ERROR_CODES, PERMISSIONS, VelnoxError, canResetMfa, type Grant } from '@velnox/shared';
+import { ERROR_CODES, PERMISSIONS, VelnoxError, canResetMfa, type ScopeType } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
+import { assertAllowedAt, type Actor } from '../../common/actor';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { SessionService } from '../auth/session.service';
 import { MfaService } from '../auth/mfa.service';
@@ -19,18 +20,10 @@ import { MfaService } from '../auth/mfa.service';
  * exists.
  */
 
-export interface Actor {
-  id: string;
-  email: string;
-  tenantId: string;
-  isMspRoot: boolean;
-  /**
-   * What the actor holds, for decisions a single `@RequirePermission` cannot
-   * express. The guard has already checked the permission the endpoint names;
-   * this is for the second question — whose account may it be used on.
-   */
-  grants: Grant[];
-}
+// `Actor` moved to common/actor.ts once tenants and sites needed the same
+// thing. Re-exported so existing imports keep working and there is still only
+// one definition.
+export type { Actor };
 
 @Injectable()
 export class UserAdminService {
@@ -66,14 +59,17 @@ export class UserAdminService {
     }
 
     /*
-     * The tenant comes from the actor unless they are MSP root.
+     * The tenant may come from the request, and is then checked at that scope.
      *
-     * Taking it from the request would let anyone who can create a user place
-     * that user in someone else's tenant. Proper cross-tenant delegation arrives
-     * with multi-tenancy; until then the strict rule applies.
+     * Phase 2 took it from the actor and ignored anything sent, because there
+     * was one tenant and no way to express "may create users for this customer".
+     * Now there is: the caller has to hold `users.manage` covering the tenant
+     * they are placing the account in, and the tenancy extension refuses the
+     * write outright if that tenant is outside their scope. Two independent
+     * checks, neither of which is "trust the body".
      */
-    const tenantId =
-      actor.isMspRoot && input.tenantId ? input.tenantId : actor.tenantId;
+    const tenantId = input.tenantId ?? actor.tenantId;
+    assertAllowedAt(actor, PERMISSIONS.usersManage, { tenantId });
 
     const user = await this.prisma.client.user.create({
       data: {
@@ -120,7 +116,7 @@ export class UserAdminService {
       throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
     }
 
-    this.assertSameTenant(user.tenantId, actor);
+    assertAllowedAt(actor, PERMISSIONS.usersManage, { tenantId: user.tenantId });
 
     /*
      * Disabling the founding administrator is allowed, but not when they are the
@@ -167,9 +163,26 @@ export class UserAdminService {
     return { id: user.id, status };
   }
 
-  async assignRole(userId: string, roleId: string, actor: Actor) {
+  /**
+   * Grant a role, at a scope.
+   *
+   * Phase 2 could only grant at GLOBAL, which was honest for an installation
+   * with one tenant and is the wrong default for one with fifty: it means every
+   * grant reaches every customer. A grant now names what it covers, and
+   * `resolveGrantScope` below decides whether it is allowed to.
+   */
+  async assignRole(
+    userId: string,
+    input: { roleId: string; scopeType: ScopeType; scopeId?: string | null },
+    actor: Actor,
+  ) {
+    const roleId = input.roleId;
+
     const [user, role] = await Promise.all([
-      this.prisma.client.user.findUnique({ where: { id: userId } }),
+      this.prisma.client.user.findUnique({
+        where: { id: userId },
+        include: { tenant: { select: { kind: true } } },
+      }),
       this.prisma.client.role.findUnique({ where: { id: roleId } }),
     ]);
 
@@ -177,7 +190,7 @@ export class UserAdminService {
       throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
     }
 
-    this.assertSameTenant(user.tenantId, actor);
+    assertAllowedAt(actor, PERMISSIONS.rolesManage, { tenantId: user.tenantId });
 
     // An MSP-only role outside the MSP root tenant is refused by a database
     // trigger as well; failing here gives a usable error instead of a 500.
@@ -188,6 +201,12 @@ export class UserAdminService {
       });
     }
 
+    const scope = await this.resolveGrantScope(
+      input,
+      { tenantId: user.tenantId, isMspRoot: user.tenant.kind === 'MSP_ROOT' },
+      actor,
+    );
+
     /*
      * Find, then create — not upsert.
      *
@@ -197,7 +216,7 @@ export class UserAdminService {
      * user". Two statements say the same thing and compile.
      */
     const existingAssignment = await this.prisma.client.roleAssignment.findFirst({
-      where: { userId, roleId, scopeType: 'GLOBAL', scopeId: null },
+      where: { userId, roleId, scopeType: scope.scopeType, scopeId: scope.scopeId },
     });
 
     const assignment = existingAssignment
@@ -209,8 +228,8 @@ export class UserAdminService {
           data: {
             userId,
             roleId,
-            scopeType: 'GLOBAL',
-            scopeId: null,
+            scopeType: scope.scopeType,
+            scopeId: scope.scopeId,
             grantedBy: actor.id,
           },
         });
@@ -230,10 +249,104 @@ export class UserAdminService {
       resourceType: 'user',
       resourceId: user.id,
       resourceLabel: user.email,
-      metadata: { role: role.name, scopeType: 'GLOBAL' },
+      metadata: {
+        role: role.name,
+        scopeType: scope.scopeType,
+        ...(scope.scopeId ? { scopeId: scope.scopeId } : {}),
+      },
     });
 
     return { id: assignment.id };
+  }
+
+  /**
+   * Decide what a grant is allowed to cover.
+   *
+   * Four rules, each closing a way to hand out more access than the person doing
+   * the handing has:
+   *
+   * 1. **GLOBAL needs a home in the MSP organisation.** A database trigger
+   *    refuses it outright; checking here turns a 500 into an explanation.
+   * 2. **The actor must already hold `roles.manage` at that scope.** Without
+   *    this, an administrator given one customer could grant anyone — including
+   *    themselves — a role covering all of them. This is the rule that keeps
+   *    delegation from being an escalation.
+   * 3. **The scope has to exist.** Loaded through the scoped client, so a site
+   *    the actor cannot reach reads as one that does not exist; a database
+   *    trigger refuses a dangling scope id as well, because a grant covering a
+   *    deleted site looks identical to a grant that was never given.
+   * 4. **A customer's account stays inside its own tenant.** Only an account in
+   *    the MSP organisation may hold a grant pointing somewhere else — that is
+   *    what managing other people's infrastructure *is*. For anyone else it
+   *    would be the isolation boundary failing by administration rather than by
+   *    code.
+   */
+  private async resolveGrantScope(
+    input: { scopeType: ScopeType; scopeId?: string | null },
+    target: { tenantId: string; isMspRoot: boolean },
+    actor: Actor,
+  ): Promise<{ scopeType: ScopeType; scopeId: string | null }> {
+    if (input.scopeType === 'GLOBAL') {
+      if (!target.isMspRoot) {
+        throw new VelnoxError(ERROR_CODES.authzForbidden, {
+          status: 409,
+          message:
+            'A grant at global scope is only possible for an account in the MSP organisation',
+          params: { reason: 'global_requires_msp' },
+        });
+      }
+
+      assertAllowedAt(actor, PERMISSIONS.rolesManage, {});
+      return { scopeType: 'GLOBAL', scopeId: null };
+    }
+
+    const scopeId = input.scopeId ?? null;
+    if (!scopeId) {
+      throw new VelnoxError(ERROR_CODES.validation, {
+        status: 400,
+        message: `A grant at ${input.scopeType} scope has to name what it covers`,
+        params: { field: 'scopeId' },
+      });
+    }
+
+    if (input.scopeType === 'TENANT') {
+      const tenant = await this.prisma.client.tenant.findFirst({
+        where: { id: scopeId, deletedAt: null },
+      });
+      if (!tenant) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
+
+      assertAllowedAt(actor, PERMISSIONS.rolesManage, { tenantId: scopeId });
+      assertScopeStaysInTenant(scopeId, target);
+      return { scopeType: 'TENANT', scopeId };
+    }
+
+    if (input.scopeType === 'SITE') {
+      const site = await this.prisma.client.site.findFirst({
+        where: { id: scopeId, deletedAt: null },
+        select: { id: true, tenantId: true },
+      });
+      if (!site) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
+
+      assertAllowedAt(actor, PERMISSIONS.rolesManage, {
+        tenantId: site.tenantId,
+        siteId: site.id,
+      });
+      assertScopeStaysInTenant(site.tenantId, target);
+      return { scopeType: 'SITE', scopeId };
+    }
+
+    /*
+     * CLUSTER is in the catalogue and has nothing to point at yet.
+     *
+     * Refusing is better than accepting: a grant naming a cluster id that does
+     * not exist covers nothing, looks like a grant that was given, and would be
+     * discovered during an incident.
+     */
+    throw new VelnoxError(ERROR_CODES.featureDisabled, {
+      status: 409,
+      message: 'Grants at cluster scope arrive with the Proxmox inventory in Phase 4',
+      params: { scopeType: input.scopeType, phase: 4 },
+    });
   }
 
   async revokeRole(userId: string, assignmentId: string, actor: Actor) {
@@ -246,7 +359,7 @@ export class UserAdminService {
       throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
     }
 
-    this.assertSameTenant(assignment.user.tenantId, actor);
+    assertAllowedAt(actor, PERMISSIONS.rolesManage, { tenantId: assignment.user.tenantId });
 
     /*
      * The founding administrator's grants are inalienable.
@@ -325,7 +438,14 @@ export class UserAdminService {
       throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
     }
 
-    this.assertSameTenant(user.tenantId, actor);
+    /*
+     * `users.reset_mfa` has to cover the target's tenant, not merely be held.
+     *
+     * `canResetMfa` below checks the same thing and more, but it is reached only
+     * after this — so an engineer granted one customer cannot reach another
+     * customer's account even if the decision function were later loosened.
+     */
+    assertAllowedAt(actor, PERMISSIONS.usersResetMfa, { tenantId: user.tenantId });
 
     const decision = canResetMfa({
       actorId: actor.id,
@@ -412,10 +532,25 @@ export class UserAdminService {
       },
     });
   }
+}
 
-  /** Anyone outside the MSP root tenant may only touch their own tenant. */
-  private assertSameTenant(tenantId: string, actor: Actor): void {
-    if (actor.isMspRoot || tenantId === actor.tenantId) return;
-    throw new VelnoxError(ERROR_CODES.authzTenantForbidden, { status: 403 });
-  }
+/**
+ * An account outside the MSP organisation may only be granted scopes inside its
+ * own tenant.
+ *
+ * The whole point of an MSP account is the opposite — a grant pointing at
+ * somebody else's tenant is how managing their infrastructure works. For a
+ * customer's own account it is the isolation boundary being crossed by
+ * administration rather than by code, and it is refused.
+ */
+function assertScopeStaysInTenant(
+  scopeTenantId: string,
+  target: { tenantId: string; isMspRoot: boolean },
+): void {
+  if (target.isMspRoot || scopeTenantId === target.tenantId) return;
+
+  throw new VelnoxError(ERROR_CODES.authzTenantForbidden, {
+    status: 409,
+    params: { reason: 'scope_outside_home_tenant' },
+  });
 }

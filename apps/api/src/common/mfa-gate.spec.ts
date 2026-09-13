@@ -14,6 +14,8 @@ import { SetupController } from '../modules/setup/setup.controller';
 import { MetricsController } from '../modules/system/metrics.controller';
 import { SystemController } from '../modules/system/system.controller';
 import { RolesController } from '../modules/roles/roles.controller';
+import { SitesController } from '../modules/tenancy/sites.controller';
+import { TenantsController } from '../modules/tenancy/tenants.controller';
 import { UsersController } from '../modules/users/users.controller';
 import { UsersAdminController } from '../modules/users/users-admin.controller';
 
@@ -84,6 +86,8 @@ const CONTROLLERS = [
   AuditController,
   RolesController,
   UsersAdminController,
+  TenantsController,
+  SitesController,
 ];
 
 function collectRoutes(): Route[] {

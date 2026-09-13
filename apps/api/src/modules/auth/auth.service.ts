@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { MfaPolicy, User } from '@velnox/db';
+import { withSystemScope, type MfaPolicy, type User } from '@velnox/db';
 import { checkPasswordStrength, hashPassword, needsRehash, verifyPassword } from '@velnox/crypto';
 import {
   ERROR_CODES,
@@ -40,6 +40,26 @@ export interface Principal {
    * an attacker holding the password would simply never be asked for it.
    */
   mfaOwed: boolean;
+  /**
+   * Every tenant this principal may read, resolved once here.
+   *
+   * This is what the Prisma tenancy extension filters on, so it is computed from
+   * the grants rather than from the home tenant alone: an MSP engineer granted
+   * one customer at TENANT scope reaches that customer and nothing else, and a
+   * grant at SITE scope reaches the site's tenant. Empty is a legitimate answer
+   * and means "nothing", not "everything".
+   */
+  accessibleTenantIds: string[];
+  /**
+   * Whether any grant is GLOBAL, which is what makes a principal unfiltered.
+   *
+   * Not the same question as `isMspRoot`. Membership of the MSP organisation is
+   * where someone's account lives; a GLOBAL grant is what they were actually
+   * given. A database trigger already refuses a GLOBAL grant to anyone outside
+   * the MSP root tenant, so this is the narrower of the two and the right one to
+   * scope on.
+   */
+  hasGlobalGrant: boolean;
 }
 
 interface EstablishedSession {
@@ -73,7 +93,20 @@ export class AuthService {
     private readonly rateLimit: RateLimitService,
   ) {}
 
-  async login(
+  /**
+   * Sign in.
+   *
+   * The whole method runs unscoped, and it has to: finding an account by email
+   * address is the step that *decides* which tenant the request belongs to, so
+   * there is nothing to scope it to until it has finished.
+   */
+  login(email: string, password: string, context: SessionContext): Promise<LoginOutcome> {
+    return withSystemScope('authentication resolves which tenant a request belongs to', () =>
+      this.attemptLogin(email, password, context),
+    );
+  }
+
+  private async attemptLogin(
     email: string,
     password: string,
     context: SessionContext,
@@ -187,7 +220,15 @@ export class AuthService {
    * permission strings are dropped: a row naming a permission this build does
    * not have must not be silently treated as something else.
    */
-  async buildPrincipal(user: User): Promise<Principal> {
+  buildPrincipal(user: User): Promise<Principal> {
+    // Runs from the auth guard, which is what *establishes* the scope — so it
+    // necessarily runs before one exists.
+    return withSystemScope('resolving a principal is what establishes the scope', () =>
+      this.readPrincipal(user),
+    );
+  }
+
+  private async readPrincipal(user: User): Promise<Principal> {
     const [assignments, tenant, settings] = await Promise.all([
       this.prisma.client.roleAssignment.findMany({
         where: {
@@ -222,6 +263,22 @@ export class AuthService {
       enrolled: user.mfaEnrolled,
     });
 
+    /*
+     * The tenants this principal reaches.
+     *
+     * Their own, plus whatever their grants name. `assignment.tenantId` is
+     * filled in by a database trigger from the scope — the tenant itself for a
+     * TENANT grant, the site's tenant for a SITE grant — so this does not have
+     * to walk the scope chain, and it cannot disagree with the scope it was
+     * derived from.
+     */
+    const accessibleTenantIds = [
+      ...new Set([
+        user.tenantId,
+        ...assignments.map((a) => a.tenantId).filter((id): id is string => id !== null),
+      ]),
+    ];
+
     return {
       user,
       grants,
@@ -229,13 +286,17 @@ export class AuthService {
       mfaPolicy,
       mfaRequired: obligation.required,
       mfaOwed: obligation.owed,
+      accessibleTenantIds,
+      hasGlobalGrant: grants.some((grant) => grant.scopeType === 'GLOBAL'),
     };
   }
 
-  async findPrincipalById(userId: string): Promise<Principal | null> {
-    const user = await this.prisma.client.user.findUnique({ where: { id: userId } });
-    if (!user || user.deletedAt || user.status !== 'ACTIVE') return null;
-    return this.buildPrincipal(user);
+  findPrincipalById(userId: string): Promise<Principal | null> {
+    return withSystemScope('the guard resolves a principal before a scope exists', async () => {
+      const user = await this.prisma.client.user.findUnique({ where: { id: userId } });
+      if (!user || user.deletedAt || user.status !== 'ACTIVE') return null;
+      return this.readPrincipal(user);
+    });
   }
 
   /** Change a password, revoking every other session as a side effect. */

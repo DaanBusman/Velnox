@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { ActorType, AuditResult, Prisma } from '@velnox/db';
+import { withSystemScope, type ActorType, type AuditResult, type Prisma } from '@velnox/db';
 import { rootRedactor } from '@velnox/shared';
 import type { Logger } from 'pino';
 import { PrismaService } from '../infrastructure/prisma.service';
@@ -45,6 +45,13 @@ export const AUDIT_ACTIONS = {
   roleRevoked: 'role.revoked',
 
   tenantCreated: 'tenant.created',
+  tenantUpdated: 'tenant.updated',
+  tenantArchived: 'tenant.archived',
+
+  siteCreated: 'site.created',
+  siteUpdated: 'site.updated',
+  siteDeleted: 'site.deleted',
+
   identityProviderUpdated: 'identity_provider.updated',
   identityProviderTested: 'identity_provider.tested',
 } as const;
@@ -83,25 +90,37 @@ export class AuditService {
     const context = getRequestContext();
 
     try {
-      await this.prisma.client.auditEvent.create({
-        data: {
-          action: input.action,
-          result: input.result,
-          actorType: input.actorType ?? 'SYSTEM',
-          actorId: input.actorId ?? null,
-          actorLabel: input.actorLabel ?? null,
-          tenantId: input.tenantId ?? null,
-          resourceType: input.resourceType ?? null,
-          resourceId: input.resourceId ?? null,
-          resourceLabel: input.resourceLabel ?? null,
-          ip: context?.ip ?? null,
-          userAgent: context?.userAgent ?? null,
-          requestId: context?.requestId ?? null,
-          // Redacted before it is stored, not before it is displayed: the
-          // database is where a secret would persist.
-          metadata: (rootRedactor.value(input.metadata ?? {}) ?? {}) as Prisma.InputJsonValue,
-        },
-      });
+      /*
+       * Written outside the tenant scope, deliberately.
+       *
+       * Audit events are recorded for anonymous actors (a failed sign-in has no
+       * tenant yet) and by MSP staff acting on a customer. An event that was not
+       * written because a scope refused it is an event that does not exist, and
+       * a gap in an append-only trail is worse than a row someone was not
+       * strictly entitled to create. Reading them back *is* scoped —
+       * `AuditQueryService` runs inside the caller's scope like everything else.
+       */
+      await withSystemScope('audit events are written for anonymous and cross-tenant actors', () =>
+        this.prisma.client.auditEvent.create({
+          data: {
+            action: input.action,
+            result: input.result,
+            actorType: input.actorType ?? 'SYSTEM',
+            actorId: input.actorId ?? null,
+            actorLabel: input.actorLabel ?? null,
+            tenantId: input.tenantId ?? null,
+            resourceType: input.resourceType ?? null,
+            resourceId: input.resourceId ?? null,
+            resourceLabel: input.resourceLabel ?? null,
+            ip: context?.ip ?? null,
+            userAgent: context?.userAgent ?? null,
+            requestId: context?.requestId ?? null,
+            // Redacted before it is stored, not before it is displayed: the
+            // database is where a secret would persist.
+            metadata: (rootRedactor.value(input.metadata ?? {}) ?? {}) as Prisma.InputJsonValue,
+          },
+        }),
+      );
     } catch (error) {
       this.logger.error(
         { err: rootRedactor.value(error), action: input.action, result: input.result },
