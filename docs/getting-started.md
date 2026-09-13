@@ -229,5 +229,6 @@ what is deliberately missing or unfinished right now.
 - [Managing users and access](managing-access.md) — accounts, roles, two-factor, Entra ID SSO
 - [Roles and permissions](permissions.md) — what each role grants, in full
 - [Organising your fleet](organising-your-fleet.md) — tenants, sites and scoping a grant
+- [Adding clusters](managing-infrastructure.md) — putting Proxmox under management, and the inventory
 - [Deployment](deployment.md) — requirements, upgrades, backup, diagnosis
 - [Architecture](architecture.md) — how the system is put together, and why

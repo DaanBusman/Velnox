@@ -190,6 +190,15 @@ trigger.
 
 ## 4. Proxmox inventory
 
+**Landed in phase 4.** What follows is what exists, with one deliberate narrowing: columns that
+belong to later phases — update classification, reboot-required, maintenance mode, per-node
+credentials, inventory snapshots — are **not** in the schema yet. A column that is always null is a
+column that has to be explained, and each of them arrives with the phase that fills it.
+
+`discovery_runs` was added and is not in the phase 0 sketch: "when did this last work" and "what did
+it fail on" are the two questions an operator asks about stale inventory, and neither is answerable
+from the inventory itself.
+
 ### `clusters`
 `id, tenant_id, site_id, name, kind (CLUSTER|STANDALONE), pve_version, quorum_ok, quorate_nodes,
 expected_votes, health (OK|WARNING|CRITICAL|UNKNOWN), last_seen_at, last_discovery_at,

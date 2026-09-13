@@ -40,6 +40,7 @@ const DOCUMENTS = [
   'getting-started',
   'managing-access',
   'organising-your-fleet',
+  'managing-infrastructure',
   'permissions',
   'deployment',
   'architecture',

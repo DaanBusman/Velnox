@@ -8,11 +8,19 @@ not met its gate.
 
 ---
 
-## Current status: Phase 2 (authentication, setup, RBAC)
+## Current status: Phase 4 (multi-tenancy, Proxmox inventory)
 
 Sign-in works. The setup wizard creates the first administrator and then closes permanently. Every
 API endpoint that is not deliberately public requires a session, and the global guard is
 protect-by-default: a new endpoint is protected by existing, and has to opt out in writing.
+
+Customers are real: tenants, sites, and grants that name what they cover, with the isolation applied
+in the data layer rather than remembered by each endpoint. Proxmox clusters can be added against a
+confirmed certificate fingerprint, and their nodes, guests, storage, networks and Ceph are
+inventoried on a schedule.
+
+**Velnox is read-only against your infrastructure in this phase.** Nothing starts, stops, migrates,
+updates or reconfigures anything.
 
 What is **not** there yet, in order of how much it matters:
 
@@ -76,21 +84,56 @@ Tenants, clusters, nodes and the rest show `—` with the phase that will popula
 placeholders for hidden data and they are not zeroes pretending to be measurements. The one card
 backed by real data is service status, and it is live.
 
-### The Users tenant filter has one option to choose from
-The accounts table filters by organisation, and until multi-tenancy lands in Phase 3 there is one:
-the MSP root tenant. The control is built and works — it is populated from the tenants the viewer is
-actually allowed to see, so it grows on its own the day a customer tenant exists — but today it can
-only narrow the list to the accounts it already shows.
+### Alerts have no lifecycle
+The alerts screen shows conditions computed from the inventory each time it is opened. That is the
+whole of it: there is no acknowledgement, no silencing, no history and no notification — no email, no
+webhook, nothing that reaches you when you are not looking at the screen.
 
-The same is true of the second-factor reset rule that distinguishes a customer's account from a
-colleague's. It is enforced and tested; there are simply no customer accounts yet for the permissive
-half of it to apply to.
+Deliberate, and the smaller half of the problem on purpose. A stored alert needs raised /
+acknowledged / resolved / re-raised, and a half-built lifecycle produces a screen full of stale
+alarms nobody reads, which is worse than a screen that is honest about only knowing what is true now.
+The scheduler that would deliver them arrives with the job system.
+
+### Nothing reaches a node over SSH yet
+Everything in Phase 4 goes through the Proxmox API. `credentials` has `SSH_PASSWORD` and `SSH_KEY`
+kinds and `nodes` reserves a host-key fingerprint, because credential rotation (Phase 10) needs a
+shell — but no SSH client ships in this build and no screen offers to store one.
+
+### Update counts are counts, not classifications
+A node reports how many packages apt would install. Which of them are security updates, which need a
+reboot, and which are Proxmox's own is Phase 6's work, and the interface says only the number it
+actually has rather than colouring it in.
+
+### Discovery is polled, not pushed
+Proxmox has no event stream Velnox can subscribe to, so inventory is as fresh as the last run — 30
+minutes by default. The interface treats that as a fact rather than hiding it: *last read* is a
+column on every cluster, and a failed run leaves the previous inventory in place rather than blanking
+it.
+
+### One credential per cluster
+A cluster carries a single API token or password, used for every node. Per-node credentials are
+modelled in the schema and not offered: no operator has asked for them, and the flow for confirming
+fifteen fingerprints one at a time needs designing before it is built.
+
+### The job system is a queue, not a job system
+Adding a cluster waits on a worker job through a request-scoped timeout, and discovery runs are
+recorded in their own table rather than in the general job model. Progress does not stream, a run
+cannot be cancelled, and a worker killed mid-discovery leaves a run row marked `RUNNING` for ever.
+Phase 5 replaces all three.
 
 ### Documentation drift is now possible
 Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture.md` and
 `tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were
 translated from; `scripts/check-doc-sync.mjs` reports which ones have fallen behind. It warns, it
 does not block.
+
+### Resolved in Phase 4
+- **The Users tenant filter had one option to choose from.** There are customer tenants now, the
+  filter narrows to them, and the same control sits in the top bar and follows you between pages.
+- **The dashboard counters are dashes, not zeros** — still true of the dashboard itself, which is
+  Phase 13's work, but the inventory screens behind it are real.
+- **Tenant isolation was a rule each endpoint remembered.** It is a data-layer filter now, and a
+  query with no scope resolved throws rather than returning everything (ADR-030).
 
 ### Resolved in Phase 2
 - **There is no authentication.** There is now. Every non-public endpoint requires a session, and

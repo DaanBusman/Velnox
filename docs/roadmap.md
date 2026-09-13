@@ -1,12 +1,18 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phases 0 to 3 complete. Phases 4–15 await approval.
+**Status:** Phases 0 to 4 complete. Phases 5–15 await approval.
 
-Each landed phase is verified rather than asserted: `bash scripts/verify-stack.sh` asserts its acceptance criteria
+Each landed phase is verified rather than asserted. `bash scripts/verify-stack.sh` asserts its acceptance criteria
 against a running stack — 29 checks covering every dependency, the migration state, security headers,
 both languages, the licence offer, authentication actually refusing anonymous callers, setup being
 closed once it has run, and the data tier not being reachable from the host. It runs in CI on every
 change.
+
+Two further harnesses cover what a stack-wide probe cannot. `scripts/verify-tenancy.sh` signs in as
+two different people and tries to cross the tenant boundary through lists, filters, direct-id lookups
+and writes — 35 checks. `scripts/verify-proxmox.sh` stands up a fixture Proxmox API with a real
+certificate and drives the whole add-and-discover flow against it — 50 checks. Both found real bugs
+the unit tests could not (ADR-030, ADR-031, ADR-032).
 
 Every phase ends with the same gate. A phase is **not** finished until all of these are true:
 
@@ -81,7 +87,7 @@ cannot enumerate others; the isolation suite passes for read **and** write acros
 resource that exists at this point, including list endpoints, filters and direct-ID access;
 querying a tenant-scoped model without a context throws in tests.
 
-## Phase 4 — Proxmox integration and inventory · **XL**
+## Phase 4 — Proxmox integration and inventory · **XL** · ✅ complete
 
 `packages/proxmox` with token and ticket auth, TLS fingerprint pinning, retries and the UPID task
 poller. `packages/crypto` with envelope encryption and `DatabaseSecretStore`. Add cluster / add

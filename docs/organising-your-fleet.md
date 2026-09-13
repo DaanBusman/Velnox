@@ -175,4 +175,5 @@ one tenant, because then it would be a control that looks like a choice and is n
 
 - [Managing users and access](managing-access.md) — accounts, roles, two-factor, Entra ID SSO
 - [Roles and permissions](permissions.md) — what each role grants, in full
+- [Adding clusters](managing-infrastructure.md) — putting Proxmox under management, and the inventory
 - [Getting started](getting-started.md) — the first hour after installing

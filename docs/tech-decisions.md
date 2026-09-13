@@ -648,6 +648,99 @@ a third layer, recorded in known-gaps.md rather than silently skipped.
 
 ---
 
+## ADR-031 — Certificate pinning, and the two ways connection reuse defeated it
+
+**Context.** A Proxmox node presents the certificate its own installer generated. It is not in any
+trust store and cannot be, so the choice is between pinning a fingerprint an operator confirmed out
+of band and having no verification at all. Pinning is strictly stronger than certificate-authority
+verification here: it identifies one specific certificate rather than anything a trusted authority
+happens to have signed.
+
+**Decision.** Pin the SHA-256 fingerprint per cluster, confirmed by the operator against
+`pvenode cert info` before any credential exists in the form, and check it **during the handshake**
+— before the request line, and therefore the API token, is written to the socket. A mismatch closes
+the connection with the credential still unsent, and is never retried: it is not a hiccup, it is
+"this host is not the one you pinned".
+
+**What it cost.** Two failures, both found by `scripts/verify-proxmox.sh` against a fixture, and both
+invisible to every unit test — because neither is a property of the comparison. They are properties
+of a real TLS stack talking to a real server.
+
+1. **Reused sockets never fire `secureConnect`.** The check listened for that event, which happens
+   exactly once per connection. Node's global agent keeps connections alive, so the second request
+   reused the socket and the pin was silently skipped. A cluster added with a deliberately wrong
+   fingerprint was accepted, connected and fully discovered. A verified socket is now *marked* with
+   the fingerprint it was checked against, every request checks the mark rather than assuming a
+   handshake it did not witness, and each client owns its own pool — never the global agent, which is
+   shared with every other host in the process.
+
+2. **Resumed sessions carry no certificate.** With the pool fixed, five of every six per-node calls
+   failed with "completed a TLS handshake with no certificate": a resumed TLS session skips the
+   certificate exchange, so there is nothing to compare. The failure direction was right — it refused
+   rather than trusted — but most of the inventory came back empty. Sessions are therefore not
+   cached. Pinning means seeing the certificate, and a full handshake per new connection is its
+   price; open connections are still reused, which was most of the saving anyway.
+
+**Consequences.** The one `rejectUnauthorized: false` in the Proxmox transport is load-bearing and
+argued for inline, and the ESLint rule that bans it now also catches the non-literal form — because
+`rejectUnauthorized: someVariable` is exactly the shape this needed, and a rule a variable defeats is
+not a rule.
+
+A certificate that legitimately changes — a renewal, a rebuilt node — fails closed and has to be
+re-confirmed. That is the point: a renewal and an interception look identical to software, and only a
+person looking at the node can tell them apart.
+
+---
+
+## ADR-032 — Acceptance is proven against a fixture that answers over a real socket
+
+**Context.** Phase 4's acceptance criteria say "a real (or fixture-backed) cluster can be added".
+Nobody has a Proxmox cluster in CI, and the obvious substitute — mocking the client — proves only
+that the mock was written to agree with the code that calls it.
+
+**Decision.** Ship a fixture Proxmox API: a small HTTPS server with a real self-signed certificate,
+answering the endpoints Velnox actually calls with the response shapes PVE 8 returns, run on the
+network the worker uses. `scripts/verify-proxmox.sh` drives the whole flow through Velnox's own API
+— probe, confirm, add, discover, read back, pull the plug — and asserts fifty things.
+
+**What makes it worth having is what it gets wrong on purpose.** One node is offline, one node
+refuses `/apt/repositories` with a 403, Ceph has `noout` set and one daemon a release behind. Those
+are the paths that are otherwise described rather than exercised, and they are where an inventory
+starts quietly lying.
+
+**It found three bugs in its first run**, all of them in code that had passed review and a hundred
+unit tests: both halves of ADR-031, and a failed verification that left a half-added cluster behind.
+It also found a fourth in itself — every status assertion was reading the status of the previous
+request, because `X="$(call …)"` runs in a subshell.
+
+**Consequences.** Unit tests keep proving the decisions: what is retryable, how a byte count is
+formatted, what counts as healthy. Anything that is a property of a socket, a pool or a deployment is
+proven here instead, because that is the only place it is true. `verify-tenancy.sh` exists for the
+same reason and about the same boundary.
+
+---
+
+## ADR-033 — Alerts are derived from the inventory, not stored
+
+**Context.** Phase 4 has to surface a cluster left with `noout` set, a node that is offline, a
+cluster that has lost quorum. The obvious shape is an `alerts` table.
+
+**Decision.** Compute them from the inventory on every request instead. No table, no acknowledgement,
+no silencing, no notification.
+
+**Why.** A stored alert needs a lifecycle — raised, acknowledged, resolved, re-raised — and every
+part of it can be got wrong in a way that is worse than not having it. An alert that stays after its
+cause is gone teaches people to ignore the screen; one that re-raises on every discovery run teaches
+them the same thing faster. Derived alerts cannot be stale: the condition is read at the moment the
+question is asked, and an alert disappears the instant its cause does.
+
+**What it costs, and where it is written down.** Nothing reaches anyone who is not looking at the
+screen, and there is no history of what was alerting last Tuesday. Both are in known-gaps.md and both
+want the job system underneath them, which is Phase 5. Building half of it now would mean migrating a
+half-built lifecycle later, from data operators had started to rely on.
+
+---
+
 ## Version targets
 
 | Component | Version |
