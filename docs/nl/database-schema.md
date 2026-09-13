@@ -1,6 +1,6 @@
 # Velnox — Voorstel databaseschema
 
-> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `4321aad`.
+> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `b730a19`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Phase 0 ontwerpvoorstel. PostgreSQL 16, Prisma-migraties.
@@ -196,6 +196,15 @@ trigger.
 ---
 
 ## 4. Proxmox-inventaris
+
+**Geland in fase 4.** Wat volgt is wat er bestaat, met één bewuste beperking: kolommen die bij latere
+fasen horen — updateclassificatie, herstart-vereist, onderhoudsmodus, credentials per node,
+inventarisatiemomentopnamen — zitten **nog niet** in het schema. Een kolom die altijd null is, is een
+kolom die uitgelegd moet worden, en elk ervan komt met de fase die hem vult.
+
+`discovery_runs` is toegevoegd en staat niet in de schets uit fase 0: "wanneer werkte dit voor het
+laatst" en "waarop strandde het" zijn de twee vragen die een beheerder stelt over verouderde
+inventarisatie, en geen van beide is uit de inventarisatie zelf te beantwoorden.
 
 ### `clusters`
 `id, tenant_id, site_id, name, kind (CLUSTER|STANDALONE), pve_version, quorum_ok, quorate_nodes,

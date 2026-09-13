@@ -1,15 +1,22 @@
 # Velnox — Implementatieroadmap
 
-> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `4321aad`.
+> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `b730a19`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Fase 0 tot en met 3 afgerond. Fase 4–15 wachten op goedkeuring.
+**Status:** Fase 0 tot en met 4 afgerond. Fase 5–15 wachten op goedkeuring.
 
 Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
 acceptatiecriteria tegen een draaiende stack — 29 controles over elke afhankelijkheid, de
 migratiestatus, security headers, beide talen, het bronaanbod, het feit dat authenticatie anonieme
 aanroepers daadwerkelijk weigert, dat de installatie na afloop gesloten is, en dat de datalaag niet
 vanaf de host bereikbaar is. Het draait in CI bij elke wijziging.
+
+Twee verdere harnassen dekken wat een stackbrede sonde niet kan.
+`scripts/verify-tenancy.sh` meldt zich aan als twee verschillende mensen en probeert de tenantgrens te
+passeren via lijsten, filters, directe id-opvragingen en schrijfacties — 35 controles.
+`scripts/verify-proxmox.sh` zet een fixture-Proxmox-API met een echt certificaat neer en doorloopt
+daartegen de volledige toevoeg-en-uitlees-stroom — 50 controles. Beide vonden echte fouten die de
+unittests niet konden vinden (ADR-030, ADR-031, ADR-032).
 
 Elke fase eindigt met dezelfde poort. Een fase is **niet** klaar voordat dit alles waar is:
 

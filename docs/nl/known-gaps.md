@@ -1,6 +1,6 @@
 # Velnox — Bekende beperkingen
 
-> **Vertaling.** Bron: [docs/known-gaps.md](../known-gaps.md) @ `5d8f049`.
+> **Vertaling.** Bron: [docs/known-gaps.md](../known-gaps.md) @ `b730a19`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 Dit bestand is het eerlijke grootboek. Alles wat Velnox niet doet, niet volledig doet, of met handmatige
@@ -11,11 +11,19 @@ heeft haar poort niet gehaald.
 
 ---
 
-## Huidige status: fase 2 (authenticatie, installatie, RBAC)
+## Huidige status: fase 4 (multi-tenancy, Proxmox-inventarisatie)
 
 Aanmelden werkt. De installatiewizard maakt de eerste beheerder aan en sluit daarna permanent. Elk
 API-endpoint dat niet bewust publiek is, vereist een sessie, en de globale guard beschermt
 standaard: een nieuw endpoint is beschermd doordat het bestaat, en moet zich schriftelijk afmelden.
+
+Klanten zijn echt: tenants, locaties, en rechten die benoemen wat ze dekken, met de scheiding
+afgedwongen in de datalaag in plaats van onthouden door elk endpoint. Proxmox-clusters kunnen worden
+toegevoegd tegen een bevestigde certificaatvingerafdruk, en hun nodes, gasten, opslag, netwerken en
+Ceph worden volgens schema geïnventariseerd.
+
+**Velnox is in deze fase alleen-lezen op je infrastructuur.** Er wordt niets gestart, gestopt,
+gemigreerd, bijgewerkt of geherconfigureerd.
 
 Wat er **nog niet** is, op volgorde van hoe zwaar het weegt:
 
@@ -84,21 +92,56 @@ Tenants, clusters, nodes en de rest tonen `—` met de fase die ze zal vullen. H
 plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. De ene kaart
 met echte gegevens is de servicestatus, en die is live.
 
-### Het organisatiefilter bij Gebruikers heeft één keuze
-De accounttabel filtert op organisatie, en tot multi-tenancy in fase 3 landt is er één: de
-MSP-hoofdtenant. Het filter is gebouwd en werkt — het wordt gevuld met de tenants die de kijker
-daadwerkelijk mag zien, dus het groeit vanzelf mee zodra er een klanttenant bestaat — maar vandaag
-kan het de lijst alleen beperken tot de accounts die er al staan.
+### Meldingen hebben geen levenscyclus
+Het meldingenscherm toont condities die bij elke keer openen uit de inventarisatie worden berekend.
+Dat is het geheel: geen bevestigen, geen onderdrukken, geen historie en geen notificatie — geen
+e-mail, geen webhook, niets dat je bereikt wanneer je niet naar het scherm kijkt.
 
-Hetzelfde geldt voor de regel bij het resetten van de tweede factor die een klantaccount onderscheidt
-van dat van een collega. Die wordt afgedwongen en is getest; er zijn alleen nog geen klantaccounts
-waarop de ruimere helft ervan van toepassing is.
+Bewust, en met opzet de kleinere helft van het probleem. Een opgeslagen melding heeft
+gemeld / bevestigd / opgelost / opnieuw gemeld nodig, en een half gebouwde levenscyclus levert een
+scherm vol verouderde alarmen op dat niemand leest — erger dan een scherm dat er eerlijk over is dat
+het alleen weet wat er nú waar is. De planner die ze zou bezorgen komt met het jobsysteem.
+
+### Er gaat nog niets via SSH naar een node
+Alles in fase 4 loopt via de Proxmox-API. `credentials` kent de soorten `SSH_PASSWORD` en `SSH_KEY`
+en `nodes` reserveert een host key-vingerafdruk, omdat credentialrotatie (fase 10) een shell nodig
+heeft — maar deze build bevat geen SSH-client en geen enkel scherm biedt aan er een op te slaan.
+
+### Updateaantallen zijn aantallen, geen classificatie
+Een node meldt hoeveel pakketten apt zou installeren. Welke daarvan beveiligingsupdates zijn, welke
+een herstart vereisen en welke van Proxmox zelf zijn, is het werk van fase 6, en de interface toont
+alleen het getal dat het daadwerkelijk heeft in plaats van het in te kleuren.
+
+### Uitlezen gebeurt periodiek, niet op signaal
+Proxmox heeft geen gebeurtenissenstroom waarop Velnox zich kan abonneren, dus de inventarisatie is zo
+vers als de laatste ronde — standaard 30 minuten. De interface behandelt dat als een feit in plaats
+van het te verbergen: *laatst uitgelezen* is een kolom bij elk cluster, en een mislukte ronde laat de
+vorige inventarisatie staan in plaats van hem te wissen.
+
+### Eén credential per cluster
+Een cluster draagt één API-token of wachtwoord, gebruikt voor elke node. Credentials per node zijn in
+het schema gemodelleerd en worden niet aangeboden: geen enkele beheerder heeft erom gevraagd, en de
+stroom voor het één voor één bevestigen van vijftien vingerafdrukken moet eerst ontworpen worden.
+
+### Het jobsysteem is een wachtrij, geen jobsysteem
+Een cluster toevoegen wacht via een verzoekgebonden time-out op een workerjob, en uitleesrondes
+worden in een eigen tabel vastgelegd in plaats van in het algemene jobmodel. Voortgang stroomt niet,
+een ronde kan niet afgebroken worden, en een worker die halverwege het uitlezen gedood wordt laat een
+ronde voor altijd als `RUNNING` achter. Fase 5 vervangt alle drie.
 
 ### Documentatiedrift is nu mogelijk
 Fase 1 heeft twee besluiten uit fase 0 herzien (zie *Herzien in fase 1* in `architecture.md` en
 `tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen vast van welke Engelse
 commit ze zijn vertaald; `scripts/check-doc-sync.mjs` meldt welke zijn achtergebleven. Het
 waarschuwt, het blokkeert niet.
+
+### Opgelost in fase 4
+- **Het organisatiefilter bij Gebruikers had één keuze.** Er zijn nu klanttenants, het filter beperkt
+  daartoe, en hetzelfde besturingselement staat in de bovenbalk en reist met je mee tussen pagina's.
+- **De dashboardtellers zijn streepjes, geen nullen** — dat geldt nog steeds voor het dashboard zelf,
+  dat werk voor fase 13 is, maar de inventarisatieschermen erachter zijn echt.
+- **Tenantscheiding was een regel die elk endpoint onthield.** Het is nu een filter in de datalaag, en
+  een bevraging zonder vastgesteld bereik gooit een fout in plaats van alles terug te geven (ADR-030).
 
 ### Opgelost in fase 2
 - **Er is geen authenticatie.** Die is er nu. Elk niet-publiek endpoint vereist een sessie, en

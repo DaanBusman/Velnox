@@ -1,6 +1,6 @@
 # Velnox — Technologiekeuzes (ADR-log)
 
-> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `4321aad`.
+> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `b730a19`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Phase 0. Deze keuzes zijn voorstellen in afwachting van goedkeuring; er is nog niets
@@ -629,6 +629,105 @@ controleren of de aanroeper het mocht vragen. Ruwe SQL blijft door ESLint verbod
 gedocumenteerde uitzonderingslijst, omdat die deze laag volledig omzeilt. Row-level security in
 PostgreSQL blijft uitgesteld tot fase 15 als derde laag, vastgelegd in known-gaps.md in plaats van
 stilzwijgend overgeslagen.
+
+---
+
+## ADR-031 — Certificaatvastlegging, en de twee manieren waarop hergebruik van verbindingen die omzeilde
+
+**Context.** Een Proxmox-node presenteert het certificaat dat zijn eigen installer heeft gemaakt. Dat
+staat in geen enkele vertrouwensopslag en kan daar ook niet in staan, dus de keuze is tussen het
+vastleggen van een vingerafdruk die een beheerder buiten het kanaal om bevestigd heeft, en helemaal
+geen verificatie. Vastleggen is hier strikt sterker dan verificatie via een certificaatautoriteit: het
+identificeert één specifiek certificaat in plaats van alles wat een vertrouwde autoriteit toevallig
+heeft ondertekend.
+
+**Besluit.** Leg de SHA-256-vingerafdruk per cluster vast, bevestigd door de beheerder tegen
+`pvenode cert info` voordat er een credential in het formulier bestaat, en controleer hem **tijdens de
+handshake** — voordat de requestregel, en daarmee het API-token, naar de socket geschreven wordt. Een
+afwijking sluit de verbinding terwijl de credential nog niet verzonden is, en wordt nooit opnieuw
+geprobeerd: het is geen hapering, het is "deze host is niet degene die je hebt vastgelegd".
+
+**Wat het kostte.** Twee fouten, beide gevonden door `scripts/verify-proxmox.sh` tegen een fixture, en
+beide onzichtbaar voor elke unittest — omdat geen van beide een eigenschap van de vergelijking is. Het
+zijn eigenschappen van een echte TLS-stack die met een echte server praat.
+
+1. **Hergebruikte sockets vuren `secureConnect` nooit af.** De controle luisterde naar die
+   gebeurtenis, die precies één keer per verbinding plaatsvindt. De globale agent van Node houdt
+   verbindingen in leven, dus het tweede verzoek hergebruikte de socket en de vastlegging werd
+   stilletjes overgeslagen. Een cluster dat met een bewust verkeerde vingerafdruk werd toegevoegd,
+   werd geaccepteerd, verbonden en volledig uitgelezen. Een geverifieerde socket wordt nu *gemarkeerd*
+   met de vingerafdruk waartegen hij gecontroleerd is, elk verzoek controleert die markering in plaats
+   van uit te gaan van een handshake die het niet gezien heeft, en elke client heeft een eigen pool —
+   nooit de globale agent, die met elke andere host in het proces gedeeld wordt.
+
+2. **Hervatte sessies dragen geen certificaat.** Met de pool hersteld faalden vijf van elke zes
+   aanroepen per node met "completed a TLS handshake with no certificate": een hervatte TLS-sessie
+   slaat de certificaatuitwisseling over, dus er valt niets te vergelijken. De faalrichting was juist
+   — het weigerde in plaats van te vertrouwen — maar het merendeel van de inventarisatie kwam leeg
+   terug. Sessies worden daarom niet gecachet. Vastleggen betekent het certificaat zien, en een
+   volledige handshake per nieuwe verbinding is de prijs daarvan; open verbindingen worden nog steeds
+   hergebruikt, en daar zat de winst toch al.
+
+**Gevolgen.** De ene `rejectUnauthorized: false` in het Proxmox-transport is dragend en wordt ter
+plekke beargumenteerd, en de ESLint-regel die hem verbiedt vangt nu ook de niet-letterlijke vorm —
+want `rejectUnauthorized: eenVariabele` is precies de vorm die hier nodig was, en een regel die een
+variabele omzeilt is geen regel.
+
+Een certificaat dat legitiem wijzigt — een vernieuwing, een opnieuw opgebouwde node — faalt gesloten
+en moet opnieuw bevestigd worden. Dat is de bedoeling: een vernieuwing en een onderschepping zien er
+voor software identiek uit, en alleen iemand die naar de node kijkt kan ze onderscheiden.
+
+---
+
+## ADR-032 — Acceptatie wordt bewezen tegen een fixture die over een echte socket antwoordt
+
+**Context.** De acceptatiecriteria van fase 4 zeggen "een echt (of fixture-ondersteund) cluster kan
+worden toegevoegd". Niemand heeft een Proxmox-cluster in CI, en het voor de hand liggende alternatief
+— de client mocken — bewijst alleen dat de mock zo geschreven is dat hij het eens is met de code die
+hem aanroept.
+
+**Besluit.** Lever een fixture-Proxmox-API mee: een kleine HTTPS-server met een echt zelfondertekend
+certificaat, die de endpoints beantwoordt die Velnox daadwerkelijk aanroept met de antwoordvormen die
+PVE 8 teruggeeft, draaiend op het netwerk dat de worker gebruikt. `scripts/verify-proxmox.sh`
+doorloopt de hele stroom via Velnox' eigen API — opzoeken, bevestigen, toevoegen, uitlezen,
+teruglezen, de stekker eruit — en toetst vijftig dingen.
+
+**Wat het de moeite waard maakt is wat het met opzet fout doet.** Eén node staat uit, één node weigert
+`/apt/repositories` met een 403, Ceph heeft `noout` aan staan en één daemon loopt een release achter.
+Dat zijn de paden die anders beschreven worden in plaats van doorlopen, en daar begint een
+inventarisatie stilletjes te liegen.
+
+**Het vond drie fouten in zijn eerste ronde**, alle drie in code die een review en honderd unittests
+had doorstaan: beide helften van ADR-031, en een mislukte verificatie die een half toegevoegd cluster
+achterliet. Het vond er ook een vierde in zichzelf — elke statuscontrole las de status van het vórige
+verzoek, omdat `X="$(call …)"` in een subshell draait.
+
+**Gevolgen.** Unittests blijven de besluiten bewijzen: wat het opnieuw proberen waard is, hoe een
+byte-aantal wordt weergegeven, wat gezond heet. Alles wat een eigenschap is van een socket, een pool
+of een deployment wordt hier bewezen, want dat is de enige plek waar het waar is.
+`verify-tenancy.sh` bestaat om dezelfde reden en over ongeveer dezelfde grens.
+
+---
+
+## ADR-033 — Meldingen worden uit de inventarisatie afgeleid, niet opgeslagen
+
+**Context.** Fase 4 moet een cluster tonen waar `noout` is blijven staan, een node die offline is, een
+cluster dat zijn quorum kwijt is. De voor de hand liggende vorm is een `alerts`-tabel.
+
+**Besluit.** Bereken ze in plaats daarvan bij elk verzoek uit de inventarisatie. Geen tabel, geen
+bevestigen, geen onderdrukken, geen notificatie.
+
+**Waarom.** Een opgeslagen melding heeft een levenscyclus nodig — gemeld, bevestigd, opgelost, opnieuw
+gemeld — en elk onderdeel daarvan kan zo fout gaan dat het erger is dan het niet te hebben. Een
+melding die blijft staan nadat de oorzaak weg is leert mensen het scherm te negeren; een die bij elke
+uitleesronde opnieuw meldt leert ze dat sneller. Afgeleide meldingen kunnen niet verouderd zijn: de
+conditie wordt gelezen op het moment dat de vraag gesteld wordt, en een melding verdwijnt op het
+moment dat de oorzaak dat doet.
+
+**Wat het kost, en waar dat staat.** Niets bereikt iemand die niet naar het scherm kijkt, en er is
+geen historie van wat er vorige dinsdag meldde. Beide staan in known-gaps.md en beide willen het
+jobsysteem eronder, en dat is fase 5. Nu de helft bouwen zou betekenen dat er later een half gebouwde
+levenscyclus gemigreerd moet worden, uit gegevens waar beheerders al op waren gaan vertrouwen.
 
 ---
 

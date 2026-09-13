@@ -1,6 +1,6 @@
 # Je omgeving indelen: tenants en locaties
 
-> **Vertaling.** Bron: [docs/organising-your-fleet.md](../organising-your-fleet.md) @ `4321aad`.
+> **Vertaling.** Bron: [docs/organising-your-fleet.md](../organising-your-fleet.md) @ `b730a19`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Alles over het opdelen van de installatie per klant en per locatie.** Elk hoofdstuk is één taak,
@@ -181,4 +181,5 @@ is.
 
 - [Gebruikers en toegang beheren](managing-access.md) — accounts, rollen, tweede factor, Entra ID SSO
 - [Rollen en rechten](permissions.md) — wat elke rol volledig toekent
+- [Clusters toevoegen](managing-infrastructure.md) — Proxmox onder beheer brengen, en de inventarisatie
 - [Aan de slag](getting-started.md) — het eerste uur na de installatie
