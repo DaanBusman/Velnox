@@ -122,7 +122,7 @@ export class ClustersService {
         resourceType: 'cluster',
         resourceLabel: `${input.host}:${input.port}`,
       });
-      throw translate(error, input.host);
+      throw translate(error, input.host);  // No credential was sent, so no auth kind.
     }
   }
 
@@ -286,7 +286,7 @@ export class ClustersService {
       await this.prisma.client.cluster.delete({ where: { id: cluster.id } });
       await this.secrets.deleteCredential(credentialId);
 
-      throw translate(error, cluster.endpointHost);
+      throw translate(error, cluster.endpointHost, input.auth.kind);
     }
 
     // Verified. The full inventory takes longer than a request should, so it
@@ -454,7 +454,20 @@ export class ClustersService {
  * operator debugging a firewall wants the actual reason, but the code is what
  * the interface reads.
  */
-function translate(error: unknown, host: string): VelnoxError {
+function translate(
+  error: unknown,
+  host: string,
+  /**
+   * Which kind of credential was refused, where one was sent at all.
+   *
+   * `cluster.auth_failed` covers both an API token and a username and password,
+   * and the two have different things to check. Telling someone their token
+   * secret is wrong when they typed a password is a worse answer than the
+   * generic one it replaces, so the kind travels with the code and the message
+   * selects on it.
+   */
+  authKind?: 'API_TOKEN' | 'TICKET',
+): VelnoxError {
   if (error instanceof JobTimeoutError) {
     return new VelnoxError(ERROR_CODES.clusterUnreachable, {
       status: 504,
@@ -485,7 +498,7 @@ function translate(error: unknown, host: string): VelnoxError {
     return new VelnoxError(ERROR_CODES.clusterAuthFailed, {
       status: 401,
       message,
-      params: { host },
+      params: { host, authKind: authKind ?? 'UNKNOWN' },
     });
   }
 

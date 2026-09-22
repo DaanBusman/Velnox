@@ -7,9 +7,16 @@
  *   - no locale carries keys the source does not have
  *   - the ICU argument set of each message matches across locales
  *   - no empty message values
+ *   - every code in ERROR_CODES has an `errors.<code>` message
  *
  * A missing translation is a build failure, not a silent English fallback in the
  * middle of a Dutch screen. That is the whole point of the check.
+ *
+ * The last rule exists because a code with no message does not fail loudly: the
+ * frontend falls back to `errors.generic` on purpose, so the screen reads "Er is
+ * iets misgegaan" and looks like a working error path. Three codes shipped that
+ * way — `cluster.auth_failed`, `cluster.not_proxmox` and `cluster.duplicate` —
+ * and a wrong API token was reported as "something went wrong" for two phases.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -77,6 +84,36 @@ const errors = [];
 
 for (const [key, value] of source) {
   if (!value.trim()) errors.push(`${SOURCE}: "${key}" is empty.`);
+}
+
+/*
+ * Read the catalogue out of the TypeScript source rather than importing it: this
+ * is a plain Node script and @velnox/shared is compiled, so importing it would
+ * make a validation that must run on a fresh clone depend on a build.
+ */
+const errorCodesFile = resolve(here, '..', 'packages', 'shared', 'src', 'errors.ts');
+const errorCodesSource = readFileSync(errorCodesFile, 'utf8');
+const block = errorCodesSource.match(/export const ERROR_CODES = \{([\s\S]*?)\n\} as const;/);
+
+if (!block) {
+  console.error(`Could not find ERROR_CODES in ${errorCodesFile}.`);
+  process.exit(1);
+}
+
+const codes = [...block[1].matchAll(/^\s*[A-Za-z0-9_]+:\s*'([^']+)'/gm)].map((m) => m[1]);
+
+if (codes.length === 0) {
+  console.error(`ERROR_CODES in ${errorCodesFile} parsed as empty; the check would pass vacuously.`);
+  process.exit(1);
+}
+
+for (const code of codes) {
+  if (!source.has(`errors.${code}`)) {
+    errors.push(
+      `${SOURCE}: error code "${code}" has no message at "errors.${code}" — ` +
+        'it would render as errors.generic.',
+    );
+  }
 }
 
 for (const [locale, messages] of locales) {

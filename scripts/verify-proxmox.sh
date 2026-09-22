@@ -276,6 +276,9 @@ fi
 BAD_SECRET="$(add_cluster "${RUN}-badtoken" "$PROBED_FINGERPRINT" 'not-the-secret')"
 check "a wrong token is refused" 401 "$(last_status)"
 check "and says why, as a code" cluster.auth_failed "$(printf '%s' "$BAD_SECRET" | json error.code)"
+# The message selects on this: a token secret and a password are refused by the
+# same code and have different things to check.
+check "and names which credential was refused" API_TOKEN   "$(printf '%s' "$BAD_SECRET" | json error.params.authKind)"
 
 CLUSTER="$(add_cluster "${RUN}-fixture" "$PROBED_FINGERPRINT" "$TOKEN_SECRET")"
 check "the right fingerprint and token are accepted" 201 "$(last_status)"

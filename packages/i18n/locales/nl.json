@@ -101,7 +101,6 @@
     "createExplainer": "De credential wordt versleuteld opgeslagen en daarna getoetst tegen het certificaat dat je hebt bevestigd. Werkt hij niet, dan wordt er niets toegevoegd.",
     "daemon": "Daemon",
     "detailDescription": "Beheerd voor {tenant}.",
-    "discoverNow": "Nu uitlezen",
     "discoveryInterval": "Uitlezen elke",
     "discoveryOff": "Alleen op verzoek",
     "endpoint": "Eindpunt",
@@ -126,7 +125,7 @@
     "notProxmoxBody": "Er antwoordde iets, maar niet zoals Proxmox dat doet. Controleer de poort, en controleer of je niet naar een reverse proxy ervoor kijkt.",
     "notProxmoxTitle": "Dit lijkt geen Proxmox-API",
     "notQuorate": "Geen quorum",
-    "pageDescription": "Proxmox VE-clusters en losse nodes.",
+    "pageDescription": "Proxmox VE-clusters en standalone nodes.",
     "password": "Wachtwoord",
     "passwordWarning": "Met een wachtwoord krijgt Velnox alles wat dat account mag, moet er elke twee uur vernieuwd worden, en stopt het zodra het wachtwoord wijzigt. Een API-token is op alle drie de punten beter.",
     "pinnedFingerprint": "Vastgelegd certificaat",
@@ -154,11 +153,11 @@
     "selfSigned": "Zelfondertekend",
     "siteHint": "Optioneel. Met een locatie kan een recht één plek dekken in plaats van de hele klant.",
     "staleWarning": "Alles hieronder is wat er het laatst met succes is gelezen, niet wat er nu waar is.",
-    "standalone": "Losse node",
+    "standalone": "Standalone node",
     "step1": "Stap 1 — waar staat hij",
     "step2": "Stap 2 — is dit de juiste machine",
     "step3": "Stap 3 — hoe wordt er aangemeld",
-    "subtitle": "Proxmox VE-clusters en losse nodes onder beheer, en wanneer elk voor het laatst is uitgelezen.",
+    "subtitle": "Proxmox VE-clusters en standalone nodes onder beheer, en wanneer elk voor het laatst is uitgelezen.",
     "title": "Clusters",
     "tokenId": "Token-id",
     "tokenIdHint": "Zoals Proxmox het toont, inclusief realm en tokennaam.",
@@ -177,7 +176,7 @@
     "never": "Nooit",
     "no": "Nee",
     "notAvailable": "Niet beschikbaar",
-    "refresh": "Vernieuwen",
+    "refresh": "Refresh",
     "requiresPermission": "Vereist het recht {permission}",
     "retry": "Opnieuw proberen",
     "save": "Opslaan",
@@ -187,8 +186,8 @@
     "yes": "Ja"
   },
   "dashboard": {
-    "phaseNoticeBody": "Authenticatie, de installatiewizard, rollen en optionele tweefactorauthenticatie werken. Proxmox-inventaris komt in fase 4 en het taaksysteem in fase 5. De tellers hieronder blijven op nul tot er werkelijk iets te tellen valt — het zijn geen plaatshouders voor verborgen gegevens.",
-    "phaseNoticeTitle": "Deze installatie draait een fase 2-build",
+    "phaseNoticeBody": "Authenticatie, de installatiewizard, rollen, optionele tweefactorauthenticatie, tenants en de Proxmox-inventarisatie werken. Het taaksysteem komt in fase 5. De tellers hieronder blijven op nul tot er werkelijk iets te tellen valt — het zijn geen plaatshouders voor verborgen gegevens.",
+    "phaseNoticeTitle": "Deze installatie draait een fase 4-build",
     "subtitle": "Overzicht van de omgeving",
     "tiles": {
       "clusters": "Clusters",
@@ -238,8 +237,11 @@
     },
     "cluster": {
       "already_degraded": "Cluster {cluster} is niet gezond. Los dit op voordat je een wijziging start.",
+      "auth_failed": "{authKind, select, API_TOKEN {Ongeldige Token-secret, controleer of de gegevens correct zijn.} TICKET {Ongeldige gebruikersnaam of wachtwoord, controleer of de gegevens correct zijn.} other {De opgegeven gegevens zijn geweigerd door {host}. Controleer of ze correct zijn.}}",
+      "duplicate": "Deze tenant heeft dit endpoint al onder beheer, als {name}.",
+      "not_proxmox": "Er antwoordde iets op {host}, maar het is geen Proxmox VE-API.",
       "quorum_at_risk": "Cluster {cluster} zou quorum verliezen: {available} van {required} stemmende nodes zouden beschikbaar blijven.",
-      "unreachable": "Cluster {cluster} is niet bereikbaar."
+      "unreachable": "{host} is niet bereikbaar."
     },
     "credential": {
       "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."
@@ -486,6 +488,7 @@
     "tab": {
       "audit": "Auditlog",
       "certificate": "Certificaat",
+      "status": "Servicestatus",
       "updates": "Updates"
     },
     "title": "Serverbeheer",
