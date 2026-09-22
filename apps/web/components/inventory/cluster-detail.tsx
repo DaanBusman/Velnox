@@ -10,8 +10,9 @@ import type {
   NodeSummary,
   WorkloadSummary,
 } from '@/lib/session-types';
-import { apiDelete, apiPost, type ApiFailure } from '@/lib/client-api';
+import { apiDelete, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
+import { INVENTORY_REFRESH_MS, useAutoRefresh } from '@/lib/use-auto-refresh';
 import { Button, FormError } from '@/components/ui/form';
 import { Card, KeyValue, Notice, StatusBadge } from '@/components/ui/primitives';
 import { NodeTable, WorkloadTable } from './tables';
@@ -30,6 +31,10 @@ type Tab = 'nodes' | 'guests' | 'ceph' | 'connection' | 'runs';
  * The Ceph tab is absent for a cluster without Ceph. Not empty: absent. Tiles
  * reading "0 OSDs" on a cluster that has never had Ceph teach an operator to
  * ignore the Ceph section, which is the opposite of what it is for.
+ *
+ * The page re-reads itself every two seconds, so a scheduled discovery run
+ * appears in the runs tab as it happens rather than when someone thinks to
+ * reload. **Refresh** is the same read on demand. Neither reaches Proxmox.
  */
 export function ClusterDetail({
   cluster,
@@ -50,6 +55,8 @@ export function ClusterDetail({
   const format = useFormatter();
   const router = useRouter();
   const describeError = useApiError();
+
+  useAutoRefresh(INVENTORY_REFRESH_MS);
 
   const [tab, setTab] = useState<Tab>('nodes');
   const [pending, setPending] = useState<string | null>(null);
@@ -85,12 +92,8 @@ export function ClusterDetail({
         title={cluster.name}
         description={`${cluster.endpointHost}:${cluster.endpointPort}`}
         actions={
-          <Button
-            variant="secondary"
-            pending={pending === 'discover'}
-            onClick={() => void run('discover', () => apiPost(`/clusters/${cluster.id}/discover`))}
-          >
-            {t('clusters.discoverNow')}
+          <Button variant="secondary" onClick={() => router.refresh()}>
+            {t('common.refresh')}
           </Button>
         }
       >

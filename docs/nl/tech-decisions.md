@@ -517,8 +517,8 @@ leggen wat ze heeft gebouwd, is niet klaar met bouwen.
 
 ## ADR-027 — Serverbeheer is een venster, geen sectie, en is afgeschermd met `system.manage`
 
-**Besluit:** Alles over de Velnox-installatie *zelf* — het auditspoor, het certificaat dat hij
-serveert, de build die draait — is één venster dat vanaf de onderkant van de zijbalk opent over
+**Besluit:** Alles over de Velnox-installatie *zelf* — de servicestatus, het auditspoor, het
+certificaat dat hij serveert, de build die draait — is één venster dat vanaf de onderkant van de zijbalk opent over
 waar de beheerder mee bezig was, en dat sluit met een ✕ of Escape. Het wordt alleen weergegeven bij
 `system.manage`, wat in de uitgeleverde catalogus uitsluitend de MSP Super Administrator is.
 
@@ -802,6 +802,39 @@ moment dat de oorzaak dat doet.
 geen historie van wat er vorige dinsdag meldde. Beide staan in known-gaps.md en beide willen het
 jobsysteem eronder, en dat is fase 5. Nu de helft bouwen zou betekenen dat er later een half gebouwde
 levenscyclus gemigreerd moet worden, uit gegevens waar beheerders al op waren gaan vertrouwen.
+
+---
+
+## ADR-034 — De inventarisatieschermen verversen zichzelf, en er is geen "nu uitlezen"
+
+**Besluit:** De clusterlijst en de clusterpagina lezen zichzelf elke twee seconden opnieuw. Een
+**Refresh**-knop doet diezelfde leesactie op verzoek. De knop **Nu uitlezen**, die een uitleesronde
+tegen Proxmox in de wachtrij zette, is weg.
+
+**Waarom die knop weg is.** Hij zag eruit als verversen en was dat niet. Hij zette een taak in de
+wachtrij, kwam meteen terug, en liet een scherm achter dat er precies zo uitzag als een moment
+eerder — dus de voor de hand liggende lezing was dat er niets gebeurde, en de voor de hand liggende
+reactie was nog een keer drukken. Wat een beheerder van een knop op die plek meestal wil is het
+scherm met actuele gegevens, en dat is een herlezing van de pagina: lokaal, goedkoop en direct.
+
+**Wat verversen niet doet.** Het benadert Proxmox niet. Zowel het interval als de knop lezen wat
+Velnox al heeft; het uitlezen van de hypervisor gebeurt volgens het schema van elk cluster. Dat in
+de documentatie zeggen doet er meer toe dan het klinkt, want het woord nodigt uit tot de
+tegenovergestelde aanname.
+
+**De prijs, ronduit gezegd.** Er is nu geen manier meer om een uitleesronde buiten het schema af te
+dwingen. Wat rest is het interval per cluster, dat verkort en weer teruggezet kan worden. Dat is een
+echt verlies voor het geval "ik heb net de firewall gerepareerd en wil zien dat het werkt", en het
+is het terugdraaien waard als dat geval vaak blijkt voor te komen — als een duidelijk aparte actie,
+niet als een knop met het etiket van een verversing.
+
+**Waarom pollen, en waarom twee seconden.** Er is nog geen stream; het taaksysteem en zijn
+voortgangskanaal komen in fase 5, en dit is wat het tot die tijd vervangt. Twee seconden is het
+tempo waar de eigenaar om vroeg. Elke tik is één herlezing van de pagina — voor de lijst één
+clusterquery per geopend tabblad — dus gratis is het niet, en in een verborgen tabblad loopt het
+niet: het interval stopt bij `visibilitychange` en ververst één keer bij terugkomst, want zes
+vergeten tabbladen die een week lang pollen is een prijs die niemand gekozen heeft. Wanneer de
+stream landt, is dit wat hij vervangt.
 
 ---
 

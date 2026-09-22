@@ -89,8 +89,10 @@ image die wordt uitgeleverd is altijd de standalone-versie.
 
 ### De tellers op het dashboard zijn streepjes, geen nullen
 Tenants, clusters, nodes en de rest tonen `—` met de fase die ze zal vullen. Het zijn geen
-plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. De ene kaart
-met echte gegevens is de servicestatus, en die is live.
+plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. Verder staat er
+niets meer op het dashboard: de servicestatus is verhuisd naar **Serverbeheer**, waar de rest van de
+staat van de installatie zelf staat — en daarmee is hij alleen nog zichtbaar voor een account met
+`system.manage`.
 
 ### Meldingen hebben geen levenscyclus
 Het meldingenscherm toont condities die bij elke keer openen uit de inventarisatie worden berekend.

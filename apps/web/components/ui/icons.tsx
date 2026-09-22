@@ -231,6 +231,12 @@ export const IconCertificate = (p: IconProps) => (
   </Icon>
 );
 
+export const IconPulse = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M1.5 8h3l1.75-4.5 3 9L11 8h3.5" />
+  </Icon>
+);
+
 export const IconClose = (p: IconProps) => (
   <Icon {...p}>
     <path d="M4 4l8 8M12 4l-8 8" />

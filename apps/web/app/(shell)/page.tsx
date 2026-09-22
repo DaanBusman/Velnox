@@ -1,7 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { SystemStatus } from '@/components/system-status';
 import { Card, Notice, PageHeader } from '@/components/ui/primitives';
-import { tryGetReadiness } from '@/lib/api';
 import { getSession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -19,11 +17,7 @@ const TILES = [
 ] as const;
 
 export default async function DashboardPage() {
-  const [t, readiness, session] = await Promise.all([
-    getTranslations(),
-    tryGetReadiness(),
-    getSession(),
-  ]);
+  const [t, session] = await Promise.all([getTranslations(), getSession()]);
 
   // Recommended only where it is genuinely a choice. Repeating the advice at
   // someone whose installation already compels a second factor is noise, and
@@ -41,8 +35,6 @@ export default async function DashboardPage() {
             <p className="mt-2 font-medium text-ink">{t('auth.mfaRecommendedNotice')}</p>
           )}
         </Notice>
-
-        <SystemStatus readiness={readiness} />
 
         {/*
           Counters are shown at zero with the phase that will populate them, rather

@@ -92,10 +92,10 @@ Sla je die stap over, dan heb je ermee ingestemd een credential dat de configura
 lezen te sturen naar wat er ook maar op poort 8006 antwoordde. Een beheernetwerk is geen veilig
 netwerk; het is een netwerk waar de gevolgen groter zijn.
 
-### Een losse node
+### Een standalone node
 
 Precies dezelfde stappen. Eén node vormt geen cluster, en Velnox modelleert hem als een cluster van
-één — hij verschijnt met de aanduiding **Losse node**, en wordt gerapporteerd als "geen quorum" in
+één — hij verschijnt met de aanduiding **Standalone node**, en wordt gerapporteerd als "geen quorum" in
 plaats van "quorum verloren".
 
 Alles daarachter behandelt hem identiek, en daarom is er geen apart scherm om een node toe te voegen,
@@ -148,7 +148,11 @@ is maar niet aangekoppeld toont streepjes, geen lege schijf.
 
 Elk cluster wordt volgens schema uitgelezen, standaard elke 30 minuten. Wijzig dat per cluster op de
 clusterpagina, of zet het op **Alleen op verzoek** om het schema voor één klant uit te zetten zonder
-iemand anders te raken. **Nu uitlezen** start er meteen een.
+iemand anders te raken.
+
+Er is geen knop die een ronde op verzoek start. De clusterschermen lezen zichzelf elke twee seconden
+opnieuw en **Refresh** doet dat direct, maar beide lezen wat Velnox al heeft — ze benaderen Proxmox
+niet. Een ronde buiten het schema betekent het interval voor dat cluster verkorten.
 
 Drie gedragingen zijn het weten waard, want die maken de inventarisatie betrouwbaar:
 

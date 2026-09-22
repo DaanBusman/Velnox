@@ -4,9 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import clsx from 'clsx';
-import { IconAudit, IconCertificate, IconClose, IconServer, IconUpdates } from '@/components/ui/icons';
+import {
+  IconAudit,
+  IconCertificate,
+  IconClose,
+  IconPulse,
+  IconServer,
+  IconUpdates,
+} from '@/components/ui/icons';
 import { AuditPanel } from '@/components/server/audit-panel';
 import { CertificatePanel } from '@/components/server/certificate-panel';
+import { StatusPanel } from '@/components/server/status-panel';
 import { UpdatesPanel } from '@/components/server/updates-panel';
 
 /**
@@ -28,9 +36,16 @@ import { UpdatesPanel } from '@/components/server/updates-panel';
  * by the API without it as well — this decides what to offer, not what to allow.
  */
 
-type TabKey = 'audit' | 'certificate' | 'updates';
+type TabKey = 'status' | 'audit' | 'certificate' | 'updates';
 
+/*
+ * Service status leads, because it answers the question people open this window
+ * with: is this installation healthy. It used to sit on the dashboard, which is
+ * a screen about someone's fleet — the readiness of Velnox itself belongs with
+ * the rest of Velnox itself.
+ */
 const TABS: { key: TabKey; icon: typeof IconAudit }[] = [
+  { key: 'status', icon: IconPulse },
   { key: 'audit', icon: IconAudit },
   { key: 'certificate', icon: IconCertificate },
   { key: 'updates', icon: IconUpdates },
@@ -62,7 +77,7 @@ export function ServerManagement() {
 
 function ServerWindow({ onClose }: { onClose: () => void }) {
   const t = useTranslations();
-  const [tab, setTab] = useState<TabKey>('audit');
+  const [tab, setTab] = useState<TabKey>('status');
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -219,6 +234,7 @@ function ServerWindow({ onClose }: { onClose: () => void }) {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
             <div className="mx-auto max-w-5xl">
+              {tab === 'status' && <StatusPanel />}
               {tab === 'audit' && <AuditPanel />}
               {tab === 'certificate' && <CertificatePanel />}
               {tab === 'updates' && <UpdatesPanel />}

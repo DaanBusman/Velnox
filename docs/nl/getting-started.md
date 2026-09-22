@@ -132,13 +132,13 @@ Werkt vandaag:
 
 | Waar | Wat het doet |
 |---|---|
-| **Dashboard** | Toestand van de installatie, en suggesties voor wat nu de moeite waard is |
+| **Dashboard** | Suggesties voor wat nu de moeite waard is |
 | **Gebruikers** | Accounts, rollen, in- en uitschakelen — zie [Gebruikers en toegang beheren](managing-access.md) |
 | **Rollen & rechten** | Wat elke rol toekent — zie [Rollen en rechten](permissions.md) |
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
 | **Beveiliging** | Meervoudige authenticatie voor je eigen account |
 | **Single sign-on** | De wizard voor Microsoft Entra ID |
-| **Serverbeheer** | De installatie zelf: het auditlog, het certificaat, de versie |
+| **Serverbeheer** | De installatie zelf: de servicestatus, het auditlog, het certificaat, de versie |
 | **Instellingen → Over** | Versie, buildcommit, licentie en het bronaanbod |
 | **Documentatie** | Deze documentatie, offline, gestempeld met de draaiende versie |
 
@@ -173,7 +173,8 @@ De installatiebrede standaarden voor nieuwe accounts zijn `VELNOX_DEFAULT_LOCALE
 
 Drie niveaus van antwoord, in oplopende grondigheid.
 
-**Vanuit de interface:** het Dashboard toont de toestand van elke afhankelijkheid.
+**Vanuit de interface:** **Serverbeheer** → **Servicestatus**, dat de toestand van elke
+afhankelijkheid toont. Daarvoor is `system.manage` nodig.
 
 **Van overal:** `https://<jouw-adres>/readyz` geeft de status van de database, Redis, de wachtrij en
 de migratiestand als JSON. Dat eindpunt is bewust niet geauthenticeerd, zodat een externe monitor het

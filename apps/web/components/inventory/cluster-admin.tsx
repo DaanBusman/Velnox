@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import type { ClusterSummary, SiteSummary, TenantSummary } from '@/lib/session-types';
-import { apiPost, type ApiFailure } from '@/lib/client-api';
-import { useApiError } from '@/lib/use-api-error';
-import { Button, FormError, TextInput } from '@/components/ui/form';
+import { INVENTORY_REFRESH_MS, useAutoRefresh } from '@/lib/use-auto-refresh';
+import { Button, TextInput } from '@/components/ui/form';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { AddCluster } from './add-cluster';
 import { ConnectionBadge, HealthBadge } from './primitives';
@@ -20,6 +19,14 @@ import { ConnectionBadge, HealthBadge } from './primitives';
  * an inventory screen that cannot tell you it is stale is worse than no
  * inventory screen, because it looks exactly the same when discovery has been
  * failing for a week.
+ *
+ * The table re-reads itself every two seconds, so a discovery run that finishes
+ * while you are looking at the list lands on its own. **Refresh** does the same
+ * thing on demand, for the moment after you have changed something and want to
+ * see it now rather than within two seconds.
+ *
+ * Neither of them reaches Proxmox. They re-read what Velnox has already
+ * collected; the reading itself happens on each cluster's own schedule.
  */
 export function ClusterAdmin({
   clusters,
@@ -35,12 +42,11 @@ export function ClusterAdmin({
   const t = useTranslations();
   const format = useFormatter();
   const router = useRouter();
-  const describeError = useApiError();
 
   const [adding, setAdding] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
-  const [pending, setPending] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  useAutoRefresh(INVENTORY_REFRESH_MS);
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -58,31 +64,8 @@ export function ClusterAdmin({
     [clusters],
   );
 
-  async function discover(cluster: ClusterSummary) {
-    setPending(cluster.id);
-    setFailure(null);
-    const result = await apiPost(`/clusters/${cluster.id}/discover`);
-    setPending(null);
-
-    if (!result.ok) {
-      setFailure(result.error);
-      return;
-    }
-
-    /*
-     * A discovery run takes seconds, not milliseconds, and nothing streams yet
-     * (phase 5). Refreshing immediately would show the same page back. The
-     * honest thing is to say it was queued and let the operator refresh — so
-     * this only refreshes, and the row's "last read" column is what tells them
-     * it worked.
-     */
-    router.refresh();
-  }
-
   return (
     <div className="space-y-4">
-      {failure && <FormError>{describeError(failure)}</FormError>}
-
       {adding && (
         <AddCluster
           tenants={tenants}
@@ -99,8 +82,14 @@ export function ClusterAdmin({
         title={t('clusters.title')}
         description={t('clusters.subtitle')}
         actions={
-          canManage &&
-          !adding && <Button onClick={() => setAdding(true)}>{t('clusters.add')}</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="quiet" onClick={() => router.refresh()}>
+              {t('common.refresh')}
+            </Button>
+            {canManage && !adding && (
+              <Button onClick={() => setAdding(true)}>{t('clusters.add')}</Button>
+            )}
+          </div>
         }
         bodyClassName=""
       >
@@ -147,7 +136,6 @@ export function ClusterAdmin({
                   <th scope="col" className="px-3 py-2 font-medium">
                     {t('clusters.lastRead')}
                   </th>
-                  <th scope="col" className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -200,16 +188,6 @@ export function ClusterAdmin({
                       ) : (
                         <span className="text-warn">{t('clusters.neverRead')}</span>
                       )}
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <Button
-                        variant="quiet"
-                        className="h-7 px-2 text-xs"
-                        pending={pending === cluster.id}
-                        onClick={() => void discover(cluster)}
-                      >
-                        {t('clusters.discoverNow')}
-                      </Button>
                     </td>
                   </tr>
                 ))}

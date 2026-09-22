@@ -81,8 +81,10 @@ the standalone one.
 
 ### The dashboard counters are dashes, not zeros
 Tenants, clusters, nodes and the rest show `—` with the phase that will populate them. They are not
-placeholders for hidden data and they are not zeroes pretending to be measurements. The one card
-backed by real data is service status, and it is live.
+placeholders for hidden data and they are not zeroes pretending to be measurements. The dashboard now
+holds nothing else: service status moved into **Server management**, where the rest of the
+installation's own state lives, which also means it is visible only to an account holding
+`system.manage`.
 
 ### Alerts have no lifecycle
 The alerts screen shows conditions computed from the inventory each time it is opened. That is the

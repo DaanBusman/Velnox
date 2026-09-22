@@ -1,5 +1,5 @@
 import 'server-only';
-import type { ReadinessResponse, SourceOfferResponse, SystemInfoResponse } from '@velnox/shared';
+import type { SourceOfferResponse, SystemInfoResponse } from '@velnox/shared';
 
 /**
  * Server-side API access.
@@ -39,7 +39,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiUnreachableError(path, error);
   }
 
-  if (!response.ok && response.status !== 503) {
+  // The 503 exemption that used to live here was for `/readyz`, which answers
+  // 503 with the report still in the body. That moved to the browser with the
+  // Service status panel, and nothing left here has a body worth reading on a
+  // failure — treating one as success would parse an error page as data.
+  if (!response.ok) {
     throw new ApiUnreachableError(path, new Error(`HTTP ${response.status}`));
   }
 
@@ -49,17 +53,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const getSystemInfo = (): Promise<SystemInfoResponse> => request('/api/v1/system/info');
 
 export const getSourceOffer = (): Promise<SourceOfferResponse> => request('/api/v1/system/source');
-
-/** `/readyz` answers 503 when not ready; the body is still the report we want. */
-export const getReadiness = (): Promise<ReadinessResponse> => request('/readyz');
-
-export async function tryGetReadiness(): Promise<ReadinessResponse | null> {
-  try {
-    return await getReadiness();
-  } catch {
-    return null;
-  }
-}
 
 export async function tryGetSystemInfo(): Promise<SystemInfoResponse | null> {
   try {

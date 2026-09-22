@@ -127,13 +127,13 @@ Working today:
 
 | Where | What it does |
 |---|---|
-| **Dashboard** | Installation state, and prompts for what is worth doing next |
+| **Dashboard** | Prompts for what is worth doing next |
 | **Users** | Accounts, roles, enabling and disabling — see [Managing users and access](managing-access.md) |
 | **Roles & permissions** | What each role grants — see [Roles and permissions](permissions.md) |
 | **Audit log** | Every authentication and authorisation event, newest first |
 | **Security** | Two-factor authentication for your own account |
 | **Single sign-on** | The Microsoft Entra ID wizard |
-| **Server management** | The installation itself: its audit log, its certificate, its version |
+| **Server management** | The installation itself: its service status, its audit log, its certificate, its version |
 | **Settings → About** | Version, build commit, licence and the source offer |
 | **Documentation** | This documentation, offline, stamped with the running version |
 
@@ -169,7 +169,8 @@ The installation-wide defaults for new accounts are `VELNOX_DEFAULT_LOCALE` and
 
 Three levels of answer, in increasing order of thoroughness.
 
-**From the interface:** the Dashboard shows the state of each dependency.
+**From the interface:** **Server management** → **Service status**, which shows the state of
+each dependency. It needs `system.manage`.
 
 **From anywhere:** `https://<your-address>/readyz` returns the status of the database, Redis, the
 queue and the migration state as JSON. It is deliberately unauthenticated so an external monitor can

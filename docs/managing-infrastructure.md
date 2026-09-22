@@ -141,7 +141,11 @@ dashes, not an empty disk.
 
 Every cluster is read on a schedule, every 30 minutes by default. Change it per cluster on the
 cluster's page, or set it to **Only when asked** to turn the schedule off for one customer without
-affecting anyone else. **Read now** runs one immediately.
+affecting anyone else.
+
+There is no button that starts a run on demand. The cluster screens re-read themselves every two
+seconds and **Refresh** re-reads them now, but both of those read what Velnox already holds — they
+do not reach Proxmox. A run outside the schedule means shortening the interval for that cluster.
 
 Three behaviours are worth knowing, because they are what makes the inventory trustworthy:
 

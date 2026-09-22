@@ -494,8 +494,8 @@ it built has not finished building it.
 
 ## ADR-027 — Server management is a window, not a section, and it is gated on `system.manage`
 
-**Decision:** Everything about the Velnox installation *itself* — its audit trail, the certificate it
-serves, the build it is running — is one window opened from the bottom of the sidebar, over whatever
+**Decision:** Everything about the Velnox installation *itself* — its readiness, its audit trail,
+the certificate it serves, the build it is running — is one window opened from the bottom of the sidebar, over whatever
 the operator was doing, closed with an ✕ or Escape. It is rendered only for `system.manage`, which in
 the shipped catalogue is the MSP Super Administrator alone.
 
@@ -763,6 +763,38 @@ question is asked, and an alert disappears the instant its cause does.
 screen, and there is no history of what was alerting last Tuesday. Both are in known-gaps.md and both
 want the job system underneath them, which is Phase 5. Building half of it now would mean migrating a
 half-built lifecycle later, from data operators had started to rely on.
+
+---
+
+## ADR-034 — The inventory screens refresh themselves, and there is no "read now"
+
+**Decision:** The cluster list and the cluster page re-read themselves every two seconds. A
+**Refresh** button does the same read on demand. The **Read now** button, which queued a discovery
+run against Proxmox, is gone.
+
+**Why the button went.** It looked like a refresh and was not one. It queued a job, returned
+immediately, and left a screen that looked exactly as it had a moment earlier — so the natural
+reading was that nothing happened, and the natural response was to press it again. What an operator
+usually wants from a button in that position is the screen showing current data, and that is a page
+re-read: local, cheap, and instant.
+
+**What refresh does not do.** It does not reach Proxmox. Both the interval and the button re-read
+what Velnox already holds; the reading of the hypervisor happens on each cluster's own schedule.
+Saying so in the documentation matters more than it sounds, because the word invites the opposite
+assumption.
+
+**Cost, stated plainly.** There is now no way to force a discovery run outside the schedule. What
+remains is the per-cluster interval, which can be shortened and set back. That is a real loss for
+the case of "I have just fixed the firewall and want to see it work", and it is worth reversing if
+that case turns out to be common — as a clearly separate action, not as a button labelled like a
+refresh.
+
+**Why polling, and why two seconds.** There is no stream yet; the job system and its progress
+channel arrive in phase 5, and this is what stands in until then. Two seconds is the cadence the
+owner asked for. Each tick is one page re-read — for the list, one cluster query per open tab — so
+it is not free, and it does not run in a hidden tab: the interval stops on `visibilitychange` and
+refreshes once on the way back, because six forgotten tabs polling for a week is a cost nobody
+chose. When the stream lands, this is the thing it replaces.
 
 ---
 
