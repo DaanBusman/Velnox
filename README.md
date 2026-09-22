@@ -120,7 +120,7 @@ without running the install script that puts the binary in place. Install a
 matching pnpm once and the handoff stops being needed:
 
 ```bash
-npm install -g @pnpm/exe@12.3.4
+npm install -g @pnpm/exe@12.5.1
 ```
 
 | Command | What it does |

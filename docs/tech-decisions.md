@@ -547,7 +547,7 @@ live in `globals.css` as named tokens rather than as utility strings copied betw
 
 ## ADR-029 — pnpm 12, and the four things that broke on the way
 
-**Decision:** The workspace runs pnpm 12.3.4. `packageManager` in the root
+**Decision:** The workspace runs pnpm 12. `packageManager` in the root
 `package.json` is the single pin, honoured by CI through `pnpm/action-setup` and by both images
 through corepack.
 
@@ -579,11 +579,36 @@ entirely; 12 is the supported line.
 4. **An older global pnpm cannot hand off to 12 on Windows.** It downloads the package without
    running the install script that replaces the placeholder with the native binary, and the shim
    then points at a text file. Not fixable from this repository; the README says to install
-   `@pnpm/exe@12.3.4` once.
+   `@pnpm/exe` at the pinned version once.
+
+   This one recurs on **every** pin bump, because the download is per version: moving to 12.5.1
+   reproduced it exactly, from a machine that already had a working 12.3.4. Worth knowing before
+   assuming a patch bump is free on Windows.
 
 **What did not change:** the lockfile diff is purely additive — 101 lines, no deletions, not one
 dependency version moved. `lockfileVersion` is still `9.0`; pnpm 12 prepends a second YAML document
 recording the package manager itself.
+
+**Amended, 12.3.4 → 12.5.1.** Nothing broke. Lint, typecheck and the full test suite pass, both
+images build and carry the new binary, and `--network none` still starts pnpm — the check that
+matters for the migrate container on an isolated network. The only thing that recurred is the
+Windows handoff above, which recurs on every bump.
+
+The lockfile moved by 94 lines added and 37 removed, and **every one of them is pnpm describing
+itself**: the `packageManagerDependencies` specifier, and the per-platform `@pnpm/exe.*` entries.
+Not one other package is touched, and `lockfileVersion` is still `9.0`. Six platforms appear that
+12.3.4 did not publish — android on both architectures, FreeBSD x64, and Linux on ppc64, riscv64 and
+s390x — which is why the diff grows rather than swapping line for line.
+
+Worth recording how that was nearly got wrong: the first two `pnpm install` runs left the lockfile
+untouched, because one found node_modules already correct and the other was `--frozen-lockfile`,
+which by definition does not write. The rewrite happened later, under an ordinary pnpm invocation.
+"I checked and the lockfile did not change" was true when it was said and false by the time it
+mattered, which is an argument for checking `git status` at the end of a change rather than in the
+middle of one.
+
+The bump is recorded here rather than left implicit because the lesson below is about pins that stop
+being revisited, and a pin nobody has moved in a while is the thing that lesson is about.
 
 **The general lesson, which is the reason this is written down:** a pinned tool that has not been
 revisited in a while is not a stable dependency, it is a deferred migration. Four behaviours changed
