@@ -2,7 +2,7 @@
 
 # Velnox — Nederlandse documentatie
 
-> **Vertaling.** Bron: [README.md](../../README.md) @ `5d8f049`.
+> **Vertaling.** Bron: [README.md](../../README.md) @ `9cd0e84`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.**
@@ -119,7 +119,7 @@ op zonder het installatiescript te draaien dat de binary op zijn plek zet.
 Installeer eenmalig een passende pnpm en de doorschakeling is niet meer nodig:
 
 ```bash
-npm install -g @pnpm/exe@12.3.4
+npm install -g @pnpm/exe@12.5.1
 ```
 
 | Commando | Wat het doet |

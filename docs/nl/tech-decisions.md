@@ -1,6 +1,6 @@
 # Velnox — Technologiekeuzes (ADR-log)
 
-> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `b730a19`.
+> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `9cd0e84`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Phase 0. Deze keuzes zijn voorstellen in afwachting van goedkeuring; er is nog niets
@@ -571,6 +571,80 @@ van één. Een component die naar een rauwe kleur grijpt in plaats van naar de s
 thema subtiel verkeerd uit en komt in het andere door de review — dat is het faalpatroon om op te
 letten, en de reden dat de recepten in `globals.css` als benoemde tokens staan en niet als
 utility-strings die tussen componenten worden gekopieerd.
+
+---
+
+## ADR-029 — pnpm 12, en de vier dingen die onderweg braken
+
+**Besluit:** de workspace draait pnpm 12. `packageManager` in de root-`package.json` is de enige
+vastlegging, gerespecteerd door CI via `pnpm/action-setup` en door beide images via corepack.
+
+**Waarom:** er was nooit een reden voor de vorige vastlegging. `pnpm@10.33.4` is in de bootstrap-commit
+van fase 1 opgeschreven en daarna nooit herzien, dus het was drift en geen besluit. pnpm heeft 11
+overgeslagen; 12 is de ondersteunde lijn.
+
+**Wat het kostte.** Vier dingen braken, en geen ervan is een versienummer:
+
+1. **De toegestane-buildlijst is hernoemd en verhuisd.** `pnpm.onlyBuiltDependencies` in
+   `package.json` — een lijst — werd `allowBuilds` in `pnpm-workspace.yaml`, een map. pnpm 12
+   negeert de oude sleutel. Het laat de installatie falen in plaats van te waarschuwen wanneer een
+   pakket een buildscript wil waarover niets is bepaald, dus de beheersmaatregel kon niet stilletjes
+   vervallen — maar `pnpm config get onlyBuiltDependencies` echode de oude waarde nog steeds terug,
+   wat er precies zo uitziet als een werkende instelling. Het leest de settings-map zonder de sleutel
+   te valideren. Dat is het onthouden waard de volgende keer dat er een verhuist.
+
+2. **Twee pakketten waren stilletjes genegeerd.** pnpm 10 waarschuwde over een geblokkeerd
+   buildscript; pnpm 12 geeft een fout. `@scarf/scarf` (installatietelemetrie, via `swagger-ui-dist`)
+   en `msgpackr-extract` (een optionele native versneller, via BullMQ) stonden nooit op de lijst en
+   niemand had het gemerkt. Beide worden nu expliciet geweigerd, met de reden ernaast.
+
+3. **corepack bakt pnpm niet meer in het image.** pnpm 12 wordt als native binary geleverd die zijn
+   shim bij *eerste gebruik* downloadt, dus `corepack prepare --activate` laat een shim van 5 MB
+   achter en geen pnpm. Het eerste dat dat zou ontdekken was de migrate-container — op het interne
+   netwerk, zonder route naar buiten, tijdens een upgrade. Beide Dockerfiles roepen nu `pnpm
+   --version` aan in dezelfde laag, wat de binary binnenhaalt in `COREPACK_HOME`, waar de
+   runtime-stage hem erft. Geverifieerd door het image te bouwen en het migrate-commando onder
+   `--network none` te draaien.
+
+4. **Een oudere globale pnpm kan op Windows niet overdragen aan 12.** Hij downloadt het pakket zonder
+   het installatiescript te draaien dat de placeholder door de native binary vervangt, en de shim
+   wijst daarna naar een tekstbestand. Niet op te lossen vanuit deze repository; de README zegt
+   `@pnpm/exe` op de vastgelegde versie één keer te installeren.
+
+   Dit keert bij **elke** verhoging van de vastlegging terug, omdat de download per versie is: de
+   stap naar 12.5.1 reproduceerde het precies, op een machine die al een werkende 12.3.4 had. Het
+   weten waard voordat je aanneemt dat een patch-verhoging op Windows gratis is.
+
+**Wat niet veranderde:** het verschil in het lockfile is puur aanvullend — 101 regels, geen
+verwijderingen, geen enkele afhankelijkheidsversie verschoven. `lockfileVersion` is nog steeds `9.0`;
+pnpm 12 zet er een tweede YAML-document voor dat de package manager zelf vastlegt.
+
+**Herzien, 12.3.4 → 12.5.1.** Er brak niets. Lint, typecheck en de volledige testsuite slagen, beide
+images bouwen en dragen de nieuwe binary, en `--network none` start pnpm nog steeds — de controle die
+ertoe doet voor de migrate-container op een afgesloten netwerk. Het enige dat terugkeerde is de
+Windows-overdracht hierboven, en die keert bij elke verhoging terug.
+
+Het lockfile verschoof met 94 toegevoegde en 37 verwijderde regels, en **elk daarvan is pnpm die
+zichzelf beschrijft**: de `packageManagerDependencies`-specificatie en de `@pnpm/exe.*`-regels per
+platform. Geen enkel ander pakket wordt geraakt, en `lockfileVersion` is nog steeds `9.0`. Er komen
+zes platforms bij die 12.3.4 niet publiceerde — android op beide architecturen, FreeBSD x64, en Linux
+op ppc64, riscv64 en s390x — en daarom groeit het verschil in plaats van regel voor regel te wisselen.
+
+Het is het vastleggen waard hoe dat bijna verkeerd ging: de eerste twee `pnpm install`-rondes lieten
+het lockfile onaangeroerd, omdat de ene node_modules al kloppend aantrof en de andere
+`--frozen-lockfile` was, wat per definitie niet schrijft. Het herschrijven gebeurde later, onder een
+gewone pnpm-aanroep. "Ik heb gekeken en het lockfile is niet veranderd" was waar toen het gezegd werd
+en onwaar tegen de tijd dat het ertoe deed — een argument om `git status` aan het eind van een
+wijziging te draaien in plaats van halverwege.
+
+De verhoging staat hier opgeschreven in plaats van impliciet te blijven, omdat de les hieronder over
+vastleggingen gaat die niet meer herzien worden, en een vastlegging die al een tijd niemand verzet
+heeft is precies waar die les over gaat.
+
+**De algemene les, en de reden dat dit is opgeschreven:** een vastgelegd hulpmiddel dat al een tijd
+niet is herzien is geen stabiele afhankelijkheid, het is een uitgestelde migratie. Vier gedragingen
+veranderden onder een veld dat eruitziet als een versienummer, en drie ervan zouden zich als een
+kapotte productie-installatie hebben gemeld in plaats van als een falende test.
 
 ---
 
