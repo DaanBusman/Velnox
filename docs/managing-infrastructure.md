@@ -106,6 +106,11 @@ no setting that changes that.
 What you *can* see is which token is in use, so you know what to revoke: the cluster's
 **Connection** tab shows the token id and the pinned fingerprint, never the secret.
 
+**Where removal lives.** At the bottom of the cluster's page, below whichever tab is open, under
+**Remove this cluster**. Its nodes and guests go with it. There is no way to remove a single node,
+and there is not going to be one: a node is in the inventory because the cluster reports it, so the
+next read would simply bring it back.
+
 Removing a cluster removes its stored credential with it. A secret with no owner is a secret nobody
 is going to rotate.
 

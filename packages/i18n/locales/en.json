@@ -138,6 +138,8 @@
     "remove": "Stop managing this cluster",
     "removeBody": "The cluster itself is untouched and the audit trail stays. What is removed is what Velnox has cached about it, and the stored credential.",
     "removeConfirm": "Remove",
+    "removeSection": "Remove this cluster",
+    "removeSectionBody": "Nodes and guests go with it. A node cannot be removed on its own: it is in the inventory because the cluster reports it, and the next read would bring it back.",
     "removeTitle": "Stop managing this cluster?",
     "runCounts": "{nodes} nodes, {workloads} guests",
     "runDuration": "{seconds}s",

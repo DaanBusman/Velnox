@@ -139,6 +139,8 @@
     "remove": "Dit cluster niet langer beheren",
     "removeBody": "Het cluster zelf blijft ongemoeid en het auditlogboek blijft. Wat verdwijnt is wat Velnox erover heeft vastgelegd, en de opgeslagen credential.",
     "removeConfirm": "Verwijderen",
+    "removeSection": "Dit cluster verwijderen",
+    "removeSectionBody": "Nodes en guests gaan mee. Een node kan niet los verwijderd worden: hij staat in de inventarisatie omdat het cluster hem meldt, en de volgende uitleesronde zou hem terugbrengen.",
     "removeTitle": "Dit cluster niet langer beheren?",
     "runCounts": "{nodes} nodes, {workloads} gasten",
     "runDuration": "{seconds}s",

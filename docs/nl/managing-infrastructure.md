@@ -113,6 +113,11 @@ instelling die dat verandert.
 Wat je wél kunt zien is welk token in gebruik is, zodat je weet wat je moet intrekken: het tabblad
 **Verbinding** van het cluster toont het token-id en de vastgelegde vingerafdruk, nooit het geheim.
 
+**Waar verwijderen staat.** Onderaan de clusterpagina, onder welk tabblad je ook openhebt, bij **Dit
+cluster verwijderen**. De nodes en guests gaan mee. Een losse node verwijderen kan niet, en dat komt
+er ook niet: een node staat in de inventarisatie omdat het cluster hem meldt, dus de volgende
+uitleesronde zou hem gewoon terugbrengen.
+
 Een cluster verwijderen verwijdert ook de opgeslagen credential. Een geheim zonder eigenaar is een
 geheim dat niemand gaat roteren.
 

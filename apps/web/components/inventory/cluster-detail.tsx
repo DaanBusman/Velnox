@@ -214,51 +214,55 @@ export function ClusterDetail({
             {cluster.tlsFingerprint ? <Fingerprint value={cluster.tlsFingerprint} /> : <Absent />}
             <p className="mt-2 text-xs text-ink-muted">{t('clusters.fingerprintExplainer')}</p>
           </div>
-
-          {canManage && (
-            <div className="mt-4 border-t border-line pt-4">
-              {confirmingRemoval ? (
-                <Notice tone="warn" title={t('clusters.removeTitle')}>
-                  <p>{t('clusters.removeBody')}</p>
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      variant="secondary"
-                      className="h-8 text-xs"
-                      pending={pending === 'remove'}
-                      onClick={() =>
-                        void run('remove', () => apiDelete(`/clusters/${cluster.id}`)).then(
-                          (ok) => {
-                            if (ok) router.push('/clusters');
-                          },
-                        )
-                      }
-                    >
-                      {t('clusters.removeConfirm')}
-                    </Button>
-                    <Button
-                      variant="quiet"
-                      className="h-8 text-xs"
-                      onClick={() => setConfirmingRemoval(false)}
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                  </div>
-                </Notice>
-              ) : (
-                <Button
-                  variant="quiet"
-                  className="h-8 px-2 text-xs"
-                  onClick={() => setConfirmingRemoval(true)}
-                >
-                  {t('clusters.remove')}
-                </Button>
-              )}
-            </div>
-          )}
         </Card>
       )}
 
       {tab === 'runs' && <RunsPanel runs={runs} />}
+
+      {/*
+        Removal is a section of its own, below whichever tab is open.
+ 
+        It used to sit at the bottom of the Connection tab, where it was
+        findable only by someone who already knew it was there — reported as
+        "there is no way to remove a cluster", which is the same thing as not
+        having one. It is not in the header next to Refresh either: a
+        destructive action does not belong a few pixels from one people press
+        without reading.
+      */}
+      {canManage && (
+        <Card title={t('clusters.removeSection')} description={t('clusters.removeSectionBody')}>
+          {confirmingRemoval ? (
+            <Notice tone="warn" title={t('clusters.removeTitle')}>
+              <p>{t('clusters.removeBody')}</p>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  variant="secondary"
+                  className="h-8 text-xs"
+                  pending={pending === 'remove'}
+                  onClick={() =>
+                    void run('remove', () => apiDelete(`/clusters/${cluster.id}`)).then((ok) => {
+                      if (ok) router.push('/clusters');
+                    })
+                  }
+                >
+                  {t('clusters.removeConfirm')}
+                </Button>
+                <Button
+                  variant="quiet"
+                  className="h-8 text-xs"
+                  onClick={() => setConfirmingRemoval(false)}
+                >
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </Notice>
+          ) : (
+            <Button variant="quiet" onClick={() => setConfirmingRemoval(true)}>
+              {t('clusters.remove')}
+            </Button>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
