@@ -82,6 +82,23 @@ json() {
   ' "$1" 2>/dev/null
 }
 
+# Encode arguments as a JSON object: keys and values alternating.
+#
+# The sign-in body used to be built by pasting $VELNOX_ADMIN_PASSWORD straight
+# into a JSON string literal. A password holding a double quote or a backslash —
+# which is what a password manager generates — produced a malformed body, and
+# the API answered 401. That reads exactly like a wrong password, so the harness
+# blamed the operator for its own quoting bug. Values go through JSON.stringify
+# now, and they arrive as argv, so nothing has to survive a round of shell
+# quoting on the way.
+json_object() {
+  node -e '
+    const out = {};
+    for (let i = 1; i < process.argv.length; i += 2) out[process.argv[i]] = process.argv[i + 1];
+    process.stdout.write(JSON.stringify(out));
+  ' "$@"
+}
+
 # ---------------------------------------------------------------------------
 # The fixture
 # ---------------------------------------------------------------------------
@@ -206,7 +223,7 @@ if [[ -z "$ADMIN_EMAIL" || -z "$ADMIN_PASSWORD" ]]; then
 fi
 
 call POST /api/v1/auth/login \
-  "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" >/dev/null
+  "$(json_object email "$ADMIN_EMAIL" password "$ADMIN_PASSWORD")" >/dev/null
 check "admin: signs in" 200 "$(last_status)"
 
 TENANT_ID="$(call GET /api/v1/tenants | json tenants.0.id)"
