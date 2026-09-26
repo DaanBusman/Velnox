@@ -836,6 +836,20 @@ niet: het interval stopt bij `visibilitychange` en ververst één keer bij terug
 vergeten tabbladen die een week lang pollen is een prijs die niemand gekozen heeft. Wanneer de
 stream landt, is dit wat hij vervangt.
 
+**Het pauzeert wanneer iemand ergens middenin zit.** Een cluster toevoegen is drie stappen met een
+vingerafdruk die je met een ander scherm vergelijkt, dus het is precies het scherm dat een beheerder
+verlaat en weer opzoekt — en de verversing die bij terugkomst afging, nam het halfingevulde
+formulier mee. Het interval staat uit zolang dat formulier open staat, en zolang een verwijdering
+bevestigd moet worden.
+
+Dat is evenzeer een omweg als een voorkeur, en het onderliggende probleem verdient het om opgeschreven
+te worden: `router.refresh()` rendert ook de **layout** opnieuw, en de shell-layout geeft
+`<SessionRecovery />` terug in plaats van de hele applicatie zodra `getSession()` leeg terugkomt — een
+verlopen access token, of een API-aanroep die langer dan vijf seconden duurde. De boom vervangen
+ontkoppelt alles eronder. Bij navigatie is dat zeldzaam genoeg om onzichtbaar te blijven; bij één
+verversing per twee seconden houdt het op zeldzaam te zijn. Pauzeren waar het het meest pijn doet is
+niet hetzelfde als het oplossen.
+
 ---
 
 ## Versiedoelen

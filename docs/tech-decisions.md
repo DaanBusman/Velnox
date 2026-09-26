@@ -796,6 +796,18 @@ it is not free, and it does not run in a hidden tab: the interval stops on `visi
 refreshes once on the way back, because six forgotten tabs polling for a week is a cost nobody
 chose. When the stream lands, this is the thing it replaces.
 
+**It pauses while someone is in the middle of something.** Adding a cluster is three steps with a
+fingerprint to compare against another screen, so it is precisely the thing an operator leaves and
+comes back to — and the refresh that fires on the way back was taking the half-filled form with it.
+The interval is off while that form is open, and while a removal is being confirmed.
+
+That is a workaround as much as a preference, and the underlying problem is worth stating:
+`router.refresh()` re-renders the **layout** as well as the page, and the shell layout returns
+`<SessionRecovery />` instead of the whole application when `getSession()` comes back empty — an
+expired access token, or an API call that took longer than five seconds. Replacing the tree unmounts
+everything below it. On navigation that is rare enough to be invisible; at one refresh every two
+seconds it stops being rare. Pausing where it hurts most is not the same as fixing it.
+
 ---
 
 ## Version targets

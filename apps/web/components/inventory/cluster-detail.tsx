@@ -56,12 +56,15 @@ export function ClusterDetail({
   const router = useRouter();
   const describeError = useApiError();
 
-  useAutoRefresh(INVENTORY_REFRESH_MS);
-
   const [tab, setTab] = useState<Tab>('nodes');
   const [pending, setPending] = useState<string | null>(null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [confirmingRemoval, setConfirmingRemoval] = useState(false);
+
+  // Paused while a removal is being confirmed, for the same reason the add form
+  // pauses it: a refresh can unmount the tree, and a confirmation that vanishes
+  // is one an operator answers twice.
+  useAutoRefresh(INVENTORY_REFRESH_MS, !confirmingRemoval);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'nodes', label: t('nav.nodes') },

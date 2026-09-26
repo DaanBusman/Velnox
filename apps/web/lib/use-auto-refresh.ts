@@ -12,7 +12,14 @@ import { useRouter } from 'next/navigation';
  * scroll position all survive. That is the whole reason this is a refresh and
  * not a reload.
  *
- * Two things it deliberately does not do:
+ * **It stops while the user is in the middle of something.** Pass `enabled:
+ * false` and no interval runs and no listener is registered. This is not a
+ * nicety: `router.refresh()` re-renders the *layout* as well as the page, and
+ * the shell layout returns a different tree entirely when `getSession()` comes
+ * back empty — which unmounts everything below it, half-filled forms included.
+ * Refreshing every two seconds turns that from a rare event into a routine one.
+ *
+ * Two more things it deliberately does not do:
  *
  * - **It does not poll a hidden tab.** An operator with six Velnox tabs open
  *   would otherwise have six of these running for as long as the browser is up,

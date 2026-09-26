@@ -46,7 +46,11 @@ export function ClusterAdmin({
   const [adding, setAdding] = useState(false);
   const [search, setSearch] = useState('');
 
-  useAutoRefresh(INVENTORY_REFRESH_MS);
+  // Not while the add form is open. It is three steps with a fingerprint to
+  // compare against another screen, so it is exactly the thing someone leaves
+  // and comes back to — and a refresh landing on the way back took the form
+  // with it.
+  useAutoRefresh(INVENTORY_REFRESH_MS, !adding);
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
