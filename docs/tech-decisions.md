@@ -607,6 +607,35 @@ which by definition does not write. The rewrite happened later, under an ordinar
 mattered, which is an argument for checking `git status` at the end of a change rather than in the
 middle of one.
 
+**Amended, 12.5.1 → 12.6.0.** Nothing broke. Lint, typecheck and the full test suite pass, both
+images build, and `pnpm --version` answers 12.6.0 in both under `--network none`. The lockfile moved
+by 62 lines each way and every one is again pnpm describing itself — version numbers and integrity
+hashes, the same platforms as 12.5.1. The `pnpm@12.6.0` integrity in the lockfile matches the one the
+registry publishes.
+
+Two things are worth recording.
+
+The Windows handoff did **not** recur here — but only through the path that was tested. 12.5.1 was
+run through Node (`node …/pnpm.mjs`), saw the new pin, fetched 12.6.0 and handed over to it, and the
+native `pnpm.exe` it fetched is the real 51 MB binary rather than a placeholder. Whether a globally
+installed native `pnpm.exe` hands over as cleanly could not be tried: on the machine this was done
+on, a Device Guard policy blocks `pnpm.exe` from running at all. So the README still says to install
+`@pnpm/exe` at the pinned version, and point 4 above stands until someone sees otherwise.
+
+And checking the images found something that had been wrong since the move to pnpm 12, not something
+12.6.0 introduced. The bake — `pnpm --version` in `/app`, as root — writes a `pnpm-lock.yaml`
+recording the package manager, with mode 600. The backend's build stage copies the real lockfile
+over it and never noticed. The web runtime does not, so it carried a stub its own `node` user cannot
+read, and any pnpm run in `/app` failed with "Permission denied". Reproduced identically on 12.5.1
+with a bare image before changing anything. Nothing in the web container runs pnpm, so no
+installation was affected.
+
+The first fix was wrong, and the check caught it. Deleting the stub made pnpm in `/app` go to the
+registry to resolve its pin — offline, a warning and a fallback rather than a failure, but a network
+call from a container that should never make one. The stub is how pnpm finds its pinned version
+without the network. Both Dockerfiles now make it readable instead, and pnpm then answers 12.6.0 under
+`--network none` with no warning in either image.
+
 The bump is recorded here rather than left implicit because the lesson below is about pins that stop
 being revisited, and a pin nobody has moved in a while is the thing that lesson is about.
 

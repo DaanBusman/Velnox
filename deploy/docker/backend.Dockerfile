@@ -42,10 +42,19 @@ WORKDIR /app
 # The version comes from package.json's `packageManager` field, so it cannot
 # drift from what the workspace declares. COREPACK_HOME is made world-readable
 # because the runtime stage drops to the unprivileged `node` user.
+#
+# The bake also writes a `pnpm-lock.yaml` here recording the package manager it
+# resolved — root-owned, mode 600. That file is what lets pnpm find its pinned
+# version offline: without it, pnpm goes to the registry to resolve the pin. So
+# it is made readable rather than removed. A stage that copies the real lockfile
+# over it never notices; the web runtime does not, and carried a stub its own
+# `node` user could not read, so any pnpm run in /app failed with "Permission
+# denied".
 COPY package.json ./
 RUN corepack enable && \
     corepack prepare --activate && \
     pnpm --version && \
+    chmod a+r pnpm-lock.yaml && \
     chmod -R a+rX "$COREPACK_HOME"
 
 # ---------------------------------------------------------------------------

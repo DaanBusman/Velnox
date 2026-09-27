@@ -637,6 +637,37 @@ gewone pnpm-aanroep. "Ik heb gekeken en het lockfile is niet veranderd" was waar
 en onwaar tegen de tijd dat het ertoe deed — een argument om `git status` aan het eind van een
 wijziging te draaien in plaats van halverwege.
 
+**Herzien, 12.5.1 → 12.6.0.** Er brak niets. Lint, typecheck en de volledige testsuite slagen, beide
+images bouwen, en `pnpm --version` antwoordt in beide 12.6.0 onder `--network none`. Het lockfile
+verschoof met 62 regels in beide richtingen, en elk daarvan is weer pnpm die zichzelf beschrijft —
+versienummers en integriteitshashes, dezelfde platforms als 12.5.1. De integriteit van `pnpm@12.6.0`
+in het lockfile komt overeen met wat het register publiceert.
+
+Twee dingen zijn het vastleggen waard.
+
+De Windows-overdracht keerde hier **niet** terug — maar alleen via het pad dat getest is. 12.5.1 werd
+via Node gedraaid (`node …/pnpm.mjs`), zag de nieuwe vastlegging, haalde 12.6.0 op en droeg daaraan
+over, en de native `pnpm.exe` die het ophaalde is de echte binary van 51 MB, geen placeholder. Of een
+globaal geïnstalleerde native `pnpm.exe` even netjes overdraagt, kon niet geprobeerd worden: op de
+machine waarop dit gebeurde, blokkeert een Device Guard-beleid `pnpm.exe` volledig. De README zegt dus
+nog steeds `@pnpm/exe` op de vastgelegde versie te installeren, en punt 4 hierboven blijft staan tot
+iemand iets anders ziet.
+
+En het controleren van de images vond iets dat al sinds de overstap naar pnpm 12 fout was, niet iets
+dat 12.6.0 introduceerde. Het inbakken — `pnpm --version` in `/app`, als root — schrijft een
+`pnpm-lock.yaml` die de package manager vastlegt, met modus 600. De build-stage van de backend kopieert
+het echte lockfile eroverheen en merkte het nooit. De web-runtime doet dat niet, en droeg dus een stub
+die zijn eigen `node`-gebruiker niet kan lezen; elke pnpm-aanroep in `/app` faalde met "Permission
+denied". Vóór er iets veranderd werd, identiek gereproduceerd op 12.5.1 met een kaal image. Niets in de
+webcontainer draait pnpm, dus geen installatie werd erdoor geraakt.
+
+De eerste oplossing was fout, en de controle ving dat op. Het verwijderen van de stub liet pnpm in
+`/app` naar het register gaan om zijn vastlegging op te lossen — offline een waarschuwing en een
+terugval in plaats van een fout, maar wel een netwerkaanroep vanuit een container die er nooit een
+hoort te doen. De stub is hoe pnpm zijn vastgelegde versie zonder netwerk vindt. Beide Dockerfiles
+maken hem nu leesbaar in plaats daarvan, en pnpm antwoordt dan in beide images 12.6.0 onder
+`--network none`, zonder waarschuwing.
+
 De verhoging staat hier opgeschreven in plaats van impliciet te blijven, omdat de les hieronder over
 vastleggingen gaat die niet meer herzien worden, en een vastlegging die al een tijd niemand verzet
 heeft is precies waar die les over gaat.
