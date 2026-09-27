@@ -120,6 +120,36 @@ next safe boundary and records `CANCELLED`; killing the worker mid-job leaves th
 `FAILED` with `worker_lost`, not stuck in `RUNNING`; two mutating jobs against one cluster cannot run
 concurrently; every invalid state transition throws.
 
+## Phase 5A — Central ISO library · **XL**
+
+Requested by the owner on 2026-09-27, scheduled immediately after Phase 5 because every operation in
+it is a multi-gigabyte transfer, which is what the job system exists to run.
+
+A central ISO store on the Velnox host, with three movements: push an ISO to a cluster's storage,
+pull one from a cluster into the library, and delete one from a cluster. Friendly names throughout —
+`Windows11_25H2_Dutch` reads as "Windows 11 Version 25H2 Dutch" or "… Nederlands" depending on the
+viewer's Velnox language — parsed from the filename with the operator able to correct it, because a
+filename parser is a heuristic and a wrong confident label is worse than an honest raw one.
+
+**Decisions taken with the owner before any of it was built:**
+
+- **Both ways in.** Velnox fetches from a URL *and* accepts a browser upload. The URL path is the
+  cheap one and shares its direction with the push; the upload path is the one that works on a
+  network with no route out, and it is the one that costs: body limits in Caddy and Next, chunked
+  transfer, and a resumable progress that survives a dropped connection.
+- **Its own Docker volume with a hard ceiling.** Configurable, enforced with a refusal when full. The
+  library must not be able to fill the disk PostgreSQL and Redis are on: a full disk there is not a
+  failed upload, it is an installation that has stopped.
+- **Its own phase rather than a feature squeezed into another.** It is also the first time Velnox
+  *writes* to Proxmox. The worker already owns the only route to a node (ADR-009), so that is not an
+  architectural change, but it is a first, and it deserves the ADR it will get.
+
+**Acceptance:** an ISO reaches a node's storage and appears in Proxmox's own content list; the same
+ISO pulled back into the library is byte-identical to what was pushed; deleting one on the cluster
+removes it there and leaves the library copy alone; a transfer cancelled halfway leaves no partial
+file on either side; filling the library is refused with the ceiling named, not with a disk error;
+every screen shows friendly names and every log line shows the real filename.
+
 ## Phase 6 — Update management · **M**
 
 Update inventory per node (security / kernel / Proxmox classification), reboot-required detection,

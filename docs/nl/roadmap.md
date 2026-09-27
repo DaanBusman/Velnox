@@ -93,7 +93,7 @@ eigen tenant en kan andere niet opsommen; de isolatiesuite slaagt voor lezen **e
 tenant-gebonden resource die op dat moment bestaat, inclusief lijst-endpoints, filters en directe toegang
 op id; een tenant-gebonden model bevragen zonder context gooit een fout in tests.
 
-## Phase 4 — Proxmox-integratie en inventaris · **XL**
+## Phase 4 — Proxmox-integratie en inventaris · **XL** · ✅ afgerond
 
 `packages/proxmox` met token- en ticket-authenticatie, TLS-vingerafdruk-pinning, herhaalpogingen en de
 UPID-taakpoller. `packages/crypto` met envelope-encryptie en `DatabaseSecretStore`. Stromen voor het
@@ -126,6 +126,39 @@ proberen.
 eerstvolgende veilige punt en legt `CANCELLED` vast; de worker halverwege afbreken laat de job verzoend
 achter als `FAILED` met `worker_lost` in plaats van vast op `RUNNING`; twee muterende jobs op één cluster
 kunnen niet gelijktijdig draaien; elke ongeldige toestandsovergang gooit een fout.
+
+## Phase 5A — Centrale ISO-bibliotheek · **XL**
+
+Aangevraagd door de eigenaar op 27-09-2026, ingepland direct na fase 5 omdat elke handeling erin een
+overdracht van meerdere gigabytes is — precies waar het jobsysteem voor bestaat.
+
+Een centrale ISO-opslag op de Velnox-host, met drie bewegingen: een ISO naar de opslag van een cluster
+duwen, er een van een cluster naar de bibliotheek halen, en er een op een cluster verwijderen. Overal
+vriendelijke namen — `Windows11_25H2_Dutch` leest als "Windows 11 Version 25H2 Dutch" of "… Nederlands"
+afhankelijk van de ingestelde Velnox-taal — afgeleid uit de bestandsnaam, met de mogelijkheid voor de
+beheerder om het te corrigeren, want een bestandsnaam-ontleder is een gok en een zelfverzekerd fout
+label is erger dan een eerlijk ruw label.
+
+**Besluiten die met de eigenaar zijn genomen voordat er iets gebouwd is:**
+
+- **Beide wegen naar binnen.** Velnox haalt van een URL *en* accepteert een upload uit de browser. De
+  URL-weg is de goedkope en loopt in dezelfde richting als het duwen; de uploadweg is de weg die werkt
+  op een netwerk zonder route naar buiten, en dat is de weg die geld kost: body-limieten in Caddy en
+  Next, overdracht in stukken, en een voortgang die een verbroken verbinding overleeft.
+- **Een eigen Docker-volume met een hard plafond.** Instelbaar, en een weigering zodra het vol is. De
+  bibliotheek mag de schijf waarop PostgreSQL en Redis staan niet kunnen vullen: een volle schijf daar
+  is geen mislukte upload maar een installatie die stilstaat.
+- **Een eigen fase in plaats van een functie die ergens tussen geperst wordt.** Het is ook de eerste
+  keer dat Velnox naar Proxmox *schrijft*. De worker heeft al als enige een route naar een node
+  (ADR-009), dus architectonisch verandert er niets, maar het is een eerste keer en dat verdient de
+  ADR die het krijgt.
+
+**Acceptatie:** een ISO bereikt de opslag van een node en verschijnt in de eigen inhoudslijst van
+Proxmox; diezelfde ISO teruggehaald naar de bibliotheek is byte-identiek aan wat er is geduwd; er een
+verwijderen op het cluster haalt hem daar weg en laat de bibliotheekkopie ongemoeid; een halverwege
+afgebroken overdracht laat aan geen van beide kanten een half bestand achter; de bibliotheek vol maken
+wordt geweigerd met het plafond erbij, niet met een schijffout; elk scherm toont vriendelijke namen en
+elke logregel de echte bestandsnaam.
 
 ## Phase 6 — Updatebeheer · **M**
 
