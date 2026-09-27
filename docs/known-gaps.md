@@ -8,7 +8,7 @@ not met its gate.
 
 ---
 
-## Current status: Phase 4 (multi-tenancy, Proxmox inventory)
+## Current status: Phase 5 (the job system)
 
 Sign-in works. The setup wizard creates the first administrator and then closes permanently. Every
 API endpoint that is not deliberately public requires a session, and the global guard is
@@ -19,8 +19,13 @@ in the data layer rather than remembered by each endpoint. Proxmox clusters can 
 confirmed certificate fingerprint, and their nodes, guests, storage, networks and Ceph are
 inventoried on a schedule.
 
-**Velnox is read-only against your infrastructure in this phase.** Nothing starts, stops, migrates,
-updates or reconfigures anything.
+Work that takes time runs as a **job**: a recorded run with steps, a live event stream, cancellation
+at safe boundaries, approval gates with an optional four-eyes rule, and a dead worker detected and
+reported rather than left looking busy. See [Watching, cancelling and approving jobs](working-with-jobs.md).
+
+**Velnox is still read-only against your infrastructure.** The job system is the machinery that
+changes will run on, and the only job type today is a diagnostic one that touches nothing. Nothing
+starts, stops, migrates, updates or reconfigures anything yet.
 
 What is **not** there yet, in order of how much it matters:
 
@@ -79,12 +84,11 @@ sets. Tracing creates symlinks, and Windows refuses that without Developer Mode 
 on would mean a developer on Windows could not build the app at all. The shipped image is always
 the standalone one.
 
-### The dashboard counters are dashes, not zeros
-Tenants, clusters, nodes and the rest show `—` with the phase that will populate them. They are not
-placeholders for hidden data and they are not zeroes pretending to be measurements. The dashboard now
-holds nothing else: service status moved into **Server management**, where the rest of the
-installation's own state lives, which also means it is visible only to an account holding
-`system.manage`.
+### Two dashboard counters are still dashes
+Nodes needing updates (Phase 6) and upgrade blockers (Phase 9) show `—` with the phase that fills
+them. They are not placeholders for hidden data and they are not zeroes pretending to be
+measurements. The other six count what the signed-in account can see. Service status is not on the
+dashboard: it lives in **Server management**, visible only to an account holding `system.manage`.
 
 ### Alerts have no lifecycle
 The alerts screen shows conditions computed from the inventory each time it is opened. That is the
@@ -94,7 +98,8 @@ webhook, nothing that reaches you when you are not looking at the screen.
 Deliberate, and the smaller half of the problem on purpose. A stored alert needs raised /
 acknowledged / resolved / re-raised, and a half-built lifecycle produces a screen full of stale
 alarms nobody reads, which is worse than a screen that is honest about only knowing what is true now.
-The scheduler that would deliver them arrives with the job system.
+Delivering them needs a notification channel — mail, a webhook — and there is none yet; Phase 5B
+brings the first one.
 
 ### Nothing reaches a node over SSH yet
 Everything in Phase 4 goes through the Proxmox API. `credentials` has `SSH_PASSWORD` and `SSH_KEY`
@@ -117,17 +122,45 @@ A cluster carries a single API token or password, used for every node. Per-node 
 modelled in the schema and not offered: no operator has asked for them, and the flow for confirming
 fifteen fingerprints one at a time needs designing before it is built.
 
-### The job system is a queue, not a job system
-Adding a cluster waits on a worker job through a request-scoped timeout, and discovery runs are
-recorded in their own table rather than in the general job model. Progress does not stream, a run
-cannot be cancelled, and a worker killed mid-discovery leaves a run row marked `RUNNING` for ever.
-Phase 5 replaces all three.
+### Inventory discovery is not on the job system yet
+Phase 4 said Phase 5 would replace three things about discovery. It replaced one. Adding a cluster
+still waits on a worker job through a request-scoped timeout, and discovery runs are still recorded
+in their own table with no live progress and no cancellation — the job system exists, and discovery
+has not been moved onto it. It will be when it next has to change, and at the latest with Phase 6,
+whose update inventory runs beside it.
+
+The third is fixed: a worker killed mid-discovery used to leave the run marked `RUNNING` for ever.
+The same reconciler that fails lost jobs now fails a discovery run still running after an hour, with
+the same `job.worker_lost` reason.
+
+### The only job is a diagnostic one
+`system.selftest` takes time, reports on itself and touches nothing. It exists to prove the machinery
+and to let an operator watch it work. The first real job types arrive with the ISO library (Phase 5A)
+and update management (Phase 6).
+
+### Job history is kept for ever
+Jobs, their events and their output are never deleted. There is no retention policy and no size cap
+beyond 16 KiB per output entry. At one event per progress report, a busy installation will
+eventually want one; the events table allows deletion for exactly that reason, and forbids only
+rewriting.
+
+### A lost job takes about half a minute to notice
+A job whose worker dies is failed with `job.worker_lost` once its lease lapses and a reconciler
+notices — measured at 33–34 seconds. Until then it still reads **Running**. See ADR-035 for why the
+lease is not shorter.
 
 ### Documentation drift is now possible
 Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture.md` and
 `tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were
 translated from; `scripts/check-doc-sync.mjs` reports which ones have fallen behind. It warns, it
 does not block.
+
+### Resolved in Phase 5
+- **The dashboard counters were dashes, not zeros**, even for data the product had had since Phase 3.
+  Tiles whose phase is done now show real counts, and link to the screen behind them.
+- **The job system was a queue, not a job system.** It is a job system now: recorded runs, a state
+  machine that refuses invalid moves, live progress, cancellation, approvals, and loss detection.
+- **A worker killed mid-discovery left the run `RUNNING` for ever.** Reconciled after an hour.
 
 ### Resolved in Phase 4
 - **The Users tenant filter had one option to choose from.** There are customer tenants now, the

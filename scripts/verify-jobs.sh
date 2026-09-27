@@ -94,7 +94,13 @@ WORK="$(mktemp -d)"
 JAR="$WORK/cookies"
 STATUS_FILE="$WORK/status"
 CREATED_USER=""
-STARTED_JOBS=()
+# Started job ids go to a file for the same reason statuses do: every
+# `X="$(start_selftest …)"` runs in a subshell, and an array appended to there is
+# gone when it returns. The first version kept them in an array, so cleanup
+# cancelled nothing — found when a run that failed half-way left a job parked
+# at an approval gate.
+STARTED_FILE="$WORK/started"
+: >"$STARTED_FILE"
 
 # Status goes to a file, because `X="$(call ...)"` runs in a subshell and a
 # variable set there never reaches the caller. verify-tenancy.sh reported a
@@ -115,9 +121,10 @@ last_status() { cat "$STATUS_FILE"; }
 
 cleanup() {
   # Leave nothing running: a failed run should not hold a lane for a minute.
-  for id in "${STARTED_JOBS[@]:-}"; do
+  local id
+  while IFS= read -r id; do
     [[ -n "$id" ]] && call POST "/api/v1/jobs/${id}/cancel" >/dev/null 2>&1
-  done
+  done <"$STARTED_FILE"
   if [[ -n "$CREATED_USER" ]]; then
     psql_at "UPDATE users SET status = 'DISABLED' WHERE id = '${CREATED_USER}';" >/dev/null 2>&1 &&
       info "Disabled the throwaway account."
@@ -175,7 +182,7 @@ start_selftest() {
   out="$(call POST /api/v1/jobs/selftest "$body")"
   local id
   id="$(printf '%s' "$out" | json id)"
-  [[ -n "$id" ]] && STARTED_JOBS+=("$id")
+  [[ -n "$id" ]] && printf '%s\n' "$id" >>"$STARTED_FILE"
   printf '%s' "$out"
 }
 
@@ -343,7 +350,7 @@ R="$(call POST "/api/v1/jobs/${E_ID}/retry")"
 check "retry: a failed job can be retried" 201 "$(last_status)"
 check "retry: the new job names its parent" "$E_ID" "$(printf '%s' "$R" | json parentJobId)"
 R_ID="$(printf '%s' "$R" | json id)"
-[[ -n "$R_ID" ]] && STARTED_JOBS+=("$R_ID")
+[[ -n "$R_ID" ]] && printf '%s\n' "$R_ID" >>"$STARTED_FILE"
 
 call POST "/api/v1/jobs/${D_ID}/retry" >/dev/null
 check "retry: a succeeded job cannot be" 409 "$(last_status)"

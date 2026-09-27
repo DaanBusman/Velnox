@@ -84,3 +84,45 @@ export async function reconcileLostJobs(context: JobsContext, now = new Date()):
     return reconciled;
   });
 }
+
+// ---------------------------------------------------------------------------
+// Discovery runs
+// ---------------------------------------------------------------------------
+
+/**
+ * How long a discovery run may say RUNNING before it is presumed dead.
+ *
+ * Discovery is not on the job system yet (docs/known-gaps.md), so its runs have
+ * no lease. A worker killed mid-run left the row RUNNING for ever — the run
+ * list said "running" about something that had stopped a week ago. An hour is
+ * far past any real run, including a cluster whose unreachable nodes each spend
+ * their full retry budget; the point is "not for ever", not "quickly".
+ */
+export const STALE_DISCOVERY_MS = 60 * 60_000;
+
+export const staleDiscoveryWhere = (now: Date): Prisma.DiscoveryRunWhereInput => ({
+  state: 'RUNNING',
+  startedAt: { lt: new Date(now.getTime() - STALE_DISCOVERY_MS) },
+});
+
+export async function reconcileStaleDiscoveryRuns(
+  context: JobsContext,
+  now = new Date(),
+): Promise<number> {
+  return withSystemScope('reconciling discovery runs belongs to no request', async () => {
+    const result = await context.prisma.discoveryRun.updateMany({
+      where: staleDiscoveryWhere(now),
+      data: {
+        state: 'FAILED',
+        finishedAt: now,
+        errorCode: 'job.worker_lost',
+        errorDetail: 'The worker stopped during this run; it was not restarted',
+      },
+    });
+    if (result.count > 0) {
+      context.log.warn({ runs: result.count }, 'Reconciled discovery runs whose worker was lost');
+    }
+    return result.count;
+  });
+}
+

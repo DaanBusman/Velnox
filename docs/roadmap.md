@@ -109,7 +109,7 @@ a silent success. Ceph: daemons, versions and PG state are discovered and displa
 `noout` left set is surfaced and alerted on; a non-Ceph cluster shows no Ceph surface at all rather
 than empty tiles.
 
-## Phase 5 — Job system · **L**
+## Phase 5 — Job system · **L** · ✅ complete
 
 Job state machine, `job_steps`, `job_events`, `job_logs`, approvals. SSE stream with Redis pub/sub.
 Cancellation flags and `AbortSignal` plumbing. Crash reconciliation on worker start. Concurrency

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_TYPES, parseSelftestParams } from '@velnox/shared';
 import { StepError, playbookFor, selftestPlaybook } from './playbooks';
 import { abortableSleep } from './runner';
-import { lostJobWhere } from './reconcile';
+import { STALE_DISCOVERY_MS, lostJobWhere, staleDiscoveryWhere } from './reconcile';
 
 const quiet = {
   signal: new AbortController().signal,
@@ -122,3 +122,16 @@ describe('what counts as a lost job', () => {
     expect(lostJobWhere(now).OR).toEqual([{ leaseUntil: null }, { leaseUntil: { lt: now } }]);
   });
 });
+
+describe('what counts as a stale discovery run', () => {
+  const now = new Date('2026-09-27T12:00:00.000Z');
+
+  it('is a RUNNING run that started more than an hour ago', () => {
+    expect(STALE_DISCOVERY_MS).toBe(3_600_000);
+    expect(staleDiscoveryWhere(now)).toEqual({
+      state: 'RUNNING',
+      startedAt: { lt: new Date('2026-09-27T11:00:00.000Z') },
+    });
+  });
+});
+

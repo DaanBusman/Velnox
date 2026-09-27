@@ -26,7 +26,11 @@ import {
   type InventoryContext,
   type ProbeJobData,
 } from './inventory/inventory.processor';
-import { RECONCILE_INTERVAL_MS, reconcileLostJobs } from './jobs/reconcile';
+import {
+  RECONCILE_INTERVAL_MS,
+  reconcileLostJobs,
+  reconcileStaleDiscoveryRuns,
+} from './jobs/reconcile';
 import { runJob, type JobsContext } from './jobs/runner';
 import {
   SCHEDULER_TICK_INTERVAL_MS,
@@ -247,8 +251,9 @@ async function bootstrap(): Promise<void> {
   });
 
   const reconcile = () =>
-    reconcileLostJobs(jobsContext).catch((error: unknown) =>
-      logger.error({ err: rootRedactor.value(error) }, 'Reconciling lost jobs failed'),
+    Promise.all([reconcileLostJobs(jobsContext), reconcileStaleDiscoveryRuns(jobsContext)]).catch(
+      (error: unknown) =>
+        logger.error({ err: rootRedactor.value(error) }, 'Reconciling lost work failed'),
     );
   await reconcile();
   const reconcileTimer = setInterval(() => void reconcile(), RECONCILE_INTERVAL_MS);

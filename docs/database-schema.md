@@ -292,32 +292,59 @@ password_charset, maintenance_window_id, retain_superseded_days, notify_targets 
 
 ## 6. Jobs
 
+Built in Phase 5 (migration `20260927090000_job_system`). ADR-035 and ADR-036 explain the shape.
+
 ### `jobs`
-`id, tenant_id, type, playbook_id, playbook_version, status, priority, created_by_user_id,
-created_by_token_id, target_kind, target_ids uuid[], params jsonb (never secrets),
-concurrency_key, progress_pct, current_phase, current_step, queued_at, started_at, finished_at,
-error_code, error_message, result_summary jsonb, parent_job_id, cancel_requested_at,
-cancel_requested_by, bullmq_id`
+`id, tenant_id, type, playbook_version, status, priority, created_by_user_id, target_kind,
+target_ids uuid[], params jsonb (never secrets), concurrency_key, progress_pct, current_phase,
+current_step, queued_at, started_at, finished_at, error_code, error_message, result_summary jsonb,
+parent_job_id, cancel_requested_at, cancel_requested_by, worker_id, lease_until, event_seq,
+updated_at`
 
 `concurrency_key` (typically `cluster:<id>`) is what prevents two mutating jobs from touching the
-same cluster simultaneously — enforced in the queue *and* by a partial unique index on active jobs.
+same cluster simultaneously — checked by the API so the refusal can name the job in the way, and
+enforced by the partial unique index `jobs_one_active_per_key` over the five active statuses. A test
+reads the migration to check that list matches `ACTIVE_JOB_STATUSES`.
+
+`worker_id` and `lease_until` are the claim a worker holds while a job is in Preflight, Running or
+Validating; a lapsed lease is how a dead worker is detected. `event_seq` is the last event sequence
+number handed out.
+
+Differences from the Phase 1 design: `playbook_id` and `bullmq_id` were dropped — the type names the
+playbook, and a queue entry carries the job id in its payload, since a job re-enqueued after approval
+needs a fresh queue id — and `created_by_token_id` waits for API tokens.
 
 ### `job_steps`
 `id, job_id, node_id, phase, step_key, sequence, status (PENDING|RUNNING|SKIPPED|SUCCEEDED|FAILED|
 ROLLED_BACK), started_at, finished_at, attempt, output jsonb (structured, redacted), error`
 
+Unique on `(job_id, sequence)` and `(job_id, step_key)`. `node_id` is a plain column, not a foreign
+key: a job's history outlives the node it ran against.
+
 ### `job_events`
-`id, job_id, step_id, at, level (DEBUG|INFO|WARN|ERROR), event_key, message, data jsonb`
-Append-only, streamed to the UI over SSE. Data is typed per `event_key`; raw command output goes to
+`id bigserial, job_id, seq, at, level (DEBUG|INFO|WARN|ERROR), event_key, step_key, message,
+data jsonb, status, progress_pct`
+
+Streamed to the UI over SSE. `seq` is per job, from 1, with no gaps — incremented inside the
+transaction that inserts the event — and is the SSE event id. `status` and `progress_pct` are the
+job's state immediately after the event, so a replayed history shows each event with the state it
+produced. Rows cannot be updated (trigger `job_events_no_update`). Raw command output goes to
 `job_logs`, not here.
 
 ### `job_logs`
-`id, job_id, step_id, stream (STDOUT|STDERR|PVE_TASK), content text (size-capped, redacted),
-truncated bool`
+`id bigserial, job_id, step_key, stream (STDOUT|STDERR|PVE_TASK), at, content text (capped at 16 KiB
+per entry, redacted), truncated bool`
 
 ### `approvals`
-`id, job_id, step_id, tenant_id, required_permission, reason, change_set jsonb, requested_at,
-decided_at, decided_by_user_id, decision (APPROVED|REJECTED), decision_note, expires_at`
+`id, job_id, tenant_id, step_key, required_permission, reason, change_set jsonb,
+require_different_approver, requested_at, expires_at, decided_at, decided_by_user_id,
+decision (APPROVED|REJECTED), decision_note`
+
+`tenant_id` is set by trigger `approvals_tenant_follows_job` to the job's own tenant, whatever the
+caller supplied: an approval is what a tenant-scoped grant is checked against.
+
+Steps, events and logs carry no tenant column and are scoped through their job; see the amendment to
+ADR-030.
 
 ---
 

@@ -73,7 +73,7 @@ export const NAVIGATION: NavGroup[] = [
       { key: 'majorUpgrades', href: '/major-upgrades', phase: 8 },
       { key: 'migrations', href: '/migrations', phase: 11 },
       { key: 'automation', href: '/automation', phase: 8 },
-      { key: 'jobs', href: '/jobs', phase: 5 },
+      { key: 'jobs', href: '/jobs', phase: null, requiresPermission: 'jobs.read' },
       { key: 'alerts', href: '/alerts', phase: null, requiresPermission: 'alerts.read' },
       { key: 'reports', href: '/reports', phase: 8 },
     ],

@@ -190,9 +190,12 @@
     "yes": "Ja"
   },
   "dashboard": {
-    "phaseNoticeBody": "Authenticatie, de installatiewizard, rollen, optionele tweefactorauthenticatie, tenants en de Proxmox-inventarisatie werken. Het taaksysteem komt in fase 5. De tellers hieronder blijven op nul tot er werkelijk iets te tellen valt — het zijn geen plaatshouders voor verborgen gegevens.",
-    "phaseNoticeTitle": "Deze installatie draait een fase 4-build",
+    "phaseNoticeBody": "Authenticatie, de installatiewizard, rollen, optionele tweefactorauthenticatie, tenants, de Proxmox-inventarisatie en het jobsysteem werken. Updatebeheer komt in fase 6. De tegels hieronder tellen wat dit account kan zien; een tegel met nog een streepje noemt de fase die hem vult.",
+    "phaseNoticeTitle": "Deze installatie draait een fase 5-build",
     "subtitle": "Overzicht van de omgeving",
+    "tileLast24h": "Laatste 24 uur",
+    "tileNoAccess": "Geen toegang",
+    "tileUnavailable": "Beschikbaar vanaf fase {phase}",
     "tiles": {
       "clusters": "Clusters",
       "nodes": "Nodes",
@@ -203,7 +206,6 @@
       "unhealthyClusters": "Ongezonde clusters",
       "upgradeBlockers": "Upgradeblokkades"
     },
-    "tileUnavailable": "Beschikbaar vanaf fase {phase}",
     "title": "Dashboard"
   },
   "docs": {
@@ -350,13 +352,78 @@
     "workloadsSubtitle": "Virtuele machines en containers, zoals het cluster ze het laatst meldde."
   },
   "job": {
+    "allStatuses": "Alle statussen",
+    "approvalDecided": "{decision, select, APPROVED {Goedgekeurd door {by}} other {Afgewezen door {by}}}",
+    "approvalFourEyes": "Vierogenprincipe: iemand anders dan wie de job startte moet beslissen.",
+    "approvalNeeds": "Vereist {permission}.",
     "approvalPrompt": "Beoordeel de exacte wijzigingen hieronder voordat je goedkeurt.",
+    "approvalTitle": "Goedkeuring",
     "approve": "Goedkeuren",
     "cancel": "Job annuleren",
     "cancelHint": "De job stopt op het eerstvolgende veilige punt. Werk dat al bezig is mag afronden of terugdraaien.",
+    "cancelRequested": "Annulering aangevraagd. De job stopt op het eerstvolgende veilige punt.",
+    "changeSet": "Wijzigingsset",
+    "colBy": "Gestart door",
+    "colDuration": "Duur",
+    "colQueued": "In wachtrij gezet",
+    "colStatus": "Status",
+    "colTarget": "Doel",
+    "colTenant": "Tenant",
+    "colType": "Job",
+    "durationSeconds": "{seconds, plural, one {# seconde} other {# seconden}}",
+    "errorDetail": "Technisch detail",
+    "errorTitle": "Waarom het stopte",
+    "event": {
+      "approval_approved": "Goedgekeurd door {by}",
+      "approval_rejected": "Afgewezen door {by}",
+      "approval_requested": "Wacht op goedkeuring",
+      "job_cancel_requested": "Annulering aangevraagd door {by}",
+      "job_cancelled": "Geannuleerd",
+      "job_claimed": "Opgepakt door een worker",
+      "job_failed": "Mislukt",
+      "job_queued": "In de wachtrij gezet door {by}",
+      "job_started": "Gestart",
+      "job_succeeded": "Succesvol afgerond",
+      "job_worker_lost": "De worker stopte; de job is niet opnieuw gestart",
+      "step_failed": "Stap {step} mislukt",
+      "step_progress": "Stap {step} op {pct}%",
+      "step_skipped": "Stap {step} overgeslagen",
+      "step_started": "Stap {step} gestart",
+      "step_succeeded": "Stap {step} geslaagd"
+    },
+    "events": "Gebeurtenissen",
+    "finishedAt": "Afgerond",
+    "live": "Live",
+    "logs": "Uitvoer",
+    "noLogs": "Geen uitvoer vastgelegd.",
+    "none": "Geen jobs gevonden.",
+    "note": "Toelichting (optioneel)",
     "operatorAssisted": "Deze stap vereist een handmatige actie. {product} meldt pas succes wanneer het resultaat zelf is geverifieerd.",
+    "params": "Parameters",
+    "progress": "Voortgang",
+    "queuedAt": "In wachtrij gezet",
+    "reconnecting": "Opnieuw verbinden…",
     "reject": "Afwijzen",
-    "retry": "Opnieuw proberen"
+    "retriedAs": "Opnieuw geprobeerd als",
+    "retry": "Opnieuw proberen",
+    "retryOf": "Nieuwe poging voor",
+    "selftestApprovalBefore": "Goedkeuring vóór stap",
+    "selftestBody": "Een job die alleen tijd kost en over zichzelf rapporteert. Hij raakt geen infrastructuur aan en bestaat om het jobsysteem aan het werk te laten zien: live voortgang, annuleren, goedkeuren en mislukken.",
+    "selftestFailAt": "Mislukken bij stap",
+    "selftestFourEyes": "Vierogenprincipe vereisen",
+    "selftestNone": "—",
+    "selftestSeconds": "Seconden per stap",
+    "selftestStart": "Starten",
+    "selftestSteps": "Stappen",
+    "selftestTitle": "Diagnostische job",
+    "showProgress": "Voortgangsmeldingen tonen",
+    "startedAt": "Gestart",
+    "steps": "Stappen",
+    "subtitle": "Werk dat Velnox doet of gedaan heeft, nieuwste eerst.",
+    "title": "Jobs",
+    "types": {
+      "selftest": "Zelftest"
+    }
   },
   "layout": {
     "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
@@ -690,6 +757,14 @@
       "succeeded": "Geslaagd",
       "validating": "Valideren",
       "waiting_approval": "Wacht op goedkeuring"
+    },
+    "jobStep": {
+      "failed": "Mislukt",
+      "pending": "Wachtend",
+      "rolled_back": "Teruggedraaid",
+      "running": "Actief",
+      "skipped": "Overgeslagen",
+      "succeeded": "Geslaagd"
     },
     "node": {
       "maintenance": "Onderhoud",

@@ -671,6 +671,15 @@ whether the caller was allowed to ask. Raw SQL remains banned by ESLint with a d
 because it bypasses this layer entirely. PostgreSQL row-level security stays deferred to phase 15 as
 a third layer, recorded in known-gaps.md rather than silently skipped.
 
+**Amended in Phase 5 — tables that reach a tenant through a relation.** The schema guard above only
+looked for a `tenantId` column. The job system's steps, events and logs have none: they reach their
+tenant through their job. Leaving one of them out of `TENANT_SCOPED` would have passed that guard
+and let anyone who guessed a job id read another customer's job output. The guard now also requires
+every model with a relation to a scoped model to be scoped itself, or named in the test with the
+reason it need not be. Six existing tables are named — authentication and secret internals read by
+the account's or credential's own id — and removing `JobEvent` from the scoped list fails the test by
+name.
+
 ---
 
 ## ADR-031 — Certificate pinning, and the two ways connection reuse defeated it
@@ -807,6 +816,104 @@ That is a workaround as much as a preference, and the underlying problem is wort
 expired access token, or an API call that took longer than five seconds. Replacing the tree unmounts
 everything below it. On navigation that is rare enough to be invisible; at one refresh every two
 seconds it stops being rare. Pausing where it hurts most is not the same as fixing it.
+
+---
+
+## ADR-035 — A job is a row first, and a worker holds it by a lease
+
+**Decision:** A job exists in the database before it exists anywhere else. The queue carries a job
+id and nothing more; everything about the job — its status, its steps, its events, its output — is
+in PostgreSQL. A worker that takes a job holds it by a **lease** it renews every ten seconds, and
+every status the worker writes is conditional on still holding it. A job whose lease lapses is
+failed with `job.worker_lost` and **never retried automatically**.
+
+**Why the row first.** Redis is the queue, and a queue is allowed to be lossy in a way a record is
+not. A flushed or rebuilt Redis loses queue positions; it must not lose the history of what was done
+to a customer's cluster. With the row as the record, the worst case of a lost queue entry is a job
+visibly stuck in *Queued*, which a person can see and act on.
+
+**Who may move a job where.** Ownership is split by status, and it is what makes simple conditional
+writes sufficient:
+
+- **Queued** and **Waiting for approval** belong to nobody. The API moves them: cancelled before
+  starting, approved back onto the queue, rejected.
+- **Preflight**, **Running** and **Validating** belong to one worker. The API never writes their
+  status; cancelling one sets a flag the worker honours at the next safe point.
+
+Every write names the status it expects. If the API reads *Queued*, a worker claims the job, and the
+API then tries to cancel it, the API's write misses and it falls back to the running-job path. No
+locks held across requests, no distributed coordination.
+
+**Why a lease, and why conditional on it.** A worker that crashes never says so. The lease is how
+the others find out: lapsed, and the job is failed as lost by whichever worker's reconciler notices
+first, at startup or on its fifteen-second tick. The conditional write covers the other half: a
+worker that was merely *slow* — a long garbage-collection pause, a database stall — and wakes up
+after its job was reconciled cannot then write *Succeeded* over *Failed*. Its write misses, and it
+stops.
+
+**Why no automatic retry.** BullMQ's default is to hand a stalled job to another worker. For a job
+halfway through changing a cluster, that means doing the first half twice, and nothing in Proxmox or
+apt promises the first half is idempotent. The job queue runs with `maxStalledCount: 0`, and a lost
+job is reported as lost, with the step it was on. A person decides whether to retry, and a retry is
+a **new** job pointing at its parent, so the failed attempt's history is never rewritten.
+
+**The state machine is shared.** `packages/shared/src/jobs.ts` holds the transition table used by
+both the worker and the API. A test walks all hundred ordered pairs of statuses, and another reads
+the migration to check that the database's list of active statuses — the one that decides which jobs
+hold a concurrency key — is the same list.
+
+**Four-eyes governs approving, not declining.** A gate that requires a second person stops the
+requester from approving their own change. It does not stop them rejecting it: declining your own
+request is withdrawing it, which they could do anyway by cancelling. The first version blocked both;
+`verify-jobs.sh` caught it.
+
+**Cost.** A lost job takes about half a minute to be noticed: the thirty-second lease, plus up to
+one reconciler tick. Measured at 33–34 seconds from `SIGKILL` to *Failed*. A shorter lease would
+notice sooner and would also mistake an ordinary pause for a death more often; thirty seconds is
+the trade.
+
+---
+
+## ADR-036 — Live job events: listen first, replay second, number everything
+
+**Decision:** A job's events are streamed to the browser over **server-sent events**, fanned out
+from Redis pub/sub. Every event has a per-job sequence number with no gaps; the stream attaches its
+listener **before** reading history; every message on the wire that is not a comment carries a real
+sequence number as its id; and the stream ends with a `done` event the browser closes on.
+
+**Why SSE and not WebSockets.** The traffic is one-way, the browser's `EventSource` reconnects on its
+own and sends `Last-Event-ID` when it does, and it travels over the same origin, cookie and proxy as
+every other request. A WebSocket would add a second protocol through Caddy to gain a direction
+nothing uses.
+
+**Gapless sequence numbers.** The number comes from incrementing `jobs.event_seq` inside the
+transaction that inserts the event, which row-locks the job. Two writers — a worker and an API
+cancelling — serialise, and a rollback takes the increment with it. That is what lets a reconnecting
+browser say "everything after 41" and get exactly that.
+
+**Listen first, replay second.** An event published between "read history" and "start listening"
+would fall into the gap and never arrive. So the listener is attached first and buffers, history is
+read and sent, then the buffer, and sequence numbers make any overlap harmless.
+
+**Every id is a real one.** NestJS stamps any SSE message *without* an id with a per-connection
+counter of its own — 1, 2, 3 — and a browser keeps whichever id it saw last. The first version sent
+its heartbeat and its closing `done` without ids, so a browser's place in the stream could become
+Nest's number instead of the job's, and a reconnect would replay from the wrong point. Found by
+`verify-jobs.sh`, whose sequence check saw ids that were not the job's. The heartbeat is now an SSE
+comment, which browsers ignore and Nest does not number; `done` repeats the last real id.
+
+**Why `done`.** `EventSource` reconnects whenever a connection closes, including when the server
+closes it on purpose. Without a signal to stop, a finished job's page would reconnect every few
+seconds for ever. On `done`, the page closes the stream; and a reconnect to a job that is already
+finished gets `done` at once rather than an open connection that will never say anything.
+
+**One subscriber per API process.** A Redis connection in subscriber mode can do nothing else, so
+one pattern subscription per process fans out to every open stream, rather than one connection per
+browser tab.
+
+**Cost.** Each event is a database write and a publish. The self-test's ten progress reports per
+step are the busiest case so far; a playbook that reports progress more often than a person can read
+it should report less often.
 
 ---
 

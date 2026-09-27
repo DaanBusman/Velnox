@@ -11,7 +11,7 @@ heeft haar poort niet gehaald.
 
 ---
 
-## Huidige status: fase 4 (multi-tenancy, Proxmox-inventarisatie)
+## Huidige status: fase 5 (het jobsysteem)
 
 Aanmelden werkt. De installatiewizard maakt de eerste beheerder aan en sluit daarna permanent. Elk
 API-endpoint dat niet bewust publiek is, vereist een sessie, en de globale guard beschermt
@@ -22,8 +22,14 @@ afgedwongen in de datalaag in plaats van onthouden door elk endpoint. Proxmox-cl
 toegevoegd tegen een bevestigde certificaatvingerafdruk, en hun nodes, gasten, opslag, netwerken en
 Ceph worden volgens schema geïnventariseerd.
 
-**Velnox is in deze fase alleen-lezen op je infrastructuur.** Er wordt niets gestart, gestopt,
-gemigreerd, bijgewerkt of geherconfigureerd.
+Werk dat tijd kost draait als **job**: een vastgelegde uitvoering met stappen, een live
+gebeurtenissenstroom, annuleren op veilige punten, goedkeuringspunten met een optioneel
+vierogenprincipe, en een dode worker die wordt opgemerkt en gemeld in plaats van bezig te blijven
+lijken. Zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md).
+
+**Velnox is nog steeds alleen-lezen op je infrastructuur.** Het jobsysteem is het mechanisme waarop
+wijzigingen gaan draaien, en het enige jobtype is vandaag een diagnostisch type dat niets aanraakt.
+Er wordt nog niets gestart, gestopt, gemigreerd, bijgewerkt of geherconfigureerd.
 
 Wat er **nog niet** is, op volgorde van hoe zwaar het weegt:
 
@@ -87,12 +93,11 @@ Dockerfile zet. Tracing maakt symlinks, en Windows weigert dat zonder Ontwikkela
 aan laten staan zou betekenen dat een ontwikkelaar op Windows de app helemaal niet kan bouwen. De
 image die wordt uitgeleverd is altijd de standalone-versie.
 
-### De tellers op het dashboard zijn streepjes, geen nullen
-Tenants, clusters, nodes en de rest tonen `—` met de fase die ze zal vullen. Het zijn geen
-plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als metingen. Verder staat er
-niets meer op het dashboard: de servicestatus is verhuisd naar **Serverbeheer**, waar de rest van de
-staat van de installatie zelf staat — en daarmee is hij alleen nog zichtbaar voor een account met
-`system.manage`.
+### Twee tellers op het dashboard zijn nog streepjes
+Nodes met openstaande updates (fase 6) en upgradeblokkades (fase 9) tonen `—` met de fase die ze
+vult. Het zijn geen plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als
+metingen. De andere zes tellen wat het aangemelde account kan zien. De servicestatus staat niet op
+het dashboard: die staat in **Serverbeheer**, alleen zichtbaar voor een account met `system.manage`.
 
 ### Meldingen hebben geen levenscyclus
 Het meldingenscherm toont condities die bij elke keer openen uit de inventarisatie worden berekend.
@@ -102,7 +107,8 @@ e-mail, geen webhook, niets dat je bereikt wanneer je niet naar het scherm kijkt
 Bewust, en met opzet de kleinere helft van het probleem. Een opgeslagen melding heeft
 gemeld / bevestigd / opgelost / opnieuw gemeld nodig, en een half gebouwde levenscyclus levert een
 scherm vol verouderde alarmen op dat niemand leest — erger dan een scherm dat er eerlijk over is dat
-het alleen weet wat er nú waar is. De planner die ze zou bezorgen komt met het jobsysteem.
+het alleen weet wat er nú waar is. Ze bezorgen vereist een notificatiekanaal — mail, een webhook — en dat is er nog niet; fase 5B
+brengt het eerste.
 
 ### Er gaat nog niets via SSH naar een node
 Alles in fase 4 loopt via de Proxmox-API. `credentials` kent de soorten `SSH_PASSWORD` en `SSH_KEY`
@@ -125,17 +131,47 @@ Een cluster draagt één API-token of wachtwoord, gebruikt voor elke node. Crede
 het schema gemodelleerd en worden niet aangeboden: geen enkele beheerder heeft erom gevraagd, en de
 stroom voor het één voor één bevestigen van vijftien vingerafdrukken moet eerst ontworpen worden.
 
-### Het jobsysteem is een wachtrij, geen jobsysteem
-Een cluster toevoegen wacht via een verzoekgebonden time-out op een workerjob, en uitleesrondes
-worden in een eigen tabel vastgelegd in plaats van in het algemene jobmodel. Voortgang stroomt niet,
-een ronde kan niet afgebroken worden, en een worker die halverwege het uitlezen gedood wordt laat een
-ronde voor altijd als `RUNNING` achter. Fase 5 vervangt alle drie.
+### Uitlezen draait nog niet op het jobsysteem
+Fase 4 zei dat fase 5 drie dingen aan het uitlezen zou vervangen. Er is er één vervangen. Een cluster
+toevoegen wacht nog steeds via een verzoekgebonden time-out op een workerjob, en uitleesrondes worden
+nog steeds in een eigen tabel vastgelegd, zonder live voortgang en zonder annuleren — het jobsysteem
+bestaat, en het uitlezen is er nog niet naartoe verhuisd. Dat gebeurt zodra het weer moet
+veranderen, en uiterlijk met fase 6, waarvan de update-inventarisatie ernaast draait.
+
+De derde is opgelost: een worker die halverwege het uitlezen werd gedood, liet de ronde voor altijd
+als `RUNNING` achter. Dezelfde verzoening die verloren jobs laat mislukken, laat nu een uitleesronde
+mislukken die na een uur nog loopt, met dezelfde reden `job.worker_lost`.
+
+### De enige job is een diagnostische
+`system.selftest` kost tijd, rapporteert over zichzelf en raakt niets aan. Hij bestaat om het
+mechanisme te bewijzen en een beheerder het aan het werk te laten zien. De eerste echte jobtypes
+komen met de ISO-bibliotheek (fase 5A) en updatebeheer (fase 6).
+
+### Jobgeschiedenis wordt voor altijd bewaard
+Jobs, hun gebeurtenissen en hun uitvoer worden nooit verwijderd. Er is geen bewaarbeleid en geen
+limiet naast 16 KiB per uitvoerregel. Met één gebeurtenis per voortgangsmelding wil een drukke
+installatie er ooit een; de gebeurtenissentabel staat verwijderen om precies die reden toe, en
+verbiedt alleen herschrijven.
+
+### Een verloren job wordt pas na ongeveer een halve minuut opgemerkt
+Een job waarvan de worker sterft, wordt op mislukt gezet met `job.worker_lost` zodra zijn lease
+verloopt en een verzoening het merkt — gemeten op 33–34 seconden. Tot die tijd staat hij nog op
+**Actief**. Zie ADR-035 voor waarom de lease niet korter is.
 
 ### Documentatiedrift is nu mogelijk
 Fase 1 heeft twee besluiten uit fase 0 herzien (zie *Herzien in fase 1* in `architecture.md` en
 `tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen vast van welke Engelse
 commit ze zijn vertaald; `scripts/check-doc-sync.mjs` meldt welke zijn achtergebleven. Het
 waarschuwt, het blokkeert niet.
+
+### Opgelost in fase 5
+- **De dashboardtellers waren streepjes, geen nullen**, ook voor gegevens die het product al sinds
+  fase 3 had. Tegels waarvan de fase af is tonen nu echte aantallen, en linken naar het scherm erachter.
+- **Het jobsysteem was een wachtrij, geen jobsysteem.** Het is nu een jobsysteem: vastgelegde
+  uitvoeringen, een toestandsmachine die ongeldige overgangen weigert, live voortgang, annuleren,
+  goedkeuringen en het opmerken van verlies.
+- **Een worker die halverwege het uitlezen werd gedood liet de ronde voor altijd `RUNNING`.** Na een
+  uur verzoend.
 
 ### Opgelost in fase 4
 - **Het organisatiefilter bij Gebruikers had één keuze.** Er zijn nu klanttenants, het filter beperkt

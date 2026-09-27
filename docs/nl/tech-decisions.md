@@ -704,6 +704,16 @@ gedocumenteerde uitzonderingslijst, omdat die deze laag volledig omzeilt. Row-le
 PostgreSQL blijft uitgesteld tot fase 15 als derde laag, vastgelegd in known-gaps.md in plaats van
 stilzwijgend overgeslagen.
 
+**Aangevuld in fase 5 — tabellen die hun tenant via een relatie bereiken.** De schemacontrole
+hierboven keek alleen naar een kolom `tenantId`. De stappen, gebeurtenissen en logs van het
+jobsysteem hebben die niet: ze bereiken hun tenant via hun job. Een ervan vergeten in
+`TENANT_SCOPED` zou door die controle zijn gekomen en iedereen die een job-id raadde de jobuitvoer van
+een andere klant laten lezen. De controle eist nu ook dat elk model met een relatie naar een
+afgeschermd model zelf is afgeschermd, of in de test met reden staat vermeld waarom dat niet hoeft.
+Zes bestaande tabellen staan vermeld — authenticatie- en geheimeninterna die via het eigen id van het
+account of de credential worden gelezen — en `JobEvent` uit de afgeschermde lijst halen laat de test
+falen met die naam erbij.
+
 ---
 
 ## ADR-031 — Certificaatvastlegging, en de twee manieren waarop hergebruik van verbindingen die omzeilde
@@ -849,6 +859,111 @@ verlopen access token, of een API-aanroep die langer dan vijf seconden duurde. D
 ontkoppelt alles eronder. Bij navigatie is dat zeldzaam genoeg om onzichtbaar te blijven; bij één
 verversing per twee seconden houdt het op zeldzaam te zijn. Pauzeren waar het het meest pijn doet is
 niet hetzelfde als het oplossen.
+
+---
+
+## ADR-035 — Een job is eerst een rij, en een worker houdt hem vast met een lease
+
+**Besluit:** Een job bestaat in de database voordat hij ergens anders bestaat. De wachtrij draagt een
+job-id en verder niets; alles over de job — status, stappen, gebeurtenissen, uitvoer — staat in
+PostgreSQL. Een worker die een job oppakt, houdt hem vast met een **lease** die hij elke tien seconden
+vernieuwt, en elke status die de worker schrijft is afhankelijk van het nog vasthouden daarvan. Een
+job waarvan de lease verloopt, wordt op mislukt gezet met `job.worker_lost` en **nooit automatisch
+opnieuw gestart**.
+
+**Waarom eerst de rij.** Redis is de wachtrij, en een wachtrij mag op een manier verliesgevoelig zijn
+waarop een registratie dat niet mag. Een geleegde of opnieuw opgebouwde Redis verliest plaatsen in de
+wachtrij; hij mag niet de geschiedenis verliezen van wat er met het cluster van een klant is gedaan.
+Met de rij als registratie is het ergste geval van een verloren wachtrijregel een job die zichtbaar
+op *In wachtrij* blijft staan, en dat ziet een mens en kan hij oplossen.
+
+**Wie een job waarheen mag verplaatsen.** Eigenaarschap is per status verdeeld, en dat is wat
+eenvoudige voorwaardelijke schrijfacties voldoende maakt:
+
+- **In wachtrij** en **Wacht op goedkeuring** zijn van niemand. De API verplaatst ze: geannuleerd
+  voordat ze starten, goedgekeurd terug de wachtrij in, afgewezen.
+- **Preflight**, **Actief** en **Valideren** zijn van één worker. De API schrijft hun status nooit;
+  een annulering zet een vlag die de worker op het eerstvolgende veilige punt respecteert.
+
+Elke schrijfactie noemt de status die hij verwacht. Leest de API *In wachtrij*, claimt een worker de
+job, en probeert de API hem daarna te annuleren, dan mist de schrijfactie van de API en valt hij
+terug op de weg voor een actieve job. Geen vergrendelingen over verzoeken heen, geen gedistribueerde
+coördinatie.
+
+**Waarom een lease, en waarom afhankelijk daarvan.** Een worker die crasht, zegt dat nooit. De lease
+is hoe de anderen erachter komen: verlopen, en de job wordt als verloren gemarkeerd door de
+verzoening van welke worker het eerst merkt, bij het opstarten of op zijn tik van vijftien seconden.
+De voorwaardelijke schrijfactie dekt de andere helft: een worker die alleen *traag* was — een lange
+pauze voor geheugenbeheer, een haperende database — en wakker wordt nadat zijn job is verzoend, kan
+daarna niet *Geslaagd* over *Mislukt* heen schrijven. Zijn schrijfactie mist, en hij stopt.
+
+**Waarom niet automatisch opnieuw.** De standaard van BullMQ is een vastgelopen job aan een andere
+worker te geven. Voor een job die halverwege een cluster wijzigt, betekent dat de eerste helft twee
+keer doen, en niets in Proxmox of apt belooft dat die eerste helft idempotent is. De jobwachtrij
+draait met `maxStalledCount: 0`, en een verloren job wordt als verloren gemeld, met de stap waar hij
+was. Een mens beslist of hij opnieuw wordt geprobeerd, en een nieuwe poging is een **nieuwe** job die
+naar zijn voorganger verwijst, zodat de geschiedenis van de mislukte poging nooit wordt herschreven.
+
+**De toestandsmachine is gedeeld.** `packages/shared/src/jobs.ts` bevat de overgangstabel die zowel
+de worker als de API gebruikt. Een test loopt alle honderd geordende paren van statussen af, en een
+andere leest de migratie om te controleren dat de lijst actieve statussen van de database — die
+bepaalt welke jobs een gelijktijdigheidssleutel vasthouden — dezelfde lijst is.
+
+**Het vierogenprincipe gaat over goedkeuren, niet over afwijzen.** Een goedkeuringspunt dat een
+tweede persoon vereist, voorkomt dat de aanvrager zijn eigen wijziging goedkeurt. Het voorkomt niet
+dat hij hem afwijst: je eigen verzoek afwijzen is het intrekken, en dat kon hij toch al door te
+annuleren. De eerste versie blokkeerde beide; `verify-jobs.sh` ving het.
+
+**De prijs.** Het duurt ongeveer een halve minuut voordat een verloren job wordt opgemerkt: de lease
+van dertig seconden, plus hooguit één tik van de verzoening. Gemeten: 33–34 seconden van `SIGKILL`
+tot *Mislukt*. Een kortere lease zou het eerder opmerken en een gewone pauze ook vaker voor een
+dood aanzien; dertig seconden is de afweging.
+
+---
+
+## ADR-036 — Live jobgebeurtenissen: eerst luisteren, dan terugspelen, alles nummeren
+
+**Besluit:** De gebeurtenissen van een job worden naar de browser gestreamd via **server-sent
+events**, verdeeld vanuit Redis pub/sub. Elke gebeurtenis heeft een volgnummer per job zonder gaten;
+de stroom koppelt zijn luisteraar **voordat** hij de geschiedenis leest; elk bericht op de lijn dat
+geen commentaar is, draagt een echt volgnummer als id; en de stroom eindigt met een `done`-gebeurtenis
+waarop de browser sluit.
+
+**Waarom SSE en geen WebSockets.** Het verkeer gaat één kant op, de `EventSource` van de browser
+verbindt uit zichzelf opnieuw en stuurt daarbij `Last-Event-ID` mee, en het gaat over dezelfde
+origin, cookie en proxy als elk ander verzoek. Een WebSocket zou een tweede protocol door Caddy
+toevoegen om een richting te winnen die niets gebruikt.
+
+**Volgnummers zonder gaten.** Het nummer komt uit het ophogen van `jobs.event_seq` binnen de
+transactie die de gebeurtenis invoegt, en die vergrendelt de rij van de job. Twee schrijvers — een
+worker en een API die annuleert — komen na elkaar, en een rollback neemt de ophoging mee. Daardoor kan
+een browser die opnieuw verbindt zeggen "alles na 41" en precies dat krijgen.
+
+**Eerst luisteren, dan terugspelen.** Een gebeurtenis die gepubliceerd wordt tussen "geschiedenis
+lezen" en "beginnen met luisteren" zou in dat gat vallen en nooit aankomen. Dus de luisteraar wordt
+eerst gekoppeld en buffert, de geschiedenis wordt gelezen en verstuurd, daarna de buffer, en de
+volgnummers maken elke overlap onschadelijk.
+
+**Elk id is een echt id.** NestJS voorziet elk SSE-bericht *zonder* id van een eigen teller per
+verbinding — 1, 2, 3 — en een browser onthoudt welk id hij het laatst zag. De eerste versie stuurde
+zijn hartslag en zijn afsluitende `done` zonder id, waardoor de plek van een browser in de stroom
+het nummer van Nest kon worden in plaats van dat van de job, en een herverbinding vanaf het verkeerde
+punt zou terugspelen. Gevonden door `verify-jobs.sh`, waarvan de volgnummercontrole ids zag die niet
+van de job waren. De hartslag is nu een SSE-commentaar, dat browsers negeren en dat Nest niet
+nummert; `done` herhaalt het laatste echte id.
+
+**Waarom `done`.** `EventSource` verbindt opnieuw zodra een verbinding sluit, ook als de server dat
+bewust doet. Zonder een signaal om te stoppen zou de pagina van een afgeronde job eeuwig om de paar
+seconden opnieuw verbinden. Bij `done` sluit de pagina de stroom; en wie opnieuw verbindt met een al
+afgeronde job, krijgt direct `done` in plaats van een open verbinding die nooit meer iets zegt.
+
+**Eén abonnee per API-proces.** Een Redis-verbinding in abonneemodus kan niets anders, dus één
+patroonabonnement per proces verdeelt naar elke open stroom, in plaats van één verbinding per
+browsertabblad.
+
+**De prijs.** Elke gebeurtenis is een schrijfactie in de database en een publicatie. De tien
+voortgangsmeldingen per stap van de zelftest zijn tot nu toe het drukste geval; een playbook dat
+vaker voortgang meldt dan een mens kan lezen, hoort minder vaak te melden.
 
 ---
 

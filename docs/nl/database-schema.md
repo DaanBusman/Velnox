@@ -298,32 +298,60 @@ maintenance_window_id, retain_superseded_days, notify_targets jsonb`
 
 ## 6. Jobs
 
+Gebouwd in fase 5 (migratie `20260927090000_job_system`). ADR-035 en ADR-036 leggen de vorm uit.
+
 ### `jobs`
-`id, tenant_id, type, playbook_id, playbook_version, status, priority, created_by_user_id,
-created_by_token_id, target_kind, target_ids uuid[], params jsonb (nooit secrets), concurrency_key,
-progress_pct, current_phase, current_step, queued_at, started_at, finished_at, error_code,
-error_message, result_summary jsonb, parent_job_id, cancel_requested_at, cancel_requested_by,
-bullmq_id`
+`id, tenant_id, type, playbook_version, status, priority, created_by_user_id, target_kind,
+target_ids uuid[], params jsonb (nooit secrets), concurrency_key, progress_pct, current_phase,
+current_step, queued_at, started_at, finished_at, error_code, error_message, result_summary jsonb,
+parent_job_id, cancel_requested_at, cancel_requested_by, worker_id, lease_until, event_seq,
+updated_at`
 
 `concurrency_key` (meestal `cluster:<id>`) voorkomt dat twee muterende jobs hetzelfde cluster
-tegelijk raken — afgedwongen in de wachtrij *en* door een partiële unieke index op actieve jobs.
+tegelijk raken — gecontroleerd door de API zodat de weigering de job kan noemen die in de weg staat,
+en afgedwongen door de partiële unieke index `jobs_one_active_per_key` over de vijf actieve statussen.
+Een test leest de migratie om te controleren dat die lijst overeenkomt met `ACTIVE_JOB_STATUSES`.
+
+`worker_id` en `lease_until` zijn de claim die een worker vasthoudt zolang een job in Preflight,
+Actief of Valideren staat; een verlopen lease is hoe een dode worker wordt opgemerkt. `event_seq` is
+het laatst uitgegeven volgnummer van een gebeurtenis.
+
+Verschillen met het ontwerp uit fase 1: `playbook_id` en `bullmq_id` zijn vervallen — het type noemt
+het playbook, en een wachtrijregel draagt het job-id in zijn inhoud, omdat een job die na goedkeuring
+opnieuw in de wachtrij komt een nieuw wachtrij-id nodig heeft — en `created_by_token_id`
+wacht op API-tokens.
 
 ### `job_steps`
 `id, job_id, node_id, phase, step_key, sequence, status (PENDING|RUNNING|SKIPPED|SUCCEEDED|FAILED|
 ROLLED_BACK), started_at, finished_at, attempt, output jsonb (gestructureerd, geredigeerd), error`
 
+Uniek op `(job_id, sequence)` en `(job_id, step_key)`. `node_id` is een gewone kolom, geen
+foreign key: de geschiedenis van een job leeft langer dan de node waarop hij draaide.
+
 ### `job_events`
-`id, job_id, step_id, at, level (DEBUG|INFO|WARN|ERROR), event_key, message, data jsonb`
-Alleen-toevoegen, via SSE naar de UI gestreamd. Data is getypeerd per `event_key`; ruwe commando-uitvoer
-gaat naar `job_logs`, niet hierheen.
+`id bigserial, job_id, seq, at, level (DEBUG|INFO|WARN|ERROR), event_key, step_key, message,
+data jsonb, status, progress_pct`
+
+Via SSE naar de UI gestreamd. `seq` is per job, vanaf 1, zonder gaten — opgehoogd binnen de
+transactie die de gebeurtenis invoegt — en is het SSE-event-id. `status` en `progress_pct` zijn de
+toestand van de job direct na de gebeurtenis, zodat een teruggespeelde geschiedenis elke gebeurtenis
+toont met de toestand die hij opleverde. Rijen kunnen niet worden gewijzigd (trigger
+`job_events_no_update`). Ruwe commando-uitvoer gaat naar `job_logs`, niet hierheen.
 
 ### `job_logs`
-`id, job_id, step_id, stream (STDOUT|STDERR|PVE_TASK), content text (in omvang begrensd, geredigeerd),
-truncated bool`
+`id bigserial, job_id, step_key, stream (STDOUT|STDERR|PVE_TASK), at, content text (begrensd op 16 KiB
+per regel, geredigeerd), truncated bool`
 
 ### `approvals`
-`id, job_id, step_id, tenant_id, required_permission, reason, change_set jsonb, requested_at,
-decided_at, decided_by_user_id, decision (APPROVED|REJECTED), decision_note, expires_at`
+`id, job_id, tenant_id, step_key, required_permission, reason, change_set jsonb,
+require_different_approver, requested_at, expires_at, decided_at, decided_by_user_id,
+decision (APPROVED|REJECTED), decision_note`
+
+`tenant_id` wordt door trigger `approvals_tenant_follows_job` op de eigen tenant van de job gezet,
+wat de aanroeper ook meegaf: een goedkeuring is waartegen een tenantgebonden recht wordt getoetst.
+
+Stappen, gebeurtenissen en logs hebben geen tenantkolom en worden via hun job afgeschermd; zie de
+aanvulling op ADR-030.
 
 ---
 

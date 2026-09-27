@@ -1,5 +1,5 @@
 import 'server-only';
-import type { TlsStatusResponse } from '@velnox/shared';
+import type { JobDetail, JobLogLine, JobSummary, TlsStatusResponse } from '@velnox/shared';
 import { cookies } from 'next/headers';
 import type {
   AlertRow,
@@ -256,4 +256,26 @@ export function listInterfaces(params: { clusterId?: string | null } = {}) {
 
 export function listAlerts() {
   return readAs<{ alerts: AlertRow[] }>('/api/v1/alerts');
+}
+
+/**
+ * Jobs, newest first. The API filters to tenants the account holds `jobs.read`
+ * in; a status here can only narrow that.
+ */
+export function listJobs(params: { status?: string | null; tenantId?: string | null } = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.tenantId) query.set('tenantId', params.tenantId);
+  const suffix = query.toString();
+  return readAs<{ jobs: JobSummary[] }>(`/api/v1/jobs${suffix ? `?${suffix}` : ''}`);
+}
+
+export function getJob(id: string) {
+  return readAs<JobDetail>(`/api/v1/jobs/${encodeURIComponent(id)}`);
+}
+
+export function listJobLogs(id: string) {
+  return readAs<{ lines: JobLogLine[] }>(
+    `/api/v1/jobs/${encodeURIComponent(id)}/logs?limit=1000`,
+  );
 }

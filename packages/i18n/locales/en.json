@@ -189,9 +189,12 @@
     "yes": "Yes"
   },
   "dashboard": {
-    "phaseNoticeBody": "Authentication, the setup wizard, roles, optional two-factor authentication, tenants and Proxmox inventory work. The job system arrives in phase 5. Counters below stay at zero until there is something real to count — they are not placeholders for hidden data.",
-    "phaseNoticeTitle": "This installation is running a phase 4 build",
+    "phaseNoticeBody": "Authentication, the setup wizard, roles, optional two-factor authentication, tenants, Proxmox inventory and the job system work. Update management arrives in phase 6. The tiles below count what this account can see; a tile still showing a dash names the phase that fills it.",
+    "phaseNoticeTitle": "This installation is running a phase 5 build",
     "subtitle": "Fleet overview",
+    "tileLast24h": "Last 24 hours",
+    "tileNoAccess": "No access",
+    "tileUnavailable": "Available from phase {phase}",
     "tiles": {
       "clusters": "Clusters",
       "nodes": "Nodes",
@@ -202,7 +205,6 @@
       "unhealthyClusters": "Unhealthy clusters",
       "upgradeBlockers": "Upgrade blockers"
     },
-    "tileUnavailable": "Available from phase {phase}",
     "title": "Dashboard"
   },
   "docs": {
@@ -349,13 +351,78 @@
     "workloadsSubtitle": "Virtual machines and containers, as the cluster last reported them."
   },
   "job": {
+    "allStatuses": "All statuses",
+    "approvalDecided": "{decision, select, APPROVED {Approved by {by}} other {Rejected by {by}}}",
+    "approvalFourEyes": "Four-eyes approval: someone other than the person who started the job must decide.",
+    "approvalNeeds": "Needs {permission}.",
     "approvalPrompt": "Review the exact changes below before approving.",
+    "approvalTitle": "Approval",
     "approve": "Approve",
     "cancel": "Cancel job",
     "cancelHint": "The job stops at the next safe boundary. Work already in progress is allowed to finish or roll back.",
+    "cancelRequested": "Cancellation requested. The job stops at the next safe boundary.",
+    "changeSet": "Change set",
+    "colBy": "Started by",
+    "colDuration": "Duration",
+    "colQueued": "Queued",
+    "colStatus": "Status",
+    "colTarget": "Target",
+    "colTenant": "Tenant",
+    "colType": "Job",
+    "durationSeconds": "{seconds, plural, one {# second} other {# seconds}}",
+    "errorDetail": "Technical detail",
+    "errorTitle": "Why it stopped",
+    "event": {
+      "approval_approved": "Approved by {by}",
+      "approval_rejected": "Rejected by {by}",
+      "approval_requested": "Waiting for approval",
+      "job_cancel_requested": "Cancellation requested by {by}",
+      "job_cancelled": "Cancelled",
+      "job_claimed": "Picked up by a worker",
+      "job_failed": "Failed",
+      "job_queued": "Queued by {by}",
+      "job_started": "Started",
+      "job_succeeded": "Finished successfully",
+      "job_worker_lost": "The worker stopped; the job was not restarted",
+      "step_failed": "Step {step} failed",
+      "step_progress": "Step {step} at {pct}%",
+      "step_skipped": "Step {step} skipped",
+      "step_started": "Step {step} started",
+      "step_succeeded": "Step {step} succeeded"
+    },
+    "events": "Events",
+    "finishedAt": "Finished",
+    "live": "Live",
+    "logs": "Output",
+    "noLogs": "No output recorded.",
+    "none": "No jobs match.",
+    "note": "Note (optional)",
     "operatorAssisted": "This step requires a manual action. {product} will not report success until it has verified the result itself.",
+    "params": "Parameters",
+    "progress": "Progress",
+    "queuedAt": "Queued",
+    "reconnecting": "Reconnecting…",
     "reject": "Reject",
-    "retry": "Retry"
+    "retriedAs": "Retried as",
+    "retry": "Retry",
+    "retryOf": "Retry of",
+    "selftestApprovalBefore": "Approval before step",
+    "selftestBody": "A job that only takes time and reports on itself. It touches no infrastructure, and exists to show the job system working: live progress, cancelling, approval and failure.",
+    "selftestFailAt": "Fail at step",
+    "selftestFourEyes": "Require a different approver",
+    "selftestNone": "—",
+    "selftestSeconds": "Seconds per step",
+    "selftestStart": "Start",
+    "selftestSteps": "Steps",
+    "selftestTitle": "Diagnostic job",
+    "showProgress": "Show progress reports",
+    "startedAt": "Started",
+    "steps": "Steps",
+    "subtitle": "Work Velnox is doing or has done, newest first.",
+    "title": "Jobs",
+    "types": {
+      "selftest": "Self-test"
+    }
   },
   "layout": {
     "footerLicense": "{product} {version} — free software under the AGPLv3.",
@@ -689,6 +756,14 @@
       "succeeded": "Succeeded",
       "validating": "Validating",
       "waiting_approval": "Waiting for approval"
+    },
+    "jobStep": {
+      "failed": "Failed",
+      "pending": "Pending",
+      "rolled_back": "Rolled back",
+      "running": "Running",
+      "skipped": "Skipped",
+      "succeeded": "Succeeded"
     },
     "node": {
       "maintenance": "Maintenance",

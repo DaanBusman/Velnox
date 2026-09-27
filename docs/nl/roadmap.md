@@ -115,7 +115,7 @@ levert een vastgelegde fout op, geen stil succes. Ceph: daemons, versies en PG-s
 getoond; een cluster waarop `noout` is blijven staan wordt getoond en gealarmeerd; een cluster zonder Ceph
 toont helemaal geen Ceph-onderdelen in plaats van lege tegels.
 
-## Phase 5 — Jobsysteem · **L**
+## Phase 5 — Jobsysteem · **L** · ✅ afgerond
 
 Job-toestandsmachine, `job_steps`, `job_events`, `job_logs`, goedkeuringen. SSE-stroom met Redis pub/sub.
 Annuleringsvlaggen en `AbortSignal`-bedrading. Verzoening na een crash bij het starten van de worker.

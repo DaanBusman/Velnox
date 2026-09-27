@@ -15,26 +15,34 @@ auditlogging.
 
 ---
 
-## Projectstatus: fase 2 van 15
+## Projectstatus: fase 5 van 15
 
-De **basis** draait: zes services onder Docker Compose, PostgreSQL met migraties, een door Redis
-ondersteunde jobwachtrij met worker, Engelse en Nederlandse lokalisatie, gestructureerde logging met
+**De basis** draait: zes services onder Docker Compose, PostgreSQL met migraties, Redis, een worker
+zonder luisterende poort, Engelse en Nederlandse lokalisatie, gestructureerde logging met
 secretredactie, health- en readiness-probes, OpenAPI, en naleving van AGPL artikel 13.
 
-**Fase 2 voegt de toegang toe.** Een installatiewizard maakt de eerste beheerder aan en sluit daarna
-permanent — er bestaan op geen enkel moment standaardinloggegevens. Aanmelden gebruikt Argon2id, een
-kortlevend access-token en een roterend refresh-token waarvan hergebruik de hele sessiefamilie
-intrekt. Optionele TOTP-tweefactorauthenticatie is er, met herstelcodes die elk één keer werken, en
-een beleid kan het verplichten voor iedereen of alleen voor accounts die klantinfrastructuur kunnen
-wijzigen. Elk endpoint dat niet bewust publiek is, vereist een sessie, en elke authenticatie- en
-autorisatiegebeurtenis wordt weggeschreven naar een auditlogboek dat de database zelf weigert te
-wijzigen.
+**Toegang** (fase 2): een installatiewizard maakt de eerste beheerder aan en sluit daarna permanent —
+er bestaan op geen enkel moment standaardinloggegevens. Aanmelden gebruikt Argon2id, een kortlevend
+access-token en een roterend refresh-token waarvan hergebruik de hele sessiefamilie intrekt.
+Optionele TOTP-tweefactorauthenticatie, met een beleid dat het kan verplichten. Elk endpoint dat niet
+bewust publiek is, vereist een sessie, en elke authenticatie- en autorisatiegebeurtenis wordt
+weggeschreven naar een auditlogboek dat de database zelf weigert te wijzigen.
 
-> **Dit is nog steeds een build in aanbouw, geen afgerond product.** Proxmox is nog niet gekoppeld,
-> dus Velnox beheert nog niets: de inventaris komt in fase 4 en het taaksysteem in fase 5.
-> Gebruikers zijn te bekijken maar nog niet aan te maken of te bewerken, rollen zijn niet te
-> bewerken, en er is geen scherm voor het auditlogboek. Aanmelden met Microsoft Entra ID is alleen
-> configuratie — de flow zelf is niet geschreven en de aanmeldpagina toont geen Microsoft-knop.
+**Klanten** (fase 3): tenants, locaties, en rechten die beperkt zijn tot wat ze dekken, met de
+scheiding afgedwongen in de datalaag in plaats van onthouden door elk endpoint.
+
+**Proxmox** (fase 4): clusters toegevoegd tegen een bevestigde certificaatvingerafdruk, en hun nodes,
+gasten, opslag, netwerken en Ceph volgens schema geïnventariseerd.
+
+**Jobs** (fase 5): werk dat tijd kost draait als vastgelegde job met stappen, een live
+gebeurtenissenstroom, annuleren op veilige punten, goedkeuringspunten met een optioneel
+vierogenprincipe, en een dode worker die wordt opgemerkt en gemeld in plaats van bezig te blijven
+lijken.
+
+> **Dit is nog steeds een build in aanbouw, geen afgerond product.** Velnox leest je infrastructuur
+> en wijzigt die nog niet: het jobsysteem staat er, en de enige job die het draait is een
+> diagnostische. Updatebeheer komt in fase 6. Rollen zijn niet te bewerken, en aanmelden met
+> Microsoft Entra ID is alleen configuratie — de flow zelf is niet geschreven.
 
 Wat elke fase toevoegt, en wat er vandaag bewust ontbreekt:
 [roadmap.md](roadmap.md) · [known-gaps.md](known-gaps.md)

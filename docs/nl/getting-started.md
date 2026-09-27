@@ -132,7 +132,11 @@ Werkt vandaag:
 
 | Waar | Wat het doet |
 |---|---|
-| **Dashboard** | Suggesties voor wat nu de moeite waard is |
+| **Dashboard** | Aantallen van wat je kunt zien, en suggesties voor wat nu de moeite waard is |
+| **Tenants**, **Locaties** | Je klanten en hun locaties — zie [Je omgeving indelen](organising-your-fleet.md) |
+| **Clusters**, **Nodes**, **Virtuele machines**, **Containers**, **Opslag**, **Netwerken** | De Proxmox-inventarisatie, volgens schema uitgelezen — zie [Clusters toevoegen en de inventarisatie lezen](managing-infrastructure.md) |
+| **Meldingen** | Condities berekend uit de inventarisatie: offline nodes, verouderde uitlezingen, Ceph-vlaggen |
+| **Jobs** | Werk dat loopt en zijn geschiedenis, live — zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md) |
 | **Gebruikers** | Accounts, rollen, in- en uitschakelen — zie [Gebruikers en toegang beheren](managing-access.md) |
 | **Rollen & rechten** | Wat elke rol toekent — zie [Rollen en rechten](permissions.md) |
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
@@ -218,16 +222,15 @@ laten lezen.
 
 Hier direct over zijn is nuttiger dan een functielijst.
 
-Velnox kan nog niet met Proxmox praten. Er is in deze build geen cluster, geen node, geen virtuele
-machine en geen job die echte infrastructuur raakt — dat begint in fase 4, en de handleidingen voor
-**een cluster aanmaken** en **een node toevoegen** worden geschreven wanneer de functie dat wordt.
-Multi-tenancy voorbij de MSP-hoofdtenant komt in fase 3, dus vandaag leeft elk account in je eigen
-organisatie.
+**Velnox leest je Proxmox-infrastructuur en wijzigt die nog niet.** Clusters, nodes, gasten, opslag,
+netwerken en Ceph worden geïnventariseerd, maar er wordt niets gestart, gestopt, gemigreerd,
+bijgewerkt of geherconfigureerd. Het jobsysteem waarop wijzigingen gaan draaien staat er — met live
+voortgang, annuleren, goedkeuringen en het opmerken van verlies — en de enige job die het vandaag
+draait is een diagnostische die niets aanraakt. Updatebeheer komt in fase 6, de ISO-bibliotheek en
+onbeheerde VM-uitrol in fase 5A en 5B.
 
-Wat er wel is, is het fundament waarvan die functies afhangen en dat er niet achteraf onder te
-schuiven is: authenticatie, rechten, auditing, versleuteling, lokalisatie, de jobrunner en de
-uitrol. [Roadmap](roadmap.md) noemt wat elke fase toevoegt; [Bekende hiaten](known-gaps.md) is de
-eerlijke lijst van wat er op dit moment bewust ontbreekt of onaf is.
+[Roadmap](roadmap.md) noemt wat elke fase toevoegt; [Bekende hiaten](known-gaps.md) is de eerlijke
+lijst van wat er op dit moment bewust ontbreekt of onaf is.
 
 ---
 
@@ -237,5 +240,6 @@ eerlijke lijst van wat er op dit moment bewust ontbreekt of onaf is.
 - [Rollen en rechten](permissions.md) — wat elke rol volledig toekent
 - [Je omgeving indelen](organising-your-fleet.md) — tenants, locaties en het beperken van een recht
 - [Clusters toevoegen](managing-infrastructure.md) — Proxmox onder beheer brengen, en de inventarisatie
+- [Werken met jobs](working-with-jobs.md) — het werk van Velnox volgen, annuleren en goedkeuren
 - [Deployment](deployment.md) — vereisten, upgrades, back-up, diagnose
 - [Architectuur](architecture.md) — hoe het systeem in elkaar zit, en waarom

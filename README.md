@@ -11,25 +11,33 @@ permission-based RBAC, Microsoft Entra ID SSO and full audit logging.
 
 ---
 
-## Project status: Phase 2 of 15
+## Project status: Phase 5 of 15
 
-The **foundation** runs: six services under Docker Compose, PostgreSQL with migrations, a
-Redis-backed job queue with a worker, English/Dutch localization, structured logging with secret
-redaction, health and readiness probes, OpenAPI, and AGPL §13 licence compliance.
+**The foundation** runs: six services under Docker Compose, PostgreSQL with migrations, Redis, a
+worker with no listening port, English/Dutch localization, structured logging with secret redaction,
+health and readiness probes, OpenAPI, and AGPL §13 licence compliance.
 
-**Phase 2 adds the way in.** A setup wizard creates the first administrator and then closes
-permanently — there are no default credentials at any point. Sign-in uses Argon2id, a short-lived
-access token and a rotating refresh token whose reuse revokes the whole session family. Optional
-TOTP two-factor authentication ships with single-use recovery codes, and a policy can require it for
-everyone or only for accounts that can change customer infrastructure. Every endpoint that is not
-deliberately public requires a session, and every authentication and authorization event is written
-to an append-only audit log the database itself refuses to modify.
+**Access** (Phase 2): a setup wizard creates the first administrator and then closes permanently —
+there are no default credentials at any point. Sign-in uses Argon2id, a short-lived access token and
+a rotating refresh token whose reuse revokes the whole session family. Optional TOTP two-factor
+authentication, with a policy that can require it. Every endpoint that is not deliberately public
+requires a session, and every authentication and authorization event is written to an append-only
+audit log the database itself refuses to modify.
 
-> **This is still a build in progress, not a finished product.** Proxmox is not connected yet, so
-> Velnox does not manage anything: inventory arrives in Phase 4 and the job system in Phase 5. Users
-> can be listed but not yet created or edited, roles cannot be edited, and there is no interface for
-> the audit log. Signing in with Microsoft Entra ID is configuration only — the flow itself is not
-> written, and the sign-in page shows no Microsoft button.
+**Customers** (Phase 3): tenants, sites, and grants scoped to what they cover, with isolation
+enforced in the data layer rather than remembered by each endpoint.
+
+**Proxmox** (Phase 4): clusters added against a confirmed certificate fingerprint, and their nodes,
+guests, storage, networks and Ceph inventoried on a schedule.
+
+**Jobs** (Phase 5): work that takes time runs as a recorded job with steps, a live event stream,
+cancellation at safe boundaries, approval gates with an optional four-eyes rule, and a dead worker
+detected and reported rather than left looking busy.
+
+> **This is still a build in progress, not a finished product.** Velnox reads your infrastructure
+> and does not yet change it: the job system is in place, and the only job it runs is a diagnostic
+> one. Update management arrives in Phase 6. Roles cannot be edited, and signing in with Microsoft
+> Entra ID is configuration only — the flow itself is not written.
 
 What each phase adds, and what is deliberately missing today:
 [docs/roadmap.md](docs/roadmap.md) · [docs/known-gaps.md](docs/known-gaps.md)
