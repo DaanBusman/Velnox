@@ -160,6 +160,102 @@ afgebroken overdracht laat aan geen van beide kanten een half bestand achter; de
 wordt geweigerd met het plafond erbij, niet met een schijffout; elk scherm toont vriendelijke namen en
 elke logregel de echte bestandsnaam.
 
+## Phase 5B — Autoconfig-templates en onbeheerde VM-uitrol · **XL**
+
+Aangevraagd door de eigenaar op 27-09-2026. Ingepland na fase 5 (jobs) en 5A (de ISO-bibliotheek),
+omdat uitrollen een job is en de eerste stap ervan "staat de ISO op die node" is.
+
+**Autoconfig**, een tabblad onder Beheer, bevat de templates. Een template staat op MSP-niveau of op
+tenantniveau; een MSP-template is bruikbaar en te klonen door elke tenant eronder, tenzij anders
+aangegeven. Een VM aanmaken betekent dan een template kiezen, waarna Velnox: controleert of de ISO op
+de doelnode staat en hem uploadt als dat niet zo is, de VM aanmaakt, hem eventueel start en het
+besturingssysteem zichzelf laat installeren, de aanvrager bericht zodra het klaar is, en een
+PDF-verklaring van de installatie mailt.
+
+### Windows — Autounattend.xml
+
+De zeven velden van de eigenaar: hostname zonder domein; de editie (Home/Pro, of
+Standard/Datacenter en hun Desktop Experience-varianten); een optionele productcode, en zonder die
+code vraagt de VM er bij de eerste start om zoals hij dat onbeheerd ook zou doen, of wordt de vraag
+overgeslagen waar de editie er geen nodig heeft; regionale en weergavetaalinstellingen; de lokale
+accounts met hun wachtwoorden en per account een beheerdersvinkje, plus het wachtwoord van de
+ingebouwde Administrator dat Windows Server altijd vereist; aparte vinkjes voor QEMU Guest Agent en
+voor VirtIO; en MBR of GPT voor de systeemschijf, met GPT als aanbeveling waar het maar aangeboden
+wordt.
+
+Wat het toevoegen waard is, met de reden:
+
+- **Vier taalvelden, niet één.** Unattend onderscheidt `UILanguage`, `SystemLocale`, `UserLocale` en
+  `InputLocale`. Die samentrekken is waarom een Nederlandse installatie zo vaak eindigt met een
+  Nederlands toetsenbord dat niemand wilde — Nederlandse beheerders typen overwegend op
+  US-International.
+- **Tijdzone**, wat geen taalinstelling is en het veld is dat logregels over een vloot vergelijkbaar
+  maakt.
+- **Hoe de editie werkelijk gekozen wordt.** Unattend kiest een image via `/IMAGE/INDEX` of
+  `/IMAGE/NAME`, of wordt gestuurd door een KMS client setup key. Een editiekeuzelijst die de
+  imagelijst van de ISO niet leest, is een lijst die stilletjes de verkeerde editie installeert.
+- **Welke OOBE-schermen worden overgeslagen**, inclusief de Microsoft-accountvereiste op Windows 11 en
+  de privacyschakelaars — allemaal schermen die iemand anders op een server wegklikt.
+- **Aantal keer automatisch aanmelden**, want het installeren van de guest agent en VirtIO vereist één
+  aangemelde ronde. Dat moet daarna terug: een VM die blijft automatisch aanmelden is een VM zonder
+  wachtwoord.
+- **Commando's bij de eerste aanmelding**, want daar draaien die agent- en VirtIO-installaties.
+- **Werkgroepnaam**, RDP met de bijbehorende firewallregel, het energieplan, en of sluimerstand blijft.
+- **Windows Update tijdens OOBE of uitgesteld** — het verschil tussen een VM die na tien minuten klaar
+  is en een die er een uur over doet.
+
+### Ubuntu en Debian
+
+De vijf van de eigenaar: hostname; de versie; regionale en weergavetaalinstellingen; het root-account
+en optioneel extra root-accounts; en de mirror, met een aanbeveling van Velnox.
+
+**De aanbevolen mirror, uitgesproken in plaats van aan een meting overgelaten:** voor Debian
+`deb.debian.org` — het CDN, dat uitkomt bij iets in de buurt van de host, nooit achterloopt, en een
+met de hand gekozen landmirror in vrijwel alle gevallen verslaat. Voor Ubuntu
+`mirror://mirrors.ubuntu.com/mirrors.txt`, de officiële geografisch kiezende vorm. Een Nederlandse
+installatie die een vaste host wil kan `nl.archive.ubuntu.com` of `ftp.nl.debian.org` krijgen, als
+keuze en niet als standaard, want een vaste mirror is een enkel punt van falen dat het CDN niet heeft.
+
+Verder het toevoegen waard: SSH-sleutels en of wachtwoordauthenticatie überhaupt mag;
+`PermitRootLogin`; pakketten bij de eerste start, met `qemu-guest-agent` erbij; tijdzone, taal en
+toetsenbord opnieuw als aparte velden; schijfindeling en swap; vast adres of DHCP; een APT-proxy; en
+unattended-upgrades.
+
+**Twee dingen om vast te stellen voordat dit gebouwd wordt.** Eerst: extra *root*-accounts zijn niet
+hoe deze distributies beheerd worden — een sudo-gerechtigde gebruiker met een sleutel is dat, en
+root-accounts als primaire vorm aanbieden moedigt de zwakkere opzet aan. Ten tweede, en groter:
+**cloud-init stuurt geen ISO-installatie.** De ISO-installer van Ubuntu neemt `autoinstall`, die van
+Debian neemt `preseed`; cloud-init configureert een kant-en-klaar cloud image. Beide wegen bestaan en
+het zijn verschillende producten: cloud images rollen uit in seconden en Proxmox ondersteunt ze
+rechtstreeks, terwijl een ISO-installatie overeenkomt met wat een beheerder met de hand zou doen. Het
+verzoek noemt cloud-init én het uploaden van een ISO, dus een van de twee moet wijken.
+
+### Bericht en installatieverklaring
+
+Hiervan bestaat nog niets: er is geen maildienst, geen notificatiesysteem en geen PDF-generatie in het
+product. Fase 13 noemt notificaties als UI-afwerking, en dat is niet hetzelfde als bezorging. Deze
+fase draagt dus een eerste keer: SMTP-configuratie, een notificatiekanaal per ontvanger, en een
+PDF-renderer.
+
+**De inloggegevens in die PDF zijn het deel om te besluiten, niet om stil te implementeren.** De eigen
+regels van Velnox zeggen dat een wachtwoord nooit in een log staat, nooit in job-uitvoer, en nooit de
+frontend bereikt tenzij een expliciete break-glass-functie dat vereist. Een gemailde PDF met lokale
+beheerderswachtwoorden is een blijvende kopie van precies dat in een mailbox, op een relay, en in wat
+die beide back-upt — en gewone SMTP is niet end-to-end versleuteld. De veiliger vorm is diezelfde
+informatie achter een eenmalige link in Velnox, waar het tonen wordt vastgelegd en verloopt, met een
+mail die de verklaring draagt en niet de geheimen. De PDF uitleveren zoals gevraagd is een bewuste
+uitzondering en hoort als zodanig vastgelegd te worden.
+
+**Acceptatie:** een MSP-template is zichtbaar voor een tenant eronder en een tenanttemplate niet naar
+boven; een MSP-template klonen levert een onafhankelijke kopie; een template die als privé is
+gemarkeerd wordt aan niemand anders aangeboden. Uitrollen vanaf een template zet de ISO op de node als
+hij ontbreekt, maakt de VM aan met de schijfindeling die de template voorschrijft, en de gast
+installeert zichzelf zonder één toetsaanslag. Een Windows-template zonder productcode levert een VM
+die erom vraagt; een met code een die dat niet doet. Wachtwoorden en productcodes worden met
+envelope-encryptie opgeslagen en komen in geen log, geen job-uitvoer en geen API-antwoord voor. Een
+mislukte installatie laat geen half aangemaakte VM achter. De verklaring noemt de hostname, het adres,
+de duur en de template, en het bericht komt één keer aan.
+
 ## Phase 6 — Updatebeheer · **M**
 
 Update-inventaris per node (classificatie beveiliging / kernel / Proxmox), detectie van vereiste

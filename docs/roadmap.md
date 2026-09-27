@@ -150,6 +150,95 @@ removes it there and leaves the library copy alone; a transfer cancelled halfway
 file on either side; filling the library is refused with the ceiling named, not with a disk error;
 every screen shows friendly names and every log line shows the real filename.
 
+## Phase 5B — Autoconfig templates and unattended VM provisioning · **XL**
+
+Requested by the owner on 2026-09-27. Scheduled after Phase 5 (jobs) and 5A (the ISO library),
+because provisioning is a job and its first step is "is the ISO on that node".
+
+**Autoconfig**, a tab under Administration, holds the templates. A template lives at MSP level or
+tenant level; an MSP template is usable and clonable by every tenant beneath it unless it is marked
+otherwise. Creating a VM then means picking a template, and Velnox: checks the ISO is on the target
+node and uploads it if not, creates the VM, optionally starts it and lets the OS install itself,
+notifies whoever asked when it finishes, and mails a PDF record of the installation.
+
+### Windows — Autounattend.xml
+
+The owner's seven fields: hostname without a domain; the edition to install (Home/Pro, or
+Standard/Datacenter and their Desktop Experience variants); an optional product key, absent which the
+VM asks for one at first boot exactly as it would unattended, or skips the question entirely where the
+edition does not need one; regional and display-language settings; the local accounts to create with
+their passwords and a per-account administrator flag, plus the built-in Administrator password which
+Windows Server always requires; separate switches for QEMU Guest Agent and for VirtIO; and MBR or GPT
+for the system disk, with GPT recommended everywhere it is offered.
+
+Worth adding, and the reasons:
+
+- **Four locale fields, not one.** Unattend distinguishes `UILanguage`, `SystemLocale`, `UserLocale`
+  and `InputLocale`. Collapsing them is why a Dutch install so often ends up with a Dutch keyboard
+  nobody wanted — Dutch operators overwhelmingly type on US-International.
+- **Time zone**, which is not a locale and is the field that makes logs comparable across a fleet.
+- **How the edition is actually chosen.** Unattend selects an image by `/IMAGE/INDEX` or
+  `/IMAGE/NAME`, or is steered by a KMS client setup key. An edition dropdown that does not read the
+  ISO's image list is a dropdown that silently installs the wrong edition.
+- **OOBE screens to skip**, including the Microsoft-account requirement on Windows 11, and the privacy
+  toggles — every one of which is a screen someone otherwise clicks through on a server.
+- **Auto-logon count**, because installing the guest agent and VirtIO needs one logged-on pass. It
+  must be set back afterwards; a VM left auto-logging on is a VM with no password.
+- **First-logon commands**, which is where the agent and VirtIO installs actually run.
+- **Workgroup name**, RDP and its firewall rule, the power plan, and whether hibernation stays.
+- **Windows Update during OOBE or deferred** — the difference between a VM ready in ten minutes and
+  one ready in an hour.
+
+### Ubuntu and Debian
+
+The owner's five: hostname; the version; regional and display-language settings; the root account and
+optional extra root accounts; and the mirror, with Velnox recommending one.
+
+**The mirror recommendation, stated rather than left to a benchmark:** for Debian, `deb.debian.org` —
+the CDN, which resolves to something near the host and is never stale, and which beats a hand-picked
+country mirror in almost every case. For Ubuntu, `mirror://mirrors.ubuntu.com/mirrors.txt`, which is
+the official geo-selecting form. A Dutch installation that wants a fixed host can have
+`nl.archive.ubuntu.com` or `ftp.nl.debian.org`, offered as a choice rather than as the default,
+because a fixed mirror is a single point of failure the CDN does not have.
+
+Worth adding: SSH authorised keys and whether password authentication is allowed at all;
+`PermitRootLogin`; packages at first boot, `qemu-guest-agent` among them; time zone, locale and
+keyboard as separate fields again; disk layout and swap; static addressing or DHCP; an APT proxy; and
+unattended-upgrades.
+
+**Two things to settle before this is built.** First: extra *root* accounts are not how these
+distributions are administered — a sudo-capable user with a key is, and offering root accounts as the
+primary shape encourages the weaker setup. Second, and larger: **cloud-init does not drive an ISO
+install.** Ubuntu's ISO installer takes `autoinstall`, Debian's takes `preseed`; cloud-init configures
+a pre-built cloud image. Both routes are real and they are different products: cloud images provision
+in seconds and Proxmox supports them natively, while ISO installs match what an administrator would
+do by hand. The owner's request names cloud-init and also names uploading an ISO, so one of the two
+has to give.
+
+### Notification and the installation record
+
+None of this exists yet: there is no mail transport, no notification system and no PDF generation in
+the product. Phase 13 lists notifications as UI polish, which is not the same thing as delivery.
+So this phase carries a first: SMTP configuration, a notification channel per recipient, and a PDF
+renderer.
+
+**The credentials in that PDF are the part to decide, not to implement quietly.** Velnox's own rules
+say a password never appears in a log, never in job output, and never reaches the frontend unless an
+explicit break-glass function requires it. A PDF of local administrator passwords, mailed, is a
+durable copy of exactly that in a mailbox, on a relay, and in whatever backs both up — and ordinary
+SMTP is not encrypted end to end. The safer shape is the same information behind a one-time link into
+Velnox, where the reveal is audited and expires, with the mail carrying the record and not the
+secrets. Shipping the PDF as asked is a deliberate exception and should be recorded as one.
+
+**Acceptance:** an MSP template is visible to a tenant beneath it and a tenant template is not visible
+upward; cloning an MSP template produces an independent copy; a template marked private is offered to
+nobody else. Provisioning from a template puts the ISO on the node if it is missing, creates the VM
+with the disk layout the template specifies, and the guest installs unattended without a keypress. A
+Windows template with no product key produces a VM that asks for one; one with a key produces a VM
+that does not. Passwords and product keys are stored with envelope encryption and appear in no log,
+no job output and no API response. A failed install leaves no half-created VM. The installation record
+names the hostname, the address, the duration and the template, and the notification arrives once.
+
 ## Phase 6 — Update management · **M**
 
 Update inventory per node (security / kernel / Proxmox classification), reboot-required detection,
