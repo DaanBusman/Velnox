@@ -164,6 +164,18 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   Workload: (ids) => ({ tenantId: { in: ids } }),
   CephDaemon: (ids) => ({ tenantId: { in: ids } }),
   DiscoveryRun: (ids) => ({ tenantId: { in: ids } }),
+
+  // Phase 5 jobs. A job and its approvals carry the tenant; steps, events and
+  // logs do not, and are filtered through their job — the same shape as
+  // RoleAssignment through its user. Leaving them out would have been legal as
+  // far as the schema guard is concerned, since the guard only looks for a
+  // tenantId column, and it would have let anyone who guessed a job id read
+  // another customer's job output.
+  Job: (ids) => ({ tenantId: { in: ids } }),
+  JobStep: (ids) => ({ job: { tenantId: { in: ids } } }),
+  JobEvent: (ids) => ({ job: { tenantId: { in: ids } } }),
+  JobLog: (ids) => ({ job: { tenantId: { in: ids } } }),
+  Approval: (ids) => ({ tenantId: { in: ids } }),
 };
 
 /** Models whose `tenantId` on a create must be inside the scope. */
@@ -180,6 +192,8 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   Workload: 'required',
   CephDaemon: 'required',
   DiscoveryRun: 'required',
+  Job: 'required',
+  Approval: 'required',
 };
 
 export const tenantScopedModels = (): string[] => Object.keys(TENANT_SCOPED).sort();

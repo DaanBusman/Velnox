@@ -111,6 +111,8 @@ model Tenant {
   roleAssignments RoleAssignment[]
   auditEvents     AuditEvent[]
   credentials     Credential[]
+  jobs            Job[]
+  approvals       Approval[]
 
   @@index([kind])
   @@map("tenants")
@@ -210,6 +212,7 @@ model User {
   identities      UserIdentity[]
   mfaFactors      UserMfaFactor[]
   recoveryCodes   MfaRecoveryCode[]
+  jobsCreated     Job[]             @relation("JobCreatedBy")
 
   @@index([tenantId])
   @@index([status])
@@ -1000,4 +1003,239 @@ model AuditEvent {
   @@index([actorId, at])
   @@index([action, at])
   @@map("audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — the job system
+//
+// docs/database-schema.md section 6 and docs/architecture.md section 9. A job
+// is a row before it is anything on a queue: the queue carries a job id and
+// nothing else, so the database is always the record of what happened and a
+// flushed Redis loses queue positions, never history.
+// ---------------------------------------------------------------------------
+
+/// Mirrors JOB_STATUSES in packages/shared/src/jobs.ts, which also holds the
+/// transition table. A test compares the active states to the partial unique
+/// index in this phase's migration.
+enum JobStatus {
+  QUEUED
+  PREFLIGHT
+  WAITING_APPROVAL
+  RUNNING
+  VALIDATING
+  SUCCEEDED
+  PARTIALLY_SUCCEEDED
+  FAILED
+  ROLLED_BACK
+  CANCELLED
+
+  @@map("job_status")
+}
+
+enum JobStepStatus {
+  PENDING
+  RUNNING
+  SKIPPED
+  SUCCEEDED
+  FAILED
+  ROLLED_BACK
+
+  @@map("job_step_status")
+}
+
+enum JobEventLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+
+  @@map("job_event_level")
+}
+
+enum JobLogStream {
+  STDOUT
+  STDERR
+  PVE_TASK
+
+  @@map("job_log_stream")
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+
+  @@map("approval_decision")
+}
+
+model Job {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  /// Names a playbook in the worker registry. See JOB_TYPES.
+  type            String
+  playbookVersion Int       @default(1) @map("playbook_version")
+  status          JobStatus @default(QUEUED)
+  priority        Int       @default(0)
+
+  createdByUserId String? @map("created_by_user_id") @db.Uuid
+
+  targetKind String?  @map("target_kind")
+  targetIds  String[] @default([]) @map("target_ids") @db.Uuid
+
+  /// What the playbook was asked to do. **Never a secret**: a job that needs a
+  /// credential names the credential row and the worker decrypts it.
+  params Json @default("{}")
+
+  /// Usually `cluster:<id>`. At most one active job may hold a given key; the
+  /// partial unique index `jobs_one_active_per_key` enforces it in the database,
+  /// so two API instances racing each other cannot both win.
+  concurrencyKey String? @map("concurrency_key")
+
+  progressPct  Int?    @map("progress_pct")
+  currentPhase String? @map("current_phase")
+  currentStep  String? @map("current_step")
+
+  queuedAt   DateTime  @default(now()) @map("queued_at") @db.Timestamptz(3)
+  startedAt  DateTime? @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+
+  /// An error code from the catalogue (ADR-019), translated by the frontend.
+  errorCode    String? @map("error_code")
+  /// English diagnostic, redacted. Never what the interface shows.
+  errorMessage String? @map("error_message")
+
+  resultSummary Json? @map("result_summary")
+
+  /// Set on a retry: the job this one is a second attempt at.
+  parentJobId String? @map("parent_job_id") @db.Uuid
+
+  cancelRequestedAt DateTime? @map("cancel_requested_at") @db.Timestamptz(3)
+  cancelRequestedBy String?   @map("cancel_requested_by") @db.Uuid
+
+  /// Which worker process holds the job, and until when. A RUNNING job whose
+  /// lease has lapsed belongs to a worker that is gone.
+  workerId   String?   @map("worker_id")
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(3)
+
+  /// The last event sequence number handed out. Incremented in the same
+  /// statement that inserts the event, so sequence numbers have no gaps and no
+  /// duplicates even with two writers.
+  eventSeq Int @default(0) @map("event_seq")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdBy User?      @relation("JobCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  parent    Job?       @relation("JobRetries", fields: [parentJobId], references: [id], onDelete: SetNull)
+  retries   Job[]      @relation("JobRetries")
+  steps     JobStep[]
+  events    JobEvent[]
+  logs      JobLog[]
+  approvals Approval[]
+
+  @@index([tenantId, queuedAt])
+  @@index([status])
+  @@index([type, queuedAt])
+  @@map("jobs")
+}
+
+/// One step of a job, in the order the playbook runs them.
+///
+/// `nodeId` is a plain column rather than a relation on purpose: a job history
+/// outlives the node it ran against. Removing a cluster must not rewrite what
+/// the record says was done to it.
+model JobStep {
+  id       String  @id @default(uuid()) @db.Uuid
+  jobId    String  @map("job_id") @db.Uuid
+  nodeId   String? @map("node_id") @db.Uuid
+  phase    String?
+  stepKey  String  @map("step_key")
+  sequence Int
+
+  status  JobStepStatus @default(PENDING)
+  attempt Int           @default(0)
+
+  startedAt  DateTime? @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+
+  /// Structured and redacted. Raw command output goes to job_logs.
+  output Json?
+  error  String?
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, sequence])
+  @@unique([jobId, stepKey])
+  @@map("job_steps")
+}
+
+/// Append-only; what the live stream carries.
+model JobEvent {
+  id    BigInt        @id @default(autoincrement())
+  jobId String        @map("job_id") @db.Uuid
+  /// Per-job, from 1, no gaps. The SSE event id, so a reconnecting browser can
+  /// say exactly where it left off.
+  seq   Int
+  at    DateTime      @default(now()) @db.Timestamptz(3)
+  level JobEventLevel
+
+  /// A JOB_EVENT_KEYS value, translated by the frontend.
+  eventKey String  @map("event_key")
+  stepKey  String? @map("step_key")
+  /// English diagnostic, redacted.
+  message  String
+  data     Json    @default("{}")
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, seq])
+  @@map("job_events")
+}
+
+/// Raw output, capped and redacted before it is written.
+model JobLog {
+  id        BigInt       @id @default(autoincrement())
+  jobId     String       @map("job_id") @db.Uuid
+  stepKey   String?      @map("step_key")
+  stream    JobLogStream
+  at        DateTime     @default(now()) @db.Timestamptz(3)
+  content   String
+  truncated Boolean      @default(false)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, id])
+  @@map("job_logs")
+}
+
+/// A gate a job is parked at until someone with the right permission decides.
+model Approval {
+  id       String @id @default(uuid()) @db.Uuid
+  jobId    String @map("job_id") @db.Uuid
+  /// Always the job tenant — a trigger checks it, so a grant scoped to one
+  /// customer can never be used to approve another customer change.
+  tenantId String @map("tenant_id") @db.Uuid
+  stepKey  String @map("step_key")
+
+  requiredPermission String @map("required_permission")
+  /// English diagnostic. The interface shows the change set and the step.
+  reason             String
+  changeSet          Json   @default("{}") @map("change_set")
+
+  /// Four-eyes: the person deciding may not be the person who asked.
+  requireDifferentApprover Boolean @default(false) @map("require_different_approver")
+
+  requestedAt     DateTime          @default(now()) @map("requested_at") @db.Timestamptz(3)
+  expiresAt       DateTime?         @map("expires_at") @db.Timestamptz(3)
+  decidedAt       DateTime?         @map("decided_at") @db.Timestamptz(3)
+  decidedByUserId String?           @map("decided_by_user_id") @db.Uuid
+  decision        ApprovalDecision?
+  decisionNote    String?           @map("decision_note")
+
+  job    Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([jobId])
+  @@index([tenantId, requestedAt])
+  @@map("approvals")
 }

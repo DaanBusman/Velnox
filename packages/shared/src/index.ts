@@ -8,6 +8,7 @@
  */
 export * from './errors';
 export * from './fingerprint';
+export * from './jobs';
 export * from './permissions';
 export * from './redaction';
 export * from './slug';

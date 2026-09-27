@@ -310,6 +310,41 @@ describe('the scoped model list against the schema', () => {
     expect(unaccounted).toEqual([]);
   });
 
+  /**
+   * The rule above only sees a tenant column. A table that reaches its tenant
+   * through a relation — job_events through jobs, say — has no such column, so
+   * leaving it out of `TENANT_SCOPED` would pass that test while letting anyone
+   * who guessed a job id read another customer's job output. Found while adding
+   * the Phase 5 tables, where every child table is exactly that shape.
+   *
+   * So: a model with a relation to a scoped model is itself scoped, or is named
+   * here with the reason it does not need to be.
+   */
+  const CHILD_EXEMPT: Record<string, string> = {
+    Session: 'authentication internals, read by token hash or by the signed-in account id',
+    UserIdentity: 'authentication internals, read by the signed-in account id during SSO',
+    UserMfaFactor: 'authentication internals, read by the signed-in account id',
+    MfaRecoveryCode: 'authentication internals, read by the signed-in account id',
+    RolePermission: 'read only through its role, whose own visibility is scoped',
+    CredentialSecret: 'ciphertext, read by credential id after the credential row was resolved',
+  };
+
+  it('accounts for every model that reaches a tenant through a relation', () => {
+    const scoped = new Set(tenantScopedModels());
+
+    const unaccounted = models
+      .filter((model) => !scoped.has(model.name) && !/^\s*tenantId\s/m.test(model.body))
+      .filter((model) =>
+        [...model.body.matchAll(/^\s*\w+\s+(\w+)\??\s+@relation\([^)]*fields:/gm)].some(
+          (field) => scoped.has(field[1] ?? ''),
+        ),
+      )
+      .map((model) => model.name)
+      .filter((name) => !(name in CHILD_EXEMPT));
+
+    expect(unaccounted).toEqual([]);
+  });
+
   it('scopes the Tenant model itself', () => {
     // It has no tenant column — it *is* the tenant — so the rule above would
     // never catch it going missing.
