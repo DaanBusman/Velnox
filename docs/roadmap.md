@@ -125,7 +125,8 @@ concurrently; every invalid state transition throws.
 Requested by the owner on 2026-09-27, scheduled immediately after Phase 5 because every operation in
 it is a multi-gigabyte transfer, which is what the job system exists to run.
 
-A central ISO store on the Velnox host, with three movements: push an ISO to a cluster's storage,
+A central store on the Velnox host for ISOs and — since Phase 5B settled on cloud images for Linux —
+cloud disk images, with three movements: push an ISO to a cluster's storage,
 pull one from a cluster into the library, and delete one from a cluster. Friendly names throughout —
 `Windows11_25H2_Dutch` reads as "Windows 11 Version 25H2 Dutch" or "… Nederlands" depending on the
 viewer's Velnox language — parsed from the filename with the operator able to correct it, because a
@@ -206,14 +207,22 @@ Worth adding: SSH authorised keys and whether password authentication is allowed
 keyboard as separate fields again; disk layout and swap; static addressing or DHCP; an APT proxy; and
 unattended-upgrades.
 
-**Two things to settle before this is built.** First: extra *root* accounts are not how these
-distributions are administered — a sudo-capable user with a key is, and offering root accounts as the
-primary shape encourages the weaker setup. Second, and larger: **cloud-init does not drive an ISO
-install.** Ubuntu's ISO installer takes `autoinstall`, Debian's takes `preseed`; cloud-init configures
-a pre-built cloud image. Both routes are real and they are different products: cloud images provision
-in seconds and Proxmox supports them natively, while ISO installs match what an administrator would
-do by hand. The owner's request names cloud-init and also names uploading an ISO, so one of the two
-has to give.
+**Settled with the owner on 2026-09-27:**
+
+- **Linux provisions from cloud images, not from an installer ISO.** cloud-init does not drive an ISO
+  install — Ubuntu's installer takes `autoinstall` and Debian's takes `preseed` — and the owner left
+  the choice to the builder. Cloud images win on every axis that matters here: Proxmox supports them
+  natively (`qm importdisk`, `--ciuser`, `--sshkeys`, `--ipconfig0`, `--cicustom`), a VM is usable in
+  seconds rather than after an installer run, and the result is identical every time because nothing
+  is answering prompts. The consequence for Phase 5A: **the library holds cloud images as well as
+  ISOs**, and "is it on the node" means the disk image for Linux and the ISO for Windows. Windows
+  stays ISO plus Autounattend.xml, because Microsoft ships no cloud image.
+- **A sudo user with a key is the default; root login is an option, off unless chosen.** Extra
+  accounts are sudo-capable users, not additional roots.
+- **SSH access is a template switch**, on by default: `openssh-server` installed and enabled,
+  authorised keys placed for each account, password authentication off unless the template turns it
+  on, and — where the image ships a firewall — port 22 opened for it. Most cloud images already
+  carry the server; the switch makes that a guarantee rather than an assumption about the image.
 
 ### Notification and the installation record
 
@@ -226,9 +235,17 @@ renderer.
 say a password never appears in a log, never in job output, and never reaches the frontend unless an
 explicit break-glass function requires it. A PDF of local administrator passwords, mailed, is a
 durable copy of exactly that in a mailbox, on a relay, and in whatever backs both up — and ordinary
-SMTP is not encrypted end to end. The safer shape is the same information behind a one-time link into
-Velnox, where the reveal is audited and expires, with the mail carrying the record and not the
-secrets. Shipping the PDF as asked is a deliberate exception and should be recorded as one.
+SMTP is not encrypted end to end.
+
+**Settled with the owner:** the mail carries the installation record and **never the credentials in
+the clear**. The credentials go one of two ways, chosen per template:
+
+- **Only in Velnox** — the default. A link to the installation, where revealing the passwords is an
+  audited action behind `clusters.manage` and the reveal expires.
+- **An encrypted PDF** — AES-256, whose password is **not in the same mail**. It is shown once in
+  Velnox to whoever started the provisioning, or set on the template by an administrator. A
+  password-protected attachment with its password in the body is a plaintext attachment with extra
+  steps.
 
 **Acceptance:** an MSP template is visible to a tenant beneath it and a tenant template is not visible
 upward; cloning an MSP template produces an independent copy; a template marked private is offered to
@@ -236,7 +253,9 @@ nobody else. Provisioning from a template puts the ISO on the node if it is miss
 with the disk layout the template specifies, and the guest installs unattended without a keypress. A
 Windows template with no product key produces a VM that asks for one; one with a key produces a VM
 that does not. Passwords and product keys are stored with envelope encryption and appear in no log,
-no job output and no API response. A failed install leaves no half-created VM. The installation record
+no job output, no API response and no mail body; an encrypted PDF's password never travels in the
+mail that carries the PDF. A Linux VM with the SSH switch on accepts a key login on first boot and
+refuses a password login unless the template allowed it. A failed install leaves no half-created VM. The installation record
 names the hostname, the address, the duration and the template, and the notification arrives once.
 
 ## Phase 6 — Update management · **M**

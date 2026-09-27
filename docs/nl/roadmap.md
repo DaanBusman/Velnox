@@ -132,7 +132,8 @@ kunnen niet gelijktijdig draaien; elke ongeldige toestandsovergang gooit een fou
 Aangevraagd door de eigenaar op 27-09-2026, ingepland direct na fase 5 omdat elke handeling erin een
 overdracht van meerdere gigabytes is — precies waar het jobsysteem voor bestaat.
 
-Een centrale ISO-opslag op de Velnox-host, met drie bewegingen: een ISO naar de opslag van een cluster
+Een centrale opslag op de Velnox-host voor ISO's en — sinds fase 5B voor Linux op cloud images
+uitkwam — cloud-schijfimages, met drie bewegingen: een ISO naar de opslag van een cluster
 duwen, er een van een cluster naar de bibliotheek halen, en er een op een cluster verwijderen. Overal
 vriendelijke namen — `Windows11_25H2_Dutch` leest als "Windows 11 Version 25H2 Dutch" of "… Nederlands"
 afhankelijk van de ingestelde Velnox-taal — afgeleid uit de bestandsnaam, met de mogelijkheid voor de
@@ -221,14 +222,24 @@ Verder het toevoegen waard: SSH-sleutels en of wachtwoordauthenticatie überhaup
 toetsenbord opnieuw als aparte velden; schijfindeling en swap; vast adres of DHCP; een APT-proxy; en
 unattended-upgrades.
 
-**Twee dingen om vast te stellen voordat dit gebouwd wordt.** Eerst: extra *root*-accounts zijn niet
-hoe deze distributies beheerd worden — een sudo-gerechtigde gebruiker met een sleutel is dat, en
-root-accounts als primaire vorm aanbieden moedigt de zwakkere opzet aan. Ten tweede, en groter:
-**cloud-init stuurt geen ISO-installatie.** De ISO-installer van Ubuntu neemt `autoinstall`, die van
-Debian neemt `preseed`; cloud-init configureert een kant-en-klaar cloud image. Beide wegen bestaan en
-het zijn verschillende producten: cloud images rollen uit in seconden en Proxmox ondersteunt ze
-rechtstreeks, terwijl een ISO-installatie overeenkomt met wat een beheerder met de hand zou doen. Het
-verzoek noemt cloud-init én het uploaden van een ISO, dus een van de twee moet wijken.
+**Besloten met de eigenaar op 27-09-2026:**
+
+- **Linux wordt uitgerold vanaf cloud images, niet vanaf een installatie-ISO.** cloud-init stuurt geen
+  ISO-installatie — de installer van Ubuntu neemt `autoinstall` en die van Debian `preseed` — en de
+  eigenaar liet de keuze aan de bouwer. Cloud images winnen op elk punt dat hier telt: Proxmox
+  ondersteunt ze rechtstreeks (`qm importdisk`, `--ciuser`, `--sshkeys`, `--ipconfig0`,
+  `--cicustom`), een VM is binnen seconden bruikbaar in plaats van na een installatieronde, en het
+  resultaat is elke keer identiek omdat er niets vragen beantwoordt. Het gevolg voor fase 5A: **de
+  bibliotheek bevat cloud images naast ISO's**, en "staat hij op de node" betekent voor Linux het
+  schijfimage en voor Windows de ISO. Windows blijft ISO plus Autounattend.xml, want Microsoft levert
+  geen cloud image.
+- **Een sudo-gebruiker met een sleutel is de standaard; root-login is een optie, uit tenzij gekozen.**
+  Extra accounts zijn sudo-gerechtigde gebruikers, geen extra roots.
+- **SSH-toegang is een schakelaar op de template**, standaard aan: `openssh-server` geïnstalleerd en
+  ingeschakeld, SSH-sleutels geplaatst voor elk account, wachtwoordauthenticatie uit tenzij de
+  template die aanzet, en — waar het image een firewall meelevert — poort 22 daarvoor open. De meeste
+  cloud images hebben de server al; de schakelaar maakt dat een garantie in plaats van een aanname
+  over het image.
 
 ### Bericht en installatieverklaring
 
@@ -241,10 +252,17 @@ PDF-renderer.
 regels van Velnox zeggen dat een wachtwoord nooit in een log staat, nooit in job-uitvoer, en nooit de
 frontend bereikt tenzij een expliciete break-glass-functie dat vereist. Een gemailde PDF met lokale
 beheerderswachtwoorden is een blijvende kopie van precies dat in een mailbox, op een relay, en in wat
-die beide back-upt — en gewone SMTP is niet end-to-end versleuteld. De veiliger vorm is diezelfde
-informatie achter een eenmalige link in Velnox, waar het tonen wordt vastgelegd en verloopt, met een
-mail die de verklaring draagt en niet de geheimen. De PDF uitleveren zoals gevraagd is een bewuste
-uitzondering en hoort als zodanig vastgelegd te worden.
+die beide back-upt — en gewone SMTP is niet end-to-end versleuteld.
+
+**Besloten met de eigenaar:** de mail draagt de installatieverklaring en **nooit de inloggegevens in
+leesbare vorm**. Die gaan een van twee wegen, per template gekozen:
+
+- **Alleen in Velnox** — de standaard. Een link naar de installatie, waar het tonen van de
+  wachtwoorden een vastgelegde handeling is achter `clusters.manage`, en het tonen verloopt.
+- **Een versleutelde PDF** — AES-256, waarvan het wachtwoord **niet in dezelfde mail** staat. Het
+  wordt één keer in Velnox getoond aan wie de uitrol startte, of door een beheerder op de template
+  ingesteld. Een beveiligde bijlage met het wachtwoord in de tekst is een onbeveiligde bijlage met
+  extra stappen.
 
 **Acceptatie:** een MSP-template is zichtbaar voor een tenant eronder en een tenanttemplate niet naar
 boven; een MSP-template klonen levert een onafhankelijke kopie; een template die als privé is
@@ -252,7 +270,10 @@ gemarkeerd wordt aan niemand anders aangeboden. Uitrollen vanaf een template zet
 hij ontbreekt, maakt de VM aan met de schijfindeling die de template voorschrijft, en de gast
 installeert zichzelf zonder één toetsaanslag. Een Windows-template zonder productcode levert een VM
 die erom vraagt; een met code een die dat niet doet. Wachtwoorden en productcodes worden met
-envelope-encryptie opgeslagen en komen in geen log, geen job-uitvoer en geen API-antwoord voor. Een
+envelope-encryptie opgeslagen en komen in geen log, geen job-uitvoer, geen API-antwoord en geen
+mailtekst voor; het wachtwoord van een versleutelde PDF reist nooit mee in de mail die de PDF draagt.
+Een Linux-VM met de SSH-schakelaar aan accepteert bij de eerste start een login met sleutel en weigert
+een login met wachtwoord, tenzij de template dat toestond. Een
 mislukte installatie laat geen half aangemaakte VM achter. De verklaring noemt de hostname, het adres,
 de duur en de template, en het bericht komt één keer aan.
 
