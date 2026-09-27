@@ -1,6 +1,6 @@
 # Velnox — Voorstel databaseschema
 
-> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `b730a19`.
+> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `0d4eb43`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Phase 0 ontwerpvoorstel. PostgreSQL 16, Prisma-migraties.

@@ -1,6 +1,6 @@
 # Jobs volgen, annuleren en goedkeuren
 
-> **Vertaling.** Bron: [docs/working-with-jobs.md](../working-with-jobs.md) @ `0000000`.
+> **Vertaling.** Bron: [docs/working-with-jobs.md](../working-with-jobs.md) @ `0d4eb43`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Alles wat Velnox doet en langer duurt dan het laden van een pagina, is een job.** Een job heeft
