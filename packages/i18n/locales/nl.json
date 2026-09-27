@@ -9,6 +9,8 @@
   "about": {
     "agplNotice": "{product} is vrije software onder de GNU Affero General Public License v3 of later. Artikel 13 vereist dat wie een gewijzigde versie via een netwerk gebruikt, de bijbehorende broncode aangeboden krijgt. Dat aanbod is de link hierboven, en de build-commit maakt het verifieerbaar.",
     "attributionBody": "Vereist door artikel 7(b) van de GNU Affero General Public License en behouden in elke kopie, ook in een die onder een andere naam wordt verspreid. Zie NOTICE voor de volledige voorwaarden.",
+    "buildBody": "De precieze build die op dit adres antwoordt.",
+    "buildHeading": "Deze build",
     "attributionHeading": "Naamsvermelding",
     "builtAt": "Gebouwd op",
     "commit": "Build-commit",
@@ -489,6 +491,7 @@
     "subtitle": "Deze Velnox-installatie zelf — niet de infrastructuur die ermee beheerd wordt.",
     "tab": {
       "audit": "Auditlog",
+      "about": "Over deze server",
       "certificate": "Certificaat",
       "status": "Servicestatus",
       "updates": "Updates"
@@ -529,6 +532,18 @@
     "passwordWeak": "Dit wachtwoord voldoet niet aan de minimale sterkte-eis.",
     "subtitle": "Maak het eerste beheerdersaccount aan. Dit kan slechts één keer.",
     "title": "{product} instellen"
+  },
+  "settings": {
+    "aboutBody": "Welke build draait, en waar je de broncode vindt. Serverbeheer bevat de volledige versie.",
+    "interfaceBody": "Dit geldt alleen voor deze browser. Voor je collega's verandert er niets.",
+    "interfaceTitle": "Interface",
+    "languageHint": "Werkt direct, op elk scherm.",
+    "refreshEvery": "Elke {seconds} seconden",
+    "refreshHint": "Hoe vaak de cluster- en nodeschermen zichzelf opnieuw lezen. Elke leesactie kost de API een query, dus kies de langzaamste stand die voor jou werkt. Proxmox wordt hierbij nooit benaderd.",
+    "refreshLabel": "Schermen automatisch verversen",
+    "refreshOff": "Uit — alleen als ik op Refresh druk",
+    "subtitle": "Voorkeuren voor deze browser.",
+    "title": "Instellingen"
   },
   "sites": {
     "add": "Locatie toevoegen",

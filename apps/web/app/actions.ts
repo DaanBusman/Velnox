@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { isLocale, LOCALE_COOKIE } from '@velnox/i18n';
+import { isRefreshSeconds, REFRESH_COOKIE } from '@/lib/preferences';
 import { SELECTED_TENANT_COOKIE } from '@/lib/tenant-selection';
 
 /**
@@ -21,6 +22,27 @@ export async function setLocale(value: string): Promise<void> {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',
     httpOnly: false, // read by the switcher itself; carries no authority
+  });
+
+  revalidatePath('/', 'layout');
+}
+
+/**
+ * How often the inventory screens re-read themselves.
+ *
+ * Validated against the offered set before it is stored, like the language:
+ * the value comes from a browser, and it ends up as a polling interval against
+ * the API. An unchecked number here is a request storm one edited cookie away.
+ */
+export async function setRefreshInterval(seconds: number): Promise<void> {
+  if (!Number.isInteger(seconds) || !isRefreshSeconds(seconds)) return;
+
+  const store = await cookies();
+  store.set(REFRESH_COOKIE, String(seconds), {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax',
+    httpOnly: false, // a display preference; it carries no authority
   });
 
   revalidatePath('/', 'layout');

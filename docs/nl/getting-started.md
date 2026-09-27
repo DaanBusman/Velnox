@@ -138,8 +138,8 @@ Werkt vandaag:
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
 | **Beveiliging** | Meervoudige authenticatie voor je eigen account |
 | **Single sign-on** | De wizard voor Microsoft Entra ID |
-| **Serverbeheer** | De installatie zelf: de servicestatus, het auditlog, het certificaat, de versie |
-| **Instellingen → Over** | Versie, buildcommit, licentie en het bronaanbod |
+| **Serverbeheer** | De installatie zelf: servicestatus, auditlog, certificaat, upgradeprocedure, en Over deze server |
+| **Instellingen** | Taal, hoe vaak schermen verversen, en het bronaanbod — per browser, voor iedereen toegankelijk |
 | **Documentatie** | Deze documentatie, offline, gestempeld met de draaiende versie |
 
 **Serverbeheer** opent als een venster over waar je mee bezig was, vanaf de onderkant van de
@@ -209,8 +209,8 @@ moment om te ontdekken dat ze op GitHub staat. Daarom zit ze in de build, onder 
 Elke pagina vermeldt de versie waaruit ze is gebouwd. Die tekst komt uit dezelfde bron als de versie
 die de draaiende software rapporteert, voortgebracht door dezelfde build, dus de documentatie en de
 software kunnen geen release uit elkaar lopen. Toont een pagina ooit een andere versie dan
-**Instellingen → Over**, dan zegt de pagina dat, in plaats van je instructies voor een andere release
-te laten lezen.
+**Instellingen**, dan zegt de pagina dat, in plaats van je instructies voor een andere release te
+laten lezen.
 
 ---
 

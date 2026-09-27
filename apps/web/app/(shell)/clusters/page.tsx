@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { Notice, PageHeader } from '@/components/ui/primitives';
 import { ClusterAdmin } from '@/components/inventory/cluster-admin';
+import { refreshSeconds } from '@/lib/preferences';
 import { getSession, listClusters, listSites, listTenants } from '@/lib/session';
 import { resolveSelection, selectedTenantId } from '@/lib/tenant-selection';
 
@@ -12,11 +13,12 @@ export async function generateMetadata() {
 }
 
 export default async function ClustersPage() {
-  const [t, session, tenants, selected] = await Promise.all([
+  const [t, session, tenants, selected, refresh] = await Promise.all([
     getTranslations(),
     getSession(),
     listTenants(),
     selectedTenantId(),
+    refreshSeconds(),
   ]);
 
   const selectable = tenants.ok ? tenants.data.tenants : [];
@@ -47,6 +49,7 @@ export default async function ClustersPage() {
         tenants={selectable}
         sites={sites.ok ? sites.data.sites : []}
         canManage={permissions.has('clusters.manage')}
+        refreshSeconds={refresh}
       />
     </>
   );

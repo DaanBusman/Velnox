@@ -92,10 +92,12 @@ export const NAVIGATION: NavGroup[] = [
       },
       { key: 'security', href: '/settings/security', phase: null },
       { key: 'sso', href: '/settings/sso', phase: null, requiresPermission: 'system.manage' },
-      // About stays open to everyone: AGPL section 13 requires the source offer
-      // to be reachable by anyone interacting with the software, not only by an
-      // administrator.
-      { key: 'settings', href: '/settings/about', phase: null },
+      // Open to everyone, for two reasons. It holds per-viewer preferences,
+      // which every account has; and it carries the source offer, which AGPL
+      // section 13 requires to be reachable by anyone interacting with the
+      // software — Server management, where the fuller version lives, is
+      // administrators only.
+      { key: 'settings', href: '/settings', phase: null },
     ],
   },
   {

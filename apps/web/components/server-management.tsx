@@ -8,10 +8,12 @@ import {
   IconAudit,
   IconCertificate,
   IconClose,
+  IconDocumentation,
   IconPulse,
   IconServer,
   IconUpdates,
 } from '@/components/ui/icons';
+import { AboutPanel } from '@/components/server/about-panel';
 import { AuditPanel } from '@/components/server/audit-panel';
 import { CertificatePanel } from '@/components/server/certificate-panel';
 import { StatusPanel } from '@/components/server/status-panel';
@@ -36,7 +38,7 @@ import { UpdatesPanel } from '@/components/server/updates-panel';
  * by the API without it as well — this decides what to offer, not what to allow.
  */
 
-type TabKey = 'status' | 'audit' | 'certificate' | 'updates';
+type TabKey = 'status' | 'audit' | 'certificate' | 'updates' | 'about';
 
 /*
  * Service status leads, because it answers the question people open this window
@@ -49,6 +51,7 @@ const TABS: { key: TabKey; icon: typeof IconAudit }[] = [
   { key: 'audit', icon: IconAudit },
   { key: 'certificate', icon: IconCertificate },
   { key: 'updates', icon: IconUpdates },
+  { key: 'about', icon: IconDocumentation },
 ];
 
 export function ServerManagement() {
@@ -238,6 +241,7 @@ function ServerWindow({ onClose }: { onClose: () => void }) {
               {tab === 'audit' && <AuditPanel />}
               {tab === 'certificate' && <CertificatePanel />}
               {tab === 'updates' && <UpdatesPanel />}
+              {tab === 'about' && <AboutPanel />}
             </div>
           </div>
         </div>

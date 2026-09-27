@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormatter, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import type { SourceOfferResponse } from '@velnox/shared';
 import { CopyField } from '@/components/copy-field';
 import { Card, KeyValue, Mono, Notice } from '@/components/ui/primitives';
@@ -18,13 +18,16 @@ import { PanelError, PanelLoading } from './panel-state';
  * schedule, which is not something an MSP console should start doing without
  * being asked.
  *
- * So this reports the build honestly and hands over the procedure, in the order
- * that makes it reversible. Step one is the one people skip and the one that
- * makes the other two safe.
+ * So this hands over the procedure, in the order that makes it reversible. Step
+ * one is the one people skip and the one that makes the other two safe.
+ *
+ * It names the running version and nothing else about the build. The rest — the
+ * commit, when it was built, the licence and the source offer — is About this
+ * server, one tab along. Two panels reporting the same four facts is two places
+ * to change when one of them gains a fifth.
  */
 export function UpdatesPanel() {
   const t = useTranslations();
-  const format = useFormatter();
   const source = useApiResource<SourceOfferResponse>('/system/source');
 
   if (source.state === 'loading') return <PanelLoading />;
@@ -39,17 +42,6 @@ export function UpdatesPanel() {
           <KeyValue label={t('about.product')}>{build.product}</KeyValue>
           <KeyValue label={t('about.version')}>
             <Mono>{build.version}</Mono>
-          </KeyValue>
-          <KeyValue label={t('about.commit')}>
-            <Mono>{build.commit}</Mono>
-          </KeyValue>
-          <KeyValue label={t('about.builtAt')}>
-            {build.builtAt
-              ? format.dateTime(new Date(build.builtAt), {
-                  dateStyle: 'long',
-                  timeStyle: 'short',
-                })
-              : t('common.notAvailable')}
           </KeyValue>
         </dl>
       </Card>
@@ -97,23 +89,6 @@ export function UpdatesPanel() {
         />
       </Card>
 
-      <Card title={t('about.sourceHeading')}>
-        {/* Verbatim from the API. AGPLv3 section 7(b) — see NOTICE. */}
-        <p className="text-sm text-ink">{build.attribution}</p>
-        <p className="mt-2 text-sm text-ink-muted">
-          {t('about.agplNotice', { product: build.product })}
-        </p>
-        <p className="mt-3">
-          <a
-            href={build.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-accent underline underline-offset-2"
-          >
-            {t('about.viewSource')}
-          </a>
-        </p>
-      </Card>
     </div>
   );
 }

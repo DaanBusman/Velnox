@@ -100,7 +100,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
 
             <footer className="mx-auto max-w-6xl px-6 pb-6 text-xs text-ink-muted">
               {t('layout.footerLicense', { product, version })}{' '}
-              <a href="/settings/about" className="underline underline-offset-2">
+              <a href="/settings" className="underline underline-offset-2">
                 {t('layout.footerSource')}
               </a>
             </footer>

@@ -66,6 +66,3 @@ export function useAutoRefresh(intervalMs: number, enabled = true): void {
     };
   }, [router, intervalMs, enabled]);
 }
-
-/** How often the inventory screens re-read themselves. */
-export const INVENTORY_REFRESH_MS = 2_000;

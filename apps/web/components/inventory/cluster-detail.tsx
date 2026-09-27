@@ -12,7 +12,7 @@ import type {
 } from '@/lib/session-types';
 import { apiDelete, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
-import { INVENTORY_REFRESH_MS, useAutoRefresh } from '@/lib/use-auto-refresh';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { Button, FormError } from '@/components/ui/form';
 import { Card, KeyValue, Notice, StatusBadge } from '@/components/ui/primitives';
 import { NodeTable, WorkloadTable } from './tables';
@@ -43,6 +43,7 @@ export function ClusterDetail({
   cephDaemons,
   runs,
   canManage,
+  refreshSeconds,
 }: {
   cluster: ClusterSummary;
   nodes: NodeSummary[];
@@ -50,6 +51,8 @@ export function ClusterDetail({
   cephDaemons: CephDaemonSummary[];
   runs: DiscoveryRunRow[];
   canManage: boolean;
+  /** Seconds between automatic re-reads; 0 means the viewer turned it off. */
+  refreshSeconds: number;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -64,7 +67,7 @@ export function ClusterDetail({
   // Paused while a removal is being confirmed, for the same reason the add form
   // pauses it: a refresh can unmount the tree, and a confirmation that vanishes
   // is one an operator answers twice.
-  useAutoRefresh(INVENTORY_REFRESH_MS, !confirmingRemoval);
+  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !confirmingRemoval);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'nodes', label: t('nav.nodes') },

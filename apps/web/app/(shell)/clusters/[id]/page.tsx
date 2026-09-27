@@ -10,6 +10,7 @@ import {
   listNodes,
   listWorkloads,
 } from '@/lib/session';
+import { refreshSeconds } from '@/lib/preferences';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +27,11 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function ClusterPage({ params }: Props) {
   const { id } = await params;
-  const [t, session, cluster] = await Promise.all([
+  const [t, session, cluster, refresh] = await Promise.all([
     getTranslations(),
     getSession(),
     getCluster(id),
+    refreshSeconds(),
   ]);
 
   // A cluster outside this account's scope reads as one that does not exist,
@@ -71,6 +73,7 @@ export default async function ClusterPage({ params }: Props) {
         cephDaemons={ceph.ok ? ceph.data.daemons : []}
         runs={runs.ok ? runs.data.runs : []}
         canManage={permissions.has('clusters.manage')}
+        refreshSeconds={refresh}
       />
     </>
   );

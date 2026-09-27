@@ -133,8 +133,8 @@ Working today:
 | **Audit log** | Every authentication and authorisation event, newest first |
 | **Security** | Two-factor authentication for your own account |
 | **Single sign-on** | The Microsoft Entra ID wizard |
-| **Server management** | The installation itself: its service status, its audit log, its certificate, its version |
-| **Settings → About** | Version, build commit, licence and the source offer |
+| **Server management** | The installation itself: service status, audit log, certificate, upgrade procedure, and About this server |
+| **Settings** | Language, how often screens refresh, and the source offer — per browser, open to everyone |
 | **Documentation** | This documentation, offline, stamped with the running version |
 
 **Server management** opens as a window over whatever you were doing, from the bottom of the
@@ -204,8 +204,7 @@ lives on GitHub. So it ships inside the build, under **Documentation**.
 Every page states the version it was built from. That string comes from the same place the running
 software reports its version, produced by the same build, so the documentation and the software
 cannot be a release apart. If a page ever shows a version differing from the one on
-**Settings → About**, the page says so rather than letting you read instructions for another
-release.
+**Settings**, the page says so rather than letting you read instructions for another release.
 
 ---
 

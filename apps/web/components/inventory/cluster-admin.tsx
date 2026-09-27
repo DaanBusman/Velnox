@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import type { ClusterSummary, SiteSummary, TenantSummary } from '@/lib/session-types';
-import { INVENTORY_REFRESH_MS, useAutoRefresh } from '@/lib/use-auto-refresh';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { Button, TextInput } from '@/components/ui/form';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { AddCluster } from './add-cluster';
@@ -33,11 +33,14 @@ export function ClusterAdmin({
   tenants,
   sites,
   canManage,
+  refreshSeconds,
 }: {
   clusters: ClusterSummary[];
   tenants: TenantSummary[];
   sites: SiteSummary[];
   canManage: boolean;
+  /** Seconds between automatic re-reads; 0 means the viewer turned it off. */
+  refreshSeconds: number;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -50,7 +53,7 @@ export function ClusterAdmin({
   // compare against another screen, so it is exactly the thing someone leaves
   // and comes back to — and a refresh landing on the way back took the form
   // with it.
-  useAutoRefresh(INVENTORY_REFRESH_MS, !adding);
+  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !adding);
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
