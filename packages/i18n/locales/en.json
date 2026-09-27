@@ -229,6 +229,7 @@
     },
     "authz": {
       "forbidden": "You do not have permission to perform this action.",
+      "four_eyes": "This approval needs a second person. You asked for this job, so someone else has to decide it.",
       "founding_administrator": "That would leave this installation with nobody able to administer it.",
       "mfa_reset_forbidden": "{reason, select, self {You cannot remove your own second factor here. Use Security, which asks for a code from your authenticator.} msp_target {Removing the second factor from an account in the MSP organisation requires a Super Administrator.} other {You do not have permission to remove this account's second factor.}}",
       "tenant_forbidden": "This resource belongs to another tenant."
@@ -254,8 +255,12 @@
     },
     "generic": "Something went wrong.",
     "job": {
+      "already_finished": "This job has already finished, so there is nothing left to change.",
       "concurrent_run": "Another job is already running against {target}.",
       "not_found": "That job no longer exists.",
+      "not_retryable": "Only a job that failed, was cancelled or was rolled back can be retried.",
+      "not_waiting_approval": "This job is not waiting for approval.",
+      "rejected": "Rejected at an approval gate. Nothing after the gate was run.",
       "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe."
     },
     "network": "Could not reach the server.",

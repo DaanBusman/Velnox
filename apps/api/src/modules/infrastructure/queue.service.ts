@@ -3,7 +3,7 @@ import { Queue, QueueEvents, type JobsOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 import { redisConnection, type ApiConfig } from '@velnox/config';
 import { API_CONFIG } from '../../config/config.module';
-import { JOB_NAMES, QUEUE_NAMES, VelnoxError, ERROR_CODES } from '@velnox/shared';
+import { JOB_NAMES, JOB_QUEUE, QUEUE_NAMES, VelnoxError, ERROR_CODES } from '@velnox/shared';
 
 /**
  * Queue producer.
@@ -26,6 +26,8 @@ export class QueueService implements OnModuleDestroy {
   private readonly connection: Redis;
   readonly system: Queue;
   readonly inventory: Queue;
+  /** Phase 5 jobs. Carries a job id and nothing else; the row is the record. */
+  readonly jobs: Queue;
   /**
    * Built lazily, because it opens its own blocking Redis connection.
    *
@@ -72,6 +74,48 @@ export class QueueService implements OnModuleDestroy {
         removeOnFail: { age: 86_400, count: 200 },
       },
     });
+
+    // One attempt, always. A job's retry is a new job with a parent, decided by
+    // a person — see JobsService.retry — never BullMQ running it again.
+    this.jobs = new Queue(JOB_QUEUE, {
+      connection: this.connection,
+      defaultJobOptions: {
+        attempts: 1,
+        removeOnComplete: { age: 3600, count: 500 },
+        removeOnFail: { age: 86_400, count: 500 },
+      },
+    });
+  }
+
+  /**
+   * Put a job on the queue.
+   *
+   * Each call is a new queue entry, on purpose. A job parked for approval is
+   * enqueued a second time when it is approved, and BullMQ silently ignores an
+   * id it has seen before — so reusing the job's own id would leave an approved
+   * job sitting in the database forever.
+   *
+   * What stops a job running twice is not the queue but the worker's claim: it
+   * moves a job out of QUEUED only if it is still QUEUED, in one conditional
+   * write. An approval clicked twice produces two queue entries, one run, and
+   * one pickup that finds nothing to do.
+   */
+  async enqueueJob(jobId: string): Promise<void> {
+    await this.jobs.add('run', { jobId }, { jobId: `${jobId}-${Date.now()}` });
+  }
+
+  /**
+   * Take a queued job off the queue, if it is still there. Best effort: the
+   * worker refuses to run a job that is no longer QUEUED in the database, so a
+   * miss here costs one no-op pickup.
+   */
+  async dequeueJob(jobId: string): Promise<void> {
+    const waiting = await this.jobs.getJobs(['waiting', 'delayed', 'prioritized']);
+    await Promise.all(
+      waiting
+        .filter((entry) => (entry.data as { jobId?: string } | undefined)?.jobId === jobId)
+        .map((entry) => entry.remove().catch(() => undefined)),
+    );
   }
 
   /**
@@ -172,6 +216,7 @@ export class QueueService implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.system.close();
     await this.inventory.close();
+    await this.jobs.close();
     await this.inventoryEvents?.close();
     this.connection.disconnect();
   }

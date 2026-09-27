@@ -7,6 +7,7 @@
  * licence covering attribution, origin and trademarks. See LICENSE and NOTICE.
  */
 export * from './client';
+export * from './job-events';
 export * from './tenancy';
 export * from './migrations';
 export * from './system-settings';

@@ -82,6 +82,8 @@ CREATE TABLE "job_events" (
     "step_key" TEXT,
     "message" TEXT NOT NULL,
     "data" JSONB NOT NULL DEFAULT '{}',
+    "status" "job_status" NOT NULL,
+    "progress_pct" INTEGER,
 
     CONSTRAINT "job_events_pkey" PRIMARY KEY ("id")
 );
@@ -169,7 +171,6 @@ ALTER TABLE "approvals" ADD CONSTRAINT "approvals_job_id_fkey" FOREIGN KEY ("job
 
 -- AddForeignKey
 ALTER TABLE "approvals" ADD CONSTRAINT "approvals_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
 
 -- ---------------------------------------------------------------------------
 -- One active job per concurrency key.

@@ -156,6 +156,9 @@ export type JobEventLevel = (typeof JOB_EVENT_LEVELS)[number];
  */
 export const JOB_EVENT_KEYS = {
   queued: 'job.queued',
+  /** A worker took the job off the queue and is preparing to run it. */
+  claimed: 'job.claimed',
+  /** Preparation is done and the first step is about to run. */
   started: 'job.started',
   stepStarted: 'step.started',
   stepSucceeded: 'step.succeeded',
@@ -239,3 +242,126 @@ export const jobCancelKey = (jobId: string): string => `velnox:job:${jobId}:canc
  * failed with `job.worker_lost` by whichever worker notices first.
  */
 export const JOB_LEASE_MS = 30_000;
+
+// ---------------------------------------------------------------------------
+// system.selftest parameters
+//
+// Here rather than beside the playbook in the worker, because the API parses
+// them too: a bad request is refused with a validation error when it is made,
+// not accepted and failed a minute later.
+// ---------------------------------------------------------------------------
+
+export interface SelftestParams {
+  /** How many work steps. */
+  steps: number;
+  /** How long each one takes. */
+  secondsPerStep: number;
+  /** Fail deliberately at this step (1-based), to exercise the failure path. */
+  failAtStep: number | null;
+  /** Park for approval before this step (1-based). */
+  approvalBeforeStep: number | null;
+  requireDifferentApprover: boolean;
+}
+
+export const SELFTEST_LIMITS = {
+  steps: { min: 1, max: 20 },
+  secondsPerStep: { min: 1, max: 120 },
+} as const;
+
+/** Parse and clamp self-test parameters. Anything unusable becomes its default. */
+export function parseSelftestParams(raw: unknown): SelftestParams {
+  const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const int = (value: unknown, fallback: number) =>
+    typeof value === 'number' && Number.isInteger(value) ? value : fallback;
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const steps = clamp(int(input.steps, 5), SELFTEST_LIMITS.steps.min, SELFTEST_LIMITS.steps.max);
+  const optionalStep = (value: unknown) => {
+    const n = int(value, 0);
+    return n >= 1 && n <= steps ? n : null;
+  };
+
+  return {
+    steps,
+    secondsPerStep: clamp(
+      int(input.secondsPerStep, 3),
+      SELFTEST_LIMITS.secondsPerStep.min,
+      SELFTEST_LIMITS.secondsPerStep.max,
+    ),
+    failAtStep: optionalStep(input.failAtStep),
+    approvalBeforeStep: optionalStep(input.approvalBeforeStep),
+    requireDifferentApprover: input.requireDifferentApprover === true,
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// What the API returns
+// ---------------------------------------------------------------------------
+
+export interface JobSummary {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  type: string;
+  status: JobStatus;
+  progressPct: number | null;
+  currentStep: string | null;
+  queuedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  /** A catalogue code the interface translates. */
+  errorCode: string | null;
+  /** Redacted English diagnostic, for support. Not shown as the headline. */
+  errorDetail: string | null;
+  createdBy: { id: string; email: string } | null;
+  targetKind: string | null;
+  targetIds: string[];
+  concurrencyKey: string | null;
+  parentJobId: string | null;
+  cancelRequested: boolean;
+  /** The last event sequence number, so a stream can start from here. */
+  eventSeq: number;
+}
+
+export interface JobStepSummary {
+  key: string;
+  phase: string | null;
+  sequence: number;
+  status: JobStepStatus;
+  attempt: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  error: string | null;
+}
+
+export interface ApprovalSummary {
+  id: string;
+  stepKey: string;
+  requiredPermission: string;
+  reason: string;
+  changeSet: Record<string, unknown>;
+  requireDifferentApprover: boolean;
+  requestedAt: string;
+  decidedAt: string | null;
+  decision: 'APPROVED' | 'REJECTED' | null;
+  decidedBy: string | null;
+  decisionNote: string | null;
+}
+
+export interface JobDetail extends JobSummary {
+  params: Record<string, unknown>;
+  steps: JobStepSummary[];
+  approvals: ApprovalSummary[];
+  retries: { id: string; status: JobStatus; queuedAt: string }[];
+}
+
+export interface JobLogLine {
+  /** A bigint in the database, a string here. */
+  id: string;
+  stepKey: string | null;
+  stream: 'STDOUT' | 'STDERR' | 'PVE_TASK';
+  at: string;
+  content: string;
+  truncated: boolean;
+}

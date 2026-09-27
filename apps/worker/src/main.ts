@@ -7,12 +7,14 @@
  * licence covering attribution, origin and trademarks. See LICENSE and NOTICE.
  */
 import 'reflect-metadata';
+import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import pino from 'pino';
 import { loadWorkerConfig, redisConnection, secretValues } from '@velnox/config';
 import { createPrismaClient } from '@velnox/db';
-import { JOB_NAMES, QUEUE_NAMES, rootRedactor } from '@velnox/shared';
+import { JOB_NAMES, JOB_QUEUE, QUEUE_NAMES, rootRedactor } from '@velnox/shared';
 import { Heartbeat } from './heartbeat';
 import { processPing, type PingJobData, type PingJobResult } from './processors/ping.processor';
 import { CredentialReader } from './inventory/credentials';
@@ -24,6 +26,8 @@ import {
   type InventoryContext,
   type ProbeJobData,
 } from './inventory/inventory.processor';
+import { RECONCILE_INTERVAL_MS, reconcileLostJobs } from './jobs/reconcile';
+import { runJob, type JobsContext } from './jobs/runner';
 import {
   SCHEDULER_TICK_INTERVAL_MS,
   SCHEDULER_TICK_JOB,
@@ -40,7 +44,9 @@ import {
  *
  * From phase 4 it runs a second queue: everything that talks to a hypervisor.
  * Its own queue because that work is slow and bursty and must not sit behind the
- * things an operator is waiting on. The playbook runner arrives in phase 5.
+ * things an operator is waiting on.
+ *
+ * From phase 5 it runs a third: jobs. See `jobs/runner.ts`.
  */
 async function bootstrap(): Promise<void> {
   const config = loadWorkerConfig();
@@ -178,10 +184,81 @@ async function bootstrap(): Promise<void> {
     { name: SCHEDULER_TICK_JOB },
   );
 
+  // ------------------------------------------------------------------
+  // Jobs
+  // ------------------------------------------------------------------
+
+  /*
+   * A process identity, not a container one. A restarted worker in the same
+   * container is a new owner: the jobs the old process held are lost, and must
+   * be reconciled as such rather than quietly adopted by a process that has no
+   * idea where they were.
+   */
+  const workerId = `${hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
+
+  const jobsRedis = new Redis({
+    ...redisConnection(config),
+    maxRetriesPerRequest: 2,
+    retryStrategy: (times) => Math.min(times * 200, 5_000),
+  });
+  jobsRedis.on('error', (error) => logger.debug({ err: error }, 'Jobs Redis error'));
+
+  const jobsContext: JobsContext = {
+    prisma,
+    redis: jobsRedis,
+    workerId,
+    log: {
+      info: (fields, message) => logger.info(fields, message),
+      warn: (fields, message) => logger.warn(fields, message),
+    },
+  };
+
+  const jobsWorker = new Worker<{ jobId: string }>(
+    JOB_QUEUE,
+    async (job) => runJob(jobsContext, job.data.jobId),
+    {
+      connection: {
+        ...redisConnection(config),
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+      },
+      concurrency: config.WORKER_CONCURRENCY,
+      /*
+       * Never hand a stalled job to another worker. BullMQ's default is to
+       * retry it, which for a job halfway through changing a cluster means doing
+       * the first half twice. The reconciler below reports it as lost instead.
+       */
+      maxStalledCount: 0,
+    },
+  );
+
+  jobsWorker.on('completed', (job, outcome) => {
+    logger.info({ jobId: job.data.jobId, outcome }, 'Job run ended');
+  });
+
+  jobsWorker.on('failed', (job, error) => {
+    // The job's own failure is recorded on the job; this is the runner itself
+    // breaking, which is Velnox's problem rather than the cluster's.
+    logger.error({ jobId: job?.data.jobId, err: rootRedactor.value(error) }, 'Job runner failed');
+  });
+
+  jobsWorker.on('error', (error) => {
+    logger.error({ err: rootRedactor.value(error) }, 'Jobs worker error');
+  });
+
+  const reconcile = () =>
+    reconcileLostJobs(jobsContext).catch((error: unknown) =>
+      logger.error({ err: rootRedactor.value(error) }, 'Reconciling lost jobs failed'),
+    );
+  await reconcile();
+  const reconcileTimer = setInterval(() => void reconcile(), RECONCILE_INTERVAL_MS);
+
   logger.info(
     {
       queue: QUEUE_NAMES.system,
       inventoryQueue: QUEUE_NAMES.inventory,
+      jobsQueue: JOB_QUEUE,
+      workerId,
       concurrency: config.WORKER_CONCURRENCY,
       version: config.VELNOX_VERSION,
       commit: config.VELNOX_BUILD_COMMIT,
@@ -197,8 +274,11 @@ async function bootstrap(): Promise<void> {
 
     // Let an in-flight job finish. From Phase 7 this matters a great deal: a
     // dist-upgrade must never be killed part-way through.
+    clearInterval(reconcileTimer);
     await worker.close();
     await inventoryWorker.close();
+    await jobsWorker.close();
+    jobsRedis.disconnect();
     await inventoryQueue.close();
     await heartbeat.stop();
     heartbeatRedis.disconnect();

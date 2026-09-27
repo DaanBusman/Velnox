@@ -230,6 +230,7 @@
     },
     "authz": {
       "forbidden": "Je hebt geen recht om deze actie uit te voeren.",
+      "four_eyes": "Voor deze goedkeuring is een tweede persoon nodig. Jij hebt de job aangevraagd, dus iemand anders moet beslissen.",
       "founding_administrator": "Daarmee zou niemand deze installatie nog kunnen beheren.",
       "mfa_reset_forbidden": "{reason, select, self {Je kunt je eigen tweede factor hier niet verwijderen. Gebruik Beveiliging, waar om een code uit je authenticator wordt gevraagd.} msp_target {De tweede factor verwijderen van een account in de MSP-organisatie vereist een Super Administrator.} other {Je hebt geen recht om de tweede factor van dit account te verwijderen.}}",
       "tenant_forbidden": "Deze resource hoort bij een andere tenant."
@@ -255,8 +256,12 @@
     },
     "generic": "Er is iets misgegaan.",
     "job": {
+      "already_finished": "Deze job is al afgerond, er valt niets meer te wijzigen.",
       "concurrent_run": "Er draait al een job op {target}.",
       "not_found": "Die job bestaat niet meer.",
+      "not_retryable": "Alleen een job die is mislukt, geannuleerd of teruggedraaid kan opnieuw worden gestart.",
+      "not_waiting_approval": "Deze job wacht niet op goedkeuring.",
+      "rejected": "Afgewezen bij een goedkeuringspunt. Niets na dat punt is uitgevoerd.",
       "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is."
     },
     "network": "De server is niet bereikbaar.",

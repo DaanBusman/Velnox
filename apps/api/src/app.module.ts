@@ -14,6 +14,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 
 /**
  * Application composition root.
@@ -36,6 +37,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
     SetupModule,
     TenancyModule,
     InventoryModule,
+    JobsModule,
     UsersModule,
     IdentityModule,
     RolesModule,

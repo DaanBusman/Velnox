@@ -1186,6 +1186,13 @@ model JobEvent {
   message  String
   data     Json    @default("{}")
 
+  /// The job's status and progress immediately after this event. Kept on the
+  /// event so a browser replaying history after a reconnect sees each event
+  /// with the state it produced — not every early event wearing today's
+  /// status, which would make the first replayed line look like the finish.
+  status      JobStatus
+  progressPct Int?      @map("progress_pct")
+
   job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, seq])

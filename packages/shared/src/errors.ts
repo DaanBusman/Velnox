@@ -27,6 +27,8 @@ export const ERROR_CODES = {
   authzFoundingAdministrator: 'authz.founding_administrator',
   /** A second-factor reset was refused: your own account, or an MSP colleague's. */
   authzMfaResetForbidden: 'authz.mfa_reset_forbidden',
+  /** An approval that needs a second person was attempted by the person who asked. */
+  authzFourEyes: 'authz.four_eyes',
 
   setupAlreadyInitialized: 'setup.already_initialized',
 
@@ -50,6 +52,14 @@ export const ERROR_CODES = {
   jobConcurrentRun: 'job.concurrent_run',
   jobWorkerLost: 'job.worker_lost',
   jobNotFound: 'job.not_found',
+  /** Cancelling or deciding a job that has already reached a final state. */
+  jobAlreadyFinished: 'job.already_finished',
+  /** Retrying a job that succeeded, or has not finished. */
+  jobNotRetryable: 'job.not_retryable',
+  /** Approving or rejecting a job that is not waiting for it. */
+  jobNotWaitingApproval: 'job.not_waiting_approval',
+  /** The error a job carries once somebody rejected it at an approval gate. */
+  jobRejected: 'job.rejected',
 
   upgradeBlockersPresent: 'upgrade.blockers_present',
   upgradeUnparsedOutput: 'upgrade.unparsed_output',

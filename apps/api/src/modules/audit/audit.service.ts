@@ -55,6 +55,14 @@ export const AUDIT_ACTIONS = {
   clusterDiscovered: 'cluster.discovered',
   clusterDiscoveryFailed: 'cluster.discovery_failed',
 
+  jobCreated: 'job.created',
+  jobRetried: 'job.retried',
+  jobCancelled: 'job.cancelled',
+  /** Asked a running job to stop. The job's own record says when it did. */
+  jobCancelRequested: 'job.cancel_requested',
+  jobApproved: 'job.approved',
+  jobRejected: 'job.rejected',
+
   siteCreated: 'site.created',
   siteUpdated: 'site.updated',
   siteDeleted: 'site.deleted',
