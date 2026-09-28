@@ -175,7 +175,7 @@ Referentie — hoe het systeem is gebouwd, en waarom:
 
 | Laag | Keuze |
 |---|---|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind 4 |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 |
 | Backend | NestJS 11 op Node 22, REST + OpenAPI |
 | Worker | BullMQ, zonder luisterpoort |
 | Database | PostgreSQL 16 + Prisma |

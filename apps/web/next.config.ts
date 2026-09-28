@@ -23,12 +23,10 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: join(process.cwd(), '..', '..'),
   transpilePackages: ['@velnox/shared', '@velnox/i18n'],
   reactStrictMode: true,
+  // No `eslint` key: Next 16 removed it along with linting inside `next build`.
+  // Linting runs as its own workspace task, which is what that key existed to
+  // arrange.
   poweredByHeader: false,
-  eslint: {
-    // Linting runs as its own workspace task; running it again inside `next build`
-    // duplicates the work and hides which task actually failed.
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default withNextIntl(nextConfig);

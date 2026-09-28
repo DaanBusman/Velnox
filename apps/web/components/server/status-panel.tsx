@@ -112,25 +112,28 @@ export function StatusPanel() {
           </tr>
         </thead>
         <tbody>
-          {readiness.checks.map((check) => (
-            <tr key={check.name} className="border-b border-line last:border-b-0">
-              <th scope="row" className="py-2 pr-4 text-left font-normal text-ink">
-                {CHECK_LABEL_KEY[check.name] ? t(CHECK_LABEL_KEY[check.name]) : check.name}
-              </th>
-              <td className="py-2 pr-4">
-                <StatusBadge tone={TONE[check.status]}>
-                  {t(`status.dependency.${check.status}`)}
-                </StatusBadge>
-              </td>
-              <td className="py-2 text-xs text-ink-muted">
-                {check.detail
-                  ? t(`system.detail.${check.detail.code}`, check.detail.params)
-                  : check.latencyMs !== undefined
-                    ? t('system.latency', { ms: check.latencyMs })
-                    : ''}
-              </td>
-            </tr>
-          ))}
+          {readiness.checks.map((check) => {
+            const labelKey = CHECK_LABEL_KEY[check.name];
+            return (
+              <tr key={check.name} className="border-b border-line last:border-b-0">
+                <th scope="row" className="py-2 pr-4 text-left font-normal text-ink">
+                  {labelKey ? t(labelKey) : check.name}
+                </th>
+                <td className="py-2 pr-4">
+                  <StatusBadge tone={TONE[check.status]}>
+                    {t(`status.dependency.${check.status}`)}
+                  </StatusBadge>
+                </td>
+                <td className="py-2 text-xs text-ink-muted">
+                  {check.detail
+                    ? t(`system.detail.${check.detail.code}`, check.detail.params)
+                    : check.latencyMs !== undefined
+                      ? t('system.latency', { ms: check.latencyMs })
+                      : ''}
+                </td>
+              </tr>
+            );
+          })}
 
           <tr>
             <th scope="row" className="py-2 pr-4 text-left font-normal text-ink">

@@ -37,7 +37,7 @@ end-to-end lets the frontend import the same zod contracts).
 
 ## ADR-003 — Next.js App Router for the frontend, used as a BFF
 
-**Decision:** Next.js 15, App Router, TypeScript, Tailwind, shadcn/ui.
+**Decision:** Next.js 16, App Router, TypeScript, Tailwind, shadcn/ui.
 
 **Why BFF:** The browser holds no token. Session cookies stay `HttpOnly` and same-origin, and
 pages read the API from Server Components over the internal Docker network.
@@ -48,6 +48,23 @@ the `HttpOnly` cookie work; and because machine clients need API tokens against 
 keeping the API off the public origin was never actually achievable. The proxy would have been an
 extra hop and a second code path with no security gain, so it was dropped. `lib/api.ts` is marked
 `server-only`, which turns an accidental import from a Client Component into a build error.
+
+**Amended in Phase 5 — Next.js 15.5 → 16.3.** A major version, and less changed than that suggests,
+because the code had already moved where 16 insists: every `params` and `searchParams` was awaited,
+there is no middleware to rename to `proxy`, and nothing used the caching or image APIs that changed.
+What did change:
+
+- **next-intl had to move from 3 to 4.** 3.x declares Next 15 as its ceiling. One type error came
+  with it: 4 types the key passed to `t()` strictly, and a lookup in a `Record<string, string>` is
+  `string | undefined` even after a truthiness check on the same expression. Fixed by reading it into
+  a variable first.
+- **next-intl 4 brings two packages with install scripts**, `@swc/core` and `@parcel/watcher`, both
+  for a message extractor Velnox does not use. Both are denied in `pnpm-workspace.yaml`, with the
+  reason beside them — the same reasoning as `msgpackr-extract`.
+- **The `eslint` key in `next.config.ts` is gone**, because `next build` no longer lints. The key
+  existed only to stop it doing so.
+- **`next build` uses Turbopack by default.** No configuration was needed; the build and the
+  standalone output worked as they were.
 
 **Alternatives:** Vite SPA + direct API calls (needs CORS, needs a token reachable by JS, or
 cookie handling across origins); Remix (fine, smaller ecosystem for the component library we want).

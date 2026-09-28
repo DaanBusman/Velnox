@@ -40,7 +40,7 @@ laat de frontend dezelfde zod-contracten importeren).
 
 ## ADR-003 — Next.js App Router voor de frontend, gebruikt als BFF
 
-**Keuze:** Next.js 15, App Router, TypeScript, Tailwind, shadcn/ui.
+**Keuze:** Next.js 16, App Router, TypeScript, Tailwind, shadcn/ui.
 
 **Waarom BFF:** de browser houdt geen token vast. Sessiecookies blijven `HttpOnly` en same-origin, en
 pagina's lezen de API vanuit Server Components over het interne Docker-netwerk.
@@ -52,6 +52,23 @@ omdat machineclients API-tokens tegen een bereikbare API nodig hebben. De proxy 
 een tweede code path zijn geweest zonder winst in veiligheid, dus is hij geschrapt. `lib/api.ts` is
 gemarkeerd als `server-only`, wat een onbedoelde import vanuit een Client Component tot een buildfout
 maakt.
+
+**Gewijzigd in fase 5 — Next.js 15.5 → 16.3.** Een major-versie, en er veranderde minder dan dat doet
+vermoeden, omdat de code al stond waar 16 op aandringt: elke `params` en `searchParams` werd al
+ge-await, er is geen middleware om naar `proxy` te hernoemen, en niets gebruikte de caching- of
+image-API's die veranderden. Wat wel veranderde:
+
+- **next-intl moest van 3 naar 4.** 3.x noemt Next 15 als bovengrens. Er kwam één typefout mee: 4
+  typeert de sleutel voor `t()` strikt, en een opzoeking in een `Record<string, string>` is
+  `string | undefined`, ook na een controle op dezelfde expressie. Opgelost door hem eerst in een
+  variabele te lezen.
+- **next-intl 4 brengt twee packages met installatiescripts mee**, `@swc/core` en `@parcel/watcher`,
+  allebei voor een berichtenextractor die Velnox niet gebruikt. Beide zijn geweigerd in
+  `pnpm-workspace.yaml`, met de reden erbij — dezelfde redenering als bij `msgpackr-extract`.
+- **De `eslint`-sleutel in `next.config.ts` is weg**, omdat `next build` niet meer lint. De sleutel
+  bestond alleen om dat te voorkomen.
+- **`next build` gebruikt standaard Turbopack.** Er was geen configuratie nodig; de build en de
+  standalone-uitvoer werkten zoals ze waren.
 
 **Alternatieven:** Vite-SPA met directe API-aanroepen (vereist CORS en een token dat voor JavaScript
 bereikbaar is, of cookieafhandeling over origins heen); Remix (prima, maar een kleiner ecosysteem voor

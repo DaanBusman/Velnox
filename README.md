@@ -182,7 +182,7 @@ Written per the phase that implements them: `security.md`, `rbac.md`, `multi-ten
 
 | Layer | Choice |
 |---|---|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind 4 |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 |
 | Backend | NestJS 11 on Node 22, REST + OpenAPI |
 | Worker | BullMQ, no listening port |
 | Database | PostgreSQL 16 + Prisma |
