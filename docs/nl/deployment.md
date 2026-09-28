@@ -456,16 +456,17 @@ sudo docker system df
 ```
 
 ```bash
-sudo sh -c 'du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail -5'
+sudo sh -c 'du -sh /var/lib/docker/containers/* 2>/dev/null | sort -h | tail -5'
 ```
 
 ```bash
 ls -lh /var/backups/velnox-*.dump
 ```
 
-De derde toont de containerlogs, grootste als laatste. Docker bewaart die zonder groottelimiet, en
-noch het compose-bestand noch de installer stelt er een in, dus op een host die maanden draait kunnen
-ze gigabytes groot worden.
+De derde toont de containerlogs, één map per container, grootste als laatste. Sinds 0.5.5 bewaart
+elke container hooguit vijf bestanden van 10 MB — ongeveer 50 MB, of 350 MB voor de hele stack — en
+valt de oudste weg zodra er een nieuwe begint. Vóór 0.5.5 was er helemaal geen limiet, en op een host
+die maanden draaide konden ze gigabytes groot worden.
 
 ### Opruimen
 
@@ -484,9 +485,13 @@ draaiende stack blijven staan.
 sudo docker image prune -f
 ```
 
-**Containerlogs**, als het derde commando hierboven grote bestanden liet zien. Dit maakt ze leeg — de
-loggeschiedenis is weg, en daarmee ook voor het oplossen van problemen, dus lees eerst wat je nodig
-hebt.
+**Containerlogs van vóór 0.5.5.** Bijwerken ruimt ze vanzelf op: de wijziging die ze begrenst laat de
+volgende `docker compose up -d` elke container opnieuw aanmaken, en de logs van een container gaan
+mee. Die eerste upgrade herstart daardoor ook PostgreSQL — een paar seconden zonder console, en geen
+gegevens kwijt, want de database staat in een volume en niet in de container.
+
+Kun je nog niet bijwerken, maak ze dan leeg. De loggeschiedenis is weg, en daarmee ook voor het
+oplossen van problemen, dus lees eerst wat je nodig hebt.
 
 ```bash
 sudo sh -c 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'

@@ -12,9 +12,24 @@
 name: velnox
 
 x-build-args: &build-args
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.4}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.5}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_BUILD_TIME: ${VELNOX_BUILD_TIME:-}
+
+# Container logs, capped. Docker's default keeps them without limit, so a host
+# that ran for months could lose gigabytes to logs nobody reads. Each container
+# keeps at most five files of 10 MB — about 50 MB, the last few days of a busy
+# API — and the oldest is dropped as a new one starts. json-file rather than the
+# `local` driver, so the files stay where docs/deployment.md tells an operator
+# to look (/var/lib/docker/containers/*/*-json.log).
+#
+# Applied when a container is created. `docker compose up -d` recreates any
+# whose configuration changed, so an upgrade picks it up on its own.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
 
 x-backend-env: &backend-env
   NODE_ENV: ${NODE_ENV:-production}
@@ -24,7 +39,7 @@ x-backend-env: &backend-env
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD}
   MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.4}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.5}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_SOURCE_URL: ${VELNOX_SOURCE_URL:-https://github.com/DaanBusman/Velnox}
   VELNOX_DEFAULT_LOCALE: ${VELNOX_DEFAULT_LOCALE:-en}
@@ -32,6 +47,7 @@ x-backend-env: &backend-env
 
 services:
   postgres:
+    logging: *logging
     image: postgres:16-bookworm
     restart: unless-stopped
     environment:
@@ -52,6 +68,7 @@ services:
       start_period: 20s
 
   redis:
+    logging: *logging
     image: redis:7-bookworm
     restart: unless-stopped
     command:
@@ -76,6 +93,7 @@ services:
   # with more than one replica that is a race, and a failed migration must stop
   # the deployment rather than crash-loop a serving container.
   migrate:
+    logging: *logging
     # Reuses the image built by `api` — same Dockerfile, same content. Building it
     # three times in parallel only wasted CPU and disk.
     image: velnox-backend:local
@@ -88,6 +106,7 @@ services:
         condition: service_healthy
 
   api:
+    logging: *logging
     # The single build of the backend image; worker and migrate reference the tag.
     image: velnox-backend:local
     build:
@@ -116,6 +135,7 @@ services:
   # The only service that performs outbound automation. No published port and no
   # listening socket: nothing on the network can reach it.
   worker:
+    logging: *logging
     image: velnox-backend:local
     restart: unless-stopped
     environment:
@@ -137,6 +157,7 @@ services:
       start_period: 40s
 
   web:
+    logging: *logging
     image: velnox-web:local
     build:
       context: ../..
@@ -154,6 +175,7 @@ services:
         condition: service_healthy
 
   caddy:
+    logging: *logging
     image: caddy:2-alpine
     restart: unless-stopped
     ports:

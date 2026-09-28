@@ -441,16 +441,17 @@ sudo docker system df
 ```
 
 ```bash
-sudo sh -c 'du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail -5'
+sudo sh -c 'du -sh /var/lib/docker/containers/* 2>/dev/null | sort -h | tail -5'
 ```
 
 ```bash
 ls -lh /var/backups/velnox-*.dump
 ```
 
-The third one is the container logs, largest last. Docker keeps them without a size limit, and
-neither the compose file nor the installer sets one, so on a host that has run for months they can
-be gigabytes.
+The third one is the container logs, one directory per container, largest last. Since 0.5.5 each
+container keeps at most five files of 10 MB — about 50 MB, or 350 MB for the whole stack — and the
+oldest is dropped as a new one starts. Before 0.5.5 there was no limit at all, and on a host that
+had run for months they could be gigabytes.
 
 ### Cleaning up
 
@@ -469,8 +470,13 @@ kept.
 sudo docker image prune -f
 ```
 
-**Container logs**, if the third command above showed large files. This empties them — the log
-history is gone, which also means it is gone for troubleshooting, so read what you need first.
+**Container logs from before 0.5.5.** Upgrading removes them by itself: the change that caps them
+makes the next `docker compose up -d` recreate every container, and a container's logs go with it.
+That first upgrade therefore restarts PostgreSQL too — a few seconds without the console, and no
+data lost, because the database lives in a volume and not in the container.
+
+If you cannot upgrade yet, empty them instead. The log history is gone, which also means it is gone
+for troubleshooting, so read what you need first.
 
 ```bash
 sudo sh -c 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
