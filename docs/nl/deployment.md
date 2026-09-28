@@ -394,6 +394,50 @@ sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env 
 
 Test het herstel voordat je erop vertrouwt.
 
+### Oude back-ups verwijderen
+
+Elke dump is een nieuw bestand, en niets ruimt ze voor je op. `scripts/prune-backups.sh` doet dat
+wel. Draai het eerst zonder `--delete`: het toont wat het zou verwijderen en raakt niets aan.
+
+```bash
+cd /opt/velnox && sudo bash scripts/prune-backups.sh
+```
+
+Als de lijst klopt met wat je verwacht, verwijder ze dan:
+
+```bash
+cd /opt/velnox && sudo bash scripts/prune-backups.sh --delete
+```
+
+Standaard verwijdert het dumps ouder dan 30 dagen en houdt het altijd de 7 nieuwste, hoe oud die ook
+zijn. Beide zijn aan te passen, net als de map:
+
+```bash
+cd /opt/velnox && sudo bash scripts/prune-backups.sh --older-than=90 --keep=14 --dir=/var/backups --delete
+```
+
+Wat het wel en niet doet:
+
+- **Het kijkt alleen naar bestanden die precies `velnox-JJJJ-MM-DD.dump` heten** — de naam die de
+  commando's hierboven maken. Al het andere in de map, en elke symlink, blijft staan.
+- **De leeftijd van een dump is de datum in de naam, niet de wijzigingstijd van het bestand.** Een
+  back-up die je terugkopieert van externe opslag krijgt een nieuwe wijzigingstijd; daarop afgaand zou
+  hij nooit oud lijken.
+- **De nieuwste back-up wordt nooit verwijderd.** `--keep` moet minstens 1 zijn, en een bestand
+  waarvan de naam geen echte datum is (`velnox-2026-02-31.dump`) blijft staan en telt daar niet voor
+  mee.
+- **Het laat `.env`-back-ups met rust.** `scripts/gen-env.sh --force` schrijft een nieuwe `.env` met
+  een nieuwe `MASTER_ENCRYPTION_KEY`, en bewaart het oude bestand als `.env.<tijdstempel>.bak`. Elke
+  dump van vóór dat moment heeft de oude sleutel nodig om gelezen te worden, dus een `.bak`-bestand kan
+  pas weg als geen dump die je bewaart ouder is. Dat is een afweging die het script niet voor je kan
+  maken.
+
+Het script heeft eigen tests, die GNU-tools nodig hebben en dus op de host of in een container draaien:
+
+```bash
+cd /opt/velnox && bash scripts/test-prune-backups.sh
+```
+
 ---
 
 ## Als er iets misgaat

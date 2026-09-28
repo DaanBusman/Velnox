@@ -383,6 +383,47 @@ sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env 
 
 Test the restore before you rely on it.
 
+### Removing old backups
+
+Each dump is a new file, and nothing removes them for you. `scripts/prune-backups.sh` does. Run it
+first without `--delete`: it lists what it would remove and touches nothing.
+
+```bash
+cd /opt/velnox && sudo bash scripts/prune-backups.sh
+```
+
+When the list is what you expect, remove them:
+
+```bash
+cd /opt/velnox && sudo bash scripts/prune-backups.sh --delete
+```
+
+By default it removes dumps older than 30 days and always keeps the 7 newest, however old those are.
+Both can be changed, and so can the directory:
+
+```bash
+cd /opt/velnox && sudo bash scripts/prune-backups.sh --older-than=90 --keep=14 --dir=/var/backups --delete
+```
+
+What it will and will not do:
+
+- **It only considers files named exactly `velnox-YYYY-MM-DD.dump`** — the name the commands above
+  produce. Anything else in the directory, and any symlink, is left alone.
+- **A dump's age is the date in its name, not the file's modification time.** A backup copied back
+  from off-site storage gets a new modification time; going by that, it would never look old.
+- **The newest backup is never removed.** `--keep` must be at least 1, and a file whose name is not a
+  real date (`velnox-2026-02-31.dump`) is kept and does not count towards it.
+- **It does not touch `.env` backups.** `scripts/gen-env.sh --force` writes a new `.env` with a new
+  `MASTER_ENCRYPTION_KEY`, and saves the old file as `.env.<timestamp>.bak`. Every dump made before
+  that needs the old key to be read, so a `.bak` file is only safe to delete once no dump you keep
+  predates it. That is a judgement the script cannot make for you.
+
+The script has its own tests, which need GNU tools and so run on the host or in a container:
+
+```bash
+cd /opt/velnox && bash scripts/test-prune-backups.sh
+```
+
 ---
 
 ## If something goes wrong

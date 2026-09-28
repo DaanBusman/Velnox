@@ -53,6 +53,8 @@ const ENTRY_POINTS = [
   'scripts/gen-env.sh',
   'scripts/verify-stack.sh',
   'scripts/test-install-ui.sh',
+  'scripts/prune-backups.sh',
+  'scripts/test-prune-backups.sh',
 ];
 
 /**
