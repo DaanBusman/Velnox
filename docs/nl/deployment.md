@@ -440,6 +440,83 @@ cd /opt/velnox && bash scripts/test-prune-backups.sh
 
 ---
 
+## Schijfruimte vrijmaken
+
+Eerst kijken, dan opruimen — in deze volgorde, veiligste eerst. Niets in deze sectie raakt de
+database.
+
+### Waar de ruimte heen ging
+
+```bash
+df -h /
+```
+
+```bash
+sudo docker system df
+```
+
+```bash
+sudo sh -c 'du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail -5'
+```
+
+```bash
+ls -lh /var/backups/velnox-*.dump
+```
+
+De derde toont de containerlogs, grootste als laatste. Docker bewaart die zonder groottelimiet, en
+noch het compose-bestand noch de installer stelt er een in, dus op een host die maanden draait kunnen
+ze gigabytes groot worden.
+
+### Opruimen
+
+**De Docker build cache** is meestal het grootst, en altijd veilig om te verwijderen. De volgende
+upgrade bouwt iets langzamer.
+
+```bash
+sudo docker builder prune -af
+```
+
+**Images die eerdere upgrades achterlieten.** Elke upgrade verplaatst de `velnox-*:local`-tags naar
+nieuwe images en laat de oude zonder tag achter. Dit verwijdert alleen images zonder tag; die van de
+draaiende stack blijven staan.
+
+```bash
+sudo docker image prune -f
+```
+
+**Containerlogs**, als het derde commando hierboven grote bestanden liet zien. Dit maakt ze leeg — de
+loggeschiedenis is weg, en daarmee ook voor het oplossen van problemen, dus lees eerst wat je nodig
+hebt.
+
+```bash
+sudo sh -c 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
+```
+
+**Systeemlogs en de pakketcache:**
+
+```bash
+sudo journalctl --vacuum-size=200M
+```
+
+```bash
+sudo apt-get clean
+```
+
+**Oude databaseback-ups** — zie [Oude back-ups verwijderen](#oude-back-ups-verwijderen).
+
+### Nooit
+
+Deze lijken op hetzelfde soort opruimen, en zijn het niet. Ze verwijderen Docker-volumes, en `pgdata`
+is een volume: de hele database gaat mee. Hetzelfde geldt voor het met de hand verwijderen van iets
+onder `/var/lib/docker/volumes`.
+
+```
+docker system prune --volumes
+docker volume prune
+```
+
+---
+
 ## Als er iets misgaat
 
 De installer schrijft een volledig log naar `/var/log/velnox-install-*.log` en toont bij een fout de
@@ -451,7 +528,7 @@ laatste regels daarvan.
 | `apt-get update` vindt geen `Release`-bestand voor Docker | Docker heeft nog geen pakketten voor jouw releasecodenaam. Vervang de codenaam in `/etc/apt/sources.list.d/docker.list` door de vorige stabiele |
 | De browser waarschuwt over het certificaat | Verwacht bij een zelfondertekend certificaat. Accepteer het, verspreid de root-CA van Caddy uit `sudo docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`, of draai opnieuw met `--tls=jij@example.com` en een publieke hostnaam |
 | `readyz` meldt de worker als verminderd | Dat gebeurt boven 45 seconden zonder hartslag. Kijk in `sudo docker compose ... logs worker` |
-| Schijf loopt vol | Vrijwel altijd de Docker build cache. `sudo docker builder prune -f` |
+| Schijf loopt vol | Meestal de Docker build cache of containerlogs. Zie [Schijfruimte vrijmaken](#schijfruimte-vrijmaken) |
 
 ---
 

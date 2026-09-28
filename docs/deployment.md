@@ -426,6 +426,81 @@ cd /opt/velnox && bash scripts/test-prune-backups.sh
 
 ---
 
+## Freeing disk space
+
+Look first, then clean — in this order, safest first. Nothing in this section touches the database.
+
+### Where the space went
+
+```bash
+df -h /
+```
+
+```bash
+sudo docker system df
+```
+
+```bash
+sudo sh -c 'du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail -5'
+```
+
+```bash
+ls -lh /var/backups/velnox-*.dump
+```
+
+The third one is the container logs, largest last. Docker keeps them without a size limit, and
+neither the compose file nor the installer sets one, so on a host that has run for months they can
+be gigabytes.
+
+### Cleaning up
+
+**The Docker build cache** is usually the largest, and always safe to remove. The next upgrade
+rebuilds a little more slowly.
+
+```bash
+sudo docker builder prune -af
+```
+
+**Images left behind by earlier upgrades.** Each upgrade moves the `velnox-*:local` tags to new
+images and leaves the old ones untagged. This removes only untagged images; the running stack's are
+kept.
+
+```bash
+sudo docker image prune -f
+```
+
+**Container logs**, if the third command above showed large files. This empties them — the log
+history is gone, which also means it is gone for troubleshooting, so read what you need first.
+
+```bash
+sudo sh -c 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
+```
+
+**System logs and the package cache:**
+
+```bash
+sudo journalctl --vacuum-size=200M
+```
+
+```bash
+sudo apt-get clean
+```
+
+**Old database backups** — see [Removing old backups](#removing-old-backups).
+
+### Never
+
+These look like the same kind of cleanup, and are not. They remove Docker volumes, and `pgdata` is
+a volume: the whole database goes with it. The same is true of deleting anything under
+`/var/lib/docker/volumes` by hand.
+
+```
+docker system prune --volumes
+docker volume prune
+```
+
+---
+
 ## If something goes wrong
 
 The installer writes a full log to `/var/log/velnox-install-*.log` and prints the last lines of it on
@@ -437,7 +512,7 @@ failure.
 | `apt-get update` finds no `Release` file for Docker | Docker has not published packages for your release codename yet. Replace the codename in `/etc/apt/sources.list.d/docker.list` with the previous stable one |
 | Browser warns about the certificate | Expected with a self-signed certificate. Accept it, distribute Caddy's root CA from `sudo docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`, or re-run with `--tls=you@example.com` and a public hostname |
 | `readyz` reports the worker as degraded | It reports degraded above 45 seconds without a heartbeat. Check `sudo docker compose ... logs worker` |
-| Disk filling up | Almost always the Docker build cache. `docker builder prune -f` |
+| Disk filling up | Usually the Docker build cache or container logs. See [Freeing disk space](#freeing-disk-space) |
 
 ---
 
