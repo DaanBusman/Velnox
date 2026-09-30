@@ -21,6 +21,9 @@ import { WorkloadsController } from '../modules/inventory/workloads.controller';
 import { ResourcesController } from '../modules/inventory/resources.controller';
 import { LibraryController } from '../modules/library/library.controller';
 import { ClusterFilesController } from '../modules/library/cluster-files.controller';
+import { TemplatesController } from '../modules/autoconfig/autoconfig.controller';
+import { ProvisioningController } from '../modules/autoconfig/provisioning.controller';
+import { MailController } from '../modules/mail/mail.controller';
 import { SitesController } from '../modules/tenancy/sites.controller';
 import { TenantsController } from '../modules/tenancy/tenants.controller';
 import { UsersController } from '../modules/users/users.controller';
@@ -102,6 +105,9 @@ const CONTROLLERS = [
   ResourcesController,
   LibraryController,
   ClusterFilesController,
+  TemplatesController,
+  ProvisioningController,
+  MailController,
 ];
 
 function collectRoutes(): Route[] {

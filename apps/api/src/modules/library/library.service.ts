@@ -29,6 +29,7 @@ import {
   type JobDetail,
   type LibraryCapacitySummary,
   type LibraryItemSummary,
+  type WindowsImageSummary,
 } from '@velnox/shared';
 import { API_CONFIG } from '../../config/config.module';
 import { PrismaService } from '../infrastructure/prisma.service';
@@ -79,6 +80,7 @@ function describe(item: ItemRow): LibraryItemSummary {
     errorParams: flatParams(item.errorParams),
     createdAt: item.createdAt.toISOString(),
     readyAt: item.readyAt?.toISOString() ?? null,
+    windowsImages: (item.windowsImages as WindowsImageSummary[] | null) ?? null,
   };
 }
 

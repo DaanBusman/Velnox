@@ -65,6 +65,7 @@ const CREATE_PERMISSION: Record<string, Permission> = {
   [JOB_TYPES.libraryPush]: PERMISSIONS.clustersManage,
   [JOB_TYPES.libraryPull]: PERMISSIONS.clustersManage,
   [JOB_TYPES.libraryClusterDelete]: PERMISSIONS.clustersManage,
+  [JOB_TYPES.vmProvision]: PERMISSIONS.workloadsProvision,
 };
 
 /**

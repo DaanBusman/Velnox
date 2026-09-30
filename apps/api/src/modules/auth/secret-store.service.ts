@@ -22,6 +22,14 @@ import { PrismaService } from '../infrastructure/prisma.service';
 const API_READABLE_KINDS: ReadonlySet<CredentialKind> = new Set<CredentialKind>([
   'TOTP_SEED',
   'OIDC_CLIENT_SECRET',
+  /*
+   * A provisioned VM's passwords, for the audited reveal and nothing else
+   * (ADR-039). Not a credential Velnox uses against anything — it is handed to
+   * a person who may manage the cluster, as the explicit break-glass the
+   * project's rules allow. Every read goes through ProvisioningService.reveal,
+   * which audits it first.
+   */
+  'GUEST_CREDENTIALS',
 ]);
 
 export class ForbiddenCredentialKindError extends Error {

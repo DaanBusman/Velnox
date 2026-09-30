@@ -65,6 +65,17 @@ export const AUDIT_ACTIONS = {
   /** An upload was abandoned by the person who started it. */
   libraryUploadAbandoned: 'library.upload_abandoned',
 
+  autoconfigTemplateCreated: 'autoconfig.template_created',
+  /** Metadata names which secrets changed, never their values. */
+  autoconfigTemplateChanged: 'autoconfig.template_changed',
+  autoconfigTemplateCloned: 'autoconfig.template_cloned',
+  autoconfigTemplateDeleted: 'autoconfig.template_deleted',
+  provisioningRequested: 'provisioning.requested',
+  /** The break-glass: somebody was shown a VM's passwords. Refusals are recorded too. */
+  provisioningCredentialsRevealed: 'provisioning.credentials_revealed',
+  mailSettingsChanged: 'mail.settings_changed',
+  mailTestSent: 'mail.test_sent',
+
   jobCreated: 'job.created',
   jobRetried: 'job.retried',
   jobCancelled: 'job.cancelled',

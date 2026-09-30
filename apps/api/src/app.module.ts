@@ -15,7 +15,9 @@ import { UsersModule } from './modules/users/users.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { AutoconfigModule } from './modules/autoconfig/autoconfig.module';
 import { LibraryModule } from './modules/library/library.module';
+import { MailModule } from './modules/mail/mail.module';
 
 /**
  * Application composition root.
@@ -40,6 +42,8 @@ import { LibraryModule } from './modules/library/library.module';
     InventoryModule,
     JobsModule,
     LibraryModule,
+    AutoconfigModule,
+    MailModule,
     UsersModule,
     IdentityModule,
     RolesModule,
