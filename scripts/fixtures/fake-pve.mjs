@@ -34,6 +34,12 @@
  *                                address, so SSH to "a node" reaches this fixture
  *   --ssh-port N --ssh-host-key FILE --ssh-authorized-key FILE
  *                                serve the same files over SFTP
+ *
+ * Phase 5B adds VMs and a mail sink, again behind options (fake-pve-vms.mjs):
+ *
+ *   --vms                        answer the VM calls provisioning makes; needs --storage-dir
+ *   --install-seconds N          how long a VM "installs" before its agent answers
+ *   --smtp-port N                accept mail without TLS, keeping it in <storage-dir>/mail
  */
 
 import { createServer } from 'node:https';
@@ -86,6 +92,25 @@ const storage = storageModule
     })
   : null;
 
+const vmsModule = STORAGE_DIR && args.includes('--vms') ? await import('./fake-pve-vms.mjs') : null;
+const vms = vmsModule
+  ? vmsModule.installVms({
+      dir: STORAGE_DIR,
+      storage,
+      nodes: NODES,
+      installSeconds: Number(option('install-seconds', '5')),
+      log: (line) => console.log(line),
+      existingVmids: [100, 101, 200, 9000],
+    })
+  : null;
+if (vmsModule && option('smtp-port', null)) {
+  vmsModule.startSmtpSink({
+    port: Number(option('smtp-port', '2525')),
+    dir: STORAGE_DIR,
+    log: (line) => console.log(line),
+  });
+}
+
 if (storageModule && storage && option('ssh-port', null)) {
   storageModule.startSftp({
     port: Number(option('ssh-port', '22')),
@@ -137,8 +162,15 @@ const ROUTES = {
       level: '',
     })),
 
+  '/api2/json/cluster/nextid': () => String(vms ? vms.nextId() : 102),
   '/api2/json/cluster/resources': () => [
-    ...Object.keys(NODES).map((name) => ({ id: `node/${name}`, type: 'node', node: name })),
+    ...Object.keys(NODES).map((name) => ({
+      id: `node/${name}`,
+      type: 'node',
+      node: name,
+      status: NODES[name].online ? 'online' : 'offline',
+    })),
+    ...(vms ? vms.resources() : []),
     {
       id: 'qemu/100',
       type: 'qemu',
@@ -400,6 +432,10 @@ const server = createServer(
 
       const query = new URLSearchParams((request.url ?? '').split('?')[1] ?? '');
       if (storage && storage.handle(request, response, node, rest, query, send)) {
+        console.log(`${request.method} ${path}`);
+        return;
+      }
+      if (vms && vms.handle(request, response, node, rest, query, send)) {
         console.log(`${request.method} ${path}`);
         return;
       }

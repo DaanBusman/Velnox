@@ -280,6 +280,7 @@ export function installStorage({ dir, nodes, uploadBytesPerSec, log }) {
   /** Returns true when it answered. */
   return {
     uploadBytesTotal: () => uploadBytesTotal,
+    newTask,
     storageList: (node) => Object.keys(STORAGES).map((storage) => listing(node, storage)),
     root,
     nodePath,
