@@ -50,9 +50,33 @@ import { JobStreamHub } from './job-stream.hub';
  */
 
 /** What may create a job of each type. */
+/**
+ * The permission each job type needs, checked at the job's tenant.
+ *
+ * For the library jobs this is the half that touches a tenant. Fetching,
+ * verifying and copying into the library also need `library.manage`, which
+ * LibraryService checks before it asks for the job — the library is not any
+ * tenant's, so there is no tenant to check it at here.
+ */
 const CREATE_PERMISSION: Record<string, Permission> = {
   [JOB_TYPES.selftest]: PERMISSIONS.systemManage,
+  [JOB_TYPES.libraryFetch]: PERMISSIONS.libraryManage,
+  [JOB_TYPES.libraryVerify]: PERMISSIONS.libraryManage,
+  [JOB_TYPES.libraryPush]: PERMISSIONS.clustersManage,
+  [JOB_TYPES.libraryPull]: PERMISSIONS.clustersManage,
+  [JOB_TYPES.libraryClusterDelete]: PERMISSIONS.clustersManage,
 };
+
+/**
+ * Types whose failure leaves a failed library item behind. A retry would be a
+ * new job pointed at an item that is no longer waiting for it; the way back is
+ * adding the file again, which the library screen offers.
+ */
+const NOT_RETRYABLE_TYPES = new Set<string>([
+  JOB_TYPES.libraryFetch,
+  JOB_TYPES.libraryVerify,
+  JOB_TYPES.libraryPull,
+]);
 
 /** How long a cancellation flag outlives the request, in seconds. */
 const CANCEL_FLAG_TTL = 24 * 60 * 60;
@@ -136,7 +160,7 @@ export class JobsService {
     );
   }
 
-  private async create(
+  async create(
     input: {
       tenantId: string;
       type: string;
@@ -521,6 +545,9 @@ export class JobsService {
     if (!RETRYABLE.includes(job.status as JobStatus)) {
       throw new VelnoxError(ERROR_CODES.jobNotRetryable, { status: 409, params: { status: job.status } });
     }
+    if (NOT_RETRYABLE_TYPES.has(job.type)) {
+      throw new VelnoxError(ERROR_CODES.jobNotRetryableType, { status: 409 });
+    }
 
     return this.create(
       {
@@ -720,6 +747,7 @@ function summarise(job: JobRow): JobSummary {
     startedAt: job.startedAt?.toISOString() ?? null,
     finishedAt: job.finishedAt?.toISOString() ?? null,
     errorCode: job.errorCode,
+    errorParams: isParams(job.errorParams) ? job.errorParams : null,
     errorDetail: job.errorMessage,
     createdBy: job.createdBy ? { id: job.createdBy.id, email: job.createdBy.email } : null,
     targetKind: job.targetKind,
@@ -757,4 +785,14 @@ function toMessage(
     status: row.status as JobStatus,
     progressPct: row.progressPct,
   };
+}
+
+/** Stored params are JSON; only a flat record of plain values is passed on. */
+function isParams(value: unknown): value is Record<string, string | number | boolean | null> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.values(value).every((entry) => entry === null || ['string', 'number', 'boolean'].includes(typeof entry))
+  );
 }

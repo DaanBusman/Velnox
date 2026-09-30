@@ -54,6 +54,16 @@ export const AUDIT_ACTIONS = {
   clusterRemoved: 'cluster.removed',
   clusterDiscovered: 'cluster.discovered',
   clusterDiscoveryFailed: 'cluster.discovery_failed',
+  /** SSH host keys were read for confirmation. Nothing was authenticated. */
+  clusterSshProbed: 'cluster.ssh_probed',
+  clusterSshConfigured: 'cluster.ssh_configured',
+  clusterSshRemoved: 'cluster.ssh_removed',
+
+  libraryItemAdded: 'library.item_added',
+  libraryItemRenamed: 'library.item_renamed',
+  libraryItemRemoved: 'library.item_removed',
+  /** An upload was abandoned by the person who started it. */
+  libraryUploadAbandoned: 'library.upload_abandoned',
 
   jobCreated: 'job.created',
   jobRetried: 'job.retried',
