@@ -24,6 +24,16 @@
  * and 501s the rest, loudly, so a new call site cannot pass by accident.
  *
  *   node scripts/fixtures/fake-pve.mjs --cert cert.pem --key key.pem [--port 8006]
+ *
+ * Phase 5A adds storage — listings, upload, delete, tasks, and SFTP — behind
+ * options, so the Phase 4 harness sees exactly the cluster it always did:
+ *
+ *   --storage-dir DIR            files on the fixture's storages live here
+ *   --upload-bytes-per-sec N     slow uploads down, so one can be cancelled halfway
+ *   --node-address HOST          what /cluster/status reports as every node's
+ *                                address, so SSH to "a node" reaches this fixture
+ *   --ssh-port N --ssh-host-key FILE --ssh-authorized-key FILE
+ *                                serve the same files over SFTP
  */
 
 import { createServer } from 'node:https';
@@ -59,6 +69,33 @@ const NODES = {
   // knows nothing about this one.
   pve3: { online: false, nodeid: 3, ip: '10.90.0.13' },
 };
+
+const NODE_ADDRESS = option('node-address', null);
+if (NODE_ADDRESS) for (const node of Object.values(NODES)) node.ip = NODE_ADDRESS;
+
+const STORAGE_DIR = option('storage-dir', null);
+// Loaded only when asked for, so the Phase 4 harness can copy this one file and
+// run it exactly as it always did.
+const storageModule = STORAGE_DIR ? await import('./fake-pve-storage.mjs') : null;
+const storage = storageModule
+  ? storageModule.installStorage({
+      dir: STORAGE_DIR,
+      nodes: NODES,
+      uploadBytesPerSec: Number(option('upload-bytes-per-sec', '0')),
+      log: (line) => console.log(line),
+    })
+  : null;
+
+if (storageModule && storage && option('ssh-port', null)) {
+  storageModule.startSftp({
+    port: Number(option('ssh-port', '22')),
+    hostKey: readFileSync(option('ssh-host-key', '')),
+    authorizedKey: readFileSync(option('ssh-authorized-key', '')),
+    bytesPerSec: Number(option('sftp-bytes-per-sec', '0')),
+    storage,
+    log: (line) => console.log(line),
+  });
+}
 
 const nodeStatus = (node) => ({
   uptime: node === 'pve1' ? 1_209_600 : 864_000,
@@ -263,7 +300,7 @@ const NODE_ROUTES = {
         ]
       : [],
 
-  storage: () => [
+  storage: (node) => (storage ? storage.storageList(node) : [
     {
       storage: 'local',
       type: 'dir',
@@ -289,7 +326,7 @@ const NODE_ROUTES = {
     // Configured, not reachable. Every figure absent, which must render as a
     // dash rather than as an empty array.
     { storage: 'backup-nfs', type: 'nfs', active: 0, enabled: 1, shared: 1, content: 'backup' },
-  ],
+  ]),
 
   network: (node) => [
     {
@@ -360,6 +397,12 @@ const server = createServer(
     if (nodeMatch) {
       const [, node, rest] = nodeMatch;
       if (!NODES[node]) return send(response, 500, { data: null, message: `no such node '${node}'` });
+
+      const query = new URLSearchParams((request.url ?? '').split('?')[1] ?? '');
+      if (storage && storage.handle(request, response, node, rest, query, send)) {
+        console.log(`${request.method} ${path}`);
+        return;
+      }
 
       const handler = NODE_ROUTES[rest];
       if (handler) {

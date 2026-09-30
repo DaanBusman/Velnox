@@ -256,7 +256,14 @@ check "probe: a host that is not there fails rather than hanging" 502 \
 
 info "Adding the cluster — first with the wrong fingerprint, then the right one."
 
-WRONG="$(printf '%s' "$PROBED_FINGERPRINT" | sed 's/^../AA/')"
+# Change the first byte to something it is not. Replacing it with a fixed `AA`
+# was right 255 times in 256: a certificate whose fingerprint already started
+# with AA made the "wrong" pin the right one, and the checks below then tested
+# nothing. Found writing verify-library.sh, which had copied the same line.
+FIRST="$(printf '%s' "$PROBED_FINGERPRINT" | cut -c1-2)"
+if [[ "$FIRST" == "00" ]]; then FLIP="FF"; else FLIP="00"; fi
+WRONG="${FLIP}${PROBED_FINGERPRINT:2}"
+[[ "$WRONG" != "$PROBED_FINGERPRINT" ]] || { red "could not make a wrong fingerprint"; exit 1; }
 
 add_cluster() {
   local name="$1" fingerprint="$2" secret="$3"
