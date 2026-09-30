@@ -11,7 +11,7 @@ heeft haar poort niet gehaald.
 
 ---
 
-## Huidige status: fase 5 (het jobsysteem)
+## Huidige status: fase 5A (de ISO-bibliotheek)
 
 Aanmelden werkt. De installatiewizard maakt de eerste beheerder aan en sluit daarna permanent. Elk
 API-endpoint dat niet bewust publiek is, vereist een sessie, en de globale guard beschermt
@@ -27,9 +27,12 @@ gebeurtenissenstroom, annuleren op veilige punten, goedkeuringspunten met een op
 vierogenprincipe, en een dode worker die wordt opgemerkt en gemeld in plaats van bezig te blijven
 lijken. Zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md).
 
-**Velnox is nog steeds alleen-lezen op je infrastructuur.** Het jobsysteem is het mechanisme waarop
-wijzigingen gaan draaien, en het enige jobtype is vandaag een diagnostisch type dat niets aanraakt.
-Er wordt nog niets gestart, gestopt, gemigreerd, bijgewerkt of geherconfigureerd.
+De **ISO-bibliotheek** bevat installers en cloud images op de Velnox-host, en kopieert ze naar de
+opslag van een cluster en terug. Zie [De ISO-bibliotheek](managing-the-library.md).
+
+**Die kopie is het enige wat Velnox naar je infrastructuur schrijft.** Het zet een ISO of disk-image
+op een opslag, en verwijdert er een als daarom wordt gevraagd, elk als job. Er wordt nog geen node of
+gast gestart, gestopt, gemigreerd, bijgewerkt of geherconfigureerd.
 
 Wat er **nog niet** is, op volgorde van hoe zwaar het weegt:
 
@@ -110,10 +113,45 @@ scherm vol verouderde alarmen op dat niemand leest — erger dan een scherm dat 
 het alleen weet wat er nú waar is. Ze bezorgen vereist een notificatiekanaal — mail, een webhook — en dat is er nog niet; fase 5B
 brengt het eerste.
 
-### Er gaat nog niets via SSH naar een node
-Alles in fase 4 loopt via de Proxmox-API. `credentials` kent de soorten `SSH_PASSWORD` en `SSH_KEY`
-en `nodes` reserveert een host key-vingerafdruk, omdat credentialrotatie (fase 10) een shell nodig
-heeft — maar deze build bevat geen SSH-client en geen enkel scherm biedt aan er een op te slaan.
+### De ISO-bibliotheek is bewezen tegen de fixture, nog niet tegen een echt cluster
+Elke verplaatsing — pushen, terughalen, verwijderen, halverwege annuleren — wordt door
+`verify-library.sh` uitgevoerd over echte sockets, tegen de Proxmox-API van de fixture en zijn
+SFTP-server. Wat dat niet kan bewijzen is hoe een echte Proxmox drie dingen beantwoordt: de
+multipart-uploadbody, uploaden naar `import`-inhoud, en het volumepad dat hij voor een bestand
+opgeeft (dat het terughalen daarna via SFTP opent; de fixture beeldt het af op zijn eigen map). Alle
+drie volgen de gepubliceerde API van Proxmox; geen ervan is tegen een echte node uitgevoerd.
+
+### Disk-images vragen een Proxmox met `import`-inhoud
+Cloud images gaan als `import`-inhoud op een opslag, een type dat Proxmox VE 8.2 introduceerde en dat
+op een opslag aan moet staan. Een cluster op een oudere release, of zonder opslag die `import`
+accepteert, krijgt geen opslag aangeboden voor een disk-image. ISO's hebben er geen last van.
+
+### Een push waarvan de worker sterft, wordt op de node niet opgeruimd
+Een geannuleerde of mislukte push verwijdert zijn half geschreven bestand van de node. Een push
+waarvan de **worker sterft** kan dat niet: het opruimen sterft mee. De job wordt als verloren mislukt
+en de bibliotheekkant wordt door de veger opgeruimd, maar niets gaat terug naar de node. Wat Proxmox
+had ontvangen is na de volgende inventarisatie te zien op het tabblad **ISO's en images** van het
+cluster, en kan daar worden verwijderd.
+
+### De bibliotheek kan niet via een proxy ophalen
+Ophalen van een URL maakt direct verbinding, zodat het gecontroleerde adres het adres is waarmee
+verbinding wordt gemaakt. Een installatie die alleen via een HTTP-proxy naar buiten kan, kan niets van
+internet ophalen; uploaden vanuit een browser werkt overal.
+
+### Niets toetst een opgehaald bestand aan een gepubliceerde checksum
+De SHA-256 van een bestand wordt onderweg naar binnen berekend en elke latere kopie wordt ertegen
+gecontroleerd — maar bij aankomst heeft Velnox niets om hem mee te vergelijken. De checksum die een
+leverancier naast een ISO publiceert wordt nog niet gevraagd; vergelijk hem met die de bibliotheek
+toont.
+
+### Hetzelfde bestand onder twee namen wordt twee keer opgeslagen
+Bestanden zijn uniek op naam, niet op inhoud. Niets waarschuwt dat een nieuw bestand dezelfde
+checksum heeft als een bestand dat er al staat.
+
+### SSH wordt voor precies één ding gebruikt
+Een bestand van een node kopiëren is het enige gebruik. `credentials` heeft nog een soort
+`SSH_PASSWORD` die geen scherm aanbiedt — een sleutel is de enige manier om SSH in te stellen — en
+credentialrotatie, die meer nodig heeft dan een bestand lezen, is fase 10.
 
 ### Updateaantallen zijn aantallen, geen classificatie
 Een node meldt hoeveel pakketten apt zou installeren. Welke daarvan beveiligingsupdates zijn, welke
@@ -142,10 +180,11 @@ De derde is opgelost: een worker die halverwege het uitlezen werd gedood, liet d
 als `RUNNING` achter. Dezelfde verzoening die verloren jobs laat mislukken, laat nu een uitleesronde
 mislukken die na een uur nog loopt, met dezelfde reden `job.worker_lost`.
 
-### De enige job is een diagnostische
-`system.selftest` kost tijd, rapporteert over zichzelf en raakt niets aan. Hij bestaat om het
-mechanisme te bewijzen en een beheerder het aan het werk te laten zien. De eerste echte jobtypes
-komen met de ISO-bibliotheek (fase 5A) en updatebeheer (fase 6).
+### De enige jobs zijn die van de bibliotheek, en een diagnostische
+De vijf van de bibliotheek — ophalen, een upload controleren, naar een cluster kopiëren, van een
+cluster kopiëren, op een cluster verwijderen — zijn de eerste jobs die echt werk doen.
+`system.selftest` raakt niets aan en bestaat om het mechanisme te bewijzen. Updatebeheer (fase 6)
+brengt de volgende.
 
 ### Jobgeschiedenis wordt voor altijd bewaard
 Jobs, hun gebeurtenissen en hun uitvoer worden nooit verwijderd. Er is geen bewaarbeleid en geen
@@ -163,6 +202,13 @@ Fase 1 heeft twee besluiten uit fase 0 herzien (zie *Herzien in fase 1* in `arch
 `tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen vast van welke Engelse
 commit ze zijn vertaald; `scripts/check-doc-sync.mjs` meldt welke zijn achtergebleven. Het
 waarschuwt, het blokkeert niet.
+
+### Opgelost in fase 5A
+- **Er ging niets via SSH naar een node.** SSH bestaat nu, per cluster en optioneel, alleen voor
+  leesacties via SFTP, met de host key van elke node bevestigd voordat er iets aan wordt aangeboden
+  (ADR-038).
+- **Velnox kon niets op een cluster zetten.** Het kopieert ISO's en cloud images naar opslag, en
+  verwijdert ze, als jobs die niets achterlaten als ze worden geannuleerd.
 
 ### Opgelost in fase 5
 - **De dashboardtellers waren streepjes, geen nullen**, ook voor gegevens die het product al sinds

@@ -39,9 +39,13 @@ gebeurtenissenstroom, annuleren op veilige punten, goedkeuringspunten met een op
 vierogenprincipe, en een dode worker die wordt opgemerkt en gemeld in plaats van bezig te blijven
 lijken.
 
-> **Dit is nog steeds een build in aanbouw, geen afgerond product.** Velnox leest je infrastructuur
-> en wijzigt die nog niet: het jobsysteem staat er, en de enige job die het draait is een
-> diagnostische. Updatebeheer komt in fase 6. Rollen zijn niet te bewerken, en aanmelden met
+**ISO-bibliotheek** (fase 5A): installers en cloud images op de Velnox-host, opgehaald van een URL of
+hervatbaar geüpload vanuit een browser, naar de opslag van elk cluster gekopieerd terwijl Proxmox de
+checksum controleert, en via SFTP met vastgepinde host keys weer van een cluster teruggehaald.
+
+> **Dit is nog steeds een build in aanbouw, geen afgerond product.** Velnox leest je infrastructuur,
+> en wijzigt die op één manier: het kopieert ISO's en disk-images naar de opslag van een cluster en
+> verwijdert ze daar. Onbeheerde VM-uitrol komt in fase 5B, updatebeheer in fase 6. Rollen zijn niet te bewerken, en aanmelden met
 > Microsoft Entra ID is alleen configuratie — de flow zelf is niet geschreven.
 
 Wat elke fase toevoegt, en wat er vandaag bewust ontbreekt:

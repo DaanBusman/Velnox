@@ -41,6 +41,7 @@ const DOCUMENTS = [
   'managing-access',
   'organising-your-fleet',
   'managing-infrastructure',
+  'managing-the-library',
   'working-with-jobs',
   'permissions',
   'deployment',

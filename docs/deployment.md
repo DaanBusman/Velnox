@@ -23,7 +23,8 @@ nothing else listening on ports 80 and 443.
 
 Disk is dominated by the container images (~2.3 GB) and, if you build on the host, the Docker build
 cache, which grows to well over 10 GB. `sudo docker builder prune -f` reclaims it. After that, disk grows
-with audit records, job logs and inventory history.
+with audit records, job logs and inventory history — and with the ISO library, which is usually the
+largest of all. See [The ISO library's disk](#the-iso-librarys-disk).
 
 ### Ports
 
@@ -364,6 +365,29 @@ takes about a minute.
 
 ---
 
+### The ISO library's disk
+
+ISOs and cloud images live in their own Docker volume, `velnox_library`. A named volume has no quota,
+so Velnox enforces two limits itself, set in `.env`:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `VELNOX_LIBRARY_MAX_GB` | 100 | The most the library may hold, counting transfers still in progress. |
+| `VELNOX_LIBRARY_MIN_FREE_GB` | 10 | Free disk that must remain after a transfer. |
+
+Whichever is reached first refuses the transfer, and the refusal names the limit and the numbers.
+The floor matters more than the ceiling: the volume is on the same disk as PostgreSQL unless you move
+it, and a full disk stops the whole installation, not only the upload. On the 40 GB evaluation size
+the floor is what you will hit first, which is the point of it.
+
+Change either value, then `sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env up -d`
+so the API and worker read it. Lowering the ceiling below what the library already holds removes
+nothing; it only refuses new files until enough are deleted.
+
+To give the library a disk of its own, mount one at the volume's location before the first start, or
+move the volume's contents there with the stack stopped. Velnox measures free space on whatever
+filesystem the library is on.
+
 ### Backup
 
 Two things, and one of them is not in the database:
@@ -382,6 +406,16 @@ sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env 
 ```
 
 Test the restore before you rely on it.
+
+**The ISO library is not in that backup,** and usually does not need to be: every file in it came
+from somewhere and can be fetched or uploaded again. What the library holds is recorded in the
+database, so a restored database without the volume lists files that are not there; the worker
+notices within fifteen minutes and marks them *Failed*, with the reason that the file has gone, and
+removing them on the **ISO library** screen clears them. If re-fetching is expensive for you, back the volume up as well:
+
+```bash
+sudo docker run --rm -v velnox_library:/library:ro -v /var/backups:/backup alpine tar -C /library -cf /backup/velnox-library.tar .
+```
 
 ### Removing old backups
 
@@ -448,6 +482,10 @@ sudo sh -c 'du -sh /var/lib/docker/containers/* 2>/dev/null | sort -h | tail -5'
 ls -lh /var/backups/velnox-*.dump
 ```
 
+```bash
+sudo du -sh /var/lib/docker/volumes/velnox_library
+```
+
 The third one is the container logs, one directory per container, largest last. Since 0.5.5 each
 container keeps at most five files of 10 MB — about 50 MB, or 350 MB for the whole stack — and the
 oldest is dropped as a new one starts. Before 0.5.5 there was no limit at all, and on a host that
@@ -494,10 +532,15 @@ sudo apt-get clean
 
 **Old database backups** — see [Removing old backups](#removing-old-backups).
 
+**Files in the ISO library** — remove them on the **ISO library** screen, not on the host. The screen
+removes the file and its record together; deleting under `/var/lib/docker/volumes/velnox_library` by
+hand leaves records pointing at nothing, and a file whose record is gone is removed by the worker
+anyway.
+
 ### Never
 
 These look like the same kind of cleanup, and are not. They remove Docker volumes, and `pgdata` is
-a volume: the whole database goes with it. The same is true of deleting anything under
+a volume: the whole database goes with it — and the ISO library with it, which is a volume too. The same is true of deleting anything under
 `/var/lib/docker/volumes` by hand.
 
 ```

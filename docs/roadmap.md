@@ -1,18 +1,21 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phases 0 to 4 complete. Phases 5–15 await approval.
+**Status:** Phases 0 to 5 and 5A complete. Phase 5B is in progress; phases 6–15 await approval.
 
 Each landed phase is verified rather than asserted. `bash scripts/verify-stack.sh` asserts its acceptance criteria
-against a running stack — 29 checks covering every dependency, the migration state, security headers,
+against a running stack — 36 checks covering every dependency, the migration state, security headers,
 both languages, the licence offer, authentication actually refusing anonymous callers, setup being
 closed once it has run, and the data tier not being reachable from the host. It runs in CI on every
 change.
 
 Two further harnesses cover what a stack-wide probe cannot. `scripts/verify-tenancy.sh` signs in as
 two different people and tries to cross the tenant boundary through lists, filters, direct-id lookups
-and writes — 35 checks. `scripts/verify-proxmox.sh` stands up a fixture Proxmox API with a real
-certificate and drives the whole add-and-discover flow against it — 50 checks. Both found real bugs
-the unit tests could not (ADR-030, ADR-031, ADR-032).
+and writes — 34 checks. `scripts/verify-proxmox.sh` stands up a fixture Proxmox API with a real
+certificate and drives the whole add-and-discover flow against it — 51 checks. `scripts/verify-jobs.sh`
+drives the job system through cancellation, approvals and a killed worker — 44 checks — and
+`scripts/verify-library.sh` moves real bytes through the ISO library, onto the fixture's storage and
+back off it over SFTP — 73 checks. Each found real bugs the unit tests could not (ADR-030, ADR-031,
+ADR-032, ADR-036, ADR-037).
 
 Every phase ends with the same gate. A phase is **not** finished until all of these are true:
 
@@ -120,7 +123,7 @@ next safe boundary and records `CANCELLED`; killing the worker mid-job leaves th
 `FAILED` with `worker_lost`, not stuck in `RUNNING`; two mutating jobs against one cluster cannot run
 concurrently; every invalid state transition throws.
 
-## Phase 5A — Central ISO library · **XL**
+## Phase 5A — Central ISO library · **XL** · ✅ complete
 
 Requested by the owner on 2026-09-27, scheduled immediately after Phase 5 because every operation in
 it is a multi-gigabyte transfer, which is what the job system exists to run.
@@ -131,6 +134,14 @@ pull one from a cluster into the library, and delete one from a cluster. Friendl
 `Windows11_25H2_Dutch` reads as "Windows 11 Version 25H2 Dutch" or "… Nederlands" depending on the
 viewer's Velnox language — parsed from the filename with the operator able to correct it, because a
 filename parser is a heuristic and a wrong confident label is worse than an honest raw one.
+
+**As built** (ADR-037, ADR-038): an installation-wide library in its own volume with a size ceiling
+and a free-disk floor; URL fetch with an SSRF guard, and resumable chunked browser upload; push
+through Proxmox's upload call with the checksum verified on arrival; pull over **SFTP only**, set up
+per cluster with host keys confirmed like a TLS fingerprint — chosen with the owner,
+because Proxmox's API has no call that reads a file back; delete on the cluster; and an **ISOs &
+images** tab per cluster. Proven against the fixture, not yet a real cluster — see
+[Known gaps](known-gaps.md).
 
 **Decisions taken with the owner before any of it was built:**
 

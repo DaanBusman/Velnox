@@ -135,6 +135,7 @@ Werkt vandaag:
 | **Dashboard** | Aantallen van wat je kunt zien, en suggesties voor wat nu de moeite waard is |
 | **Tenants**, **Locaties** | Je klanten en hun locaties — zie [Je omgeving indelen](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtuele machines**, **Containers**, **Opslag**, **Netwerken** | De Proxmox-inventarisatie, volgens schema uitgelezen — zie [Clusters toevoegen en de inventarisatie lezen](managing-infrastructure.md) |
+| **ISO-bibliotheek** | Installers en cloud images op de Velnox-host, naar elk cluster te kopiëren — zie [De ISO-bibliotheek](managing-the-library.md) |
 | **Meldingen** | Condities berekend uit de inventarisatie: offline nodes, verouderde uitlezingen, Ceph-vlaggen |
 | **Jobs** | Werk dat loopt en zijn geschiedenis, live — zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md) |
 | **Gebruikers** | Accounts, rollen, in- en uitschakelen — zie [Gebruikers en toegang beheren](managing-access.md) |
@@ -222,12 +223,12 @@ laten lezen.
 
 Hier direct over zijn is nuttiger dan een functielijst.
 
-**Velnox leest je Proxmox-infrastructuur en wijzigt die nog niet.** Clusters, nodes, gasten, opslag,
+**Velnox leest je Proxmox-infrastructuur, en wijzigt die op één manier: het kopieert ISO's en
+disk-images naar de opslag van een cluster, en verwijdert ze daar.** Clusters, nodes, gasten, opslag,
 netwerken en Ceph worden geïnventariseerd, maar er wordt niets gestart, gestopt, gemigreerd,
 bijgewerkt of geherconfigureerd. Het jobsysteem waarop wijzigingen gaan draaien staat er — met live
-voortgang, annuleren, goedkeuringen en het opmerken van verlies — en de enige job die het vandaag
-draait is een diagnostische die niets aanraakt. Updatebeheer komt in fase 6, de ISO-bibliotheek en
-onbeheerde VM-uitrol in fase 5A en 5B.
+voortgang, annuleren, goedkeuringen en het opmerken van verlies — en de ISO-bibliotheek is het eerste
+wat erop draait. Onbeheerde VM-uitrol komt in fase 5B, updatebeheer in fase 6.
 
 [Roadmap](roadmap.md) noemt wat elke fase toevoegt; [Bekende hiaten](known-gaps.md) is de eerlijke
 lijst van wat er op dit moment bewust ontbreekt of onaf is.
@@ -240,6 +241,7 @@ lijst van wat er op dit moment bewust ontbreekt of onaf is.
 - [Rollen en rechten](permissions.md) — wat elke rol volledig toekent
 - [Je omgeving indelen](organising-your-fleet.md) — tenants, locaties en het beperken van een recht
 - [Clusters toevoegen](managing-infrastructure.md) — Proxmox onder beheer brengen, en de inventarisatie
+- [De ISO-bibliotheek](managing-the-library.md) — ISO's en cloud images, en ze naar clusters kopiëren
 - [Werken met jobs](working-with-jobs.md) — het werk van Velnox volgen, annuleren en goedkeuren
 - [Deployment](deployment.md) — vereisten, upgrades, back-up, diagnose
 - [Architectuur](architecture.md) — hoe het systeem in elkaar zit, en waarom

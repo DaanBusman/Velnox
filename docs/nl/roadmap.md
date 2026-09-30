@@ -3,20 +3,23 @@
 > **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `0d4eb43`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Fase 0 tot en met 4 afgerond. Fase 5–15 wachten op goedkeuring.
+**Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is in uitvoering; fase 6–15 wachten op goedkeuring.
 
 Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
-acceptatiecriteria tegen een draaiende stack — 29 controles over elke afhankelijkheid, de
+acceptatiecriteria tegen een draaiende stack — 36 controles over elke afhankelijkheid, de
 migratiestatus, security headers, beide talen, het bronaanbod, het feit dat authenticatie anonieme
 aanroepers daadwerkelijk weigert, dat de installatie na afloop gesloten is, en dat de datalaag niet
 vanaf de host bereikbaar is. Het draait in CI bij elke wijziging.
 
 Twee verdere harnassen dekken wat een stackbrede sonde niet kan.
 `scripts/verify-tenancy.sh` meldt zich aan als twee verschillende mensen en probeert de tenantgrens te
-passeren via lijsten, filters, directe id-opvragingen en schrijfacties — 35 controles.
+passeren via lijsten, filters, directe id-opvragingen en schrijfacties — 34 controles.
 `scripts/verify-proxmox.sh` zet een fixture-Proxmox-API met een echt certificaat neer en doorloopt
-daartegen de volledige toevoeg-en-uitlees-stroom — 50 controles. Beide vonden echte fouten die de
-unittests niet konden vinden (ADR-030, ADR-031, ADR-032).
+daartegen de volledige toevoeg-en-uitlees-stroom — 51 controles. `scripts/verify-jobs.sh` voert het
+jobsysteem door annuleren, goedkeuringen en een gedode worker — 44 controles — en
+`scripts/verify-library.sh` verplaatst echte bytes door de ISO-bibliotheek, naar de opslag van de
+fixture en via SFTP weer terug — 73 controles. Elk vond echte fouten die de unittests niet konden
+vinden (ADR-030, ADR-031, ADR-032, ADR-036, ADR-037).
 
 Elke fase eindigt met dezelfde poort. Een fase is **niet** klaar voordat dit alles waar is:
 
@@ -127,7 +130,7 @@ eerstvolgende veilige punt en legt `CANCELLED` vast; de worker halverwege afbrek
 achter als `FAILED` met `worker_lost` in plaats van vast op `RUNNING`; twee muterende jobs op één cluster
 kunnen niet gelijktijdig draaien; elke ongeldige toestandsovergang gooit een fout.
 
-## Phase 5A — Centrale ISO-bibliotheek · **XL**
+## Phase 5A — Centrale ISO-bibliotheek · **XL** · ✅ afgerond
 
 Aangevraagd door de eigenaar op 27-09-2026, ingepland direct na fase 5 omdat elke handeling erin een
 overdracht van meerdere gigabytes is — precies waar het jobsysteem voor bestaat.
@@ -139,6 +142,15 @@ vriendelijke namen — `Windows11_25H2_Dutch` leest als "Windows 11 Version 25H2
 afhankelijk van de ingestelde Velnox-taal — afgeleid uit de bestandsnaam, met de mogelijkheid voor de
 beheerder om het te corrigeren, want een bestandsnaam-ontleder is een gok en een zelfverzekerd fout
 label is erger dan een eerlijk ruw label.
+
+**Zoals gebouwd** (ADR-037, ADR-038): een bibliotheek voor de hele installatie in een eigen volume,
+met een plafond en een ondergrens voor vrije schijfruimte; ophalen van een URL met een SSRF-bewaking,
+en een hervatbare browserupload in stukken; pushen via de upload-aanroep van Proxmox, met de checksum
+bij aankomst gecontroleerd; terughalen **alleen via SFTP**, per cluster ingesteld met hostsleutels die
+worden bevestigd zoals een TLS-vingerafdruk — gekozen met de eigenaar, omdat de API van Proxmox geen
+aanroep heeft die een bestand teruggeeft; verwijderen op het cluster; en een tabblad **ISO's en
+images** per cluster. Bewezen tegen de fixture, nog niet tegen een echt cluster — zie
+[Bekende hiaten](known-gaps.md).
 
 **Besluiten die met de eigenaar zijn genomen voordat er iets gebouwd is:**
 

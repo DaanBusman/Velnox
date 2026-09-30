@@ -216,6 +216,10 @@ HEALTH_ERR|UNKNOWN), ceph_health_detail jsonb, ceph_pgs_total, ceph_pgs_clean, c
 ceph_osds_in, ceph_osds_total, ceph_mon_quorum_size, ceph_mon_quorum_expected, ceph_flags text[],
 ceph_versions_homogeneous bool`
 
+SSH-kolommen (fase 5A, ADR-038): `ssh_credential_id, ssh_username, ssh_port (standaard 22),
+ssh_verified_at`. De eerste twee allebei of geen van beide — `clusters_ssh_complete` — omdat een halve
+instelling elke kopie laat mislukken met een verwarrende fout.
+
 `ceph_flags` is operationeel van belang: een cluster waar `noout` na afgebroken onderhoud is blijven
 staan, is een stille tijdbom, en wordt daarom geïnventariseerd, in de UI getoond en gealarmeerd.
 
@@ -234,6 +238,10 @@ updates, upgradeplannen, guards — uniform in plaats van te vertakken op "is di
 | vlaggen | `maintenance_mode, managed (bool), notes` |
 
 `tls_verify_mode` is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. Er bestaat geen waarde `INSECURE`.
+
+`ssh_host_key_fingerprint` en `ssh_host_key_type`, gereserveerd sinds fase 4, worden in fase 5A
+gevuld: de host key die een beheerder bevestigde, in de `SHA256:`-vorm van OpenSSH. Met een node
+zonder host key wordt nooit via SSH verbinding gemaakt.
 
 ### `ceph_daemons`
 `id, tenant_id, site_id, cluster_id, node_id, kind (MON|MGR|OSD|MDS|RGW), daemon_id (bijv. "osd.7",
@@ -303,7 +311,7 @@ Gebouwd in fase 5 (migratie `20260927090000_job_system`). ADR-035 en ADR-036 leg
 ### `jobs`
 `id, tenant_id, type, playbook_version, status, priority, created_by_user_id, target_kind,
 target_ids uuid[], params jsonb (nooit secrets), concurrency_key, progress_pct, current_phase,
-current_step, queued_at, started_at, finished_at, error_code, error_message, result_summary jsonb,
+current_step, queued_at, started_at, finished_at, error_code, error_params jsonb, error_message, result_summary jsonb,
 parent_job_id, cancel_requested_at, cancel_requested_by, worker_id, lease_until, event_seq,
 updated_at`
 
@@ -352,6 +360,56 @@ wat de aanroeper ook meegaf: een goedkeuring is waartegen een tenantgebonden rec
 
 Stappen, gebeurtenissen en logs hebben geen tenantkolom en worden via hun job afgeschermd; zie de
 aanvulling op ADR-030.
+
+`error_params` (fase 5A) bevat de waarden waar de foutmelding omheen is geschreven — *de bibliotheek
+bevat 95 van 100 GB* — zodat de interface het in de taal van de lezer kan zeggen in plaats van het
+Engels van de worker te tonen.
+
+---
+
+## 6A. ISO-bibliotheek
+
+Gebouwd in fase 5A (migratie `20260929090000_iso_library`). ADR-037 legt de vorm uit.
+
+### `library_items`
+`id, kind (ISO|DISK_IMAGE), state (RECEIVING|VERIFYING|READY|FAILED), source (UPLOAD|URL|CLUSTER),
+filename, size_bytes, received_bytes, sha256, disk_format (qcow2|raw), title_override,
+language_override, source_url, source_cluster_id, source_cluster_name, source_volid, job_id,
+created_by_id, created_by_label, error_code, error_params jsonb, error_detail, created_at,
+updated_at, ready_at`
+
+**Geen tenant.** De bibliotheek is één opslag voor de installatie; zie ADR-037. Het bestand zelf staat
+op `items/<id>` in het bibliotheekvolume, of op `partial/<id>` tot het is gecontroleerd — de naam is
+nooit deel van het pad, dus een bestandsnaam kan nooit buiten het volume reiken.
+
+Constraints die gewicht dragen:
+
+- `library_items_filename_live` — één levend item per bestandsnaam, **ongeacht hoofdletters**, omdat
+  sommige opslag waar Proxmox op draait niet hoofdlettergevoelig is. Mislukte items tellen niet mee,
+  zodat een mislukte ophaalpoging een tweede poging niet blokkeert.
+- `library_items_ready_is_complete` — `READY` vereist een checksum, een grootte en elke byte
+  ontvangen. Een klaar-rij zonder die drie zou een bewering zijn die nergens op steunt.
+- `library_items_sha256_hex`, `library_items_sizes_sane`, en `library_items_disk_format` (een formaat
+  alleen bij een disk-image).
+
+`source_url` houdt zijn querystring alleen zolang het ophalen loopt; daarna wordt hij zonder
+opgeslagen, omdat het token van een ondertekende downloadlink daar staat. `source_cluster_name` en
+`created_by_label` zijn kopieën, zodat de registratie correct leest nadat het cluster of het account
+weg is.
+
+### `storage_contents`
+`id, tenant_id, cluster_id, node_name, storage, shared, location_key, volid, content (iso|import),
+format, size_bytes, file_created_at, last_seen_at, updated_at`
+
+De ISO's en importeerbare disk-images op de opslag van een cluster, zoals de laatste inventarisatie ze
+zag. Het beschrijft iemands cluster, dus het draagt de tenant van het cluster — en de trigger
+`storage_contents_tenant_matches_cluster` weigert een rij waarvan de tenant niet die van zijn cluster
+is, omdat de kopie is wat het tenantfilter leest en een verschil de ene klant de bestanden van een
+andere zou tonen.
+
+`location_key` is de naam van de opslag bij gedeelde opslag en `node/opslag` bij lokale opslag, zodat
+een bestand op gedeelde opslag één rij is, hoeveel nodes het ook zien. Uniek op
+`(cluster_id, location_key, volid)`.
 
 ---
 

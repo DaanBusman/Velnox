@@ -34,9 +34,13 @@ guests, storage, networks and Ceph inventoried on a schedule.
 cancellation at safe boundaries, approval gates with an optional four-eyes rule, and a dead worker
 detected and reported rather than left looking busy.
 
-> **This is still a build in progress, not a finished product.** Velnox reads your infrastructure
-> and does not yet change it: the job system is in place, and the only job it runs is a diagnostic
-> one. Update management arrives in Phase 6. Roles cannot be edited, and signing in with Microsoft
+**ISO library** (Phase 5A): installers and cloud images on the Velnox host, fetched from a URL or
+uploaded resumably from a browser, copied onto any cluster's storage with Proxmox checking the
+checksum, and copied back off one over SFTP with pinned host keys.
+
+> **This is still a build in progress, not a finished product.** Velnox reads your infrastructure,
+> and changes it in one way only: it copies ISOs and disk images onto a cluster's storage and removes
+> them there. Unattended VM provisioning arrives in Phase 5B, update management in Phase 6. Roles cannot be edited, and signing in with Microsoft
 > Entra ID is configuration only — the flow itself is not written.
 
 What each phase adds, and what is deliberately missing today:

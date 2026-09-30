@@ -8,7 +8,7 @@ not met its gate.
 
 ---
 
-## Current status: Phase 5 (the job system)
+## Current status: Phase 5A (the ISO library)
 
 Sign-in works. The setup wizard creates the first administrator and then closes permanently. Every
 API endpoint that is not deliberately public requires a session, and the global guard is
@@ -23,9 +23,12 @@ Work that takes time runs as a **job**: a recorded run with steps, a live event 
 at safe boundaries, approval gates with an optional four-eyes rule, and a dead worker detected and
 reported rather than left looking busy. See [Watching, cancelling and approving jobs](working-with-jobs.md).
 
-**Velnox is still read-only against your infrastructure.** The job system is the machinery that
-changes will run on, and the only job type today is a diagnostic one that touches nothing. Nothing
-starts, stops, migrates, updates or reconfigures anything yet.
+The **ISO library** holds installers and cloud images on the Velnox host, and copies them onto a
+cluster's storage and back. See [The ISO library](managing-the-library.md).
+
+**That copy is the only thing Velnox writes to your infrastructure.** It puts an ISO or disk image on
+a storage, and deletes one there when asked, each as a job. Nothing starts, stops, migrates, updates
+or reconfigures a node or a guest yet.
 
 What is **not** there yet, in order of how much it matters:
 
@@ -101,10 +104,42 @@ alarms nobody reads, which is worse than a screen that is honest about only know
 Delivering them needs a notification channel — mail, a webhook — and there is none yet; Phase 5B
 brings the first one.
 
-### Nothing reaches a node over SSH yet
-Everything in Phase 4 goes through the Proxmox API. `credentials` has `SSH_PASSWORD` and `SSH_KEY`
-kinds and `nodes` reserves a host-key fingerprint, because credential rotation (Phase 10) needs a
-shell — but no SSH client ships in this build and no screen offers to store one.
+### The ISO library is proven against the fixture, not yet a real cluster
+Every movement — push, pull, delete, cancel halfway — is exercised by `verify-library.sh` over real
+sockets, against the fixture's Proxmox API and its SFTP server. What that cannot prove is how a real
+Proxmox answers three things: the multipart upload body, uploading into `import` content, and the
+volume path it reports for a file (which the pull then opens over SFTP; the fixture maps it onto its
+own directory). All three follow Proxmox's published API; none has been run against a real node.
+
+### Disk images need a Proxmox with `import` content
+Cloud images go onto a storage as `import` content, which Proxmox VE 8.2 introduced and which a
+storage has to have enabled. A cluster on an older release, or with no storage taking `import`, is
+offered no storage for a disk image. ISOs are unaffected.
+
+### A push whose worker dies is not cleaned up on the node
+A cancelled or failed push removes its half-written file from the node. A push whose **worker dies**
+cannot: the cleanup dies with it. The job is failed as lost, and the library side is tidied by the
+sweeper, but nothing goes back to the node. Whatever Proxmox had received is visible on the
+cluster's **ISOs & images** tab after the next discovery run and can be deleted there.
+
+### The library cannot fetch through a proxy
+A URL fetch connects directly, so that the address checked is the address connected to. An
+installation whose only way out is an HTTP proxy cannot fetch from the internet; uploading from a
+browser works everywhere.
+
+### Nothing checks a fetched file against a published checksum
+A file's SHA-256 is computed on the way in and every later copy is checked against it — but when it
+first arrives, Velnox has nothing to compare it with. The checksum a vendor publishes beside an ISO
+is not asked for yet; compare it with the one the library shows.
+
+### The same file under two names is stored twice
+Files are distinct by name, not by content. Nothing warns that a new file has the checksum of one
+already there.
+
+### SSH is used for exactly one thing
+Copying a file off a node is the only use. `credentials` still has an `SSH_PASSWORD` kind that no
+screen offers — a key is the only way to set SSH up — and credential rotation, which will need more
+than a file read, is Phase 10.
 
 ### Update counts are counts, not classifications
 A node reports how many packages apt would install. Which of them are security updates, which need a
@@ -133,10 +168,10 @@ The third is fixed: a worker killed mid-discovery used to leave the run marked `
 The same reconciler that fails lost jobs now fails a discovery run still running after an hour, with
 the same `job.worker_lost` reason.
 
-### The only job is a diagnostic one
-`system.selftest` takes time, reports on itself and touches nothing. It exists to prove the machinery
-and to let an operator watch it work. The first real job types arrive with the ISO library (Phase 5A)
-and update management (Phase 6).
+### The only jobs are the library's, and a diagnostic one
+The library's five — fetch, check an upload, copy to a cluster, copy from one, delete on one — are the
+first jobs that do real work. `system.selftest` touches nothing and exists to prove the machinery.
+Update management (Phase 6) brings the next.
 
 ### Job history is kept for ever
 Jobs, their events and their output are never deleted. There is no retention policy and no size cap
@@ -154,6 +189,12 @@ Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture
 `tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were
 translated from; `scripts/check-doc-sync.mjs` reports which ones have fallen behind. It warns, it
 does not block.
+
+### Resolved in Phase 5A
+- **Nothing reached a node over SSH.** SSH exists now, per cluster and optional, for SFTP reads only,
+  with each node's host key confirmed before anything is offered to it (ADR-038).
+- **Velnox could not put anything on a cluster.** It copies ISOs and cloud images onto storage, and
+  removes them, as jobs that leave nothing behind when cancelled.
 
 ### Resolved in Phase 5
 - **The dashboard counters were dashes, not zeros**, even for data the product had had since Phase 3.

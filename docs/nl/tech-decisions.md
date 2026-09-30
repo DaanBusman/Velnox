@@ -1015,6 +1015,148 @@ vaker voortgang meldt dan een mens kan lezen, hoort minder vaak te melden.
 
 ---
 
+## ADR-037 — De ISO-bibliotheek, en de eerste keer dat Velnox naar Proxmox schrijft
+
+**Besluit:** De bibliotheek is **één opslag voor de hele installatie**, in een eigen Docker-volume,
+met twee grenzen die worden gecontroleerd voordat er iets wordt geschreven. Elke verplaatsing van een
+bestand — ophalen van een URL, een upload controleren, naar een cluster pushen, terughalen, van een
+cluster verwijderen — is een **job**, en elke job die niet afmaakt laat aan geen van beide kanten iets
+achter. Pushen naar een cluster gaat via Proxmox' eigen upload-aanroep, en dat maakt dit de eerste
+keer dat Velnox iets verandert aan de infrastructuur van een klant.
+
+**Eén opslag, geen tenant.** `library_items` heeft geen tenantkolom en geen relatie met iets dat er
+een heeft. Een ISO van Windows Server is voor elke klant hetzelfde bestand, en een opslag per tenant
+zou het één keer per klant op dezelfde schijf bewaren. De bibliotheek lezen is `library.read`, dat
+elke rol heeft, omdat een tenant er vanaf Fase 5B uit kiest. Toevoegen en verwijderen is
+`library.manage`, alleen voor MSP-rollen: een klant die de bibliotheek vult, vult hem voor iedereen.
+Een bestand *op een cluster* zetten is helemaal geen bibliotheekrecht — het schrijft naar iemands
+infrastructuur, dus het is `clusters.manage` op dat cluster, gecontroleerd zodra het cluster bekend is.
+
+**Twee grenzen, allebei bij naam genoemd als ze weigeren.** `VELNOX_LIBRARY_MAX_GB` is het eigen
+budget van de bibliotheek, inclusief overdrachten die nog lopen. `VELNOX_LIBRARY_MIN_FREE_GB` is dat
+van de schijf: standaard deelt het volume een schijf met PostgreSQL en Redis, en een volle schijf is
+daar geen mislukte upload maar een installatie die stilstaat. Beide worden getoetst aan wat nog
+geschreven moet worden — een hervatte upload heeft al een deel geschreven — waarbij ruimte die aan
+lopende overdrachten is toegezegd eerst wordt afgetrokken, zodat twee uploads die elk passen hem
+samen niet kunnen overvullen. Een weigering zegt welke grens en welke getallen ("de bibliotheek
+bevat 95 van 100 GB"), want *schijf vol* vertelt een beheerder niets over wat hij moet veranderen.
+
+**Twee manieren erin.** Een URL, die de worker ophaalt, en een browserupload, die de API in stukken
+van 32 MiB ontvangt. Stukken zijn de prijs van een upload die een verbroken verbinding overleeft: elk
+stuk zegt waar het begint, een stuk op een andere positie wordt geweigerd met de positie die de
+server heeft, en de browser hervat vanaf daar. De body van een geweigerd stuk wordt toch gelezen
+voordat de weigering wordt verstuurd; vroeg antwoorden en sluiten liet de TCP-stack van de client de
+verbinding resetten en precies het antwoord weggooien dat zei waar verder te gaan.
+`verify-library.sh` ving het, af en toe, wat de slechtste manier is.
+
+**Een URL ophalen is server-side request forgery tot het tegendeel bewezen is.** De worker is het
+proces met een route naar de beheernetwerken van klanten, en het adres wordt gekozen door wie de URL
+toevoegt. Geweigerd: loopback, link-local (cloud-metadata), multicast, carrier-grade NAT, en **elk
+netwerk waar de worker zelf aan hangt**, want zo worden Velnox' eigen database en Redis bereikt.
+Toegestaan: al het andere, privébereiken inbegrepen — de ISO's van een MSP staan heel vaak op een
+interne bestandsserver, en RFC 1918 weigeren zou de functie nutteloos maken op precies de netwerken
+waarvoor hij bedoeld is. De controle gebeurt op het adres dat de verbinding gebruikt: het antwoord
+van de resolver wordt gecontroleerd en dat adres wordt gebeld, dus een naam die de tweede keer iets
+anders antwoordt, wint daar niets mee. Geen redirect van https naar http, hoogstens vijf redirects die
+elk opnieuw worden beoordeeld, geen inloggegevens in de URL, certificaten gecontroleerd zonder
+schakelaar om dat uit te zetten, en de bytegrens gehandhaafd terwijl de bytes binnenkomen. Het adres
+dat wordt getoond en gelogd heeft zijn querystring niet, omdat ondertekende downloadlinks daar hun
+handtekening dragen — en zodra de download voorbij is, geslaagd of niet, geldt dat ook voor het
+opgeslagen adres. Het volledige adres bestaat alleen zolang iets ervan moet ophalen.
+
+**De naam zegt wat het is; de bytes moeten het ermee eens zijn.** Een bestand dat `.iso` heet moet
+een ISO 9660- of UDF-descriptor hebben, een schijfimage met `.qcow2` of `.img` moet beginnen met de
+qcow2-magic, en een verschil laat de controle mislukken met de reden op het item. De SHA-256 wordt
+onderweg naar binnen berekend en is de waarde waartegen elke latere push wordt gecontroleerd.
+
+**Leesbare namen worden afgeleid, en zijn te corrigeren.** `Windows11_25H2_Dutch.iso` leest als
+*Windows 11 Version 25H2 Dutch*, of *… Nederlands* voor wie Velnox in het Nederlands leest, omdat de
+taal als code wordt opgeslagen en in de taal van de lezer wordt genoemd. Een bestandsnaamparser is
+een heuristiek en een verkeerd zelfverzekerd label is erger dan een eerlijk ruw label, dus titel en
+taal kunnen allebei worden overschreven, en elke logregel noemt de echte bestandsnaam.
+
+**De push.** Proxmox' `upload`-aanroep neemt het bestand als multipart-body met een checksum. Velnox
+streamt het vanaf het volume, en begint pas met de body als de TLS-pin is geslaagd — het certificaat
+wordt gecontroleerd voordat er één byte van het bestand vertrekt — en stuurt de SHA-256 mee, zodat
+Proxmox het bestand bij aankomst zelf controleert en een verschil weigert. Vóór het versturen
+bevestigt een **controlestap** dat de opslag aan staat, dat contenttype accepteert, ruimte heeft, en
+nog geen bestand met die naam bevat. Dat laatste maakt het opruimen veilig: nadat bewezen is dat de
+naam vrij was, is alles wat er na een geannuleerde of mislukte push staat het halfafgemaakte werk van
+deze job zelf, en wordt het verwijderd. Een bestand dat er al stond wordt geweigerd, nooit
+overschreven. Na de upload leest een **bevestigingsstap** Proxmox' eigen inhoudslijst en controleert
+de grootte — een upload-aanroep die succes meldt is niet hetzelfde als een bestand dat er staat.
+
+Schijfimages gaan als `import`-content omhoog, het type waaruit Proxmox een schijf leest als er een VM
+van wordt gemaakt, onder een `.qcow2`- of `.raw`-naam, omdat Proxmox aan de extensie bepaalt hoe het
+een import leest.
+
+**Opruimen vóór de eindstatus.** Het opruimen van een job draait voordat de job als afgerond wordt
+vastgelegd, en een opruiming die mislukt is een eigen vastgelegde uitkomst (`job.cleanup_failed`),
+geen succes met een voetnoot. Een worker die sterft kan niet achter zichzelf opruimen, dus draait er
+een **veger** bij het starten van de worker en elk kwartier: items waar een dode job aan schreef
+worden als `job.worker_lost` mislukt, uploads die een dag stil zijn worden verwijderd, bestanden
+zonder rij worden verwijderd, en rijen waarvan het bestand weg is worden als `library.file_missing`
+mislukt, zodat het scherm ze niet meer aanbiedt.
+
+**Overwogen alternatieven.** Een bibliotheek per tenant (afgewezen: hetzelfde bestand één keer per
+klant opgeslagen, en niets wat een tenant nodig heeft dat `library.read` niet geeft). Een URL direct
+naar het cluster streamen zonder kopie te bewaren (afgewezen: elke push zou opnieuw downloaden, en er
+zou niets gecontroleerd zijn voordat het bij een klant aankwam). Pushen via SSH (afgewezen: de
+upload-aanroep van de API bestaat, controleert de checksum zelf, en heeft niets op de node nodig wat
+Velnox nog niet heeft).
+
+**Kosten.** De bibliotheek is een tweede groot ding op de Velnox-host om te back-uppen, of bewust
+niet. De bestanden zijn vervangbaar — ze kwamen ergens vandaan — dus de back-uprichtlijn behandelt
+het volume als optioneel, en de rijen als deel van de database.
+
+---
+
+## ADR-038 — SSH op een cluster: optioneel, alleen SFTP, hostsleutels vastgepind
+
+**Besluit:** Een bestand *van* een cluster kopiëren gebruikt SSH, per cluster ingesteld en uit tot
+iemand het instelt. De worker opent **SFTP en verder niets** — er is geen codepad dat een commando
+uitvoert. De hostsleutel van elke node wordt gelezen, getoond en bevestigd voordat er inloggegevens
+worden aangeboden, precies zoals een TLS-vingerafdruk bij het toevoegen van een cluster (ADR-031).
+
+**Waarom überhaupt SSH.** De API van Proxmox kan een bestand op een opslag zetten en er een
+verwijderen, en heeft geen aanroep om er een terug te lezen; de enige download die hij aanbiedt is
+file-restore uit Proxmox Backup Server. Een ISO van een cluster naar de bibliotheek halen heeft dus
+een andere weg naar binnen nodig. De eigenaar koos SSH, per cluster en optioneel, boven de
+alternatieven hieronder.
+
+**Ingesteld zoals een cluster wordt toegevoegd.** Een **probe** maakt verbinding met elke online
+node, legt de hostsleutel vast die hij toont, en beëindigt de handshake vóór de gebruikersauthenticatie
+— er gaat nooit een gebruikersnaam of sleutel naar een host die niemand heeft bevestigd. De beheerder
+vergelijkt de vingerafdrukken met de nodes (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) en
+bevestigt. **Configureren** slaat daarna de privésleutel versleuteld op in de secret store, pint de
+sleutel van elke node vast, en bewijst dat de sleutel SFTP opent op elke vastgepinde node. Weigert
+een node, dan wordt alles wat deze aanroep opsloeg er weer uitgehaald en blijft de vorige instelling,
+als die er was, zoals hij was. De privésleutel wordt door geen enkel endpoint teruggegeven.
+
+**Een andere sleutel weigert de verbinding voordat de inloggegevens worden aangeboden**, dezelfde
+regel als bij de TLS-pin. Een node die opnieuw is geïnstalleerd moet opnieuw worden bevestigd, bewust.
+
+**Waar het bestand staat.** Velnox raadt geen paden op een node. Het vraagt de API van Proxmox naar
+het pad van het volume en gebruikt het alleen als het absoluut is, geen `..` bevat en eindigt op de
+verwachte bestandsnaam — het pad komt van de node, en wordt voor precies één leesactie gebruikt.
+
+**Wat het account nodig heeft.** Leestoegang tot de opslagmappen, en verder niets. Een beheerder kan
+het een login geven die alleen SFTP mag (`ForceCommand internal-sftp`) zonder iets te verliezen wat
+Velnox gebruikt; de handleiding raadt dat aan.
+
+**Overwogen alternatieven.** Proxmox' `download-url` omgekeerd gebruiken (bestaat niet). Een omweg
+via back-up en restore in PBS (zwaar, en niet elk cluster heeft PBS). Exec over SSH met `cat` of
+`rsync` (afgewezen: dat vraagt een shell, en een shell is iets veel groters om een dienst te geven dan
+een leesactie op een bestand). Een agent per node (afgewezen: iets om te installeren en bij te houden
+op elke node van elke klant, voor één functie).
+
+**Kosten.** Nog een set inloggegevens per cluster, en nog een set vingerafdrukken om te bevestigen en
+na een herinstallatie opnieuw te bevestigen. SSH is ook de eerste verbinding met een node die niet de
+Proxmox-API is, waar de rotatie van inloggegevens in Fase 10 op zal voortbouwen — de reden dat
+`nodes` sinds Fase 4 een kolom voor de hostsleutel had gereserveerd.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

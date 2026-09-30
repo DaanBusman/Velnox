@@ -26,7 +26,8 @@ serverinstallatie, met verder niets dat op poort 80 en 443 luistert.
 
 De schijf gaat vooral op aan de container-images (~2,3 GB) en, als je op de host bouwt, aan de Docker
 build cache, die ruim boven de 10 GB uitkomt. `sudo docker builder prune -f` ruimt die op. Daarna groeit de
-schijf mee met auditrecords, joblogs en inventarishistorie.
+schijf mee met auditrecords, joblogs en inventarishistorie — en met de ISO-bibliotheek, meestal de
+grootste van allemaal. Zie [De schijf van de ISO-bibliotheek](#de-schijf-van-de-iso-bibliotheek).
 
 ### Poorten
 
@@ -374,6 +375,30 @@ doet geen kwaad en kost ongeveer een minuut.
 
 ---
 
+### De schijf van de ISO-bibliotheek
+
+ISO's en cloud images staan in een eigen Docker-volume, `velnox_library`. Een named volume heeft geen
+quotum, dus Velnox handhaaft zelf twee grenzen, ingesteld in `.env`:
+
+| Instelling | Standaard | Betekenis |
+|---|---|---|
+| `VELNOX_LIBRARY_MAX_GB` | 100 | Het meeste dat de bibliotheek mag bevatten, inclusief overdrachten die nog lopen. |
+| `VELNOX_LIBRARY_MIN_FREE_GB` | 10 | Vrije schijfruimte die na een overdracht over moet blijven. |
+
+De grens die het eerst wordt bereikt weigert de overdracht, en de weigering noemt de grens en de
+getallen. De ondergrens is belangrijker dan het plafond: het volume staat op dezelfde schijf als
+PostgreSQL tenzij je het verplaatst, en een volle schijf legt de hele installatie stil, niet alleen de
+upload. Op de evaluatiegrootte van 40 GB loop je eerst tegen de ondergrens aan, en daar is hij voor.
+
+Verander een van beide waarden en voer dan
+`sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env up -d` uit, zodat de API en de
+worker hem lezen. Het plafond verlagen tot onder wat de bibliotheek al bevat verwijdert niets; het
+weigert alleen nieuwe bestanden tot er genoeg zijn verwijderd.
+
+Wil je de bibliotheek een eigen schijf geven, koppel die dan vóór de eerste start op de plek van het
+volume, of verplaats de inhoud van het volume daarheen terwijl de stack gestopt is. Velnox meet de
+vrije ruimte op het bestandssysteem waar de bibliotheek op staat.
+
 ### Back-up
 
 Twee dingen, en één daarvan zit niet in de database:
@@ -393,6 +418,17 @@ sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env 
 ```
 
 Test het herstel voordat je erop vertrouwt.
+
+**De ISO-bibliotheek zit niet in die back-up,** en hoeft dat meestal ook niet: elk bestand erin kwam
+ergens vandaan en kan opnieuw worden opgehaald of geüpload. Wat de bibliotheek bevat staat in de
+database, dus een herstelde database zonder het volume toont bestanden die er niet zijn; de worker
+merkt dat binnen een kwartier en zet ze op *Mislukt*, met als reden dat het bestand weg is, en ze
+verwijderen op het scherm **ISO-bibliotheek** ruimt ze op. Is opnieuw ophalen voor jou duur, back-up
+het volume dan ook:
+
+```bash
+sudo docker run --rm -v velnox_library:/library:ro -v /var/backups:/backup alpine tar -C /library -cf /backup/velnox-library.tar .
+```
 
 ### Oude back-ups verwijderen
 
@@ -463,6 +499,10 @@ sudo sh -c 'du -sh /var/lib/docker/containers/* 2>/dev/null | sort -h | tail -5'
 ls -lh /var/backups/velnox-*.dump
 ```
 
+```bash
+sudo du -sh /var/lib/docker/volumes/velnox_library
+```
+
 De derde toont de containerlogs, één map per container, grootste als laatste. Sinds 0.5.5 bewaart
 elke container hooguit vijf bestanden van 10 MB — ongeveer 50 MB, of 350 MB voor de hele stack — en
 valt de oudste weg zodra er een nieuwe begint. Vóór 0.5.5 was er helemaal geen limiet, en op een host
@@ -509,10 +549,15 @@ sudo apt-get clean
 
 **Oude databaseback-ups** — zie [Oude back-ups verwijderen](#oude-back-ups-verwijderen).
 
+**Bestanden in de ISO-bibliotheek** — verwijder ze op het scherm **ISO-bibliotheek**, niet op de host.
+Het scherm verwijdert het bestand en de registratie samen; met de hand verwijderen onder
+`/var/lib/docker/volumes/velnox_library` laat registraties achter die nergens naar wijzen, en een
+bestand waarvan de registratie weg is, wordt door de worker toch verwijderd.
+
 ### Nooit
 
 Deze lijken op hetzelfde soort opruimen, en zijn het niet. Ze verwijderen Docker-volumes, en `pgdata`
-is een volume: de hele database gaat mee. Hetzelfde geldt voor het met de hand verwijderen van iets
+is een volume: de hele database gaat mee — en de ISO-bibliotheek ook, want dat is ook een volume. Hetzelfde geldt voor het met de hand verwijderen van iets
 onder `/var/lib/docker/volumes`.
 
 ```

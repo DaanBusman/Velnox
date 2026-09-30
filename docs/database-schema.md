@@ -209,6 +209,10 @@ HEALTH_ERR|UNKNOWN), ceph_health_detail jsonb, ceph_pgs_total, ceph_pgs_clean, c
 ceph_osds_in, ceph_osds_total, ceph_mon_quorum_size, ceph_mon_quorum_expected, ceph_flags text[],
 ceph_versions_homogeneous bool`
 
+SSH columns (Phase 5A, ADR-038): `ssh_credential_id, ssh_username, ssh_port (default 22),
+ssh_verified_at`. Both of the first two or neither — `clusters_ssh_complete` — because half a
+configuration fails every copy with a confusing error.
+
 `ceph_flags` matters operationally: a cluster left with `noout` set after an aborted maintenance is
 a silent time bomb, so it is inventoried, surfaced in the UI and alerted on.
 
@@ -227,6 +231,10 @@ updates, upgrade plans, guards — uniform instead of branching on "is this stan
 | flags | `maintenance_mode, managed (bool), notes` |
 
 `tls_verify_mode` is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. There is no `INSECURE` value.
+
+`ssh_host_key_fingerprint` and `ssh_host_key_type`, reserved since Phase 4, are filled in Phase 5A:
+the host key an operator confirmed, in OpenSSH's `SHA256:` form. A node without one is never
+connected to over SSH.
 
 ### `ceph_daemons`
 `id, tenant_id, site_id, cluster_id, node_id, kind (MON|MGR|OSD|MDS|RGW), daemon_id (e.g. "osd.7",
@@ -297,7 +305,7 @@ Built in Phase 5 (migration `20260927090000_job_system`). ADR-035 and ADR-036 ex
 ### `jobs`
 `id, tenant_id, type, playbook_version, status, priority, created_by_user_id, target_kind,
 target_ids uuid[], params jsonb (never secrets), concurrency_key, progress_pct, current_phase,
-current_step, queued_at, started_at, finished_at, error_code, error_message, result_summary jsonb,
+current_step, queued_at, started_at, finished_at, error_code, error_params jsonb, error_message, result_summary jsonb,
 parent_job_id, cancel_requested_at, cancel_requested_by, worker_id, lease_until, event_seq,
 updated_at`
 
@@ -345,6 +353,53 @@ caller supplied: an approval is what a tenant-scoped grant is checked against.
 
 Steps, events and logs carry no tenant column and are scoped through their job; see the amendment to
 ADR-030.
+
+`error_params` (Phase 5A) holds the values an error's message is written around — *the library holds
+95 of 100 GB* — so the interface can say it in the reader's language instead of showing the worker's
+English.
+
+---
+
+## 6A. ISO library
+
+Built in Phase 5A (migration `20260929090000_iso_library`). ADR-037 explains the shape.
+
+### `library_items`
+`id, kind (ISO|DISK_IMAGE), state (RECEIVING|VERIFYING|READY|FAILED), source (UPLOAD|URL|CLUSTER),
+filename, size_bytes, received_bytes, sha256, disk_format (qcow2|raw), title_override,
+language_override, source_url, source_cluster_id, source_cluster_name, source_volid, job_id,
+created_by_id, created_by_label, error_code, error_params jsonb, error_detail, created_at,
+updated_at, ready_at`
+
+**No tenant.** The library is one store for the installation; see ADR-037. The file itself is at
+`items/<id>` in the library volume, or `partial/<id>` until it has been checked — the name is never
+part of the path, so a filename can never reach outside the volume.
+
+Constraints that carry weight:
+
+- `library_items_filename_live` — one live item per filename, **case-insensitively**, because some
+  storages Proxmox runs on are not case-sensitive. Failed items are excluded, so a failed fetch does
+  not block a second attempt.
+- `library_items_ready_is_complete` — `READY` requires a checksum, a size, and every byte received.
+  A ready row without them would be a claim nothing backs.
+- `library_items_sha256_hex`, `library_items_sizes_sane`, and `library_items_disk_format` (a format
+  only on a disk image).
+
+`source_url` keeps its query string only while the fetch runs; afterwards it is stored without it, because a signed download link's token is there. `source_cluster_name` and `created_by_label`
+are copies, so the record reads correctly after the cluster or the account is gone.
+
+### `storage_contents`
+`id, tenant_id, cluster_id, node_name, storage, shared, location_key, volid, content (iso|import),
+format, size_bytes, file_created_at, last_seen_at, updated_at`
+
+The ISOs and importable disk images on a cluster's storage, as discovery last saw them. It describes
+somebody's cluster, so it carries the cluster's tenant — and the trigger
+`storage_contents_tenant_matches_cluster` refuses a row whose tenant is not its cluster's, because
+the copy is what the tenancy filter reads and a mismatch would show one customer another's files.
+
+`location_key` is the storage name for a shared storage and `node/storage` for a local one, so a
+shared storage's file is one row however many nodes see it. Unique on
+`(cluster_id, location_key, volid)`.
 
 ---
 

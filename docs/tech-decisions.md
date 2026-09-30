@@ -963,6 +963,141 @@ it should report less often.
 
 ---
 
+## ADR-037 — The ISO library, and the first time Velnox writes to Proxmox
+
+**Decision:** The library is **one store for the whole installation**, in its own Docker volume, with
+two limits checked before anything is written. Every movement of a file — fetching it from a URL,
+checking an upload, pushing it to a cluster, pulling it back, deleting it from a cluster — is a
+**job**, and every job that does not finish leaves nothing behind on either side. Pushing to a
+cluster goes through Proxmox's own upload call, which makes this the first time Velnox changes
+anything on a customer's infrastructure.
+
+**One store, no tenant.** `library_items` has no tenant column and no relation to anything that has
+one. An ISO of Windows Server is the same file for every customer, and a store per tenant would hold
+it once per customer on the same disk. Reading the library is `library.read`, which every role holds,
+because from Phase 5B a tenant chooses from it. Adding and removing is `library.manage`, held by MSP
+roles only: a customer filling the library fills it for everyone. Putting a file *on a cluster* is
+not a library permission at all — it writes to somebody's infrastructure, so it is `clusters.manage`
+on that cluster, checked once the cluster is known.
+
+**Two limits, both named when they refuse.** `VELNOX_LIBRARY_MAX_GB` is the library's own budget,
+counting transfers still in progress. `VELNOX_LIBRARY_MIN_FREE_GB` is the disk's: by default the
+volume shares a disk with PostgreSQL and Redis, and a full disk there is not a failed upload but an
+installation that has stopped. Both are checked against what is still to be written — a resumed
+upload has already written part — with space promised to transfers already under way subtracted
+first, so two uploads that each fit cannot together overfill it. A refusal says which limit and the
+numbers ("the library holds 95 of 100 GB"), because *disk full* tells an operator nothing about what
+to change.
+
+**Two ways in.** A URL, which the worker fetches, and a browser upload, which the API receives in
+32 MiB chunks. Chunks are the price of an upload that survives a dropped connection: each chunk says
+where it starts, a chunk at any other offset is refused with the offset the server has, and the
+browser resumes from there. A refused chunk's body is still read before the refusal is sent; answering
+early and closing let the client's TCP stack reset the connection and throw away the very answer that
+told it where to resume. `verify-library.sh` caught it, intermittently, which is the worst way.
+
+**A URL fetch is server-side request forgery unless proven otherwise.** The worker is the process
+with a route into customers' management networks, and the address is chosen by whoever adds the URL.
+Refused: loopback, link-local (cloud metadata), multicast, carrier-grade NAT, and **every network the
+worker is itself attached to**, which is how Velnox's own database and Redis are reached. Allowed:
+everything else, private ranges included — an MSP's ISOs very often sit on an internal file server,
+and refusing RFC 1918 would make the feature useless on exactly the networks it is for. The check is
+made on the address the connection will use: the resolver's answer is checked and that address is
+dialled, so a name that answers differently a second time gains nothing. No https-to-http redirect,
+at most five redirects each judged afresh, no credentials in the URL, certificates verified with no
+switch to turn that off, and the byte limit enforced while bytes arrive. The address shown and logged
+has its query string removed, because signed download links carry their signature there — and once
+the download is over, successful or not, so does the stored one. The full address exists only for as
+long as something needs to fetch from it.
+
+**The name says what it is; the bytes have to agree.** A file named `.iso` must carry an ISO 9660 or
+UDF descriptor, a disk image named `.qcow2` or `.img` must start with the qcow2 magic, and a mismatch
+fails the check with the reason on the item. The SHA-256 is computed on the way in and is the value
+every later push is checked against.
+
+**Friendly names are parsed, and correctable.** `Windows11_25H2_Dutch.iso` reads as *Windows 11
+Version 25H2 Dutch*, or *… Nederlands* for a viewer reading Velnox in Dutch, because the language is
+stored as a tag and named in the viewer's language. A filename parser is a heuristic and a wrong
+confident label is worse than an honest raw one, so both the title and the language can be
+overridden, and every log line names the real filename.
+
+**The push.** Proxmox's `upload` call takes the file as a multipart body with a checksum. Velnox
+streams it from the volume, starting the body only once the TLS pin has passed — the certificate is
+checked before a single byte of the file leaves — and sends the SHA-256 so Proxmox verifies the file
+on arrival and refuses a mismatch itself. Before sending, a **check** step confirms the storage is
+enabled, takes that content type, has room, and does not already hold a file of that name. That last
+point is what makes cleanup safe: having proved the name was free, anything at it after a cancelled
+or failed push is this job's own half-finished work, and is deleted. A file that was already there is
+refused, never overwritten. After the upload, a **confirm** step reads Proxmox's own content list and
+checks the size — an upload call returning success is not the same as the file being there.
+
+Disk images go up as `import` content, the type Proxmox reads a disk from when a VM is created from
+it, under a `.qcow2` or `.raw` name because Proxmox decides how to read an import by its extension.
+
+**Cleanup before the final state.** A job's cleanup runs before the job is recorded as finished, and
+a cleanup that fails is its own recorded outcome (`job.cleanup_failed`), not a success with a
+footnote. A worker that dies cannot clean up after itself, so a **sweeper** runs at worker start and
+every fifteen minutes: items a dead job was writing are failed as `job.worker_lost`, uploads silent
+for a day are removed, files with no row are removed, and rows whose file has gone are failed as
+`library.file_missing` so the screen stops offering them.
+
+**Alternatives considered.** A library per tenant (rejected: the same file stored once per customer,
+and nothing a tenant needs that `library.read` does not give). Streaming a URL straight to the
+cluster without keeping a copy (rejected: every push would download again, and nothing would have
+been checked before it reached a customer). Pushing over SSH (rejected: the API's upload call exists,
+verifies the checksum itself, and needs nothing on the node that Velnox does not already have).
+
+**Cost.** The library is a second large thing on the Velnox host to back up, or deliberately not to.
+Its files are replaceable — they came from somewhere — so the backup guidance treats the volume as
+optional, and the rows as part of the database.
+
+---
+
+## ADR-038 — SSH on a cluster: optional, SFTP only, host keys pinned
+
+**Decision:** Copying a file *off* a cluster uses SSH, configured per cluster and off until someone
+sets it up. The worker opens **SFTP and nothing else** — there is no code path that runs a command.
+Each node's host key is read, shown and confirmed before any credential is offered, exactly as a TLS
+fingerprint is when a cluster is added (ADR-031).
+
+**Why SSH at all.** Proxmox's API can put a file on a storage and can delete one, and has no call to
+read one back; the only download it offers is file-restore from Proxmox Backup Server. Pulling an ISO
+from a cluster into the library therefore needs another way in. The owner chose SSH, per cluster and
+optional, over the alternatives below.
+
+**Set up the way a cluster is added.** A **probe** connects to every online node, records the host
+key it presents, and ends the handshake before user authentication — no username and no key are ever
+sent to a host nobody has confirmed. The operator compares the fingerprints against the nodes
+(`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) and confirms. **Configure** then stores the
+private key encrypted in the secret store, pins each node's key, and proves the key opens SFTP on
+every pinned node. If any node refuses, everything this call stored is taken back out and the
+previous set-up, if there was one, is left as it was. The private key is never returned by any
+endpoint.
+
+**A different key refuses the connection before the credential is offered**, the same rule as the
+TLS pin. A node that has been reinstalled has to be confirmed again, deliberately.
+
+**Where the file is.** Velnox does not guess paths on a node. It asks Proxmox's API for the volume's
+path and uses it only if it is absolute, contains no `..`, and ends in the expected filename — the
+path comes from the node, and is used for exactly one read.
+
+**What the account needs.** Read access to the storage directories, and nothing else. An operator can
+give it an SFTP-only login (`ForceCommand internal-sftp`) and lose nothing Velnox uses; the guide
+recommends it.
+
+**Alternatives considered.** Streaming through Proxmox's `download-url` in reverse (does not exist).
+A backup-and-restore round trip through PBS (heavy, and not every cluster has PBS). Exec over SSH
+with `cat` or `rsync` (rejected: it needs a shell, and a shell is a much larger thing to hand a
+service than a file read). A per-node agent (rejected: something to install and keep updated on
+every customer node, for one feature).
+
+**Cost.** Another credential per cluster, and another set of fingerprints to confirm and re-confirm
+after a reinstall. SSH is also the first connection to a node that is not the Proxmox API, which
+Phase 10's credential rotation will build on — the reason `nodes` had reserved a host-key column
+since Phase 4.
+
+---
+
 ## Version targets
 
 | Component | Version |

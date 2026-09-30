@@ -130,6 +130,7 @@ Working today:
 | **Dashboard** | Counts of what you can see, and prompts for what is worth doing next |
 | **Tenants**, **Sites** | Your customers and their locations — see [Organising your fleet](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtual machines**, **Containers**, **Storage**, **Networks** | The Proxmox inventory, read on a schedule — see [Adding clusters and reading the inventory](managing-infrastructure.md) |
+| **ISO library** | Installers and cloud images on the Velnox host, copied onto any cluster — see [The ISO library](managing-the-library.md) |
 | **Alerts** | Conditions computed from the inventory: offline nodes, stale reads, Ceph flags |
 | **Jobs** | Work in progress and its history, live — see [Watching, cancelling and approving jobs](working-with-jobs.md) |
 | **Users** | Accounts, roles, enabling and disabling — see [Managing users and access](managing-access.md) |
@@ -216,12 +217,12 @@ cannot be a release apart. If a page ever shows a version differing from the one
 
 Being direct about this is more useful than a feature list.
 
-**Velnox reads your Proxmox infrastructure and does not yet change it.** Clusters, nodes, guests,
-storage, networks and Ceph are inventoried, but nothing is started, stopped, migrated, updated or
-reconfigured. The job system that changes will run on is in place — with live progress,
-cancellation, approvals and loss detection — and the only job it runs today is a diagnostic one that
-touches nothing. Update management arrives in Phase 6, and the ISO library and unattended VM
-provisioning in Phases 5A and 5B.
+**Velnox reads your Proxmox infrastructure, and changes it in one way only: it copies ISOs and disk
+images onto a cluster's storage, and removes them there.** Clusters, nodes, guests, storage, networks
+and Ceph are inventoried, but nothing is started, stopped, migrated, updated or reconfigured. The job
+system that changes will run on is in place — with live progress, cancellation, approvals and loss
+detection — and the ISO library is the first thing that runs on it. Unattended VM provisioning
+arrives in Phase 5B, and update management in Phase 6.
 
 [Roadmap](roadmap.md) lists what each phase adds; [Known gaps](known-gaps.md) is the honest list of
 what is deliberately missing or unfinished right now.
@@ -234,6 +235,7 @@ what is deliberately missing or unfinished right now.
 - [Roles and permissions](permissions.md) — what each role grants, in full
 - [Organising your fleet](organising-your-fleet.md) — tenants, sites and scoping a grant
 - [Adding clusters](managing-infrastructure.md) — putting Proxmox under management, and the inventory
+- [The ISO library](managing-the-library.md) — ISOs and cloud images, and copying them onto clusters
 - [Working with jobs](working-with-jobs.md) — watching, cancelling and approving the work Velnox does
 - [Deployment](deployment.md) — requirements, upgrades, backup, diagnosis
 - [Architecture](architecture.md) — how the system is put together, and why
