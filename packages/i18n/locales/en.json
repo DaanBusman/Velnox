@@ -311,7 +311,8 @@
     "network": "Could not reach the server.",
     "node": {
       "fingerprint_mismatch": "The TLS certificate of {node} does not match the pinned fingerprint. The connection was refused.",
-      "host_key_mismatch": "The SSH host key of {node} does not match the pinned key. The connection was refused."
+      "host_key_mismatch": "The SSH host key of {node} does not match the pinned key. The connection was refused.",
+      "offline": "Node {node} is not online."
     },
     "not_found": "Not found.",
     "setup": {
@@ -352,6 +353,29 @@
       "upload_abandoned": "This upload was never finished, and was removed after a day.",
       "resume_mismatch": "That is not the file this upload started with. Choose the same file — same name, same size — to continue it.",
       "upload_paused": "The upload was paused. Choose the same file again to continue from where it stopped."
+    },
+    "autoconfig": {
+      "name_taken": "This tenant already has a template called {name}.",
+      "incomplete": "The template is missing stored secrets it needs: {missing}. Open the template and set them.",
+      "not_offered": "That template is not offered to this tenant.",
+      "product_key_invalid": "A product key is five groups of five letters and digits, separated by dashes.",
+      "secret_unexpected": "The template settings do not use a secret called {key}.",
+      "media_missing": "{filename} is not ready in the ISO library. Add it there first.",
+      "edition_not_in_iso": "{filename} has no edition called “{edition}”. Choose one from the list read from the ISO.",
+      "media_wrong_kind": "{filename} is the wrong kind of file for this template: an installer must be an ISO, a Linux template needs a disk image."
+    },
+    "provisioning": {
+      "hostname_invalid": "That hostname cannot be used: letters, digits and dashes, not only digits, at most {max} characters, without a domain.",
+      "storage_unsuitable": "Storage {storage} on {node} does not take {content} content, or is not active.",
+      "bridge_unknown": "Node {node} has no bridge called {bridge}.",
+      "hostname_taken": "A VM on this cluster is already called {hostname} (VMID {vmid}).",
+      "install_timeout": "The installation did not report back within {minutes} minutes. The VM was removed.",
+      "cleanup_failed": "The installation failed and VM {vmid} could not be removed. Remove it in Proxmox.",
+      "credentials_gone": "The passwords of this VM are no longer kept in Velnox."
+    },
+    "mail": {
+      "not_configured": "Outgoing mail is not set up, so nobody can be notified. An administrator sets it up under Server management.",
+      "send_failed": "The mail was not sent: {reason}"
     }
   },
   "inventory": {
@@ -501,7 +525,8 @@
       "verify": "Check upload",
       "push": "Copy to cluster",
       "pull": "Copy from cluster",
-      "cluster_delete": "Delete from cluster"
+      "cluster_delete": "Delete from cluster",
+      "provision": "Build VM"
     }
   },
   "layout": {

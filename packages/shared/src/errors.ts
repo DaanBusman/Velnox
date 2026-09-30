@@ -43,6 +43,8 @@ export const ERROR_CODES = {
   clusterAlreadyDegraded: 'cluster.already_degraded',
 
   nodeFingerprintMismatch: 'node.fingerprint_mismatch',
+  /** The node a job needs is not online in the cluster. */
+  nodeOffline: 'node.offline',
   nodeHostKeyMismatch: 'node.host_key_mismatch',
 
   // SSH, used only to copy files off a node. A host key that differs from the
@@ -86,6 +88,39 @@ export const ERROR_CODES = {
   libraryFileMissing: 'library.file_missing',
   /** An upload nobody finished, removed after a day of silence. */
   libraryUploadAbandoned: 'library.upload_abandoned',
+
+  /** Two templates of one tenant may not share a name. */
+  autoconfigNameTaken: 'autoconfig.name_taken',
+  /** The template's settings call for secrets that are not stored. */
+  autoconfigIncomplete: 'autoconfig.incomplete',
+  /** A template another tenant owns, or an MSP template kept private. */
+  autoconfigNotOffered: 'autoconfig.not_offered',
+  /** A product key that is not five groups of five. */
+  autoconfigProductKeyInvalid: 'autoconfig.product_key_invalid',
+  /** A secret offered for a key the settings do not call for. */
+  autoconfigSecretUnexpected: 'autoconfig.secret_unexpected',
+  /** A library file the template names is not in the library, or not ready. */
+  autoconfigMediaMissing: 'autoconfig.media_missing',
+  /** The edition the template names is not in that ISO's image list. */
+  autoconfigEditionNotInIso: 'autoconfig.edition_not_in_iso',
+  /** The library file is the wrong kind for what the template uses it as. */
+  autoconfigMediaWrongKind: 'autoconfig.media_wrong_kind',
+
+  provisioningHostnameInvalid: 'provisioning.hostname_invalid',
+  /** The storage cannot hold the VM's disks, or the installer. */
+  provisioningStorageUnsuitable: 'provisioning.storage_unsuitable',
+  provisioningBridgeUnknown: 'provisioning.bridge_unknown',
+  /** A VM on the cluster already carries that name. */
+  provisioningHostnameTaken: 'provisioning.hostname_taken',
+  /** The install did not report back within the time allowed. */
+  provisioningInstallTimeout: 'provisioning.install_timeout',
+  /** The VM was created and could not be removed after a failure. Someone should look. */
+  provisioningCleanupFailed: 'provisioning.cleanup_failed',
+  /** Revealing credentials that have been dropped, or were never kept. */
+  provisioningCredentialsGone: 'provisioning.credentials_gone',
+  /** Asking to be notified when outgoing mail is not set up. */
+  mailNotConfigured: 'mail.not_configured',
+  mailSendFailed: 'mail.send_failed',
 
   cephNotHealthy: 'ceph.not_healthy',
   cephPgsNotClean: 'ceph.pgs_not_clean',

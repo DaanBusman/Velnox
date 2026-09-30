@@ -59,6 +59,11 @@ export const JOB_NAMES = {
   inventorySshProbe: 'inventory.ssh_probe',
   /** Prove the stored SSH key works against the pinned host keys. */
   inventorySshVerify: 'inventory.ssh_verify',
+  /**
+   * Send one test mail with the stored settings. The worker sends, because the
+   * worker is what may read the mail server's password.
+   */
+  mailTest: 'mail.test',
 } as const;
 
 /** Redis keys owned by the worker. The health check reads the heartbeat. */

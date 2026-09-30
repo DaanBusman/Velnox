@@ -49,6 +49,15 @@ export const PERMISSIONS = {
   nodesRead: 'nodes.read',
   nodesManage: 'nodes.manage',
   workloadsRead: 'workloads.read',
+  /**
+   * Create a VM from an Autoconfig template (Phase 5B).
+   *
+   * Its own permission rather than `clusters.manage`, because it is the one
+   * change an MSP most wants to hand a customer — "build your own VMs from our
+   * templates" — without also handing them removal of the cluster or its
+   * credentials. It is checked on the cluster the VM goes on.
+   */
+  workloadsProvision: 'workloads.provision',
   storageRead: 'storage.read',
   networksRead: 'networks.read',
 
@@ -65,6 +74,17 @@ export const PERMISSIONS = {
    */
   libraryRead: 'library.read',
   libraryManage: 'library.manage',
+
+  /**
+   * Autoconfig templates (Phase 5B).
+   *
+   * `read` sees the templates a tenant may build from: its own, and the MSP's
+   * shared ones. `manage` creates, changes, clones and deletes them — MSP
+   * templates with a grant on the MSP, a tenant's own with a grant on the
+   * tenant. A template's passwords are never readable through either.
+   */
+  autoconfigRead: 'autoconfig.read',
+  autoconfigManage: 'autoconfig.manage',
 
   // Change management
   updatesRead: 'updates.read',
@@ -133,6 +153,9 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = Object.freeze([
   // installed on customers' machines, and adding to it makes the worker fetch
   // from an address the requester chose.
   PERMISSIONS.libraryManage,
+  // A template decides the passwords and the software on every VM built from it.
+  PERMISSIONS.autoconfigManage,
+  PERMISSIONS.workloadsProvision,
   PERMISSIONS.updatesExecute,
   PERMISSIONS.upgradesExecute,
   PERMISSIONS.automationManage,
@@ -296,7 +319,9 @@ const ENGINEER_PERMISSIONS: readonly Permission[] = [
   P.usersResetMfa,
   P.clustersManage,
   P.nodesManage,
+  P.workloadsProvision,
   P.libraryManage,
+  P.autoconfigManage,
   P.updatesExecute,
   P.upgradesExecute,
   P.credentialsManage,
@@ -355,6 +380,8 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
       P.rolesManage,
       P.clustersManage,
       P.nodesManage,
+      P.workloadsProvision,
+      P.autoconfigManage,
       P.updatesExecute,
       P.upgradesExecute,
       P.credentialsManage,
@@ -375,6 +402,7 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
       ...READ_PERMISSIONS.filter((p) => p !== P.auditRead),
       P.clustersManage,
       P.nodesManage,
+      P.workloadsProvision,
       P.updatesExecute,
       P.jobsCancel,
       P.alertsManage,

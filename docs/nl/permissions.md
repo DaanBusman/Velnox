@@ -61,13 +61,13 @@ in je eigen organisatie.
 
 | Rol | Sleutel | Alleen MSP | Kent toe | Voor |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | ja | 38 van 38 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
-| MSP Administrator | `msp_administrator` | ja | 36 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, en niet de tweede factor van een collega. |
-| MSP Engineer | `msp_engineer` | ja | 30 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
-| MSP Read Only | `msp_read_only` | ja | 19 | Ziet alles over alle tenants, wijzigt niets. |
-| Tenant Administrator | `tenant_administrator` | nee | 33 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
-| Tenant Operator | `tenant_operator` | nee | 23 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
-| Tenant Read Only | `tenant_read_only` | nee | 18 | Ziet de resources van één tenant, wijzigt niets. |
+| MSP Super Administrator | `msp_super_administrator` | ja | 41 van 41 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
+| MSP Administrator | `msp_administrator` | ja | 39 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, en niet de tweede factor van een collega. |
+| MSP Engineer | `msp_engineer` | ja | 33 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
+| MSP Read Only | `msp_read_only` | ja | 20 | Ziet alles over alle tenants, wijzigt niets. |
+| Tenant Administrator | `tenant_administrator` | nee | 36 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
+| Tenant Operator | `tenant_operator` | nee | 25 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
+| Tenant Read Only | `tenant_read_only` | nee | 19 | Ziet de resources van één tenant, wijzigt niets. |
 
 De twee verschillen die mensen verrassen:
 
@@ -102,10 +102,13 @@ Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only
 | `nodes.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `nodes.manage` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `workloads.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `workloads.provision` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `storage.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `networks.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `library.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `library.manage` | ✓ | ✓ | ✓ | · | · | · | · |
+| `autoconfig.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `autoconfig.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `updates.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `updates.execute` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `upgrades.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -154,10 +157,13 @@ vandaag toekenbaar en bewaakt nog niets.
 | `nodes.read` | Nodes, hun versies en hun toestand zien | 4 |
 | `nodes.manage` | Nodes toevoegen, configureren en verwijderen | 4 |
 | `workloads.read` | Virtuele machines en containers zien | 4 |
+| `workloads.provision` | Een VM op een cluster maken vanuit een Autoconfig-template, en de installatie volgen. Gecontroleerd op het cluster waar de VM komt | 5B |
 | `storage.read` | Opslagpools en hun gebruik zien | 4 |
 | `networks.read` | Bridges, VLAN's en netwerkconfiguratie zien | 4 |
 | `library.read` | De ISO-bibliotheek zien, en eruit kiezen bij het uitrollen | 5A |
 | `library.manage` | Bestanden aan de ISO-bibliotheek toevoegen vanaf een URL, een upload of een cluster, ze hernoemen en ze verwijderen. Een bestand naar of van een cluster verplaatsen vereist daarnaast `clusters.manage` op dat cluster | 5A |
+| `autoconfig.read` | De Autoconfig-templates zien waaruit deze tenant mag bouwen: de eigen en de gedeelde van de MSP | 5B |
+| `autoconfig.manage` | Templates maken, wijzigen, klonen en verwijderen — MSP-templates met een recht op de MSP, de eigen templates van een tenant met een recht op die tenant. De wachtwoorden van een template zijn nooit te lezen | 5B |
 | `updates.read` | Beschikbare pakketupdates zien | 6 |
 | `updates.execute` | Updates toepassen op echte nodes | 6 |
 | `upgrades.read` | Plannen en gereedheid voor major upgrades zien | 8 |
@@ -188,13 +194,13 @@ worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
 
 ## Bevoorrechte rechten en meervoudige authenticatie
 
-Deze zeventien rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
+Deze negentien rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
 van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige
 authenticatie op uitkomt:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
-`roles.manage` · `clusters.manage` · `nodes.manage` · `library.manage` · `updates.execute` ·
-`upgrades.execute` ·
+`roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
+`autoconfig.manage` · `updates.execute` · `upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
 `jobs.approve` · `system.manage`
 

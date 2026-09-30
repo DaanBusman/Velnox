@@ -215,8 +215,18 @@ export const SSH_PUBLIC_KEY =
 
 const hardware = z.object({
   cores: z.number().int().min(1).max(128).default(2),
-  memoryMb: z.number().int().min(512).max(4 * 1024 * 1024).default(4096),
-  diskGb: z.number().int().min(4).max(64 * 1024).default(64),
+  memoryMb: z
+    .number()
+    .int()
+    .min(512)
+    .max(4 * 1024 * 1024)
+    .default(4096),
+  diskGb: z
+    .number()
+    .int()
+    .min(4)
+    .max(64 * 1024)
+    .default(64),
   /**
    * Proxmox's own default since 8.0. `host` is faster and pins the VM to CPUs
    * like the one it was created on, which breaks live migration in a mixed
@@ -272,9 +282,7 @@ export const windowsTemplateSchema = z
           .enum(WINDOWS_KEYBOARDS.map((k) => k.id) as [WindowsKeyboard, ...WindowsKeyboard[]])
           .default('0409:00020409'),
         timeZone: z
-          .enum(
-            WINDOWS_TIME_ZONES.map((t) => t.id) as [WindowsTimeZone, ...WindowsTimeZone[]],
-          )
+          .enum(WINDOWS_TIME_ZONES.map((t) => t.id) as [WindowsTimeZone, ...WindowsTimeZone[]])
           .default('W. Europe Standard Time'),
       })
       .default({}),
@@ -338,7 +346,10 @@ const linuxUser = z.object({
   }),
   /** Extra accounts are sudo-capable users, never additional roots. */
   sudo: z.boolean().default(true),
-  sshKeys: z.array(z.string().trim().regex(SSH_PUBLIC_KEY, 'An OpenSSH public key')).max(20).default([]),
+  sshKeys: z
+    .array(z.string().trim().regex(SSH_PUBLIC_KEY, 'An OpenSSH public key'))
+    .max(20)
+    .default([]),
   password: passwordMode.default('NONE'),
 });
 
@@ -357,12 +368,18 @@ export const linuxTemplateSchema = z
       .default({ layout: 'us', variant: 'intl' }),
     timeZone: z
       .string()
-      .regex(/^(UTC|[A-Z][A-Za-z]+(\/[A-Za-z0-9_+-]+){1,2})$/, 'An IANA zone such as Europe/Amsterdam')
+      .regex(
+        /^(UTC|[A-Z][A-Za-z]+(\/[A-Za-z0-9_+-]+){1,2})$/,
+        'An IANA zone such as Europe/Amsterdam',
+      )
       .default('Europe/Amsterdam'),
     /** `null` is the recommendation for the distribution. */
     mirror: z
       .string()
-      .regex(/^(https?|mirror):\/\/[A-Za-z0-9.-]+(:\d+)?(\/[A-Za-z0-9._~/-]*)?$/, 'An http, https or mirror URL')
+      .regex(
+        /^(https?|mirror):\/\/[A-Za-z0-9.-]+(:\d+)?(\/[A-Za-z0-9._~/-]*)?$/,
+        'An http, https or mirror URL',
+      )
       .nullable()
       .default(null),
     aptProxy: z
@@ -437,11 +454,7 @@ export type TemplateSettings = WindowsTemplate | LinuxTemplate;
  * set.
  */
 export type TemplateSecretKey =
-  | `account:${string}`
-  | 'administrator'
-  | 'root'
-  | 'productKey'
-  | 'pdfPassword';
+  `account:${string}` | 'administrator' | 'root' | 'productKey' | 'pdfPassword';
 
 /** Which secrets a template's settings need present to be usable. */
 export function requiredTemplateSecrets(
@@ -461,10 +474,69 @@ export function requiredTemplateSecrets(
       if (user.password === 'FIXED') keys.push(`account:${user.name}`);
     }
   }
-  if (delivery.credentialDelivery === 'ENCRYPTED_PDF' && delivery.pdfPasswordSource === 'TEMPLATE') {
+  if (
+    delivery.credentialDelivery === 'ENCRYPTED_PDF' &&
+    delivery.pdfPasswordSource === 'TEMPLATE'
+  ) {
     keys.push('pdfPassword');
   }
   return keys;
+}
+
+/**
+ * Why a password stored on a template would fail, or null.
+ *
+ * Windows applies its complexity rule during Setup, and an account whose
+ * password breaks it is not created — which is found out when nobody can log
+ * on. So the rule is applied here, when the password is typed: twelve
+ * characters at least, and three of upper case, lower case, digits and
+ * symbols. Linux gets the same, because the same people choose them.
+ */
+export function passwordProblem(password: string): 'too_short' | 'too_simple' | 'too_long' | null {
+  if (password.length < 12) return 'too_short';
+  if (password.length > 128) return 'too_long';
+  const classes = [/[A-Z]/, /[a-z]/, /\d/, /[^A-Za-z0-9]/].filter((re) => re.test(password)).length;
+  return classes >= 3 ? null : 'too_simple';
+}
+
+/**
+ * The alphabet generated passwords use.
+ *
+ * No characters that look alike (0 O, 1 l I), and symbols that sit in the same
+ * place on US, US-International, UK and Dutch keyboards — a password is often
+ * typed first on a console whose layout is whatever the template set.
+ */
+const PASSWORD_UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const PASSWORD_LOWER = 'abcdefghijkmnopqrstuvwxyz';
+const PASSWORD_DIGITS = '23456789';
+const PASSWORD_SYMBOLS = '-_.+=';
+
+/** A fresh password for one account: 20 characters, every class present. */
+export function generatePassword(length = 20): string {
+  const all = PASSWORD_UPPER + PASSWORD_LOWER + PASSWORD_DIGITS + PASSWORD_SYMBOLS;
+  /** A uniform integer in [0, max), by rejection sampling: no value likelier than another. */
+  const below = (max: number): number => {
+    const limit = 0x1_0000_0000 - (0x1_0000_0000 % max);
+    const word = new Uint32Array(1);
+    for (;;) {
+      globalThis.crypto.getRandomValues(word);
+      if (word[0]! < limit) return word[0]! % max;
+    }
+  };
+  const pick = (alphabet: string): string => alphabet[below(alphabet.length)]!;
+  const chars = [
+    pick(PASSWORD_UPPER),
+    pick(PASSWORD_LOWER),
+    pick(PASSWORD_DIGITS),
+    pick(PASSWORD_SYMBOLS),
+    ...Array.from({ length: Math.max(0, length - 4) }, () => pick(all)),
+  ];
+  // Fisher–Yates, so the guaranteed classes are not always first.
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = below(i + 1);
+    [chars[i], chars[j]] = [chars[j]!, chars[i]!];
+  }
+  return chars.join('');
 }
 
 /**
@@ -502,9 +574,17 @@ export const provisionNetworkSchema = z.discriminatedUnion('mode', [
   z.object({
     mode: z.literal('STATIC'),
     /** `192.0.2.10/24` */
-    address: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/, 'An IPv4 address with prefix, such as 192.0.2.10/24'),
+    address: z
+      .string()
+      .regex(
+        /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/,
+        'An IPv4 address with prefix, such as 192.0.2.10/24',
+      ),
     gateway: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/, 'An IPv4 address'),
-    dns: z.array(z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/)).min(1).max(3),
+    dns: z
+      .array(z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/))
+      .min(1)
+      .max(3),
   }),
 ]);
 export type ProvisionNetwork = z.infer<typeof provisionNetworkSchema>;
@@ -589,6 +669,8 @@ export interface ProvisioningSummary {
   credentialsAvailable: boolean;
   notifiedAt: string | null;
   createdAt: string;
+  errorCode: string | null;
+  errorParams: Record<string, string | number | boolean | null> | null;
 }
 
 /** The accounts of a finished VM, returned only by the audited reveal. */

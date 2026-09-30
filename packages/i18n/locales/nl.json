@@ -312,7 +312,8 @@
     "network": "De server is niet bereikbaar.",
     "node": {
       "fingerprint_mismatch": "Het TLS-certificaat van {node} komt niet overeen met de vastgelegde vingerafdruk. De verbinding is geweigerd.",
-      "host_key_mismatch": "De SSH-hostsleutel van {node} komt niet overeen met de vastgelegde sleutel. De verbinding is geweigerd."
+      "host_key_mismatch": "De SSH-hostsleutel van {node} komt niet overeen met de vastgelegde sleutel. De verbinding is geweigerd.",
+      "offline": "Node {node} is niet online."
     },
     "not_found": "Niet gevonden.",
     "setup": {
@@ -353,6 +354,29 @@
       "upload_abandoned": "Deze upload is nooit afgemaakt en na een dag verwijderd.",
       "resume_mismatch": "Dat is niet het bestand waarmee deze upload begon. Kies hetzelfde bestand — dezelfde naam, dezelfde grootte — om verder te gaan.",
       "upload_paused": "De upload is gepauzeerd. Kies hetzelfde bestand opnieuw om verder te gaan waar hij stopte."
+    },
+    "autoconfig": {
+      "name_taken": "Deze tenant heeft al een template met de naam {name}.",
+      "incomplete": "Het template mist opgeslagen geheimen die het nodig heeft: {missing}. Open het template en stel ze in.",
+      "not_offered": "Dat template wordt niet aan deze tenant aangeboden.",
+      "product_key_invalid": "Een productcode bestaat uit vijf groepen van vijf letters en cijfers, gescheiden door streepjes.",
+      "secret_unexpected": "De templateinstellingen gebruiken geen geheim met de naam {key}.",
+      "media_missing": "{filename} is niet klaar in de ISO-bibliotheek. Voeg het daar eerst toe.",
+      "edition_not_in_iso": "{filename} heeft geen editie met de naam “{edition}”. Kies er een uit de lijst die uit de ISO is gelezen.",
+      "media_wrong_kind": "{filename} is het verkeerde soort bestand voor dit template: een installer moet een ISO zijn, een Linux-template heeft een disk-image nodig."
+    },
+    "provisioning": {
+      "hostname_invalid": "Die hostnaam kan niet: letters, cijfers en streepjes, niet alleen cijfers, hoogstens {max} tekens, zonder domein.",
+      "storage_unsuitable": "Opslag {storage} op {node} accepteert geen {content}-inhoud, of is niet actief.",
+      "bridge_unknown": "Node {node} heeft geen bridge met de naam {bridge}.",
+      "hostname_taken": "Een VM op dit cluster heet al {hostname} (VMID {vmid}).",
+      "install_timeout": "De installatie meldde zich niet binnen {minutes} minuten. De VM is verwijderd.",
+      "cleanup_failed": "De installatie is mislukt en VM {vmid} kon niet worden verwijderd. Verwijder hem in Proxmox.",
+      "credentials_gone": "De wachtwoorden van deze VM worden niet meer in Velnox bewaard."
+    },
+    "mail": {
+      "not_configured": "Uitgaande mail is niet ingesteld, dus er kan niemand worden gewaarschuwd. Een beheerder stelt het in onder Serverbeheer.",
+      "send_failed": "De mail is niet verstuurd: {reason}"
     }
   },
   "inventory": {
@@ -502,7 +526,8 @@
       "verify": "Upload controleren",
       "push": "Kopiëren naar cluster",
       "pull": "Kopiëren van cluster",
-      "cluster_delete": "Verwijderen van cluster"
+      "cluster_delete": "Verwijderen van cluster",
+      "provision": "VM bouwen"
     }
   },
   "layout": {

@@ -231,6 +231,9 @@ export const JOB_TYPES = {
   libraryPull: 'library.pull',
   /** Delete an ISO or disk image from a cluster's storage. */
   libraryClusterDelete: 'library.cluster_delete',
+
+  /** Build a VM from an Autoconfig template, and see its install through. */
+  vmProvision: 'vm.provision',
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

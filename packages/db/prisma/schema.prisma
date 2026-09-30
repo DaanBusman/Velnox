@@ -27,6 +27,17 @@ enum MfaPolicy {
   @@map("mfa_policy")
 }
 
+enum SmtpSecurity {
+  /// Plain SMTP upgraded with STARTTLS, refused if the server does not offer it.
+  STARTTLS
+  /// TLS from the first byte, usually port 465.
+  TLS
+  /// No encryption at all. For a relay on the same host or a lab; the settings page says so.
+  NONE
+
+  @@map("smtp_security")
+}
+
 /// Installation-wide settings. Exactly one row, id = 1, enforced by a CHECK
 /// constraint in the migration.
 model SystemSettings {
@@ -57,6 +68,18 @@ model SystemSettings {
 
   featureFlags Json @default("{}") @map("feature_flags")
   retention    Json @default("{}") @map("retention")
+
+  /// Outgoing mail (Phase 5B): the first way Velnox reaches someone who is not
+  /// looking at it. Off until an administrator sets it up and sends a test.
+  smtpEnabled              Boolean      @default(false) @map("smtp_enabled")
+  smtpHost                 String?      @map("smtp_host")
+  smtpPort                 Int          @default(587) @map("smtp_port")
+  smtpSecurity             SmtpSecurity @default(STARTTLS) @map("smtp_security")
+  smtpUsername             String?      @map("smtp_username")
+  /// The password lives in the secret store (kind SMTP_PASSWORD); this points at it.
+  smtpPasswordCredentialId String?      @map("smtp_password_credential_id") @db.Uuid
+  smtpFrom                 String?      @map("smtp_from")
+  smtpVerifiedAt           DateTime?    @map("smtp_verified_at") @db.Timestamptz(3)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -104,15 +127,17 @@ model Tenant {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
 
-  users           User[]
-  sites           Site[]
-  clusters        Cluster[]
-  roles           Role[]
-  roleAssignments RoleAssignment[]
-  auditEvents     AuditEvent[]
-  credentials     Credential[]
-  jobs            Job[]
-  approvals       Approval[]
+  users               User[]
+  sites               Site[]
+  clusters            Cluster[]
+  roles               Role[]
+  roleAssignments     RoleAssignment[]
+  auditEvents         AuditEvent[]
+  credentials         Credential[]
+  jobs                Job[]
+  approvals           Approval[]
+  autoconfigTemplates AutoconfigTemplate[]
+  provisionings       Provisioning[]
 
   @@index([kind])
   @@map("tenants")
@@ -638,6 +663,7 @@ model Cluster {
   cephDaemons     CephDaemon[]
   discoveryRuns   DiscoveryRun[]
   storageContents StorageContent[]
+  provisionings   Provisioning[]
 
   @@index([tenantId])
   @@index([siteId])
@@ -966,6 +992,9 @@ model LibraryItem {
   sha256        String?
   /// `qcow2` or `raw`, read from the bytes. Null for an ISO.
   diskFormat    String? @map("disk_format")
+  /// The editions in a Windows install ISO, read from its install.wim when it
+  /// was checked. Null for anything else, or when the list could not be read.
+  windowsImages Json?   @map("windows_images")
 
   /// What an operator corrected the friendly name to. Null means "as parsed".
   titleOverride    String? @map("title_override")
@@ -998,6 +1027,148 @@ model LibraryItem {
 }
 
 // ---------------------------------------------------------------------------
+// Autoconfig templates and provisioning (Phase 5B)
+// ---------------------------------------------------------------------------
+
+enum TemplateOsFamily {
+  WINDOWS
+  LINUX
+
+  @@map("template_os_family")
+}
+
+enum TemplateVisibility {
+  /// On an MSP template: offered to every tenant. On a tenant template: no wider than PRIVATE.
+  SHARED
+  PRIVATE
+
+  @@map("template_visibility")
+}
+
+enum CredentialDelivery {
+  VELNOX_ONLY
+  ENCRYPTED_PDF
+
+  @@map("credential_delivery")
+}
+
+enum PdfPasswordSource {
+  SHOWN_ONCE
+  TEMPLATE
+
+  @@map("pdf_password_source")
+}
+
+/// What a VM is built from. Owned by the MSP root or by one customer tenant.
+///
+/// Settings are plain JSON, validated by `templateSettingsSchema` in
+/// packages/shared, and are returned by the API. Secrets are not settings: each
+/// is its own credential in the secret store, and `secretRefs` points at them.
+model AutoconfigTemplate {
+  id          String             @id @default(uuid()) @db.Uuid
+  tenantId    String             @map("tenant_id") @db.Uuid
+  name        String
+  description String             @default("")
+  family      TemplateOsFamily
+  visibility  TemplateVisibility @default(SHARED)
+
+  credentialDelivery CredentialDelivery @default(VELNOX_ONLY) @map("credential_delivery")
+  pdfPasswordSource  PdfPasswordSource  @default(SHOWN_ONCE) @map("pdf_password_source")
+
+  settings   Json
+  /// `{ "administrator": "<credential id>", "account:ops": "<credential id>" }`:
+  /// one TEMPLATE_SECRETS credential per secret, so changing one never needs
+  /// the others decrypted, which the API cannot do. Never the values.
+  secretRefs Json @default("{}") @map("secret_refs")
+
+  /// A plain id and a copied name: a clone is independent of its source, and outlives it.
+  clonedFromId   String? @map("cloned_from_id") @db.Uuid
+  clonedFromName String? @map("cloned_from_name")
+
+  createdById    String? @map("created_by_id") @db.Uuid
+  createdByLabel String? @map("created_by_label")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("autoconfig_templates")
+}
+
+enum ProvisioningState {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+
+  @@map("provisioning_state")
+}
+
+/// One VM built from a template: the request, what happened, and the record.
+///
+/// It belongs to the tenant of the cluster the VM was built on. The template is
+/// copied in (`templateSnapshot`), so the record says what was installed even
+/// after the template is changed or deleted.
+model Provisioning {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  templateId       String?          @map("template_id") @db.Uuid
+  templateName     String           @map("template_name")
+  family           TemplateOsFamily
+  templateSnapshot Json             @map("template_snapshot")
+
+  clusterId    String? @map("cluster_id") @db.Uuid
+  clusterName  String  @map("cluster_name")
+  node         String
+  diskStorage  String  @map("disk_storage")
+  mediaStorage String  @map("media_storage")
+  bridge       String
+  vlan         Int?
+  hostname     String
+  network      Json
+
+  vmid      Int?
+  state     ProvisioningState @default(QUEUED)
+  jobId     String?           @map("job_id") @db.Uuid
+  addresses String[]          @default([])
+
+  requestedById    String? @map("requested_by_id") @db.Uuid
+  requestedByLabel String? @map("requested_by_label")
+  requestedByEmail String? @map("requested_by_email")
+
+  credentialDelivery           CredentialDelivery @map("credential_delivery")
+  /// GUEST_CREDENTIALS: this VM's passwords. Removed when they expire.
+  credentialsCredentialId      String?            @map("credentials_credential_id") @db.Uuid
+  credentialsExpireAt          DateTime?          @map("credentials_expire_at") @db.Timestamptz(3)
+  /// DOCUMENT_PASSWORD, for an encrypted record.
+  documentPasswordCredentialId String?            @map("document_password_credential_id") @db.Uuid
+
+  notify     Boolean   @default(true)
+  notifiedAt DateTime? @map("notified_at") @db.Timestamptz(3)
+
+  errorCode   String? @map("error_code")
+  errorParams Json?   @map("error_params")
+  errorDetail String? @map("error_detail")
+
+  startedAt  DateTime? @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cluster Cluster? @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([clusterId])
+  @@index([state])
+  @@map("provisionings")
+}
+
+// ---------------------------------------------------------------------------
 // Credential store
 // ---------------------------------------------------------------------------
 
@@ -1010,6 +1181,15 @@ enum CredentialKind {
   OIDC_CLIENT_SECRET
   VMWARE_PASSWORD
   TOTP_SEED
+  /// A template's fixed passwords, product key and PDF password, as one JSON object. Worker-only.
+  TEMPLATE_SECRETS
+  /// The passwords of one provisioned VM. Read by the worker to build the answer
+  /// file, and by the API only for the audited reveal (ADR-039).
+  GUEST_CREDENTIALS
+  /// The password of one encrypted installation record. Worker-only.
+  DOCUMENT_PASSWORD
+  /// The outgoing mail server's password. Worker-only.
+  SMTP_PASSWORD
 
   @@map("credential_kind")
 }

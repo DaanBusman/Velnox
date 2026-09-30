@@ -617,6 +617,22 @@ export interface LibraryItemSummary {
   errorParams: Record<string, string | number | boolean | null> | null;
   createdAt: string;
   readyAt: string | null;
+  /**
+   * The editions in a Windows install ISO, read from the ISO when it was
+   * checked. Null for anything that is not one, or whose list could not be read.
+   */
+  windowsImages: WindowsImageSummary[] | null;
+}
+
+/** One edition in a Windows install ISO, as its install.wim lists it. */
+export interface WindowsImageSummary {
+  index: number;
+  /** What an Autounattend.xml selects by: `Windows 11 Pro`. */
+  name: string;
+  displayName: string | null;
+  editionId: string | null;
+  architecture: string | null;
+  languages: string[];
 }
 
 export interface LibraryCapacitySummary extends LibraryCapacity {

@@ -179,6 +179,18 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   JobEvent: (ids) => ({ job: { tenantId: { in: ids } } }),
   JobLog: (ids) => ({ job: { tenantId: { in: ids } } }),
   Approval: (ids) => ({ tenantId: { in: ids } }),
+
+  // Phase 5B. A template is visible within its own tenant, and an MSP template
+  // marked SHARED is visible to every tenant as well — that is the point of it.
+  // Visible is not editable: who may change one is decided by the service
+  // against the owning tenant, never inferred from this filter. A tenant's own
+  // template is never visible to another tenant, and is offered upward only to
+  // MSP staff whose scope already covers that tenant.
+  AutoconfigTemplate: (ids) => ({
+    OR: [{ tenantId: { in: ids } }, { visibility: 'SHARED', tenant: { kind: 'MSP_ROOT' } }],
+  }),
+  // One VM's record, including where its credentials are. The cluster's tenant.
+  Provisioning: (ids) => ({ tenantId: { in: ids } }),
 };
 
 /** Models whose `tenantId` on a create must be inside the scope. */
@@ -198,6 +210,8 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   DiscoveryRun: 'required',
   Job: 'required',
   Approval: 'required',
+  AutoconfigTemplate: 'required',
+  Provisioning: 'required',
 };
 
 export const tenantScopedModels = (): string[] => Object.keys(TENANT_SCOPED).sort();
