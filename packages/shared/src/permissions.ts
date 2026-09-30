@@ -52,6 +52,20 @@ export const PERMISSIONS = {
   storageRead: 'storage.read',
   networksRead: 'networks.read',
 
+  /**
+   * The ISO library on the Velnox host.
+   *
+   * `read` sees what is in it, which every role needs from Phase 5B on: a tenant
+   * provisioning a VM chooses from it. `manage` adds to it and removes from it,
+   * and is held by MSP roles only — the library is one store on one disk for the
+   * whole installation, so a customer filling it fills it for everyone.
+   *
+   * Moving a file onto or off a cluster is not granted here. That writes to
+   * somebody's infrastructure, and is `clusters.manage` on that cluster.
+   */
+  libraryRead: 'library.read',
+  libraryManage: 'library.manage',
+
   // Change management
   updatesRead: 'updates.read',
   updatesExecute: 'updates.execute',
@@ -115,6 +129,10 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = Object.freeze([
   PERMISSIONS.rolesManage,
   PERMISSIONS.clustersManage,
   PERMISSIONS.nodesManage,
+  // Not customer infrastructure, but what is in the library is what gets
+  // installed on customers' machines, and adding to it makes the worker fetch
+  // from an address the requester chose.
+  PERMISSIONS.libraryManage,
   PERMISSIONS.updatesExecute,
   PERMISSIONS.upgradesExecute,
   PERMISSIONS.automationManage,
@@ -278,6 +296,7 @@ const ENGINEER_PERMISSIONS: readonly Permission[] = [
   P.usersResetMfa,
   P.clustersManage,
   P.nodesManage,
+  P.libraryManage,
   P.updatesExecute,
   P.upgradesExecute,
   P.credentialsManage,

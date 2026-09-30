@@ -173,6 +173,8 @@ export const JOB_EVENT_KEYS = {
   succeeded: 'job.succeeded',
   failed: 'job.failed',
   workerLost: 'job.worker_lost',
+  /** A job that did not finish could not undo what it had started. Someone should look. */
+  cleanupFailed: 'job.cleanup_failed',
 } as const;
 
 export type JobEventKey = (typeof JOB_EVENT_KEYS)[keyof typeof JOB_EVENT_KEYS];
@@ -218,6 +220,17 @@ export const JOB_TYPES = {
    * `system.ping` was for Phase 1. Restricted to `system.manage`.
    */
   selftest: 'system.selftest',
+
+  /** Fetch a file from a URL into the library. */
+  libraryFetch: 'library.fetch',
+  /** Check an uploaded file — size, type, checksum — and make it available. */
+  libraryVerify: 'library.verify',
+  /** Copy a library file onto a cluster's storage. */
+  libraryPush: 'library.push',
+  /** Copy a file from a cluster's storage into the library, over SSH. */
+  libraryPull: 'library.pull',
+  /** Delete an ISO or disk image from a cluster's storage. */
+  libraryClusterDelete: 'library.cluster_delete',
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
@@ -312,6 +325,8 @@ export interface JobSummary {
   finishedAt: string | null;
   /** A catalogue code the interface translates. */
   errorCode: string | null;
+  /** The values that code's message is written around, when it has any. */
+  errorParams: Record<string, string | number | boolean | null> | null;
   /** Redacted English diagnostic, for support. Not shown as the headline. */
   errorDetail: string | null;
   createdBy: { id: string; email: string } | null;

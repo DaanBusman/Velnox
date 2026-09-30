@@ -104,6 +104,12 @@ ENV VELNOX_VERSION=${VELNOX_VERSION} \
 # built it at once.
 COPY --from=build --chown=node:node /app /app
 
+# The ISO library's mount point, owned by the user the services run as. Docker
+# copies a directory's ownership into a named volume the first time it mounts an
+# empty one there, which is the only way the unprivileged `node` user gets to
+# write to it without a root init step.
+RUN mkdir -p /var/lib/velnox/library && chown node:node /var/lib/velnox/library /var/lib/velnox
+
 USER node
 
 EXPOSE 4000

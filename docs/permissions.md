@@ -57,13 +57,13 @@ organisation.
 
 | Role | Key | MSP only | Grants | For |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | yes | 36 of 36 | The first administrator. The only role with installation-wide settings. |
-| MSP Administrator | `msp_administrator` | yes | 34 | Runs the MSP day to day, including people. Not installation settings, and not a colleague’s second factor. |
-| MSP Engineer | `msp_engineer` | yes | 28 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
-| MSP Read Only | `msp_read_only` | yes | 18 | Sees everything across all tenants, changes nothing. |
-| Tenant Administrator | `tenant_administrator` | no | 32 | Full control within one tenant, including that tenant's own people. |
-| Tenant Operator | `tenant_operator` | no | 22 | Day-to-day work on one tenant's resources. No identity administration. |
-| Tenant Read Only | `tenant_read_only` | no | 17 | Sees one tenant's resources, changes nothing. |
+| MSP Super Administrator | `msp_super_administrator` | yes | 38 of 38 | The first administrator. The only role with installation-wide settings. |
+| MSP Administrator | `msp_administrator` | yes | 36 | Runs the MSP day to day, including people. Not installation settings, and not a colleague’s second factor. |
+| MSP Engineer | `msp_engineer` | yes | 30 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
+| MSP Read Only | `msp_read_only` | yes | 19 | Sees everything across all tenants, changes nothing. |
+| Tenant Administrator | `tenant_administrator` | no | 33 | Full control within one tenant, including that tenant's own people. |
+| Tenant Operator | `tenant_operator` | no | 23 | Day-to-day work on one tenant's resources. No identity administration. |
+| Tenant Read Only | `tenant_read_only` | no | 18 | Sees one tenant's resources, changes nothing. |
 
 The two differences that surprise people:
 
@@ -99,6 +99,8 @@ Administrator, MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operato
 | `workloads.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `storage.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `networks.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `library.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `library.manage` | ✓ | ✓ | ✓ | · | · | · | · |
 | `updates.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `updates.execute` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `upgrades.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -149,6 +151,8 @@ granted today and guards nothing yet.
 | `workloads.read` | See virtual machines and containers | 4 |
 | `storage.read` | See storage pools and their usage | 4 |
 | `networks.read` | See bridges, VLANs and network configuration | 4 |
+| `library.read` | See the ISO library, and choose from it when provisioning | 5A |
+| `library.manage` | Add files to the ISO library from a URL, an upload or a cluster, rename them, and remove them. Moving a file onto or off a cluster also needs `clusters.manage` on that cluster | 5A |
 | `updates.read` | See available package updates | 6 |
 | `updates.execute` | Apply updates to real nodes | 6 |
 | `upgrades.read` | See major-upgrade plans and readiness | 8 |
@@ -178,11 +182,12 @@ they are used. See [Technical decisions](tech-decisions.md), ADR-009 and ADR-023
 
 ## Privileged permissions and two-factor authentication
 
-These sixteen permissions let a principal change customer infrastructure or the security posture of
+These seventeen permissions let a principal change customer infrastructure or the security posture of
 the installation. They are what the `REQUIRED_FOR_PRIVILEGED` two-factor policy resolves to:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
-`roles.manage` · `clusters.manage` · `nodes.manage` · `updates.execute` · `upgrades.execute` ·
+`roles.manage` · `clusters.manage` · `nodes.manage` · `library.manage` · `updates.execute` ·
+`upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
 `jobs.approve` · `system.manage`
 

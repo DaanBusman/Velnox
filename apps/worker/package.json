@@ -1,6 +1,6 @@
 {
   "name": "@velnox/worker",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox worker. The only service that performs outbound automation and decrypts credentials.",
@@ -26,10 +26,12 @@
     "ioredis": "^5.4.2",
     "pino": "^9.6.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "ssh2": "^1.17.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "@types/ssh2": "^1.15.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"

@@ -5,7 +5,7 @@ packages:
 # Which dependencies may run install scripts.
 #
 # A postinstall script is arbitrary code from the registry running on a build
-# machine, so the default is no. Ten packages ask; six get it.
+# machine, so the default is no. Twelve packages ask; six get it.
 #
 # pnpm fails the install rather than warning when a package that wants a build
 # script is not listed either way, so this allowlist cannot quietly stop
@@ -37,14 +37,24 @@ packages:
 #                     binary and, if that fails, installs a WebAssembly fallback
 #                     from the registry — a second, unpinned download at install
 #                     time. Neither is needed with the binaries present.
+#   ssh2              and
+#   cpu-features      arrive with Phase 5A's SSH copy. ssh2's script runs
+#                     node-gyp to build an optional native crypto binding and
+#                     treats failure as success; without it ssh2 uses its
+#                     JavaScript implementation. cpu-features is an optional
+#                     native helper ssh2 uses to pick a cipher order. Both would
+#                     put a compiler on the build host for a speed-up on a copy
+#                     that is bounded by the network anyway.
 allowBuilds:
   '@parcel/watcher': false
   '@prisma/client': true
   '@prisma/engines': true
   '@scarf/scarf': false
   '@swc/core': false
+  cpu-features: false
   esbuild: true
   msgpackr-extract: false
   prisma: true
   sharp: true
+  ssh2: false
   unrs-resolver: true

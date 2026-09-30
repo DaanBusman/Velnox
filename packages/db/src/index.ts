@@ -8,6 +8,7 @@
  */
 export * from './client';
 export * from './job-events';
+export * from './library';
 export * from './tenancy';
 export * from './migrations';
 export * from './system-settings';

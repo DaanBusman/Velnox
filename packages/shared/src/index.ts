@@ -9,6 +9,7 @@
 export * from './errors';
 export * from './fingerprint';
 export * from './jobs';
+export * from './library';
 export * from './permissions';
 export * from './redaction';
 export * from './slug';
@@ -50,6 +51,13 @@ export const JOB_NAMES = {
   inventoryVerify: 'inventory.verify',
   /** Read a cluster's whole inventory and write it down. */
   inventoryDiscover: 'inventory.discover',
+  /**
+   * Read each node's SSH host key without authenticating — the SSH half of
+   * the same confirm-before-trust step as `inventoryProbe`.
+   */
+  inventorySshProbe: 'inventory.ssh_probe',
+  /** Prove the stored SSH key works against the pinned host keys. */
+  inventorySshVerify: 'inventory.ssh_verify',
 } as const;
 
 /** Redis keys owned by the worker. The health check reads the heartbeat. */

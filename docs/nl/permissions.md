@@ -61,13 +61,13 @@ in je eigen organisatie.
 
 | Rol | Sleutel | Alleen MSP | Kent toe | Voor |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | ja | 36 van 36 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
-| MSP Administrator | `msp_administrator` | ja | 34 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, en niet de tweede factor van een collega. |
-| MSP Engineer | `msp_engineer` | ja | 28 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
-| MSP Read Only | `msp_read_only` | ja | 18 | Ziet alles over alle tenants, wijzigt niets. |
-| Tenant Administrator | `tenant_administrator` | nee | 32 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
-| Tenant Operator | `tenant_operator` | nee | 22 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
-| Tenant Read Only | `tenant_read_only` | nee | 17 | Ziet de resources van één tenant, wijzigt niets. |
+| MSP Super Administrator | `msp_super_administrator` | ja | 38 van 38 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
+| MSP Administrator | `msp_administrator` | ja | 36 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, en niet de tweede factor van een collega. |
+| MSP Engineer | `msp_engineer` | ja | 30 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
+| MSP Read Only | `msp_read_only` | ja | 19 | Ziet alles over alle tenants, wijzigt niets. |
+| Tenant Administrator | `tenant_administrator` | nee | 33 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
+| Tenant Operator | `tenant_operator` | nee | 23 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
+| Tenant Read Only | `tenant_read_only` | nee | 18 | Ziet de resources van één tenant, wijzigt niets. |
 
 De twee verschillen die mensen verrassen:
 
@@ -104,6 +104,8 @@ Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only
 | `workloads.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `storage.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `networks.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `library.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `library.manage` | ✓ | ✓ | ✓ | · | · | · | · |
 | `updates.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `updates.execute` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `upgrades.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -154,6 +156,8 @@ vandaag toekenbaar en bewaakt nog niets.
 | `workloads.read` | Virtuele machines en containers zien | 4 |
 | `storage.read` | Opslagpools en hun gebruik zien | 4 |
 | `networks.read` | Bridges, VLAN's en netwerkconfiguratie zien | 4 |
+| `library.read` | De ISO-bibliotheek zien, en eruit kiezen bij het uitrollen | 5A |
+| `library.manage` | Bestanden aan de ISO-bibliotheek toevoegen vanaf een URL, een upload of een cluster, ze hernoemen en ze verwijderen. Een bestand naar of van een cluster verplaatsen vereist daarnaast `clusters.manage` op dat cluster | 5A |
 | `updates.read` | Beschikbare pakketupdates zien | 6 |
 | `updates.execute` | Updates toepassen op echte nodes | 6 |
 | `upgrades.read` | Plannen en gereedheid voor major upgrades zien | 8 |
@@ -184,12 +188,13 @@ worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
 
 ## Bevoorrechte rechten en meervoudige authenticatie
 
-Deze zestien rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
+Deze zeventien rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
 van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige
 authenticatie op uitkomt:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
-`roles.manage` · `clusters.manage` · `nodes.manage` · `updates.execute` · `upgrades.execute` ·
+`roles.manage` · `clusters.manage` · `nodes.manage` · `library.manage` · `updates.execute` ·
+`upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
 `jobs.approve` · `system.manage`
 

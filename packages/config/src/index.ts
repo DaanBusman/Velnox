@@ -89,9 +89,26 @@ const databaseSchema = z.object({
   DATABASE_URL: z.string().min(1).startsWith('postgres'),
 });
 
+/**
+ * The ISO library (Phase 5A). Read by the API, which receives uploads, and by
+ * the worker, which fetches, verifies and moves files.
+ *
+ * Two limits, because there are two ways to run out. The ceiling is the
+ * library's own budget. The floor is the disk's: by default the library's
+ * volume shares a filesystem with PostgreSQL and Redis, and a full disk there
+ * stops the installation rather than failing one upload. Whichever is hit
+ * first refuses the transfer, and names itself in the refusal.
+ */
+const librarySchema = z.object({
+  VELNOX_LIBRARY_DIR: z.string().min(1).startsWith('/').default('/var/lib/velnox/library'),
+  VELNOX_LIBRARY_MAX_GB: z.coerce.number().int().min(1).max(1_000_000).default(100),
+  VELNOX_LIBRARY_MIN_FREE_GB: z.coerce.number().int().min(1).max(1_000_000).default(10),
+});
+
 const apiSchema = baseSchema
   .merge(redisSchema)
   .merge(databaseSchema)
+  .merge(librarySchema)
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     APP_URL: z.string().url().default('https://localhost'),
@@ -115,6 +132,7 @@ const apiSchema = baseSchema
 const workerSchema = baseSchema
   .merge(redisSchema)
   .merge(databaseSchema)
+  .merge(librarySchema)
   .extend({
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(4),
     MASTER_ENCRYPTION_KEY: base64Key32,

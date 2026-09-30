@@ -164,6 +164,9 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   Workload: (ids) => ({ tenantId: { in: ids } }),
   CephDaemon: (ids) => ({ tenantId: { in: ids } }),
   DiscoveryRun: (ids) => ({ tenantId: { in: ids } }),
+  // Phase 5A: the ISOs and disk images on a cluster's storage. The library
+  // itself (LibraryItem) is installation-wide and deliberately absent.
+  StorageContent: (ids) => ({ tenantId: { in: ids } }),
 
   // Phase 5 jobs. A job and its approvals carry the tenant; steps, events and
   // logs do not, and are filtered through their job — the same shape as
@@ -191,6 +194,7 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   NodeInterface: 'required',
   Workload: 'required',
   CephDaemon: 'required',
+  StorageContent: 'required',
   DiscoveryRun: 'required',
   Job: 'required',
   Approval: 'required',

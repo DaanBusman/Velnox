@@ -12,7 +12,7 @@
 name: velnox
 
 x-build-args: &build-args
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.5}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.6}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_BUILD_TIME: ${VELNOX_BUILD_TIME:-}
 
@@ -39,11 +39,13 @@ x-backend-env: &backend-env
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD}
   MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.5}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.6}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_SOURCE_URL: ${VELNOX_SOURCE_URL:-https://github.com/DaanBusman/Velnox}
   VELNOX_DEFAULT_LOCALE: ${VELNOX_DEFAULT_LOCALE:-en}
   VELNOX_DEFAULT_TIMEZONE: ${VELNOX_DEFAULT_TIMEZONE:-Europe/Amsterdam}
+  VELNOX_LIBRARY_MAX_GB: ${VELNOX_LIBRARY_MAX_GB:-100}
+  VELNOX_LIBRARY_MIN_FREE_GB: ${VELNOX_LIBRARY_MIN_FREE_GB:-10}
 
 services:
   postgres:
@@ -125,6 +127,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — run ./scripts/gen-env.sh}
       METRICS_ENABLED: ${METRICS_ENABLED:-false}
     command: ['node', 'apps/api/dist/main.js']
+    # The API writes uploaded chunks here; the worker checks and moves them.
+    volumes:
+      - library:/var/lib/velnox/library
     networks: [app, data]
     depends_on:
       migrate:
@@ -142,6 +147,8 @@ services:
       <<: *backend-env
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
     command: ['node', 'apps/worker/dist/main.js']
+    volumes:
+      - library:/var/lib/velnox/library
     # `data` reaches PostgreSQL and Redis; `egress` is what lets the worker reach
     # Proxmox, vCenter and Hyper-V from Phase 4 onward. It is the only service
     # that needs both.
@@ -232,3 +239,7 @@ volumes:
     name: velnox_caddydata
   caddyconfig:
     name: velnox_caddyconfig
+  # The ISO library. Its size is limited by VELNOX_LIBRARY_MAX_GB and by the
+  # free-disk floor, not by Docker: a named volume has no quota of its own.
+  library:
+    name: velnox_library

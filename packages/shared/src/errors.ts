@@ -45,6 +45,48 @@ export const ERROR_CODES = {
   nodeFingerprintMismatch: 'node.fingerprint_mismatch',
   nodeHostKeyMismatch: 'node.host_key_mismatch',
 
+  // SSH, used only to copy files off a node. A host key that differs from the
+  // confirmed one is `node.host_key_mismatch` above.
+  sshNotConfigured: 'ssh.not_configured',
+  sshUnreachable: 'ssh.unreachable',
+  sshAuthFailed: 'ssh.auth_failed',
+  /** A host key was offered for confirmation that no longer matches what the node presents. */
+  sshHostKeyChanged: 'ssh.host_key_changed',
+
+  /** Would take the library past its configured size. */
+  libraryFull: 'library.full',
+  /** Would leave less free disk than the configured floor. */
+  libraryDiskLow: 'library.disk_low',
+  libraryInvalidFilename: 'library.invalid_filename',
+  /** Not an .iso, or a disk image Proxmox can import. */
+  libraryUnsupportedKind: 'library.unsupported_kind',
+  libraryDuplicateFilename: 'library.duplicate_filename',
+  libraryNotReady: 'library.not_ready',
+  /** A job is using it right now. */
+  libraryInUse: 'library.in_use',
+  /** A chunk arrived for a different position than the upload is at. */
+  libraryUploadOffset: 'library.upload_offset',
+  /** More bytes than the upload declared. */
+  libraryUploadTooLarge: 'library.upload_too_large',
+  /** The address is not one Velnox will fetch from. */
+  libraryUrlRefused: 'library.url_refused',
+  libraryUrlFailed: 'library.url_failed',
+  libraryUrlTooManyRedirects: 'library.url_too_many_redirects',
+  /** Fewer or more bytes arrived than were promised. */
+  librarySizeMismatch: 'library.size_mismatch',
+  /** The bytes are not what the extension says: an .iso that is not an ISO image. */
+  libraryWrongContent: 'library.wrong_content',
+  libraryChecksumMismatch: 'library.checksum_mismatch',
+  /** The storage does not accept this content type, or is not active on that node. */
+  libraryStorageUnsuitable: 'library.storage_unsuitable',
+  libraryStorageFull: 'library.storage_full',
+  libraryAlreadyOnStorage: 'library.already_on_storage',
+  libraryNotOnStorage: 'library.not_on_storage',
+  /** The database says the file is there and the disk says it is not. */
+  libraryFileMissing: 'library.file_missing',
+  /** An upload nobody finished, removed after a day of silence. */
+  libraryUploadAbandoned: 'library.upload_abandoned',
+
   cephNotHealthy: 'ceph.not_healthy',
   cephPgsNotClean: 'ceph.pgs_not_clean',
   cephVersionMismatch: 'ceph.version_mismatch',
@@ -56,6 +98,12 @@ export const ERROR_CODES = {
   jobAlreadyFinished: 'job.already_finished',
   /** Retrying a job that succeeded, or has not finished. */
   jobNotRetryable: 'job.not_retryable',
+  /**
+   * A job of a kind that is started again from where it came from rather than
+   * retried: a failed library fetch leaves a failed library item, and the way
+   * back is adding the file again, not re-running a job pointed at it.
+   */
+  jobNotRetryableType: 'job.not_retryable_type',
   /** Approving or rejecting a job that is not waiting for it. */
   jobNotWaitingApproval: 'job.not_waiting_approval',
   /** The error a job carries once somebody rejected it at an approval gate. */

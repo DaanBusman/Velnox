@@ -613,6 +613,17 @@ model Cluster {
   /// How often scheduled discovery runs. Zero turns it off for this cluster.
   discoveryIntervalMinutes Int @default(30) @map("discovery_interval_minutes")
 
+  // --- SSH, optional (Phase 5A) ---
+  /// Used for one thing: copying an ISO or disk image off a node, which the
+  /// Proxmox API has no call for. SFTP only — Velnox never opens a shell. Null
+  /// until an operator adds a key and confirms each node's host key; the rest of
+  /// Velnox works without it. See ADR-038.
+  sshCredentialId String?   @map("ssh_credential_id") @db.Uuid
+  sshUsername     String?   @map("ssh_username")
+  sshPort         Int       @default(22) @map("ssh_port")
+  /// When the key last authenticated against every pinned node.
+  sshVerifiedAt   DateTime? @map("ssh_verified_at") @db.Timestamptz(3)
+
   /// No soft delete. Removing a cluster removes Velnox's cache of somebody
   /// else's infrastructure — the infrastructure is untouched and the audit trail
   /// is unaffected, so keeping a hidden copy of stale inventory would serve
@@ -620,12 +631,13 @@ model Cluster {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  site          Site?          @relation(fields: [siteId], references: [id], onDelete: SetNull)
-  nodes         Node[]
-  workloads     Workload[]
-  cephDaemons   CephDaemon[]
-  discoveryRuns DiscoveryRun[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  site            Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  nodes           Node[]
+  workloads       Workload[]
+  cephDaemons     CephDaemon[]
+  discoveryRuns   DiscoveryRun[]
+  storageContents StorageContent[]
 
   @@index([tenantId])
   @@index([siteId])
@@ -670,6 +682,13 @@ model Node {
   /// What discovery could not learn about this node, so one bad node is visible
   /// rather than silently thin.
   problems Json @default("[]")
+
+  /// The SSH host key an operator confirmed, as OpenSSH prints it
+  /// (`SHA256:…`). A connection presenting any other key is refused before
+  /// authenticating. Null until confirmed; a node added to the cluster later has
+  /// none, and is not used for SSH until someone confirms it.
+  sshHostKeyFingerprint String? @map("ssh_host_key_fingerprint")
+  sshHostKeyType        String? @map("ssh_host_key_type")
 
   lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(3)
 
@@ -846,6 +865,136 @@ model DiscoveryRun {
   @@index([tenantId])
   @@index([clusterId, startedAt])
   @@map("discovery_runs")
+}
+
+/// An ISO or importable disk image on a cluster's storage, as discovery last
+/// saw it.
+///
+/// Only the two content types Velnox moves. Backups, templates and VM disks are
+/// Proxmox's business and are not inventoried here. Shared storage is recorded
+/// once, not once per node that can see it: `location_key` is the storage name
+/// for shared storage and `node/storage` otherwise.
+model StorageContent {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  clusterId String @map("cluster_id") @db.Uuid
+
+  /// The node it was listed through. For shared storage, whichever node
+  /// discovery asked; any node with the storage active can reach it.
+  nodeName    String  @map("node_name")
+  storage     String
+  shared      Boolean @default(false)
+  locationKey String  @map("location_key")
+
+  volid         String
+  /// `iso` or `import`.
+  content       String
+  format        String?
+  sizeBytes     BigInt?   @map("size_bytes")
+  /// When Proxmox says the file was created. Not when Velnox first saw it.
+  fileCreatedAt DateTime? @map("file_created_at") @db.Timestamptz(3)
+
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@unique([clusterId, locationKey, volid])
+  @@index([tenantId])
+  @@index([clusterId])
+  @@map("storage_contents")
+}
+
+// ---------------------------------------------------------------------------
+// ISO library (Phase 5A)
+// ---------------------------------------------------------------------------
+
+enum LibraryItemKind {
+  ISO
+  /// A cloud image or other disk Proxmox can import. Linux VMs are provisioned
+  /// from these rather than from an installer ISO (roadmap, Phase 5B).
+  DISK_IMAGE
+
+  @@map("library_item_kind")
+}
+
+enum LibraryItemState {
+  /// Bytes are arriving: an upload, a URL fetch, or a copy off a cluster.
+  RECEIVING
+  /// All bytes arrived; size, type and checksum are being checked.
+  VERIFYING
+  READY
+  /// Kept, with its reason, until someone removes it. Its bytes are not.
+  FAILED
+
+  @@map("library_item_state")
+}
+
+enum LibraryItemSource {
+  UPLOAD
+  URL
+  CLUSTER
+
+  @@map("library_item_source")
+}
+
+/// A file in the ISO library on the Velnox host.
+///
+/// **Installation-wide, not tenant-scoped.** It is one store on one disk, filled
+/// and emptied by MSP staff, and chosen from by everyone. It has no tenant
+/// column and no relation to anything that has one, deliberately: the tenancy
+/// layer would otherwise have to decide whose it is, and the answer is nobody's.
+///
+/// The bytes live at `<library>/items/<id>` — named by id, never by the
+/// filename a person typed — and at `<library>/partial/<id>` while they arrive.
+model LibraryItem {
+  id     String            @id @default(uuid()) @db.Uuid
+  kind   LibraryItemKind
+  state  LibraryItemState  @default(RECEIVING)
+  source LibraryItemSource
+
+  /// The real filename, which is what Proxmox will call it and what every log
+  /// line shows. Unique among items that are not FAILED (see the migration).
+  filename String
+
+  /// What the file will be, when known in advance: an upload declares it, a
+  /// URL usually does, a cluster always does. Null only for a URL that did not
+  /// say. Counts against the library's ceiling from the moment it is known.
+  sizeBytes     BigInt? @map("size_bytes")
+  receivedBytes BigInt  @default(0) @map("received_bytes")
+  /// Lowercase hex, computed by Velnox over the bytes it holds.
+  sha256        String?
+  /// `qcow2` or `raw`, read from the bytes. Null for an ISO.
+  diskFormat    String? @map("disk_format")
+
+  /// What an operator corrected the friendly name to. Null means "as parsed".
+  titleOverride    String? @map("title_override")
+  /// A BCP 47 tag, or an empty string for "no language". Null means "as parsed".
+  languageOverride String? @map("language_override")
+
+  sourceUrl         String? @map("source_url")
+  /// Where it was copied from. A plain id, not a relation: the cluster may be
+  /// removed later, and the library keeps the file and the fact of its origin.
+  sourceClusterId   String? @map("source_cluster_id") @db.Uuid
+  sourceClusterName String? @map("source_cluster_name")
+  sourceVolid       String? @map("source_volid")
+
+  /// The job currently writing it. Null once it is READY or FAILED.
+  jobId String? @map("job_id") @db.Uuid
+
+  createdById    String? @map("created_by_id") @db.Uuid
+  createdByLabel String? @map("created_by_label")
+
+  errorCode   String? @map("error_code")
+  errorParams Json?   @map("error_params")
+  errorDetail String? @map("error_detail")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  readyAt   DateTime? @map("ready_at") @db.Timestamptz(3)
+
+  @@index([state])
+  @@map("library_items")
 }
 
 // ---------------------------------------------------------------------------
@@ -1101,6 +1250,11 @@ model Job {
 
   /// An error code from the catalogue (ADR-019), translated by the frontend.
   errorCode    String? @map("error_code")
+  /// The values the code's message is written around — "the library holds
+  /// 95 of 100 GB" needs the 95 and the 100. Never a secret: the same rule as
+  /// an API error's params. Added in Phase 5A, the first job whose failure
+  /// needed numbers to be useful.
+  errorParams  Json?   @map("error_params")
   /// English diagnostic, redacted. Never what the interface shows.
   errorMessage String? @map("error_message")
 
