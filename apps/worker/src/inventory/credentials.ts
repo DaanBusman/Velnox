@@ -1,5 +1,5 @@
-import { decodeMasterKey, decryptSecret } from '@velnox/crypto';
-import type { VelnoxPrismaClient } from '@velnox/db';
+import { decodeMasterKey, decryptSecret, encryptSecret } from '@velnox/crypto';
+import type { CredentialKind, VelnoxPrismaClient } from '@velnox/db';
 import type { ProxmoxAuth } from '@velnox/proxmox';
 
 /**
@@ -21,6 +21,13 @@ export class CredentialUnavailableError extends Error {
     super(`No usable secret for credential ${credentialId}`);
     this.name = 'CredentialUnavailableError';
   }
+}
+
+/** What a provisioned VM's credential holds. */
+export interface GuestCredentials {
+  accounts: { name: string; password: string | null; administrator: boolean }[];
+  /** Windows only, and only when the template had one. */
+  productKey?: string | null;
 }
 
 export class CredentialReader {
@@ -85,13 +92,98 @@ export class CredentialReader {
     };
   }
 
-  private async read(credentialId: string): Promise<string> {
+  // --- Phase 5B -----------------------------------------------------------
+
+  /** One of a template's stored secrets: a fixed password, a product key, a PDF password. */
+  templateSecret(credentialId: string): Promise<string> {
+    return this.read(credentialId, ['TEMPLATE_SECRETS']);
+  }
+
+  /** The password an encrypted installation record is locked with. */
+  documentPassword(credentialId: string): Promise<string> {
+    return this.read(credentialId, ['DOCUMENT_PASSWORD']);
+  }
+
+  smtpPassword(credentialId: string): Promise<string> {
+    return this.read(credentialId, ['SMTP_PASSWORD']);
+  }
+
+  /** A provisioned VM's accounts and passwords. For the answer file and the record, nothing else. */
+  async guestCredentials(credentialId: string): Promise<GuestCredentials> {
+    const raw = await this.read(credentialId, ['GUEST_CREDENTIALS']);
+    try {
+      const parsed = JSON.parse(raw) as GuestCredentials;
+      if (!Array.isArray(parsed.accounts)) throw new Error('shape');
+      return parsed;
+    } catch {
+      throw new CredentialUnavailableError(credentialId);
+    }
+  }
+
+  /**
+   * Store a provisioned VM's passwords, encrypted, the same way the API stores
+   * any credential: one row, one secret, the ciphertext bound to the row's id.
+   * The worker writes these because the worker is what decided them — a
+   * template's fixed passwords cannot be read anywhere else.
+   */
+  async storeGuestCredentials(input: {
+    tenantId: string;
+    clusterId: string;
+    hostname: string;
+    credentials: GuestCredentials;
+  }): Promise<string> {
+    return this.prisma.$transaction(async (tx) => {
+      const credential = await tx.credential.create({
+        data: {
+          kind: 'GUEST_CREDENTIALS',
+          tenantId: input.tenantId,
+          label: `Accounts on ${input.hostname}`,
+          status: 'ACTIVE',
+          scopeType: 'CLUSTER',
+          scopeId: input.clusterId,
+        },
+      });
+      const aad = `credential:${credential.id}`;
+      const encrypted = encryptSecret(this.masterKey, JSON.stringify(input.credentials), { aad });
+      await tx.credentialSecret.create({
+        data: {
+          credentialId: credential.id,
+          version: 1,
+          status: 'ACTIVE',
+          activatedAt: new Date(),
+          ciphertext: new Uint8Array(encrypted.ciphertext),
+          iv: new Uint8Array(encrypted.iv),
+          authTag: new Uint8Array(encrypted.authTag),
+          wrappedDek: new Uint8Array(encrypted.wrappedDek),
+          dekIv: new Uint8Array(encrypted.dekIv),
+          dekAuthTag: new Uint8Array(encrypted.dekAuthTag),
+          keyVersion: encrypted.keyVersion,
+          algorithm: encrypted.algorithm,
+          aad,
+        },
+      });
+      return credential.id;
+    });
+  }
+
+  /** Remove a credential and its secret versions. Missing is not an error. */
+  async remove(credentialId: string): Promise<void> {
+    await this.prisma.credential.deleteMany({ where: { id: credentialId } });
+  }
+
+  private async read(credentialId: string, kinds?: readonly CredentialKind[]): Promise<string> {
     const record = await this.prisma.credentialSecret.findFirst({
       where: { credentialId, status: 'ACTIVE' },
       orderBy: [{ version: 'desc' }],
+      include: { credential: { select: { kind: true } } },
     });
 
     if (!record) throw new CredentialUnavailableError(credentialId);
+    // Asked for a template secret, given an SSH key: a wrong id somewhere, and
+    // the answer is a refusal rather than the key.
+    if (kinds && !kinds.includes(record.credential.kind)) {
+      throw new CredentialUnavailableError(credentialId);
+    }
 
     const material = decryptSecret(
       this.masterKey,

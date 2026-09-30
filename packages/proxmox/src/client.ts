@@ -10,6 +10,9 @@ import {
   type RetryPolicy,
   type TlsPolicy,
 } from './transport';
+
+/** One attempt: for requests that change something and must not be sent twice. */
+const NO_RETRY: RetryPolicy = { attempts: 1, baseDelayMs: 0, maxDelayMs: 0 };
 import { multipartEnvelope, multipartStream } from './upload';
 
 /**
@@ -315,6 +318,107 @@ export class ProxmoxClient {
     return upid;
   }
 
+  // --- Virtual machines (Phase 5B) ------------------------------------------
+
+  /** The next free VMID in the cluster. A suggestion: creating with it can still race. */
+  async nextVmid(): Promise<number> {
+    const value = await this.get<string | number>('/cluster/nextid');
+    const vmid = Number(value);
+    if (!Number.isInteger(vmid) || vmid < 100)
+      throw new Error(`Proxmox suggested VMID ${String(value)}`);
+    return vmid;
+  }
+
+  /**
+   * Create a VM. Returns the task id; the VM exists once the task has finished.
+   * Not retried: a create that reached Proxmox and lost its answer must not be
+   * sent twice, and the VMID makes a second one fail rather than duplicate.
+   */
+  createVm(node: string, params: Record<string, string | number | boolean>): Promise<string> {
+    return this.postOnce<string>(`/nodes/${encodeURIComponent(node)}/qemu`, params);
+  }
+
+  vmConfig(node: string, vmid: number): Promise<Record<string, string | number>> {
+    return this.get<Record<string, string | number>>(
+      `/nodes/${encodeURIComponent(node)}/qemu/${vmid}/config`,
+    );
+  }
+
+  /** Change a VM's configuration. Returns a task id, or null when it applied at once. */
+  setVmConfig(
+    node: string,
+    vmid: number,
+    params: Record<string, string | number | boolean>,
+  ): Promise<string | null> {
+    return this.postOnce<string | null>(
+      `/nodes/${encodeURIComponent(node)}/qemu/${vmid}/config`,
+      params,
+    );
+  }
+
+  /** Grow a disk to an absolute size, such as `64G`. Proxmox never shrinks one. */
+  resizeDisk(node: string, vmid: number, disk: string, size: string): Promise<string | null> {
+    return this.put<string | null>(`/nodes/${encodeURIComponent(node)}/qemu/${vmid}/resize`, {
+      disk,
+      size,
+    });
+  }
+
+  vmStatus(node: string, vmid: number): Promise<VmStatus> {
+    return this.get<VmStatus>(`/nodes/${encodeURIComponent(node)}/qemu/${vmid}/status/current`);
+  }
+
+  startVm(node: string, vmid: number): Promise<string> {
+    return this.postOnce<string>(
+      `/nodes/${encodeURIComponent(node)}/qemu/${vmid}/status/start`,
+      {},
+    );
+  }
+
+  /** Power off, as pulling the plug does. For a VM being thrown away, not shut down. */
+  stopVm(node: string, vmid: number): Promise<string> {
+    return this.postOnce<string>(`/nodes/${encodeURIComponent(node)}/qemu/${vmid}/status/stop`, {});
+  }
+
+  /**
+   * Destroy a VM and every disk that belongs to it, including ones no longer
+   * referenced in its configuration, and remove it from backup jobs and HA.
+   */
+  destroyVm(node: string, vmid: number): Promise<string> {
+    return this.del<string>(
+      `/nodes/${encodeURIComponent(node)}/qemu/${vmid}?purge=1&destroy-unreferenced-disks=1`,
+    );
+  }
+
+  /**
+   * Press a key on the VM's keyboard, as QEMU's monitor does. Used for exactly
+   * one thing: Windows' UEFI boot loader waits for a key before it boots the
+   * installer, and nobody is at the console.
+   */
+  sendKey(node: string, vmid: number, key: string): Promise<null> {
+    return this.put<null>(`/nodes/${encodeURIComponent(node)}/qemu/${vmid}/sendkey`, { key });
+  }
+
+  /** Whether the guest agent answers. Throws when it does not, which is the common case at first. */
+  agentPing(node: string, vmid: number): Promise<unknown> {
+    return this.postOnce<unknown>(`/nodes/${encodeURIComponent(node)}/qemu/${vmid}/agent/ping`, {});
+  }
+
+  /** Read a small file inside the guest through its agent. */
+  agentFileRead(node: string, vmid: number, file: string): Promise<AgentFileContent> {
+    return this.get<AgentFileContent>(
+      `/nodes/${encodeURIComponent(node)}/qemu/${vmid}/agent/file-read?file=${encodeURIComponent(file)}`,
+    );
+  }
+
+  /** The guest's own view of its network: interfaces and their addresses. */
+  async agentNetworkInterfaces(node: string, vmid: number): Promise<AgentInterface[]> {
+    const result = await this.get<{ result?: AgentInterface[] }>(
+      `/nodes/${encodeURIComponent(node)}/qemu/${vmid}/agent/network-get-interfaces`,
+    );
+    return result.result ?? [];
+  }
+
   // --- Tasks ---------------------------------------------------------------
 
   taskStatus(node: string, upid: string): Promise<TaskStatus> {
@@ -353,10 +457,26 @@ export class ProxmoxClient {
     return result.data;
   }
 
+  async put<T>(path: string, form: Record<string, string | number | boolean>): Promise<T> {
+    const result = await this.call<T>('PUT', path, form, { retry: false });
+    return result.data;
+  }
+
+  /**
+   * A POST sent exactly once. For requests that change something and are not
+   * safe to repeat when the first answer was lost — creating, starting,
+   * reconfiguring a VM.
+   */
+  async postOnce<T>(path: string, form: Record<string, string | number | boolean>): Promise<T> {
+    const result = await this.call<T>('POST', path, form, { retry: false });
+    return result.data;
+  }
+
   private async call<T>(
-    method: 'GET' | 'POST' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,
     form?: Record<string, string | number | boolean>,
+    options: { retry?: boolean } = {},
   ): Promise<ProxmoxResult<T>> {
     return withRetries(
       async () => {
@@ -413,12 +533,14 @@ export class ProxmoxClient {
 
         return { data: parseData<T>(response.body, path), certificate: response.certificate };
       },
-      this.options.retry ?? DEFAULT_RETRY,
+      options.retry === false ? NO_RETRY : (this.options.retry ?? DEFAULT_RETRY),
       this.options.onRetry,
     );
   }
 
-  private async authHeaders(method: 'GET' | 'POST' | 'DELETE'): Promise<Record<string, string>> {
+  private async authHeaders(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  ): Promise<Record<string, string>> {
     if (this.options.auth.kind === 'token') {
       return {
         authorization: `PVEAPIToken=${this.options.auth.tokenId}=${this.options.auth.secret}`,
@@ -746,6 +868,27 @@ export interface CephFlag {
   name: string;
   value?: number;
   description?: string;
+}
+
+export interface VmStatus {
+  vmid: number;
+  status: 'running' | 'stopped' | string;
+  name?: string;
+  qmpstatus?: string;
+  /** 1 when the VM is configured with a guest agent. */
+  agent?: number;
+  uptime?: number;
+}
+
+export interface AgentFileContent {
+  content: string;
+  truncated?: boolean | number;
+}
+
+export interface AgentInterface {
+  name: string;
+  'hardware-address'?: string;
+  'ip-addresses'?: { 'ip-address': string; 'ip-address-type': 'ipv4' | 'ipv6'; prefix: number }[];
 }
 
 export interface TaskStatus {

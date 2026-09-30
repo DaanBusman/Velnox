@@ -46,6 +46,10 @@ import {
   type SshVerifyData,
 } from './library/ssh-setup';
 import { LIBRARY_SWEEP_INTERVAL_MS, sweepLibrary } from './library/sweep';
+import { Mailer } from './mail/mailer';
+import { notifyProvisioned } from './provisioning/notify';
+import type { ProvisioningServices } from './provisioning/playbook';
+import { sweepProvisionings } from './provisioning/sweep';
 
 /**
  * Velnox worker.
@@ -144,6 +148,20 @@ async function bootstrap(): Promise<void> {
     log: (fields, message) => logger.info(fields, message),
   };
 
+  // Before any queue worker starts: a test mail can be asked for at once.
+  const mailer = new Mailer(prisma, credentials, config.VELNOX_VERSION);
+  const sendTestMail = async (job: Job<{ to: string }>) => {
+    await mailer.send(
+      {
+        to: job.data.to,
+        subject: 'Velnox test mail',
+        text: 'This mail was sent by Velnox to prove the outgoing mail settings work.\n\nNothing needs doing.',
+      },
+      { test: true },
+    );
+    return { ok: true };
+  };
+
   // ------------------------------------------------------------------
   // ISO library
   // ------------------------------------------------------------------
@@ -185,6 +203,10 @@ async function bootstrap(): Promise<void> {
           return processSshProbe(job as Job<SshProbeData>, inventoryContext);
         case JOB_NAMES.inventorySshVerify:
           return processSshVerify(job as Job<SshVerifyData>, inventoryContext);
+        // On this queue because the API waits for it the way it waits for a
+        // probe; it talks to a mail server, not a hypervisor.
+        case JOB_NAMES.mailTest:
+          return sendTestMail(job as Job<{ to: string }>);
         case SCHEDULER_TICK_JOB:
           return runSchedulerTick(prisma, inventoryQueue);
         default:
@@ -247,11 +269,36 @@ async function bootstrap(): Promise<void> {
   });
   jobsRedis.on('error', (error) => logger.debug({ err: error }, 'Jobs Redis error'));
 
+  // ------------------------------------------------------------------
+  // Mail and provisioning (Phase 5B)
+  // ------------------------------------------------------------------
+
+  const provisioning: ProvisioningServices = {
+    prisma,
+    credentials,
+    library,
+    notify: async (provisioningId) => {
+      if (!(await mailer.enabled())) return 'skipped';
+      return notifyProvisioned({
+        prisma,
+        credentials,
+        mailer,
+        productVersion: config.VELNOX_VERSION,
+        provisioningId,
+      });
+    },
+    pollIntervalMs: 10_000,
+    // Windows with updates during Setup can take well over an hour.
+    installTimeoutMs: { WINDOWS: 180 * 60_000, LINUX: 45 * 60_000 },
+    credentialRetentionMs: 30 * 24 * 60 * 60_000,
+  };
+
   const jobsContext: JobsContext = {
     prisma,
     redis: jobsRedis,
     workerId,
     library,
+    provisioning,
     log: {
       info: (fields, message) => logger.info(fields, message),
       warn: (fields, message) => logger.warn(fields, message),
@@ -300,15 +347,25 @@ async function bootstrap(): Promise<void> {
   const reconcileTimer = setInterval(() => void reconcile(), RECONCILE_INTERVAL_MS);
 
   const sweep = () =>
-    sweepLibrary(library)
-      .then((result) => {
-        if (Object.values(result).some((count) => count > 0)) {
-          logger.warn(result, 'Swept the library');
-        }
-      })
-      .catch((error: unknown) =>
-        logger.error({ err: rootRedactor.value(error) }, 'Sweeping the library failed'),
-      );
+    Promise.all([
+      sweepLibrary(library)
+        .then((result) => {
+          if (Object.values(result).some((count) => count > 0)) {
+            logger.warn(result, 'Swept the library');
+          }
+        })
+        .catch((error: unknown) =>
+          logger.error({ err: rootRedactor.value(error) }, 'Sweeping the library failed'),
+        ),
+      sweepProvisionings(prisma, credentials)
+        .then((result) => {
+          if (result.lost > 0) logger.warn(result, 'Swept provisioning records');
+          else if (result.expired > 0) logger.info(result, 'Dropped expired VM credentials');
+        })
+        .catch((error: unknown) =>
+          logger.error({ err: rootRedactor.value(error) }, 'Sweeping provisioning records failed'),
+        ),
+    ]);
   await sweep();
   const sweepTimer = setInterval(() => void sweep(), LIBRARY_SWEEP_INTERVAL_MS);
 

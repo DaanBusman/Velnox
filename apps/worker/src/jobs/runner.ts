@@ -13,6 +13,7 @@ import {
 } from '@velnox/shared';
 import { StepError, playbookFor, type Playbook, type StepContext, type StepDefinition } from './playbooks';
 import type { LibraryServices } from '../library/services';
+import type { ProvisioningServices } from '../provisioning/playbook';
 
 /**
  * The job runner.
@@ -39,6 +40,8 @@ export interface JobsContext {
   workerId: string;
   /** What the library playbooks work with. Absent in tests that run only the self-test. */
   library?: LibraryServices;
+  /** What vm.provision works with. Absent where the library is. */
+  provisioning?: ProvisioningServices;
   log: {
     info(fields: Record<string, unknown>, message: string): void;
     warn(fields: Record<string, unknown>, message: string): void;
@@ -278,6 +281,7 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
         tenantId: job.tenantId,
         createdByUserId: job.createdByUserId,
         library: context.library,
+        provisioning: context.provisioning,
       });
       steps = playbook.steps;
     } catch (error) {

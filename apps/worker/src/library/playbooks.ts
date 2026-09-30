@@ -3,6 +3,7 @@ import { createReadStream } from 'node:fs';
 import { open, rename, rm, stat } from 'node:fs/promises';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import type { Prisma } from '@velnox/db';
 import { waitForTask, type ProxmoxClient } from '@velnox/proxmox';
 import {
   ERROR_CODES,
@@ -24,6 +25,7 @@ import { StepError, type Playbook, type StepContext } from '../jobs/steps';
 import { downloadToFile } from './fetch';
 import type { LibraryServices } from './services';
 import { withSftp } from './ssh';
+import { readWindowsImages, type WindowsImage } from './windows-images';
 
 /**
  * The library's jobs.
@@ -157,6 +159,7 @@ async function publish(
   const sniffed = sniffLibraryContent(head);
 
   let diskFormat: 'qcow2' | 'raw' | null = null;
+  let windowsImages: WindowsImage[] | null = null;
   if (item.kind === 'ISO') {
     if (!sniffed.iso) {
       throw new StepError(
@@ -165,6 +168,9 @@ async function publish(
         { filename: item.filename },
       );
     }
+    // A Windows installer's editions, for the template form to offer. Null
+    // for any other ISO, and for one whose list cannot be read with certainty.
+    windowsImages = await readWindowsImages(partial);
   } else {
     diskFormat = sniffed.qcow2 ? 'qcow2' : 'raw';
     if (item.filename.toLowerCase().endsWith('.qcow2') && !sniffed.qcow2) {
@@ -192,6 +198,10 @@ async function publish(
       receivedBytes: BigInt(checked.bytes),
       sha256: checked.sha256,
       diskFormat,
+      // Written only when there is one: a fresh item's column is already null.
+      ...(windowsImages
+        ? { windowsImages: windowsImages as unknown as Prisma.InputJsonValue }
+        : {}),
       readyAt: new Date(),
       jobId: null,
       errorCode: null,
@@ -199,7 +209,12 @@ async function publish(
     },
   });
 
-  return { filename: item.filename, bytes: checked.bytes, sha256: checked.sha256 };
+  return {
+    filename: item.filename,
+    bytes: checked.bytes,
+    sha256: checked.sha256,
+    ...(windowsImages ? { editions: windowsImages.map((image) => image.name).join(', ') } : {}),
+  };
 }
 
 /**
