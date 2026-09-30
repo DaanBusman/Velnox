@@ -1,5 +1,13 @@
 import 'server-only';
-import type { JobDetail, JobLogLine, JobSummary, TlsStatusResponse } from '@velnox/shared';
+import type {
+  ClusterFilesResponse,
+  ClusterSshStatus,
+  JobDetail,
+  JobLogLine,
+  JobSummary,
+  LibraryListResponse,
+  TlsStatusResponse,
+} from '@velnox/shared';
 import { cookies } from 'next/headers';
 import type {
   AlertRow,
@@ -278,4 +286,18 @@ export function listJobLogs(id: string) {
   return readAs<{ lines: JobLogLine[] }>(
     `/api/v1/jobs/${encodeURIComponent(id)}/logs?limit=1000`,
   );
+}
+
+/** The ISO library and how full it is (Phase 5A). */
+export function listLibrary() {
+  return readAs<LibraryListResponse>('/api/v1/library');
+}
+
+/** ISOs and disk images on a cluster's storage, as discovery last saw them. */
+export function getClusterFiles(id: string) {
+  return readAs<ClusterFilesResponse>(`/api/v1/clusters/${encodeURIComponent(id)}/files`);
+}
+
+export function getClusterSsh(id: string) {
+  return readAs<ClusterSshStatus>(`/api/v1/clusters/${encodeURIComponent(id)}/ssh`);
 }

@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import type { ApiFailure } from './client-api';
+import { messageValues } from './message-values';
 
 /**
  * Turns an API error code into a sentence in the reader's language.
@@ -19,7 +20,7 @@ export function useApiError(): (failure: ApiFailure | null | undefined) => strin
 
     const key = `errors.${failure.code}`;
     if (t.has(key)) {
-      return t(key, failure.params as Record<string, never> | undefined);
+      return t(key, messageValues(failure.params));
     }
 
     return t('errors.generic');

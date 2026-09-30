@@ -135,3 +135,50 @@ async function send<T>(
 
   return { ok: true, data: payload as T };
 }
+
+/**
+ * Send raw bytes: one chunk of a library upload.
+ *
+ * Not through `send`, because the body is a slice of a file rather than JSON,
+ * and must reach the API as `application/octet-stream` — the one content type
+ * no body parser there claims, which is what lets the API stream it straight to
+ * disk. Cancelling the signal abandons the request; the upload resumes from
+ * wherever the API says it is.
+ */
+export async function apiPutBinary<T>(
+  path: string,
+  body: Blob,
+  signal?: AbortSignal,
+): Promise<ApiResult<T>> {
+  const csrf = readCsrfToken();
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1${path}`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/octet-stream',
+        ...(csrf ? { [CSRF_HEADER]: csrf } : {}),
+      },
+      body,
+      signal,
+    });
+  } catch {
+    return { ok: false, error: { code: 'network', status: 0 } };
+  }
+
+  const payload = (await response.json().catch(() => null)) as { error?: ApiFailure } | null;
+  if (!response.ok) {
+    const error = payload?.error;
+    return {
+      ok: false,
+      error: {
+        code: error?.code ?? 'generic',
+        status: response.status,
+        ...(error?.params ? { params: error.params } : {}),
+      },
+    };
+  }
+  return { ok: true, data: payload as T };
+}

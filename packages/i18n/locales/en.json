@@ -166,7 +166,49 @@
     "tokenIdHint": "As Proxmox shows it, including the realm and the token name.",
     "tokenSecret": "Token secret",
     "username": "Username",
-    "version": "Version"
+    "version": "Version",
+    "files": {
+      "tab": "ISOs & images",
+      "title": "ISOs and disk images",
+      "description": "On this cluster’s storage, as discovery last saw them.",
+      "empty": "No ISOs or importable disk images on this cluster’s storage.",
+      "where": "Where",
+      "inLibrary": "In library",
+      "yes": "yes",
+      "no": "no",
+      "shared": "{storage} (shared)",
+      "pull": "Copy to library",
+      "pullNeedsSsh": "Copying a file into the library needs SSH on this cluster — Proxmox’s API cannot read a file back. Set it up under Connection.",
+      "pullQueued": "Copying {filename} into the library.",
+      "delete": "Delete",
+      "confirmDelete": "Delete from the cluster?",
+      "deleteQueued": "Deleting {filename} from the cluster."
+    },
+    "ssh": {
+      "title": "SSH",
+      "description": "Optional. Used only to copy an ISO or disk image off a node into the library.",
+      "notConfigured": "Not set up. Everything else works without it.",
+      "account": "Account",
+      "verified": "Last proven",
+      "notVerified": "not proven",
+      "noKeyConfirmed": "no confirmed host key — not used for SSH",
+      "setUp": "Set up SSH",
+      "replace": "Replace key",
+      "remove": "Remove SSH",
+      "removeConfirm": "Remove the key and the pins",
+      "sftpOnly": "Velnox uses SFTP only, to read files. It never runs a command or opens a shell, so the account can be one that may do nothing else.",
+      "port": "Port",
+      "readKeys": "Read host keys",
+      "compareHint": "Compare each fingerprint with the node before confirming it. On the node:",
+      "noKey": "no key read ({reason})",
+      "username": "Username",
+      "usernameHint": "An account whose authorized_keys holds the public half of the key below.",
+      "privateKey": "Private key",
+      "privateKeyHint": "Stored encrypted, and never shown again.",
+      "passphrase": "Passphrase, if the key has one",
+      "save": "Save and trust the confirmed nodes",
+      "unconfirmedNodes": "A node without a confirmed host key is not connected to. Set SSH up again to confirm it."
+    }
   },
   "common": {
     "cancel": "Cancel",
@@ -263,7 +305,8 @@
       "not_retryable": "Only a job that failed, was cancelled or was rolled back can be retried.",
       "not_waiting_approval": "This job is not waiting for approval.",
       "rejected": "Rejected at an approval gate. Nothing after the gate was run.",
-      "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe."
+      "worker_lost": "The worker stopped unexpectedly. This job was not completed and was not retried automatically, because repeating a partly applied change is unsafe.",
+      "not_retryable_type": "A job like this is not retried. Add the file to the library again instead."
     },
     "network": "Could not reach the server.",
     "node": {
@@ -278,7 +321,38 @@
       "blockers_present": "{count, plural, one {# blocker} other {# blockers}} must be resolved before this upgrade can start.",
       "unparsed_output": "Preflight output contained lines this version of Velnox does not recognise. They are treated as blockers and shown verbatim."
     },
-    "validation": "Some of the values submitted are not valid."
+    "validation": "Some of the values submitted are not valid.",
+    "ssh": {
+      "not_configured": "SSH is not set up for node {node}. Set it up on the cluster’s page and confirm the node’s host key first.",
+      "unreachable": "Could not reach the node over SSH. Check its address, the port and any firewall in between.",
+      "auth_failed": "The node refused the SSH key. Check that its public half is in that account’s authorized_keys.",
+      "host_key_changed": "The host key of {node} is not the one you confirmed. Read the keys again and compare them with the node before trusting a new one."
+    },
+    "library": {
+      "full": "The library would grow past its limit of {ceilingGb} GB: {usedGb} GB is in use and this needs {requestedGb} GB. Remove files, or raise VELNOX_LIBRARY_MAX_GB.",
+      "disk_low": "That would leave {freeGb} GB of disk minus {requestedGb} GB, below the minimum of {floorGb} GB that must stay free. Free up space, or lower VELNOX_LIBRARY_MIN_FREE_GB.",
+      "invalid_filename": "“{filename}” cannot be used as a filename. Use letters, digits, dots, dashes and underscores — the characters Proxmox keeps.",
+      "unsupported_kind": "“{filename}” is not an ISO (.iso) or a disk image Proxmox can import (.qcow2, .raw, .img).",
+      "duplicate_filename": "The library already has a file called {filename}.",
+      "not_ready": "That file is not ready yet.",
+      "in_use": "A job is using this file right now. Wait for it to finish, or cancel it.",
+      "upload_offset": "The upload is at byte {expected}, not {got}. Continue from there.",
+      "upload_too_large": "That is more than the upload has room for.",
+      "url_refused": "Velnox will not fetch from that address: only http and https, no credentials in the URL, and never loopback, link-local or Velnox’s own networks.",
+      "url_failed": "The server did not hand the file over. Open the URL in a browser to see what it answers.",
+      "url_too_many_redirects": "The URL redirected more than five times.",
+      "size_mismatch": "The file did not arrive whole: the number of bytes is not the number promised.",
+      "wrong_content": "{filename} is not what its name says. A file ending in .iso must be an ISO image; an error page saved under that name is the usual cause.",
+      "checksum_mismatch": "Proxmox received {filename} with a different checksum from the library’s copy, and refused it.",
+      "storage_unsuitable": "Storage {storage} on {node} does not take {content} content, or is not active.",
+      "storage_full": "Storage {storage} has {freeGb} GB free; this needs {neededGb} GB.",
+      "already_on_storage": "{volid} is already on that storage. Delete it there first to replace it.",
+      "not_on_storage": "{volid} is not on that storage.",
+      "file_missing": "The file has gone from the library’s disk. Remove this entry and add the file again.",
+      "upload_abandoned": "This upload was never finished, and was removed after a day.",
+      "resume_mismatch": "That is not the file this upload started with. Choose the same file — same name, same size — to continue it.",
+      "upload_paused": "The upload was paused. Choose the same file again to continue from where it stopped."
+    }
   },
   "inventory": {
     "address": "Address",
@@ -388,7 +462,8 @@
       "step_progress": "Step {step} at {pct}%",
       "step_skipped": "Step {step} skipped",
       "step_started": "Step {step} started",
-      "step_succeeded": "Step {step} succeeded"
+      "step_succeeded": "Step {step} succeeded",
+      "job_cleanup_failed": "Could not clean up everything the job had started. Check what it left behind."
     },
     "events": "Events",
     "finishedAt": "Finished",
@@ -421,7 +496,12 @@
     "subtitle": "Work Velnox is doing or has done, newest first.",
     "title": "Jobs",
     "types": {
-      "selftest": "Self-test"
+      "selftest": "Self-test",
+      "fetch": "Fetch into library",
+      "verify": "Check upload",
+      "push": "Copy to cluster",
+      "pull": "Copy from cluster",
+      "cluster_delete": "Delete from cluster"
     }
   },
   "layout": {
@@ -509,7 +589,8 @@
     "tenants": "Tenants",
     "updates": "Updates",
     "users": "Users",
-    "virtualMachines": "Virtual Machines"
+    "virtualMachines": "Virtual Machines",
+    "library": "ISO library"
   },
   "placeholder": {
     "backToDashboard": "Back to dashboard",
@@ -923,5 +1004,81 @@
     "statusDisabled": "Disabled",
     "subtitle": "Accounts that can sign in to this installation.",
     "you": "(you)"
+  },
+  "library": {
+    "subtitle": "ISOs and cloud images on the Velnox host, ready to copy onto any cluster.",
+    "capacityTitle": "Space",
+    "capacityDescription": "The library may hold {maxGb} GB, and at least {minFreeGb} GB of the disk it shares with the database must stay free.",
+    "capacityUsed": "{used} of {ceiling} in use. {free} of disk free; {floor} must stay free.",
+    "addTitle": "Add a file",
+    "addDescription": "From a URL, which the worker fetches, or from this browser, sent in pieces that survive a dropped connection.",
+    "fromUrl": "From a URL",
+    "fromUrlHint": "http or https. The address is shown and logged without its query string, which is where download links keep their token.",
+    "fetch": "Fetch",
+    "fromUpload": "From this computer",
+    "fromUploadHint": ".iso for installers; .img, .qcow2 or .raw for cloud images.",
+    "resumeLabel": "Continue uploading {filename}",
+    "uploading": "Uploading {filename}: {sent} of {total}",
+    "pause": "Pause",
+    "resume": "Continue upload",
+    "fetchQueued": "Fetching {filename}.",
+    "uploadChecking": "{filename} is up; checking it now.",
+    "followJob": "Follow the job",
+    "itemsTitle": "Files",
+    "itemsDescription": "Each file under its friendly name, with the name Proxmox will give it underneath.",
+    "empty": "The library is empty.",
+    "name": "Name",
+    "kind": "Kind",
+    "size": "Size",
+    "state": "State",
+    "source": "From",
+    "actions": "Actions",
+    "kindIso": "ISO",
+    "kindDisk": "Disk image ({format})",
+    "job": "job",
+    "sourceUrl": "URL",
+    "sourceUpload": "Upload",
+    "sourceCluster": "Cluster {cluster}",
+    "notRecognised": "not recognised",
+    "noLanguage": "no language",
+    "push": "Copy to cluster",
+    "pushTitle": "Copy to a cluster",
+    "pushCluster": "Cluster",
+    "pushChooseCluster": "Choose a cluster",
+    "pushStorage": "Storage",
+    "pushChooseStorage": "Choose a storage",
+    "pushNoStorage": "No active storage on this cluster takes {content} content.",
+    "pushShared": "{storage} (shared)",
+    "pushExplain": "Proxmox checks the file against its checksum as it arrives. If the copy is cancelled or fails, nothing is left on the node.",
+    "pushQueued": "Copying {filename}.",
+    "rename": "Rename",
+    "renameTitle": "Correct the name",
+    "renameDescription": "The file keeps its name {filename}; this changes only how Velnox shows it.",
+    "renameName": "Name",
+    "renameNameHint": "Read from the filename as: {parsed}. Leave empty to keep that.",
+    "renameKeepLanguage": "Keep the language read from the filename ({language})",
+    "renameLanguage": "Language",
+    "renameLanguageHint": "A language code such as nl, en-GB or de. Leave empty for none.",
+    "remove": "Remove",
+    "removeTitle": "Remove {filename}?",
+    "removeBody": "The file is deleted from the library. Copies already on clusters are left alone.",
+    "removeConfirm": "Remove from library",
+    "states": {
+      "RECEIVING": "Arriving",
+      "VERIFYING": "Checking",
+      "READY": "Ready",
+      "FAILED": "Failed"
+    },
+    "variant": {
+      "server": "server",
+      "desktop": "desktop",
+      "netinst": "network install",
+      "live": "live",
+      "cloudImage": "cloud image",
+      "evaluation": "evaluation",
+      "drivers": "drivers",
+      "businessEditions": "business editions",
+      "consumerEditions": "consumer editions"
+    }
   }
 }

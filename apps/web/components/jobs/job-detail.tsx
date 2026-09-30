@@ -24,6 +24,7 @@ import {
   useEventText,
   useJobTypeLabel,
 } from './primitives';
+import { messageValues } from '@/lib/message-values';
 
 /**
  * One job, live.
@@ -190,7 +191,11 @@ export function JobDetail({
 
           {job.errorCode && (
             <Notice tone="error" title={t('job.errorTitle')}>
-              <p>{t.has(`errors.${job.errorCode}`) ? t(`errors.${job.errorCode}`) : t('errors.generic')}</p>
+              <p>
+                {t.has(`errors.${job.errorCode}`)
+                  ? t(`errors.${job.errorCode}`, messageValues(job.errorParams))
+                  : t('errors.generic')}
+              </p>
               {job.errorDetail && (
                 <p className="mt-2 font-mono text-[11px] text-ink-muted">
                   {t('job.errorDetail')}: {job.errorDetail}

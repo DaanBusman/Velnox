@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormatter, useTranslations } from 'next-intl';
+import type { ClusterFilesResponse, ClusterSshStatus } from '@velnox/shared';
 import type {
   CephDaemonSummary,
   ClusterSummary,
@@ -15,10 +16,12 @@ import { useApiError } from '@/lib/use-api-error';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { Button, FormError } from '@/components/ui/form';
 import { Card, KeyValue, Notice, StatusBadge } from '@/components/ui/primitives';
+import { ClusterFiles } from './cluster-files';
+import { ClusterSsh } from './cluster-ssh';
 import { NodeTable, WorkloadTable } from './tables';
 import { Absent, ConnectionBadge, Fingerprint, HealthBadge } from './primitives';
 
-type Tab = 'nodes' | 'guests' | 'ceph' | 'connection' | 'runs';
+type Tab = 'nodes' | 'guests' | 'ceph' | 'files' | 'connection' | 'runs';
 
 /**
  * One cluster.
@@ -42,7 +45,10 @@ export function ClusterDetail({
   workloads,
   cephDaemons,
   runs,
+  files,
+  ssh,
   canManage,
+  canPull,
   refreshSeconds,
 }: {
   cluster: ClusterSummary;
@@ -50,7 +56,12 @@ export function ClusterDetail({
   workloads: WorkloadSummary[];
   cephDaemons: CephDaemonSummary[];
   runs: DiscoveryRunRow[];
+  /** ISOs and disk images on the cluster's storage (Phase 5A). Null when unreadable. */
+  files: ClusterFilesResponse | null;
+  ssh: ClusterSshStatus | null;
   canManage: boolean;
+  /** May copy a file into the library: `library.manage` as well as `clusters.manage`. */
+  canPull: boolean;
   /** Seconds between automatic re-reads; 0 means the viewer turned it off. */
   refreshSeconds: number;
 }) {
@@ -63,16 +74,19 @@ export function ClusterDetail({
   const [pending, setPending] = useState<string | null>(null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [confirmingRemoval, setConfirmingRemoval] = useState(false);
+  const [editingSsh, setEditingSsh] = useState(false);
 
   // Paused while a removal is being confirmed, for the same reason the add form
   // pauses it: a refresh can unmount the tree, and a confirmation that vanishes
-  // is one an operator answers twice.
-  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !confirmingRemoval);
+  // is one an operator answers twice. The SSH form likewise — it holds a pasted
+  // private key, and losing that to a refresh means pasting it again.
+  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !confirmingRemoval && !editingSsh);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'nodes', label: t('nav.nodes') },
     { key: 'guests', label: t('clusters.guests') },
     ...(cluster.cephPresent ? [{ key: 'ceph' as const, label: t('clusters.ceph') }] : []),
+    { key: 'files', label: t('clusters.files.tab') },
     { key: 'connection', label: t('clusters.connection') },
     { key: 'runs', label: t('clusters.runs') },
   ];
@@ -218,6 +232,24 @@ export function ClusterDetail({
             <p className="mt-2 text-xs text-ink-muted">{t('clusters.fingerprintExplainer')}</p>
           </div>
         </Card>
+      )}
+
+      {tab === 'connection' && (
+        <ClusterSsh
+          clusterId={cluster.id}
+          ssh={ssh}
+          canManage={canManage}
+          onEditing={setEditingSsh}
+        />
+      )}
+
+      {tab === 'files' && (
+        <ClusterFiles
+          clusterId={cluster.id}
+          files={files}
+          canManage={canManage}
+          canPull={canPull}
+        />
       )}
 
       {tab === 'runs' && <RunsPanel runs={runs} />}

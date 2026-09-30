@@ -64,6 +64,7 @@ export const NAVIGATION: NavGroup[] = [
       { key: 'containers', href: '/containers', phase: null, requiresPermission: 'workloads.read' },
       { key: 'storage', href: '/storage', phase: null, requiresPermission: 'storage.read' },
       { key: 'networks', href: '/networks', phase: null, requiresPermission: 'networks.read' },
+      { key: 'library', href: '/library', phase: null, requiresPermission: 'library.read' },
     ],
   },
   {

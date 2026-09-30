@@ -167,7 +167,49 @@
     "tokenIdHint": "Zoals Proxmox het toont, inclusief realm en tokennaam.",
     "tokenSecret": "Tokengeheim",
     "username": "Gebruikersnaam",
-    "version": "Versie"
+    "version": "Versie",
+    "files": {
+      "tab": "ISO’s en images",
+      "title": "ISO’s en disk-images",
+      "description": "Op de opslag van dit cluster, zoals de laatste uitleesronde ze zag.",
+      "empty": "Geen ISO’s of importeerbare disk-images op de opslag van dit cluster.",
+      "where": "Waar",
+      "inLibrary": "In bibliotheek",
+      "yes": "ja",
+      "no": "nee",
+      "shared": "{storage} (gedeeld)",
+      "pull": "Naar bibliotheek kopiëren",
+      "pullNeedsSsh": "Een bestand naar de bibliotheek kopiëren vereist SSH op dit cluster — de API van Proxmox kan geen bestand teruglezen. Stel het in onder Verbinding.",
+      "pullQueued": "{filename} wordt naar de bibliotheek gekopieerd.",
+      "delete": "Verwijderen",
+      "confirmDelete": "Van het cluster verwijderen?",
+      "deleteQueued": "{filename} wordt van het cluster verwijderd."
+    },
+    "ssh": {
+      "title": "SSH",
+      "description": "Optioneel. Alleen gebruikt om een ISO of disk-image van een node naar de bibliotheek te kopiëren.",
+      "notConfigured": "Niet ingesteld. Al het andere werkt zonder.",
+      "account": "Account",
+      "verified": "Laatst bewezen",
+      "notVerified": "niet bewezen",
+      "noKeyConfirmed": "geen bevestigde host key — niet gebruikt voor SSH",
+      "setUp": "SSH instellen",
+      "replace": "Sleutel vervangen",
+      "remove": "SSH verwijderen",
+      "removeConfirm": "De sleutel en de pins verwijderen",
+      "sftpOnly": "Velnox gebruikt alleen SFTP, om bestanden te lezen. Het voert nooit een commando uit en opent nooit een shell, dus het account kan er een zijn dat verder niets mag.",
+      "port": "Poort",
+      "readKeys": "Host keys lezen",
+      "compareHint": "Vergelijk elke vingerafdruk met de node voordat je hem bevestigt. Op de node:",
+      "noKey": "geen key gelezen ({reason})",
+      "username": "Gebruikersnaam",
+      "usernameHint": "Een account waarvan de authorized_keys de publieke helft van de sleutel hieronder bevat.",
+      "privateKey": "Private key",
+      "privateKeyHint": "Versleuteld opgeslagen, en nooit meer getoond.",
+      "passphrase": "Wachtwoordzin, als de sleutel er een heeft",
+      "save": "Opslaan en de bevestigde nodes vertrouwen",
+      "unconfirmedNodes": "Met een node zonder bevestigde host key wordt geen verbinding gemaakt. Stel SSH opnieuw in om hem te bevestigen."
+    }
   },
   "common": {
     "cancel": "Annuleren",
@@ -264,7 +306,8 @@
       "not_retryable": "Alleen een job die is mislukt, geannuleerd of teruggedraaid kan opnieuw worden gestart.",
       "not_waiting_approval": "Deze job wacht niet op goedkeuring.",
       "rejected": "Afgewezen bij een goedkeuringspunt. Niets na dat punt is uitgevoerd.",
-      "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is."
+      "worker_lost": "De worker is onverwacht gestopt. Deze job is niet voltooid en is niet automatisch opnieuw gestart, omdat het herhalen van een deels toegepaste wijziging onveilig is.",
+      "not_retryable_type": "Een job als deze wordt niet opnieuw geprobeerd. Voeg het bestand in plaats daarvan opnieuw aan de bibliotheek toe."
     },
     "network": "De server is niet bereikbaar.",
     "node": {
@@ -279,7 +322,38 @@
       "blockers_present": "{count, plural, one {# blokkade} other {# blokkades}} moeten worden opgelost voordat deze upgrade kan starten.",
       "unparsed_output": "De preflight-uitvoer bevatte regels die deze versie van Velnox niet herkent. Ze worden als blokkade behandeld en letterlijk getoond."
     },
-    "validation": "Een deel van de ingevoerde waarden is niet geldig."
+    "validation": "Een deel van de ingevoerde waarden is niet geldig.",
+    "ssh": {
+      "not_configured": "SSH is niet ingesteld voor node {node}. Stel het in op de pagina van het cluster en bevestig eerst de host key van de node.",
+      "unreachable": "De node was niet bereikbaar via SSH. Controleer het adres, de poort en eventuele firewalls onderweg.",
+      "auth_failed": "De node weigerde de SSH-sleutel. Controleer of de publieke helft in de authorized_keys van dat account staat.",
+      "host_key_changed": "De host key van {node} is niet de key die je bevestigde. Lees de keys opnieuw en vergelijk ze met de node voordat je een nieuwe vertrouwt."
+    },
+    "library": {
+      "full": "De bibliotheek zou over haar limiet van {ceilingGb} GB gaan: {usedGb} GB is in gebruik en dit vraagt {requestedGb} GB. Verwijder bestanden, of verhoog VELNOX_LIBRARY_MAX_GB.",
+      "disk_low": "Dan blijft er van {freeGb} GB schijfruimte na {requestedGb} GB minder over dan het minimum van {floorGb} GB dat vrij moet blijven. Maak ruimte vrij, of verlaag VELNOX_LIBRARY_MIN_FREE_GB.",
+      "invalid_filename": "“{filename}” kan niet als bestandsnaam dienen. Gebruik letters, cijfers, punten, streepjes en underscores — de tekens die Proxmox laat staan.",
+      "unsupported_kind": "“{filename}” is geen ISO (.iso) en geen disk-image die Proxmox kan importeren (.qcow2, .raw, .img).",
+      "duplicate_filename": "De bibliotheek heeft al een bestand met de naam {filename}.",
+      "not_ready": "Dat bestand is nog niet klaar.",
+      "in_use": "Een job gebruikt dit bestand op dit moment. Wacht tot die klaar is, of annuleer hem.",
+      "upload_offset": "De upload staat op byte {expected}, niet op {got}. Ga vanaf daar verder.",
+      "upload_too_large": "Dat is meer dan waar de upload ruimte voor heeft.",
+      "url_refused": "Velnox haalt niets op van dat adres: alleen http en https, geen inloggegevens in de URL, en nooit loopback, link-local of de eigen netwerken van Velnox.",
+      "url_failed": "De server gaf het bestand niet af. Open de URL in een browser om te zien wat hij antwoordt.",
+      "url_too_many_redirects": "De URL stuurde meer dan vijf keer door.",
+      "size_mismatch": "Het bestand kwam niet heel aan: het aantal bytes klopt niet met wat was aangekondigd.",
+      "wrong_content": "{filename} is niet wat de naam zegt. Een bestand dat op .iso eindigt moet een ISO-image zijn; een foutpagina die onder die naam is opgeslagen is de gebruikelijke oorzaak.",
+      "checksum_mismatch": "Proxmox ontving {filename} met een andere checksum dan de kopie in de bibliotheek, en weigerde het.",
+      "storage_unsuitable": "Opslag {storage} op {node} accepteert geen {content}-inhoud, of is niet actief.",
+      "storage_full": "Opslag {storage} heeft {freeGb} GB vrij; dit vraagt {neededGb} GB.",
+      "already_on_storage": "{volid} staat al op die opslag. Verwijder het daar eerst om het te vervangen.",
+      "not_on_storage": "{volid} staat niet op die opslag.",
+      "file_missing": "Het bestand is van de schijf van de bibliotheek verdwenen. Verwijder deze regel en voeg het bestand opnieuw toe.",
+      "upload_abandoned": "Deze upload is nooit afgemaakt en na een dag verwijderd.",
+      "resume_mismatch": "Dat is niet het bestand waarmee deze upload begon. Kies hetzelfde bestand — dezelfde naam, dezelfde grootte — om verder te gaan.",
+      "upload_paused": "De upload is gepauzeerd. Kies hetzelfde bestand opnieuw om verder te gaan waar hij stopte."
+    }
   },
   "inventory": {
     "address": "Adres",
@@ -389,7 +463,8 @@
       "step_progress": "Stap {step} op {pct}%",
       "step_skipped": "Stap {step} overgeslagen",
       "step_started": "Stap {step} gestart",
-      "step_succeeded": "Stap {step} geslaagd"
+      "step_succeeded": "Stap {step} geslaagd",
+      "job_cleanup_failed": "Niet alles wat de job had gestart kon worden opgeruimd. Controleer wat er is achtergebleven."
     },
     "events": "Gebeurtenissen",
     "finishedAt": "Afgerond",
@@ -422,7 +497,12 @@
     "subtitle": "Werk dat Velnox doet of gedaan heeft, nieuwste eerst.",
     "title": "Jobs",
     "types": {
-      "selftest": "Zelftest"
+      "selftest": "Zelftest",
+      "fetch": "Ophalen naar bibliotheek",
+      "verify": "Upload controleren",
+      "push": "Kopiëren naar cluster",
+      "pull": "Kopiëren van cluster",
+      "cluster_delete": "Verwijderen van cluster"
     }
   },
   "layout": {
@@ -510,7 +590,8 @@
     "tenants": "Tenants",
     "updates": "Updates",
     "users": "Gebruikers",
-    "virtualMachines": "Virtuele machines"
+    "virtualMachines": "Virtuele machines",
+    "library": "ISO-bibliotheek"
   },
   "placeholder": {
     "backToDashboard": "Terug naar dashboard",
@@ -924,5 +1005,81 @@
     "statusDisabled": "Uitgeschakeld",
     "subtitle": "Accounts die kunnen inloggen op deze installatie.",
     "you": "(u)"
+  },
+  "library": {
+    "subtitle": "ISO’s en cloud-images op de Velnox-host, klaar om naar elk cluster te kopiëren.",
+    "capacityTitle": "Ruimte",
+    "capacityDescription": "De bibliotheek mag {maxGb} GB bevatten, en van de schijf die ze met de database deelt moet minstens {minFreeGb} GB vrij blijven.",
+    "capacityUsed": "{used} van {ceiling} in gebruik. {free} schijfruimte vrij; {floor} moet vrij blijven.",
+    "addTitle": "Een bestand toevoegen",
+    "addDescription": "Vanaf een URL, die de worker ophaalt, of vanuit deze browser, verstuurd in stukken die een weggevallen verbinding overleven.",
+    "fromUrl": "Vanaf een URL",
+    "fromUrlHint": "http of https. Het adres wordt getoond en gelogd zonder querystring, want daar bewaren downloadlinks hun token.",
+    "fetch": "Ophalen",
+    "fromUpload": "Vanaf deze computer",
+    "fromUploadHint": ".iso voor installers; .img, .qcow2 of .raw voor cloud-images.",
+    "resumeLabel": "Uploaden van {filename} hervatten",
+    "uploading": "{filename} wordt geüpload: {sent} van {total}",
+    "pause": "Pauzeren",
+    "resume": "Upload hervatten",
+    "fetchQueued": "{filename} wordt opgehaald.",
+    "uploadChecking": "{filename} is binnen en wordt nu gecontroleerd.",
+    "followJob": "Volg de job",
+    "itemsTitle": "Bestanden",
+    "itemsDescription": "Elk bestand onder zijn leesbare naam, met daaronder de naam die Proxmox het geeft.",
+    "empty": "De bibliotheek is leeg.",
+    "name": "Naam",
+    "kind": "Soort",
+    "size": "Grootte",
+    "state": "Status",
+    "source": "Herkomst",
+    "actions": "Acties",
+    "kindIso": "ISO",
+    "kindDisk": "Disk-image ({format})",
+    "job": "job",
+    "sourceUrl": "URL",
+    "sourceUpload": "Upload",
+    "sourceCluster": "Cluster {cluster}",
+    "notRecognised": "niet herkend",
+    "noLanguage": "geen taal",
+    "push": "Naar cluster kopiëren",
+    "pushTitle": "Naar een cluster kopiëren",
+    "pushCluster": "Cluster",
+    "pushChooseCluster": "Kies een cluster",
+    "pushStorage": "Opslag",
+    "pushChooseStorage": "Kies een opslag",
+    "pushNoStorage": "Geen actieve opslag op dit cluster accepteert {content}-inhoud.",
+    "pushShared": "{storage} (gedeeld)",
+    "pushExplain": "Proxmox controleert het bestand bij aankomst tegen zijn checksum. Wordt het kopiëren geannuleerd of mislukt het, dan blijft er niets op de node achter.",
+    "pushQueued": "{filename} wordt gekopieerd.",
+    "rename": "Hernoemen",
+    "renameTitle": "De naam corrigeren",
+    "renameDescription": "Het bestand houdt zijn naam {filename}; dit verandert alleen hoe Velnox het toont.",
+    "renameName": "Naam",
+    "renameNameHint": "Uit de bestandsnaam gelezen als: {parsed}. Laat leeg om dat te houden.",
+    "renameKeepLanguage": "De taal uit de bestandsnaam houden ({language})",
+    "renameLanguage": "Taal",
+    "renameLanguageHint": "Een taalcode zoals nl, en-GB of de. Laat leeg voor geen taal.",
+    "remove": "Verwijderen",
+    "removeTitle": "{filename} verwijderen?",
+    "removeBody": "Het bestand wordt uit de bibliotheek verwijderd. Kopieën die al op clusters staan blijven staan.",
+    "removeConfirm": "Uit bibliotheek verwijderen",
+    "states": {
+      "RECEIVING": "Komt binnen",
+      "VERIFYING": "Wordt gecontroleerd",
+      "READY": "Klaar",
+      "FAILED": "Mislukt"
+    },
+    "variant": {
+      "server": "server",
+      "desktop": "desktop",
+      "netinst": "netwerkinstallatie",
+      "live": "live",
+      "cloudImage": "cloud-image",
+      "evaluation": "evaluatie",
+      "drivers": "drivers",
+      "businessEditions": "zakelijke edities",
+      "consumerEditions": "consumentenedities"
+    }
   }
 }

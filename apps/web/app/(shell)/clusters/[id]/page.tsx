@@ -4,6 +4,8 @@ import { Notice, PageHeader } from '@/components/ui/primitives';
 import { ClusterDetail } from '@/components/inventory/cluster-detail';
 import {
   getCluster,
+  getClusterFiles,
+  getClusterSsh,
   getSession,
   listClusterCeph,
   listDiscoveryRuns,
@@ -51,11 +53,13 @@ export default async function ClusterPage({ params }: Props) {
     );
   }
 
-  const [nodes, workloads, ceph, runs] = await Promise.all([
+  const [nodes, workloads, ceph, runs, files, ssh] = await Promise.all([
     listNodes({ clusterId: id }),
     listWorkloads({ clusterId: id }),
     listClusterCeph(id),
     listDiscoveryRuns(id),
+    getClusterFiles(id),
+    getClusterSsh(id),
   ]);
 
   const permissions = new Set(session?.user.permissions ?? []);
@@ -72,7 +76,10 @@ export default async function ClusterPage({ params }: Props) {
         workloads={workloads.ok ? workloads.data.workloads : []}
         cephDaemons={ceph.ok ? ceph.data.daemons : []}
         runs={runs.ok ? runs.data.runs : []}
+        files={files.ok ? files.data : null}
+        ssh={ssh.ok ? ssh.data : null}
         canManage={permissions.has('clusters.manage')}
+        canPull={permissions.has('clusters.manage') && permissions.has('library.manage')}
         refreshSeconds={refresh}
       />
     </>
