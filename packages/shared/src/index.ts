@@ -6,6 +6,7 @@
  * later, supplemented with additional terms permitted by section 7 of that
  * licence covering attribution, origin and trademarks. See LICENSE and NOTICE.
  */
+export * from './autoconfig';
 export * from './errors';
 export * from './fingerprint';
 export * from './jobs';

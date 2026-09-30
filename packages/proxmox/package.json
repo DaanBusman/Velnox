@@ -1,6 +1,6 @@
 {
   "name": "@velnox/proxmox",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Proxmox VE API client with certificate pinning, retries and task polling",
