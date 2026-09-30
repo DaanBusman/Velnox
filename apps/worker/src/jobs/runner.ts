@@ -11,7 +11,8 @@ import {
   type JobEventMessage,
   type JobStatus,
 } from '@velnox/shared';
-import { StepError, playbookFor, type StepContext, type StepDefinition } from './playbooks';
+import { StepError, playbookFor, type Playbook, type StepContext, type StepDefinition } from './playbooks';
+import type { LibraryServices } from '../library/services';
 
 /**
  * The job runner.
@@ -36,6 +37,8 @@ export interface JobsContext {
   redis: Redis;
   /** Unique per process, so a restarted worker is a different owner. */
   workerId: string;
+  /** What the library playbooks work with. Absent in tests that run only the self-test. */
+  library?: LibraryServices;
   log: {
     info(fields: Record<string, unknown>, message: string): void;
     warn(fields: Record<string, unknown>, message: string): void;
@@ -209,6 +212,24 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
       .catch(() => undefined);
   }, CANCEL_POLL_MS);
 
+  /**
+   * Run a playbook's cleanup, recording rather than throwing if it fails: a
+   * job that could not tidy up still has to end, and the warning is what tells
+   * someone to look.
+   */
+  const cleanUp = async (playbook: Playbook | null, reason: 'cancelled' | 'failed'): Promise<void> => {
+    if (!playbook?.cleanup) return;
+    try {
+      await playbook.cleanup(reason);
+    } catch (error) {
+      await recordEvent(context, jobId, {
+        level: 'WARN',
+        key: JOB_EVENT_KEYS.cleanupFailed,
+        message: `Cleaning up after the job did not complete: ${describe(error)}`,
+      });
+    }
+  };
+
   /** Record a cancellation: the interrupted step failed, the rest skipped. */
   const finishCancelled = async (steps: StepDefinition[], seen: Map<string, string>, interrupted: string | null) => {
     if (interrupted) {
@@ -221,6 +242,7 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
       seen.set(interrupted, 'FAILED');
     }
     await skipRemaining(prisma, jobId, steps, seen, interrupted);
+    await cleanUp(playbook, 'cancelled');
     await move(
       'CANCELLED',
       {
@@ -245,16 +267,30 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
     return row?.cancelRequestedAt != null;
   };
 
+  let playbook: Playbook | null = null;
+
   try {
     // ---- preflight --------------------------------------------------------
     let steps: StepDefinition[];
     try {
-      steps = playbookFor(job.type, job.params).steps;
+      playbook = playbookFor(job.type, job.params, {
+        jobId,
+        tenantId: job.tenantId,
+        createdByUserId: job.createdByUserId,
+        library: context.library,
+      });
+      steps = playbook.steps;
     } catch (error) {
       await move(
         'FAILED',
         { level: 'ERROR', key: JOB_EVENT_KEYS.failed, message: describe(error) },
-        { errorCode: codeOf(error), errorMessage: rootRedactor.text(describe(error)), finishedAt: new Date(), leaseUntil: null },
+        {
+          errorCode: codeOf(error),
+          errorParams: paramsOf(error),
+          errorMessage: rootRedactor.text(describe(error)),
+          finishedAt: new Date(),
+          leaseUntil: null,
+        },
       );
       return 'FAILED';
     }
@@ -386,6 +422,7 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
           data: { status: 'FAILED', finishedAt: new Date(), error: rootRedactor.text(describe(error)) },
         });
         await skipRemaining(prisma, jobId, steps, recorded, step.key);
+        await cleanUp(playbook, 'failed');
         await move(
           'FAILED',
           {
@@ -397,6 +434,7 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
           },
           {
             errorCode: codeOf(error),
+            errorParams: paramsOf(error),
             errorMessage: rootRedactor.text(describe(error)),
             finishedAt: new Date(),
             leaseUntil: null,
@@ -544,3 +582,9 @@ const describe = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 const codeOf = (error: unknown): string => (error instanceof StepError ? error.code : 'generic');
+
+/** A StepError's params, redacted like everything else that is stored. */
+const paramsOf = (error: unknown): Prisma.InputJsonValue | undefined =>
+  error instanceof StepError && error.params
+    ? (rootRedactor.value(error.params) as Prisma.InputJsonValue)
+    : undefined;

@@ -25,5 +25,6 @@ export {
 } from '@velnox/shared';
 export * from './transport';
 export * from './client';
+export * from './upload';
 export * from './tasks';
 export * from './discovery';

@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import type { NodeFacts } from './discovery';
 import {
   assembleCluster,
+  discoverContents,
   mapCeph,
   mapInterface,
   mapRepositories,
   mapStorage,
+  mapStorageContent,
   mapWorkload,
 } from './discovery';
-import type { CephFlag, CephMetadata, CephStatus, ClusterResource } from './client';
+import type { CephFlag, CephMetadata, CephStatus, ClusterResource, ProxmoxClient } from './client';
 
 /**
  * Turning Proxmox's answers into inventory.
@@ -397,5 +399,98 @@ describe('assembling a cluster', () => {
 
     expect(cluster.nodes.map((n) => n.name)).toEqual(['pve1', 'pve3']);
     expect(cluster.workloads.map((w) => w.vmid)).toEqual([101, 200]);
+  });
+});
+
+describe('ISOs and disk images on storage', () => {
+  it('maps an ISO, keyed by node for local storage', () => {
+    expect(
+      mapStorageContent(
+        {
+          volid: 'local:iso/Win11_25H2_Dutch_x64.iso',
+          content: 'iso',
+          format: 'iso',
+          size: 7_000_000_000,
+          ctime: 1_700_000_000,
+        },
+        { node: 'pve1', storage: 'local', shared: false },
+      ),
+    ).toEqual({
+      node: 'pve1',
+      storage: 'local',
+      shared: false,
+      locationKey: 'pve1/local',
+      volid: 'local:iso/Win11_25H2_Dutch_x64.iso',
+      content: 'iso',
+      format: 'iso',
+      sizeBytes: 7_000_000_000,
+      createdAt: new Date(1_700_000_000_000).toISOString(),
+    });
+  });
+
+  it('keys shared storage by name alone, so it is one place however many nodes see it', () => {
+    const mapped = mapStorageContent(
+      { volid: 'cephfs:import/noble.qcow2', content: 'import', format: 'qcow2', size: 600_000_000 },
+      { node: 'pve2', storage: 'cephfs', shared: true },
+    );
+    expect(mapped?.locationKey).toBe('cephfs');
+    expect(mapped?.createdAt).toBeNull();
+  });
+
+  it('ignores what Velnox does not move', () => {
+    for (const content of ['images', 'backup', 'vztmpl', 'rootdir', 'snippets']) {
+      expect(
+        mapStorageContent(
+          { volid: `local:${content}/x`, content },
+          { node: 'pve1', storage: 'local', shared: false },
+        ),
+      ).toBeNull();
+    }
+  });
+
+  it('lists shared storage once, skips offline nodes, and records what it covered', async () => {
+    const asked: string[] = [];
+    const client = {
+      storageContent: async (node: string, storage: string) => {
+        asked.push(`${node}/${storage}`);
+        if (storage === 'broken') throw new Error('HTTP 500');
+        return [{ volid: `${storage}:iso/a.iso`, content: 'iso', size: 1 }];
+      },
+    } as unknown as ProxmoxClient;
+
+    const facts = (
+      node: string,
+      online: boolean,
+      storages: { storage: string; content: string; shared?: number; active?: number }[],
+    ) =>
+      ({
+        entry: { node, status: online ? 'online' : 'offline' },
+        storages: storages.map((s) => ({ type: 'dir', enabled: 1, active: 1, shared: 0, ...s })),
+      }) as unknown as NodeFacts;
+
+    const problems: string[] = [];
+    const result = await discoverContents(
+      client,
+      [
+        facts('pve1', true, [
+          { storage: 'local', content: 'iso,vztmpl,backup' },
+          { storage: 'nfs', content: 'iso', shared: 1 },
+          { storage: 'local-lvm', content: 'images,rootdir' },
+          { storage: 'broken', content: 'iso' },
+          { storage: 'inactive', content: 'iso', active: 0 },
+        ]),
+        facts('pve2', true, [
+          { storage: 'local', content: 'iso' },
+          { storage: 'nfs', content: 'iso', shared: 1 },
+        ]),
+        facts('pve3', false, [{ storage: 'local', content: 'iso' }]),
+      ],
+      problems,
+    );
+
+    expect(asked.sort()).toEqual(['pve1/broken', 'pve1/local', 'pve1/nfs', 'pve2/local'].sort());
+    expect(result.coveredLocations.sort()).toEqual(['nfs', 'pve1/local', 'pve2/local'].sort());
+    expect(result.items).toHaveLength(3);
+    expect(problems).toEqual(['pve1 broken content: HTTP 500']);
   });
 });

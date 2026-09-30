@@ -57,7 +57,7 @@ export async function processProbe(job: Job<ProbeJobData>) {
 }
 
 /** Load a cluster and build a client for it. Throws if it cannot. */
-async function clientFor(
+export async function clientFor(
   context: InventoryContext,
   clusterId: string,
 ): Promise<{ cluster: { id: string; tenantId: string; name: string }; client: ProxmoxClient }> {

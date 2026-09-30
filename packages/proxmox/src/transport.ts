@@ -1,4 +1,6 @@
 import { Agent, request as httpsRequest, type RequestOptions } from 'node:https';
+import type { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { TLSSocket } from 'node:tls';
 import { fingerprintsMatch, normaliseFingerprint, type Fingerprint } from '@velnox/shared';
 
@@ -192,8 +194,29 @@ function describeCertificate(socket: TLSSocket): PeerCertificate | null {
 }
 
 /**
+ * A request body that is too large to hold in memory: an ISO on its way to a
+ * node. The caller states its length, because Proxmox refuses an upload it
+ * cannot size, and the transport starts reading the stream only once the peer
+ * is verified — see {@link rawRequest}.
+ */
+export interface StreamBody {
+  stream: Readable;
+  length: number;
+}
+
+/**
  * One HTTPS request. No retries — that is `withRetries` below, so the retry
  * policy is visible at the call site rather than hidden in the transport.
+ *
+ * ## A streamed body waits for the pin
+ *
+ * A string body is written straight away and Node holds it until the
+ * connection is up, the same as the headers. A stream is different in the way
+ * that matters: piping it early would start pulling an ISO off disk and into a
+ * socket buffer before the certificate has been checked. So a stream is piped
+ * from the same place the pin is enforced, after it passes, and never on a
+ * connection that failed it. `verify-library.sh` checks the other side: a node
+ * that fails the pin receives no upload bytes at all.
  */
 export function rawRequest(
   options: TransportOptions,
@@ -201,7 +224,7 @@ export function rawRequest(
     method: string;
     path: string;
     headers?: Record<string, string>;
-    body?: string;
+    body?: string | StreamBody;
     signal?: AbortSignal;
   },
 ): Promise<RawResponse> {
@@ -252,12 +275,34 @@ export function rawRequest(
 
     let certificate: PeerCertificate | null = null;
     let settled = false;
+    let bodyStarted = false;
+    /**
+     * Set once a response has started to arrive. A server may answer before it
+     * has read the whole body — a refusal, a 401, a proxy's 413 — and then close
+     * the connection, which makes our side of the stream fail with a reset.
+     * That reset is not the story; the answer is. From here on only the
+     * response itself can fail the request.
+     */
+    let responding = false;
 
     const fail = (error: Error): void => {
       if (settled) return;
       settled = true;
       request.destroy();
+      if (typeof init.body === 'object') init.body.stream.destroy();
       reject(error);
+    };
+    const failUnlessResponding = (error: Error): void => {
+      if (!responding) fail(error);
+    };
+
+    /** Called once the peer is verified, or needs no verifying. */
+    const startBody = (): void => {
+      if (typeof init.body !== 'object' || bodyStarted || settled) return;
+      bodyStarted = true;
+      pipeline(init.body.stream, request).catch((error: unknown) =>
+        failUnlessResponding(error instanceof Error ? error : new Error(String(error))),
+      );
     };
 
     request.on('socket', (rawSocket) => {
@@ -265,7 +310,10 @@ export function rawRequest(
 
       const inspect = (): void => {
         certificate = describeCertificate(socket);
-        if (!pinned) return;
+        if (!pinned) {
+          startBody();
+          return;
+        }
 
         const expected = normaliseFingerprint(options.tls.fingerprint as string);
 
@@ -282,6 +330,7 @@ export function rawRequest(
         }
 
         socket[VERIFIED_FOR] = expected;
+        startBody();
       };
 
       /*
@@ -314,7 +363,7 @@ export function rawRequest(
     });
 
     request.on('error', (error) => {
-      if (settled) return;
+      if (settled || responding) return;
       settled = true;
       reject(
         error instanceof FingerprintMismatchError
@@ -330,7 +379,14 @@ export function rawRequest(
     );
 
     request.on('response', (response) => {
+      responding = true;
+      // Whatever of the body is left will not be read. Stop sending it.
+      if (typeof init.body === 'object') init.body.stream.unpipe(request).destroy();
       const chunks: Buffer[] = [];
+      response.on('error', (error) => fail(new ProxmoxUnreachableError(options.host, error)));
+      response.on('aborted', () =>
+        fail(new ProxmoxUnreachableError(options.host, new Error('Response cut short'))),
+      );
       response.on('data', (chunk: Buffer) => chunks.push(chunk));
       response.on('end', () => {
         if (settled) return;
@@ -345,6 +401,10 @@ export function rawRequest(
       });
     });
 
+    if (typeof init.body === 'object') {
+      // Piped by `verified`, which also ends the request when the stream does.
+      return;
+    }
     if (init.body !== undefined) request.write(init.body);
     request.end();
   });

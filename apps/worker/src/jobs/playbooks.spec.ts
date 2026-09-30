@@ -78,10 +78,18 @@ describe('the self-test playbook', () => {
     expect(reported.at(-1)).toBe(100);
   });
 
+  const CONTEXT = { jobId: 'job', tenantId: 'tenant', createdByUserId: null };
+
   it('refuses a job type it does not know', () => {
     // An API newer than the worker, or the reverse. Failing visibly is the point.
-    expect(() => playbookFor('cluster.reformat', {})).toThrow(StepError);
-    expect(() => playbookFor(JOB_TYPES.selftest, {})).not.toThrow();
+    expect(() => playbookFor('cluster.reformat', {}, CONTEXT)).toThrow(StepError);
+    expect(() => playbookFor(JOB_TYPES.selftest, {}, CONTEXT)).not.toThrow();
+  });
+
+  it('refuses a library job on a worker that has no library, rather than half-running it', () => {
+    expect(() =>
+      playbookFor(JOB_TYPES.libraryFetch, { itemId: '4a9d1c33-7e0c-4f35-9b1e-6a8d0c3e2f11' }, CONTEXT),
+    ).toThrow(StepError);
   });
 });
 

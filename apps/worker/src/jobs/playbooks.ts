@@ -1,4 +1,16 @@
 import { JOB_TYPES, parseSelftestParams, type SelftestParams } from '@velnox/shared';
+import {
+  clusterDeletePlaybook,
+  fetchPlaybook,
+  pullPlaybook,
+  pushPlaybook,
+  verifyPlaybook,
+} from '../library/playbooks';
+import type { LibraryServices } from '../library/services';
+import { StepError, type Playbook, type StepDefinition } from './steps';
+
+export { StepError } from './steps';
+export type { ApprovalStep, Playbook, StepContext, StepDefinition, TaskStep } from './steps';
 
 /**
  * Playbooks: what a job of a given type does, as a list of steps.
@@ -9,65 +21,6 @@ import { JOB_TYPES, parseSelftestParams, type SelftestParams } from '@velnox/sha
  * functions. This is that shape at the size Phase 5 needs: one playbook, built
  * from its parameters. The upgrade phases add steps, not machinery.
  */
-
-/** What a step gets while it runs. */
-export interface StepContext {
-  /**
-   * Aborted when the job is cancelled. A step that can stop part-way — a wait,
-   * a poll, a transfer — should pass it on; a step that must not be interrupted
-   * ignores it and runs to completion, and cancellation is honoured at the next
-   * boundary instead. Velnox never kills a dist-upgrade mid-transaction.
-   */
-  signal: AbortSignal;
-  /** Report how far through this step is, 0–100. */
-  progress(pct: number): Promise<void>;
-  /** Raw output. Redacted and size-capped before it is stored. */
-  log(stream: 'STDOUT' | 'STDERR', text: string): Promise<void>;
-  /** Resolves after `ms`, or rejects with an AbortError when the job is cancelled. */
-  sleep(ms: number): Promise<void>;
-}
-
-export interface TaskStep {
-  kind: 'task';
-  key: string;
-  phase: string;
-  run(context: StepContext): Promise<Record<string, string | number | boolean | null> | void>;
-}
-
-/**
- * A step that parks the job until someone decides.
- *
- * It does no work itself. Reaching it writes an approval row and moves the job
- * to WAITING_APPROVAL, and the worker lets go; approving puts the job back on the
- * queue, and the next run finds this step decided and moves past it.
- */
-export interface ApprovalStep {
-  kind: 'approval';
-  key: string;
-  phase: string;
-  requiredPermission: string;
-  reason: string;
-  requireDifferentApprover: boolean;
-  changeSet: Record<string, string | number | boolean | null>;
-}
-
-export type StepDefinition = TaskStep | ApprovalStep;
-
-export interface Playbook {
-  version: number;
-  steps: StepDefinition[];
-}
-
-/** Thrown by a step to fail with a catalogue error code the interface can translate. */
-export class StepError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'StepError';
-  }
-}
 
 // ---------------------------------------------------------------------------
 // system.selftest
@@ -138,10 +91,33 @@ export function selftestPlaybook(params: SelftestParams): Playbook {
  * the worker are different versions, and the job fails visibly with that as
  * its reason rather than succeeding at nothing.
  */
-export function playbookFor(type: string, params: unknown): Playbook {
+export interface PlaybookContext {
+  jobId: string;
+  tenantId: string;
+  createdByUserId: string | null;
+  /** Absent when the worker runs without a library — in tests of the self-test only. */
+  library?: LibraryServices;
+}
+
+export function playbookFor(type: string, params: unknown, context: PlaybookContext): Playbook {
+  const library = (): LibraryServices => {
+    if (!context.library) throw new StepError('generic', `Job type "${type}" needs the library`);
+    return context.library;
+  };
+
   switch (type) {
     case JOB_TYPES.selftest:
       return selftestPlaybook(parseSelftestParams(params));
+    case JOB_TYPES.libraryFetch:
+      return fetchPlaybook(params, context.jobId, library());
+    case JOB_TYPES.libraryVerify:
+      return verifyPlaybook(params, context.jobId, library());
+    case JOB_TYPES.libraryPush:
+      return pushPlaybook(params, library());
+    case JOB_TYPES.libraryPull:
+      return pullPlaybook(params, context.jobId, library());
+    case JOB_TYPES.libraryClusterDelete:
+      return clusterDeletePlaybook(params, library());
     default:
       throw new StepError('generic', `No playbook for job type "${type}"`);
   }

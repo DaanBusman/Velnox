@@ -54,6 +54,7 @@ const ceph = (over: Partial<DiscoveredCeph> = {}): DiscoveredCeph => ({
 });
 
 const cluster = (over: Partial<DiscoveredCluster> = {}): DiscoveredCluster => ({
+  contents: { items: [], coveredLocations: [] },
   name: 'production',
   standalone: false,
   quorate: true,

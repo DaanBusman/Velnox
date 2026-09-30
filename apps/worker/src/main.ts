@@ -13,7 +13,7 @@ import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import pino from 'pino';
 import { loadWorkerConfig, redisConnection, secretValues } from '@velnox/config';
-import { createPrismaClient } from '@velnox/db';
+import { createPrismaClient, ensureLibraryDirs } from '@velnox/db';
 import { JOB_NAMES, JOB_QUEUE, QUEUE_NAMES, rootRedactor } from '@velnox/shared';
 import { Heartbeat } from './heartbeat';
 import { processPing, type PingJobData, type PingJobResult } from './processors/ping.processor';
@@ -37,6 +37,15 @@ import {
   SCHEDULER_TICK_JOB,
   runSchedulerTick,
 } from './inventory/scheduler';
+import { buildBlockList, ownNetworks } from './library/address-guard';
+import { createLibraryServices } from './library/services';
+import {
+  processSshProbe,
+  processSshVerify,
+  type SshProbeData,
+  type SshVerifyData,
+} from './library/ssh-setup';
+import { LIBRARY_SWEEP_INTERVAL_MS, sweepLibrary } from './library/sweep';
 
 /**
  * Velnox worker.
@@ -51,6 +60,9 @@ import {
  * things an operator is waiting on.
  *
  * From phase 5 it runs a third: jobs. See `jobs/runner.ts`.
+ *
+ * From phase 5A it holds the ISO library's volume, and is the only process
+ * that fetches into it, checks it, and copies out of it.
  */
 async function bootstrap(): Promise<void> {
   const config = loadWorkerConfig();
@@ -125,11 +137,35 @@ async function bootstrap(): Promise<void> {
   // Inventory
   // ------------------------------------------------------------------
 
+  const credentials = new CredentialReader(prisma, config.MASTER_ENCRYPTION_KEY);
   const inventoryContext: InventoryContext = {
     prisma,
-    credentials: new CredentialReader(prisma, config.MASTER_ENCRYPTION_KEY),
+    credentials,
     log: (fields, message) => logger.info(fields, message),
   };
+
+  // ------------------------------------------------------------------
+  // ISO library
+  // ------------------------------------------------------------------
+
+  await ensureLibraryDirs(config.VELNOX_LIBRARY_DIR);
+  const library = createLibraryServices({
+    prisma,
+    credentials,
+    limits: {
+      dir: config.VELNOX_LIBRARY_DIR,
+      maxGb: config.VELNOX_LIBRARY_MAX_GB,
+      minFreeGb: config.VELNOX_LIBRARY_MIN_FREE_GB,
+    },
+    /*
+     * Read once, at startup. The worker's networks do not change while it runs,
+     * and reading them per fetch would be a place for a race with nothing
+     * gained.
+     */
+    blocked: buildBlockList({ ownNetworks: ownNetworks() }),
+    userAgent: `Velnox/${config.VELNOX_VERSION} (ISO library)`,
+    log: (fields, message) => logger.info(fields, message),
+  });
 
   const inventoryQueue = new Queue(QUEUE_NAMES.inventory, {
     connection: { ...redisConnection(config), maxRetriesPerRequest: null },
@@ -145,6 +181,10 @@ async function bootstrap(): Promise<void> {
           return processVerify(job as Job<DiscoverJobData>, inventoryContext);
         case JOB_NAMES.inventoryDiscover:
           return processDiscover(job as Job<DiscoverJobData>, inventoryContext);
+        case JOB_NAMES.inventorySshProbe:
+          return processSshProbe(job as Job<SshProbeData>, inventoryContext);
+        case JOB_NAMES.inventorySshVerify:
+          return processSshVerify(job as Job<SshVerifyData>, inventoryContext);
         case SCHEDULER_TICK_JOB:
           return runSchedulerTick(prisma, inventoryQueue);
         default:
@@ -211,6 +251,7 @@ async function bootstrap(): Promise<void> {
     prisma,
     redis: jobsRedis,
     workerId,
+    library,
     log: {
       info: (fields, message) => logger.info(fields, message),
       warn: (fields, message) => logger.warn(fields, message),
@@ -258,6 +299,19 @@ async function bootstrap(): Promise<void> {
   await reconcile();
   const reconcileTimer = setInterval(() => void reconcile(), RECONCILE_INTERVAL_MS);
 
+  const sweep = () =>
+    sweepLibrary(library)
+      .then((result) => {
+        if (Object.values(result).some((count) => count > 0)) {
+          logger.warn(result, 'Swept the library');
+        }
+      })
+      .catch((error: unknown) =>
+        logger.error({ err: rootRedactor.value(error) }, 'Sweeping the library failed'),
+      );
+  await sweep();
+  const sweepTimer = setInterval(() => void sweep(), LIBRARY_SWEEP_INTERVAL_MS);
+
   logger.info(
     {
       queue: QUEUE_NAMES.system,
@@ -280,6 +334,7 @@ async function bootstrap(): Promise<void> {
     // Let an in-flight job finish. From Phase 7 this matters a great deal: a
     // dist-upgrade must never be killed part-way through.
     clearInterval(reconcileTimer);
+    clearInterval(sweepTimer);
     await worker.close();
     await inventoryWorker.close();
     await jobsWorker.close();

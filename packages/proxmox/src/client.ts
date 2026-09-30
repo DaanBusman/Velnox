@@ -1,4 +1,5 @@
 import type { Agent } from 'node:https';
+import type { Readable } from 'node:stream';
 import {
   DEFAULT_RETRY,
   ProxmoxHttpError,
@@ -9,6 +10,7 @@ import {
   type RetryPolicy,
   type TlsPolicy,
 } from './transport';
+import { multipartEnvelope, multipartStream } from './upload';
 
 /**
  * The Proxmox VE API client.
@@ -27,9 +29,10 @@ import {
  * opens the whole node. It is supported, and the interface says which one you
  * are using.
  *
- * Everything here is read-only against the cluster in phase 4. `post` exists
- * because task polling needs it from phase 6, and it is here now so the task
- * poller can be built and tested against the real shape of a UPID.
+ * Phase 4 was read-only against the cluster. Phase 5A adds the first writes —
+ * putting a file on a storage and deleting one — and they are here, in the
+ * client, as named calls with their own types, rather than as a generic
+ * `post` a caller could point anywhere.
  */
 
 export type ProxmoxAuth =
@@ -78,6 +81,9 @@ const API = '/api2/json';
 
 /** A ticket is valid for two hours; renewed well before that. */
 const TICKET_LIFETIME_MS = 110 * 60 * 1000;
+
+/** How long an upload's socket may sit idle before it is given up on. */
+const UPLOAD_IDLE_TIMEOUT_MS = 300_000;
 
 interface Ticket {
   value: string;
@@ -185,6 +191,130 @@ export class ProxmoxClient {
     return this.get<CephFlag[]>('/cluster/ceph/flags');
   }
 
+  // --- Storage content (Phase 5A) -------------------------------------------
+
+  /** One storage as a node sees it: whether it is active, and how full. */
+  storageStatus(node: string, storage: string): Promise<StorageStatus> {
+    return this.get<StorageStatus>(
+      `/nodes/${encodeURIComponent(node)}/storage/${encodeURIComponent(storage)}/status`,
+    );
+  }
+
+  storageContent(
+    node: string,
+    storage: string,
+    content?: 'iso' | 'import',
+  ): Promise<StorageContentEntry[]> {
+    const query = content ? `?content=${content}` : '';
+    return this.get<StorageContentEntry[]>(
+      `/nodes/${encodeURIComponent(node)}/storage/${encodeURIComponent(storage)}/content${query}`,
+    );
+  }
+
+  /** A volume's attributes, including its path on the node — which SSH needs. */
+  volumeAttributes(node: string, storage: string, volid: string): Promise<VolumeAttributes> {
+    return this.get<VolumeAttributes>(
+      `/nodes/${encodeURIComponent(node)}/storage/${encodeURIComponent(storage)}/content/${encodeURIComponent(volid)}`,
+    );
+  }
+
+  /**
+   * Delete a volume. Proxmox answers with a task id, or with null when it
+   * finished within its own short wait; both mean "asked", and the caller
+   * confirms by listing the storage again rather than trusting either.
+   */
+  deleteVolume(node: string, storage: string, volid: string): Promise<string | null> {
+    return this.del<string | null>(
+      `/nodes/${encodeURIComponent(node)}/storage/${encodeURIComponent(storage)}/content/${encodeURIComponent(volid)}`,
+    );
+  }
+
+  /**
+   * Put a file on a storage.
+   *
+   * Streams: an ISO is gigabytes, and nothing here holds more than a chunk of
+   * it. Not retried — the stream is consumed by the first attempt, and a
+   * half-received upload is discarded by `pveproxy`, so the caller decides
+   * whether to try again from the start.
+   *
+   * With `sha256`, Proxmox checks what it received against it and refuses the
+   * file on a mismatch. That is the byte-identity guarantee for a push, made on
+   * the node rather than assumed by Velnox.
+   *
+   * Returns the id of the task that moves the received file into place. The
+   * file is not on the storage until that task has finished.
+   */
+  async uploadToStorage(
+    node: string,
+    storage: string,
+    input: {
+      content: 'iso' | 'import';
+      filename: string;
+      size: number;
+      open: () => Readable;
+      sha256?: string;
+      signal?: AbortSignal;
+      onProgress?: (bytesSent: number) => void;
+    },
+  ): Promise<string> {
+    const fields: Record<string, string> = { content: input.content };
+    if (input.sha256) {
+      fields['checksum-algorithm'] = 'sha256';
+      fields.checksum = input.sha256;
+    }
+
+    const envelope = multipartEnvelope({
+      fields,
+      fileField: 'filename',
+      filename: input.filename,
+      fileSize: input.size,
+    });
+
+    const headers = await this.authHeaders('POST');
+    const path = `/nodes/${encodeURIComponent(node)}/storage/${encodeURIComponent(storage)}/upload`;
+
+    const response = await rawRequest(
+      {
+        host: this.options.host,
+        port: this.port,
+        tls: this.options.tls,
+        // Idle time on the socket, not the whole transfer. Long enough for
+        // pveproxy to finish writing its temporary file after the last byte.
+        timeoutMs: UPLOAD_IDLE_TIMEOUT_MS,
+        agent: this.agent,
+      },
+      {
+        method: 'POST',
+        path: `${API}${path}`,
+        headers: {
+          ...headers,
+          'content-type': `multipart/form-data; boundary=${envelope.boundary}`,
+          'content-length': String(envelope.length),
+        },
+        body: {
+          stream: multipartStream(envelope, input.open(), input.onProgress),
+          length: envelope.length,
+        },
+        signal: input.signal,
+      },
+    );
+
+    this.lastCertificate = response.certificate;
+
+    if (response.status === 401 || response.status === 403) {
+      throw new ProxmoxAuthError(this.options.host, describeError(response.body, response.status));
+    }
+    if (response.status < 200 || response.status >= 300) {
+      throw new ProxmoxHttpError(response.status, response.statusText, response.body, path);
+    }
+
+    const upid = parseData<string>(response.body, path);
+    if (typeof upid !== 'string' || !upid.startsWith('UPID:')) {
+      throw new Error(`Proxmox accepted the upload to ${path} but returned no task id`);
+    }
+    return upid;
+  }
+
   // --- Tasks ---------------------------------------------------------------
 
   taskStatus(node: string, upid: string): Promise<TaskStatus> {
@@ -197,6 +327,11 @@ export class ProxmoxClient {
     return this.get<TaskLogLine[]>(
       `/nodes/${encodeURIComponent(node)}/tasks/${encodeURIComponent(upid)}/log?start=${start}`,
     );
+  }
+
+  /** Stop a running task. Used when a job that started it is cancelled. */
+  stopTask(node: string, upid: string): Promise<null> {
+    return this.del<null>(`/nodes/${encodeURIComponent(node)}/tasks/${encodeURIComponent(upid)}`);
   }
 
   // -------------------------------------------------------------------------
@@ -213,8 +348,13 @@ export class ProxmoxClient {
     return result.data;
   }
 
+  async del<T>(path: string): Promise<T> {
+    const result = await this.call<T>('DELETE', path);
+    return result.data;
+  }
+
   private async call<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'DELETE',
     path: string,
     form?: Record<string, string | number | boolean>,
   ): Promise<ProxmoxResult<T>> {
@@ -278,7 +418,7 @@ export class ProxmoxClient {
     );
   }
 
-  private async authHeaders(method: 'GET' | 'POST'): Promise<Record<string, string>> {
+  private async authHeaders(method: 'GET' | 'POST' | 'DELETE'): Promise<Record<string, string>> {
     if (this.options.auth.kind === 'token') {
       return {
         authorization: `PVEAPIToken=${this.options.auth.tokenId}=${this.options.auth.secret}`,
@@ -292,7 +432,7 @@ export class ProxmoxClient {
       // Only mutating requests need it, and sending it on a GET is harmless —
       // but the asymmetry is worth showing, because forgetting it on a POST
       // produces a 401 that looks like an authentication failure.
-      ...(method === 'POST' ? { CSRFPreventionToken: ticket.csrfToken } : {}),
+      ...(method === 'GET' ? {} : { CSRFPreventionToken: ticket.csrfToken }),
     };
   }
 
@@ -618,6 +758,33 @@ export interface TaskStatus {
   exitstatus?: string;
   starttime?: number;
   id?: string;
+}
+
+export interface StorageStatus {
+  type?: string;
+  active?: number;
+  enabled?: number;
+  shared?: number;
+  content?: string;
+  total?: number;
+  used?: number;
+  avail?: number;
+}
+
+export interface StorageContentEntry {
+  volid: string;
+  content?: string;
+  format?: string;
+  size?: number;
+  ctime?: number;
+  notes?: string;
+}
+
+export interface VolumeAttributes {
+  path?: string;
+  size?: number;
+  format?: string;
+  used?: number;
 }
 
 export interface TaskLogLine {

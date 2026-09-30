@@ -58,6 +58,33 @@ export class CredentialReader {
     return { kind: 'ticket', username, realm, password: secret };
   }
 
+  /**
+   * An SSH private key, and its passphrase if it has one (Phase 5A).
+   *
+   * Stored as one secret — a small JSON object — so the two can never be
+   * rotated apart: a new key with the old key's passphrase is a key that does
+   * not open.
+   */
+  async sshKey(credentialId: string): Promise<{ privateKey: string; passphrase?: string }> {
+    const raw = await this.read(credentialId);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new CredentialUnavailableError(credentialId);
+    }
+    const record = parsed as { privateKey?: unknown; passphrase?: unknown };
+    if (typeof record.privateKey !== 'string' || record.privateKey.length === 0) {
+      throw new CredentialUnavailableError(credentialId);
+    }
+    return {
+      privateKey: record.privateKey,
+      ...(typeof record.passphrase === 'string' && record.passphrase
+        ? { passphrase: record.passphrase }
+        : {}),
+    };
+  }
+
   private async read(credentialId: string): Promise<string> {
     const record = await this.prisma.credentialSecret.findFirst({
       where: { credentialId, status: 'ACTIVE' },

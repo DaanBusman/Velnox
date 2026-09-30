@@ -1,5 +1,10 @@
 import type { VelnoxPrismaClient } from '@velnox/db';
-import type { DiscoveredCluster, DiscoveredNode, DiscoveredWorkload } from '@velnox/proxmox';
+import type {
+  DiscoveredCluster,
+  DiscoveredContents,
+  DiscoveredNode,
+  DiscoveredWorkload,
+} from '@velnox/proxmox';
 
 /**
  * Writing an inventory run down.
@@ -256,6 +261,8 @@ export async function persistDiscovery(
     await prisma.cephDaemon.deleteMany({ where: { clusterId: cluster.id } });
   }
 
+  await persistContents(prisma, cluster, discovered.contents, now);
+
   return {
     nodesSeen: discovered.nodes.length,
     workloadsSeen: discovered.workloads.length,
@@ -295,4 +302,59 @@ async function upsertWorkload(
     create: { clusterId: cluster.id, vmid: workload.vmid, ...data },
     update: data,
   });
+}
+
+/**
+ * Write the ISOs and disk images discovery found (Phase 5A).
+ *
+ * Only places that were actually listed are touched. A file missing from a
+ * listed place has gone; a place that was not listed — its node was offline,
+ * or its listing failed — keeps what Velnox last knew, because "unknown" is not
+ * "empty", and the difference decides whether a push thinks a file is missing.
+ */
+export async function persistContents(
+  prisma: VelnoxPrismaClient,
+  cluster: { id: string; tenantId: string },
+  contents: DiscoveredContents,
+  now: Date,
+): Promise<void> {
+  for (const item of contents.items) {
+    const data = {
+      nodeName: item.node,
+      storage: item.storage,
+      shared: item.shared,
+      content: item.content,
+      format: item.format,
+      sizeBytes: item.sizeBytes === null ? null : BigInt(Math.round(item.sizeBytes)),
+      fileCreatedAt: item.createdAt ? new Date(item.createdAt) : null,
+      lastSeenAt: now,
+    };
+    await prisma.storageContent.upsert({
+      where: {
+        clusterId_locationKey_volid: {
+          clusterId: cluster.id,
+          locationKey: item.locationKey,
+          volid: item.volid,
+        },
+      },
+      create: {
+        tenantId: cluster.tenantId,
+        clusterId: cluster.id,
+        locationKey: item.locationKey,
+        volid: item.volid,
+        ...data,
+      },
+      update: data,
+    });
+  }
+
+  if (contents.coveredLocations.length > 0) {
+    await prisma.storageContent.deleteMany({
+      where: {
+        clusterId: cluster.id,
+        locationKey: { in: contents.coveredLocations },
+        lastSeenAt: { lt: now },
+      },
+    });
+  }
 }

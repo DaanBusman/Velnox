@@ -1,3 +1,4 @@
+import { locationKeyFor } from '@velnox/shared';
 import type {
   CephFlag,
   CephMetadata,
@@ -11,6 +12,7 @@ import type {
   PendingUpdate,
   ProxmoxClient,
   RepositoryInfo,
+  StorageContentEntry,
   SubscriptionInfo,
   VersionInfo,
 } from './client';
@@ -150,6 +152,30 @@ export interface DiscoveredCeph {
   versions: string[];
 }
 
+/** An ISO or importable disk image on a storage (Phase 5A). */
+export interface DiscoveredContent {
+  node: string;
+  storage: string;
+  shared: boolean;
+  locationKey: string;
+  volid: string;
+  content: 'iso' | 'import';
+  format: string | null;
+  sizeBytes: number | null;
+  /** From Proxmox's `ctime`, when it sent one. */
+  createdAt: string | null;
+}
+
+export interface DiscoveredContents {
+  items: DiscoveredContent[];
+  /**
+   * Every place that was actually listed this run. A file missing from a
+   * listed place is gone; a file in a place that was not listed — a node that
+   * was offline — is unknown, and is kept.
+   */
+  coveredLocations: string[];
+}
+
 export interface DiscoveredCluster {
   /** The cluster's name, or null when this is a standalone node. */
   name: string | null;
@@ -165,6 +191,7 @@ export interface DiscoveredCluster {
   pveVersions: string[];
   problems: string[];
   discoveredAt: string;
+  contents: DiscoveredContents;
 }
 
 // ---------------------------------------------------------------------------
@@ -427,7 +454,7 @@ export function assembleCluster(input: {
   resources: ClusterResource[];
   ceph: DiscoveredCeph | null;
   problems: string[];
-}): DiscoveredCluster {
+}): Omit<DiscoveredCluster, 'contents'> {
   const clusterRow = input.clusterStatus.find((entry) => entry.type === 'cluster');
   const mappedNodes = input.nodes.map(mapNode);
 
@@ -559,8 +586,12 @@ export async function discoverCluster(client: ProxmoxClient): Promise<Discovered
   // Deliberately not wrapped in `attempt`: a cluster without Ceph is not a
   // cluster with a problem.
   const ceph = await discoverCeph(client);
+  const contents = await discoverContents(client, nodeFacts, problems);
 
-  return assembleCluster({ version, clusterStatus, nodes: nodeFacts, resources, ceph, problems });
+  return {
+    ...assembleCluster({ version, clusterStatus, nodes: nodeFacts, resources, ceph, problems }),
+    contents,
+  };
 }
 
 /** Null when this cluster has no Ceph, which is an answer rather than a failure. */
@@ -578,4 +609,78 @@ export async function discoverCeph(client: ProxmoxClient): Promise<DiscoveredCep
   const flags = await client.cephFlags().catch(() => null);
 
   return mapCeph({ status, metadata, flags });
+}
+
+// ---------------------------------------------------------------------------
+// ISOs and disk images on storage (Phase 5A)
+// ---------------------------------------------------------------------------
+
+const MOVED_CONTENT = ['iso', 'import'] as const;
+
+export function mapStorageContent(
+  entry: StorageContentEntry,
+  where: { node: string; storage: string; shared: boolean },
+): DiscoveredContent | null {
+  const content = entry.content;
+  if (content !== 'iso' && content !== 'import') return null;
+  if (typeof entry.volid !== 'string' || entry.volid.length === 0) return null;
+  return {
+    node: where.node,
+    storage: where.storage,
+    shared: where.shared,
+    locationKey: locationKeyFor(where.node, where.storage, where.shared),
+    volid: entry.volid,
+    content,
+    format: typeof entry.format === 'string' ? entry.format : null,
+    sizeBytes: typeof entry.size === 'number' ? entry.size : null,
+    createdAt: typeof entry.ctime === 'number' ? new Date(entry.ctime * 1000).toISOString() : null,
+  };
+}
+
+/**
+ * List the ISOs and importable images on every storage that can hold them.
+ *
+ * Only online nodes, only storage that is enabled and active, only storage
+ * whose content types include one Velnox moves. Shared storage is listed
+ * through the first node that has it and not again: listing a Ceph pool
+ * fifteen times says the same thing fifteen times, slowly.
+ */
+export async function discoverContents(
+  client: ProxmoxClient,
+  nodes: NodeFacts[],
+  problems: string[],
+): Promise<DiscoveredContents> {
+  const items: DiscoveredContent[] = [];
+  const covered = new Set<string>();
+
+  for (const facts of nodes) {
+    if (facts.entry.status !== 'online' || !facts.storages) continue;
+
+    for (const storage of facts.storages) {
+      const types = (storage.content ?? '').split(',').map((part) => part.trim());
+      if (!MOVED_CONTENT.some((type) => types.includes(type))) continue;
+      if (storage.enabled === 0 || storage.active === 0) continue;
+
+      const shared = storage.shared === 1;
+      const key = locationKeyFor(facts.entry.node, storage.storage, shared);
+      if (covered.has(key)) continue;
+
+      const listed = await attempt(`${facts.entry.node} ${storage.storage} content`, problems, () =>
+        client.storageContent(facts.entry.node, storage.storage),
+      );
+      if (!listed) continue;
+
+      covered.add(key);
+      for (const entry of listed) {
+        const mapped = mapStorageContent(entry, {
+          node: facts.entry.node,
+          storage: storage.storage,
+          shared,
+        });
+        if (mapped) items.push(mapped);
+      }
+    }
+  }
+
+  return { items, coveredLocations: [...covered] };
 }
