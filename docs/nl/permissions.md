@@ -1,6 +1,6 @@
 # Rollen en rechten
 
-> **Vertaling.** Bron: [docs/permissions.md](../permissions.md) @ `b2d9719`.
+> **Vertaling.** Bron: [docs/permissions.md](../permissions.md) @ `f4d581f`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **De volledige specificatie van wat elke rol toekent.** Dit is de referentie; het scherm

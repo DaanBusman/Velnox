@@ -1,6 +1,6 @@
 # Velnox — Implementatieroadmap
 
-> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `0d4eb43`.
+> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `2c5fd66`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is in uitvoering; fase 6–15 wachten op goedkeuring.
