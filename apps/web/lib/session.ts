@@ -6,6 +6,8 @@ import type {
   JobLogLine,
   JobSummary,
   LibraryListResponse,
+  ProvisioningSummary,
+  TemplateSummary,
   TlsStatusResponse,
 } from '@velnox/shared';
 import { cookies } from 'next/headers';
@@ -300,4 +302,40 @@ export function getClusterFiles(id: string) {
 
 export function getClusterSsh(id: string) {
   return readAs<ClusterSshStatus>(`/api/v1/clusters/${encodeURIComponent(id)}/ssh`);
+}
+
+/** Autoconfig templates this account may see, or those offered to one tenant (Phase 5B). */
+export function listTemplates(offeredTo?: string | null) {
+  const query = offeredTo ? `?offeredTo=${encodeURIComponent(offeredTo)}` : '';
+  return readAs<TemplateSummary[]>(`/api/v1/autoconfig/templates${query}`);
+}
+
+export function getTemplate(id: string) {
+  return readAs<TemplateSummary>(`/api/v1/autoconfig/templates/${encodeURIComponent(id)}`);
+}
+
+/** VMs built from templates, newest first. Never their passwords. */
+export function listProvisionings(clusterId?: string | null) {
+  const query = clusterId ? `?clusterId=${encodeURIComponent(clusterId)}` : '';
+  return readAs<ProvisioningSummary[]>(`/api/v1/provisionings${query}`);
+}
+
+export function getProvisioning(id: string) {
+  return readAs<ProvisioningSummary>(`/api/v1/provisionings/${encodeURIComponent(id)}`);
+}
+
+/** Outgoing mail. Requires system.manage, which the API enforces. */
+export function getMailSettings() {
+  return readAs<MailSettingsView>('/api/v1/system/mail');
+}
+
+export interface MailSettingsView {
+  enabled: boolean;
+  host: string | null;
+  port: number;
+  security: 'STARTTLS' | 'TLS' | 'NONE';
+  username: string | null;
+  passwordSet: boolean;
+  from: string | null;
+  verifiedAt: string | null;
 }

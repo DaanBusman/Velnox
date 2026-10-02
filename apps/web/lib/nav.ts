@@ -65,6 +65,12 @@ export const NAVIGATION: NavGroup[] = [
       { key: 'storage', href: '/storage', phase: null, requiresPermission: 'storage.read' },
       { key: 'networks', href: '/networks', phase: null, requiresPermission: 'networks.read' },
       { key: 'library', href: '/library', phase: null, requiresPermission: 'library.read' },
+      {
+        key: 'provisioning',
+        href: '/provisioning',
+        phase: null,
+        requiresPermission: 'workloads.read',
+      },
     ],
   },
   {
@@ -91,8 +97,15 @@ export const NAVIGATION: NavGroup[] = [
         requiresPermission: 'audit.read',
         supersededBy: 'system.manage',
       },
+      {
+        key: 'autoconfig',
+        href: '/autoconfig',
+        phase: null,
+        requiresPermission: 'autoconfig.read',
+      },
       { key: 'security', href: '/settings/security', phase: null },
       { key: 'sso', href: '/settings/sso', phase: null, requiresPermission: 'system.manage' },
+      { key: 'mail', href: '/settings/mail', phase: null, requiresPermission: 'system.manage' },
       // Open to everyone, for two reasons. It holds per-viewer preferences,
       // which every account has; and it carries the source offer, which AGPL
       // section 13 requires to be reachable by anyone interacting with the
