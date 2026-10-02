@@ -401,6 +401,44 @@ the copy is what the tenancy filter reads and a mismatch would show one customer
 shared storage's file is one row however many nodes see it. Unique on
 `(cluster_id, location_key, volid)`.
 
+## 6B. Autoconfig and provisioning
+
+Built in Phase 5B (migration `20260930090000_autoconfig`). ADR-039 explains the shape.
+
+### `autoconfig_templates`
+`id, tenant_id, name, description, family (WINDOWS|LINUX), visibility (SHARED|PRIVATE),
+credential_delivery (VELNOX_ONLY|ENCRYPTED_PDF), pdf_password_source (SHOWN_ONCE|TEMPLATE),
+settings jsonb, secret_refs jsonb, cloned_from_id, cloned_from_name, created_by_id,
+created_by_label, created_at, updated_at`
+
+Owned by the MSP root or one customer. The tenancy filter shows a tenant its own templates and the
+MSP's SHARED ones; changing one is checked against its owner. `settings` is validated by the shared
+schema and returned by the API; `autoconfig_templates_family_matches` keeps it in agreement with
+`family`. `secret_refs` maps each secret to its own `TEMPLATE_SECRETS` credential — never a value.
+Unique on `(tenant_id, lower(name))`.
+
+### `provisionings`
+`id, tenant_id, template_id, template_name, family, template_snapshot jsonb, cluster_id,
+cluster_name, node, disk_storage, media_storage, bridge, vlan, hostname, network jsonb, vmid, state
+(QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED), job_id, addresses text[], requested_by_id,
+requested_by_label, requested_by_email, credential_delivery, credentials_credential_id,
+credentials_expire_at, document_password_credential_id, notify, notified_at, error_code,
+error_params jsonb, error_detail, started_at, finished_at, created_at, updated_at`
+
+One VM's request and record. `template_snapshot` is the template as used, so the record outlives
+changes to it. The trigger `provisionings_tenant_matches_cluster` keeps it in its cluster's tenant.
+`credentials_credential_id` is the VM's `GUEST_CREDENTIALS`, cleared when they expire or the build
+fails. `notified_at` is claimed before the mail is sent, which is what makes it arrive once.
+
+### `system_settings`, mail columns
+`smtp_enabled, smtp_host, smtp_port, smtp_security (STARTTLS|TLS|NONE), smtp_username,
+smtp_password_credential_id, smtp_from, smtp_verified_at`. Enabled requires a host and a sender
+(`system_settings_smtp_complete`); the API also requires a test since the last change.
+
+### Credential kinds
+`TEMPLATE_SECRETS`, `DOCUMENT_PASSWORD` and `SMTP_PASSWORD` are read by the worker only.
+`GUEST_CREDENTIALS` is read by the worker and, for the audited reveal, by the API.
+
 ---
 
 ## 7. Updates

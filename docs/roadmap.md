@@ -1,6 +1,6 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phases 0 to 5 and 5A complete. Phase 5B is in progress; phases 6–15 await approval.
+**Status:** Phases 0 to 5 and 5A complete. Phase 5B is built and awaits proof on a real cluster; phases 6–15 await approval.
 
 Each landed phase is verified rather than asserted. `bash scripts/verify-stack.sh` asserts its acceptance criteria
 against a running stack — 36 checks covering every dependency, the migration state, security headers,
@@ -162,7 +162,16 @@ removes it there and leaves the library copy alone; a transfer cancelled halfway
 file on either side; filling the library is refused with the ceiling named, not with a disk error;
 every screen shows friendly names and every log line shows the real filename.
 
-## Phase 5B — Autoconfig templates and unattended VM provisioning · **XL**
+## Phase 5B — Autoconfig templates and unattended VM provisioning · **XL** · built, not yet complete
+
+**As built** (ADR-039, 0.5.9): templates owned by the MSP or a customer, offered, cloned and kept
+private as below; every secret its own encrypted credential; VMs built by one job that copies the
+media to the node, writes an Autounattend.xml or a cloud-init seed onto a small CD, waits for the
+guest agent to report the install finished, and on failure destroys the VM; an audited reveal; mail
+proven before it is switched on; an installation record encrypted with AES-256 revision 6.
+`verify-provisioning.sh` proves 89 checks against the fixture. **Not marked complete** because the
+acceptance below speaks of a guest installing without a keypress and of first-boot behaviour, and
+the fixture installs nothing — see [Known gaps](known-gaps.md).
 
 Requested by the owner on 2026-09-27. Scheduled after Phase 5 (jobs) and 5A (the ISO library),
 because provisioning is a job and its first step is "is the ISO on that node".

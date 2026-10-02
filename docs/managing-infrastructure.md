@@ -37,15 +37,18 @@ On any node of the cluster:
 1. **Datacenter → Permissions → API Tokens → Add.**
 2. User `root@pam` (or a dedicated user — see below). Token ID `velnox`.
 3. **Leave "Privilege Separation" ticked off** for a first look, or tick it and grant the token
-   `PVEAuditor` on `/` if you want it read-only from the Proxmox side as well. Velnox only reads in
-   this phase, so `PVEAuditor` is enough and is the better choice.
+   only what Velnox uses. `PVEAuditor` on `/` is enough for the inventory. Copying ISOs onto storage
+   and building VMs need more — see
+   [Building VMs from templates](building-vms.md#what-it-needs-first) for the list.
 4. Copy the secret. Proxmox shows it **once**.
 
 The token id is the whole string Proxmox shows you, realm included: `root@pam!velnox`.
 
 ### A dedicated user is better than root
 
-Create `velnox@pve`, give it `PVEAuditor` on `/`, and make the token against that. Then a Velnox
+Create `velnox@pve`, give it `PVEAuditor` on `/` — and the roles in
+[Building VMs from templates](building-vms.md#what-it-needs-first) if it is to write — and make the
+token against that. Then a Velnox
 token cannot be confused with a human's, revoking it affects nothing else, and the Proxmox task log
 attributes reads to something with a name.
 

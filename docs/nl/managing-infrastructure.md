@@ -41,15 +41,18 @@ Op een willekeurige node van het cluster:
 1. **Datacenter → Permissions → API Tokens → Add.**
 2. Gebruiker `root@pam` (of een aparte gebruiker — zie hieronder). Token-ID `velnox`.
 3. **Laat "Privilege Separation" uit** voor een eerste blik, of zet hem aan en geef het token
-   `PVEAuditor` op `/` als je het ook aan de Proxmox-kant alleen-lezen wilt houden. Velnox leest in
-   deze fase alleen, dus `PVEAuditor` is genoeg en de betere keuze.
+   alleen wat Velnox gebruikt. `PVEAuditor` op `/` is genoeg voor de inventarisatie. ISO's naar opslag
+   kopiëren en VM's bouwen vraagt meer — zie
+   [VM's bouwen vanuit templates](building-vms.md#wat-er-eerst-nodig-is) voor de lijst.
 4. Kopieer het geheim. Proxmox toont het **één keer**.
 
 Het token-id is de volledige tekst die Proxmox toont, realm inbegrepen: `root@pam!velnox`.
 
 ### Een aparte gebruiker is beter dan root
 
-Maak `velnox@pve` aan, geef die `PVEAuditor` op `/`, en maak het token daarop. Dan kan een
+Maak `velnox@pve` aan, geef die `PVEAuditor` op `/` — en de rollen in
+[VM's bouwen vanuit templates](building-vms.md#wat-er-eerst-nodig-is) als hij moet schrijven — en
+maak het token daarop. Dan kan een
 Velnox-token niet verward worden met dat van een mens, raakt intrekken niets anders, en schrijft het
 Proxmox-tasklogboek leesacties toe aan iets met een naam.
 

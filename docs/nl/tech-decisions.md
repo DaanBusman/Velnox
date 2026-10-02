@@ -1157,6 +1157,92 @@ Proxmox-API is, waar de rotatie van inloggegevens in Fase 10 op zal voortbouwen 
 
 ---
 
+## ADR-039 — Uitrol: antwoorden op een cd, één credential per geheim, een audited onthulling
+
+**Besluit:** Een VM wordt vanuit een Autoconfig-template gebouwd door één job, `vm.provision`. De
+gast krijgt zijn configuratie op een kleine ISO die de job schrijft — `Autounattend.xml` voor Windows,
+een cloud-init-NoCloud-seed voor Linux — en die van de opslag wordt verwijderd als de job eindigt, hoe
+die ook eindigt. Elk geheim is een eigen credential. De wachtwoorden van een VM worden één keer
+bepaald, opgeslagen als credential van die VM, en alleen via een vastgelegde onthulling aan een mens
+getoond.
+
+**Waarom een cd.** Windows Setup leest `Autounattend.xml` uit de root van elk verwisselbaar station,
+en de NoCloud-bron van cloud-init leest een volume met het label `cidata`. Proxmox kan een ISO koppelen
+vanaf elke opslag die `iso`-inhoud accepteert, en de upload-aanroep die de bibliotheek al gebruikt
+(ADR-037) zet er een neer met gecontroleerde checksum. Proxmox' eigen cloud-init-drive was het voor
+de hand liggende alternatief en viel af: alles voorbij de paar ingebouwde velden vraagt een
+`snippets`-opslag en een bestand daarop, wat de API niet kan — daar zou SSH voor nodig zijn, en dat is
+optioneel (ADR-038). De ISO wordt geschreven door een kleine ISO 9660-schrijver met Joliet-namen;
+`blkid`, `isoinfo` en de Linux-kernel lezen wat hij schrijft zoals bedoeld.
+
+**Linux vanuit cloud images, niet vanuit installers** — afgesproken met de eigenaar: in seconden
+bruikbaar, elke keer gelijk. Wachtwoorden gaan naar cloud-init als SHA-512-crypt-hashes, nooit leesbaar;
+`user-data` wordt geschreven als JSON onder `#cloud-config`, wat YAML leest, zodat niets afhangt van
+zelfgemaakte quoting. `cloud-init schema` accepteert de uitvoer op de oudste en de nieuwste cloud-init
+die de images meeleveren.
+
+**Windows: wat het onbeheerd maakt.** De editie wordt gekozen via `/IMAGE/NAME`, uit een lijst die uit
+de eigen `install.wim` van de ISO wordt gelezen (UDF en WIM net ver genoeg gelezen) — een naam die niet
+in de ISO staat installeert stilzwijgend de eerste editie, dus het formulier biedt alleen namen die de
+ISO heeft. VirtIO-opslagdrivers laden tijdens Setup vanaf de driver-ISO. Eén automatische aanmelding
+draait de commando's die de drivers en de guest agent installeren, de automatische aanmelding en het
+leesbare `DefaultPassword` verwijderen dat Windows anders in het register laat staan, en als laatste
+een markeerbestand schrijven. UEFI-installatiemedia van Windows vragen om een toets voordat ze
+opstarten; de job drukt de eerste twintig seconden na het starten op Enter, en latere herstarts
+lopen af naar de schijf.
+
+**Klaar is als de gast het zegt.** De installatie is klaar als de guest agent het markeerbestand kan
+lezen dat als laatste wordt geschreven. Niet "de VM herstartte" of "hij heeft een adres": beide
+gebeuren halverwege.
+
+**Een mislukte installatie laat niets achter.** Het opruimen — vóór de job zijn einde vastlegt
+(ADR-037) — stopt de VM en vernietigt hem met zijn schijven, verwijdert de antwoord-ISO en een half
+verstuurde upload, en laat de wachtwoorden vallen. Lukt het vernietigen niet, dan mislukt de job als
+`provisioning.cleanup_failed` met het VMID, omdat een VM die Velnox maakte en niet kon verwijderen iets
+is voor een mens. Verzoeken die een VM wijzigen worden één keer verstuurd en nooit herhaald: een
+aanmaak waarvan het antwoord verloren ging mag niet opnieuw.
+
+**Geheimen.** De vaste wachtwoorden, productcode en PDF-wachtwoord van een template zijn elk één
+`TEMPLATE_SECRETS`-credential. De API schrijft ze en kan ze niet lezen (ADR-009), dus één wijzigen mag
+nooit vragen dat een ander wordt ontsleuteld; één blob had dat gevraagd. Een kloon kopieert daarom de
+instellingen en niet de geheimen — wat ook het goede antwoord is, want de vaste wachtwoorden van een
+MSP horen niet via een gekopieerd template bij een klant terecht te komen. De wachtwoorden van een VM
+worden bepaald door de worker (die kan de vaste van een template lezen), opgeslagen als
+`GUEST_CREDENTIALS`-credential voordat iets ze gebruikt, en dertig dagen na oplevering verwijderd.
+
+**De onthulling, en de aanvulling op ADR-009.** `GUEST_CREDENTIALS` is het enige soort naast de
+infrastructuur dat de API mag lezen, en alleen in `ProvisioningService.reveal`: `clusters.manage` op
+het cluster, vastgelegd in het auditlog voordat het antwoord vertrekt — weigeringen ook — en een
+antwoord met een vervaltijd waar de pagina zich aan houdt. Dat is de expliciete break-glass die de
+regels van het project toestaan voor een wachtwoord dat de frontend bereikt. Het punt van ADR-009
+blijft staan: de API ontsleutelt nog steeds niets wat hij tegen infrastructuur zou gebruiken.
+
+**Het installatieverslag.** Eén keer gemaild — de rij wordt geclaimd voordat de mail vertrekt — zonder
+wachtwoord in de tekst. Zonder wachtwoorden bij `VELNOX_ONLY`; met wachtwoorden bij `ENCRYPTED_PDF`,
+versleuteld met AES-256 **revisie 6**. pdfkit schrijft revisie 5, waarvan de wachtwoordcontrole één
+SHA-256 is en die ISO 32000-2 afkeurde omdat raden er goedkoop tegen is; de bestandssleutel is in
+beide gelijk, dus die wordt met Algoritme 2.B opnieuw ingepakt voordat pdfkit het woordenboek
+schrijft. Dat grijpt in pdfkit in, dat daarom is vastgezet. Het wachtwoord van de PDF reist nooit in de
+mail: het wordt één keer getoond aan wie het vroeg, of op het template ingesteld.
+
+**Uitgaande mail: aan betekent bewezen.** De worker verstuurt, omdat die het wachtwoord van de server
+mag lezen. De verbinding wijzigen zet mail uit tot er met de nieuwe instellingen een test is verstuurd.
+
+**Overwogen alternatieven.** Proxmox' cloud-init-drive (vraagt snippets, en dus SSH). Een
+antwoordbestand dat Velnox via HTTP serveert (de gast zou een route naar Velnox nodig hebben, die
+klantnetwerken vaak niet geven). Windows installeren vanuit een gesyspreppte template-VM (snel, en een
+ander product: het vraagt een golden image per klant en per editie, bijgehouden met updates). De
+`exec` van de guest agent om de installatie te volgen (dat gaf de job een shell in elke klant-VM; een
+bestand lezen is genoeg).
+
+**Kosten.** De antwoord-ISO bevat de omkeerbare wachtwoorden van unattend op de opslag van de node
+zolang de installatie loopt. De fixture bewijst de hele stroom maar installeert niets; of een echte
+Setup en een echte cloud-init accepteren wat ze krijgen, is bewezen door de tests van de generatoren en
+de eigen validators van de formaten, en staat bij de bekende hiaten tot het op een echt cluster is
+gezien.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

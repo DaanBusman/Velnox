@@ -1098,6 +1098,86 @@ since Phase 4.
 
 ---
 
+## ADR-039 — Provisioning: answer media on a CD, one credential per secret, a reveal that is audited
+
+**Decision:** A VM is built from an Autoconfig template by one job, `vm.provision`. The guest is
+handed its configuration on a small ISO the job writes — `Autounattend.xml` for Windows, a
+cloud-init NoCloud seed for Linux — which is deleted from the storage when the job ends, however it
+ends. Every secret is its own credential. A VM's passwords are decided once, stored as that VM's
+credential, and shown to a person only through an audited reveal.
+
+**Why a CD.** Windows Setup reads `Autounattend.xml` from the root of any removable drive, and
+cloud-init's NoCloud source reads a volume labelled `cidata`. Proxmox can attach an ISO from any
+storage that takes `iso` content, and the upload call the library already uses (ADR-037) puts one
+there with its checksum verified. Proxmox's own cloud-init drive was the obvious alternative and lost:
+anything beyond its few built-in fields needs a `snippets` storage and a file written to it, which
+the API cannot do — it would need SSH, which is optional (ADR-038). The ISO is written by a small
+ISO 9660 writer with Joliet names; `blkid`, `isoinfo` and the Linux kernel read what it writes as
+intended.
+
+**Linux from cloud images, not installers** — settled with the owner: usable in seconds, identical
+every time. Passwords go to cloud-init as SHA-512-crypt hashes, never in the clear; `user-data` is
+written as JSON under `#cloud-config`, which YAML parses, so nothing depends on hand-rolled quoting.
+`cloud-init schema` accepts the output on the oldest and newest cloud-init the images ship.
+
+**Windows: what makes it unattended.** The edition is chosen by `/IMAGE/NAME`, from a list read out
+of the ISO's own `install.wim` (UDF and WIM read just far enough) — a name that is not in the ISO
+installs the first edition instead, silently, so the form offers only names the ISO has. VirtIO
+storage drivers load during Setup from the driver ISO. One auto-logon runs the commands that install
+the drivers and the guest agent, then removes the auto-logon and the cleartext `DefaultPassword`
+Windows otherwise leaves in the registry, and writes a marker file last. UEFI Windows media ask for
+a key before they boot; the job presses Enter for the first twenty seconds after start, and later
+reboots time out to the disk.
+
+**Done means the guest says so.** The install is finished when the guest agent can read the marker
+written last. Not "the VM rebooted" or "it has an address": both happen halfway through.
+
+**A failed install leaves nothing.** Cleanup — run before the job records its end (ADR-037) —
+stops and destroys the VM with its disks, deletes the answer ISO and any half-sent upload, and drops
+the passwords. If the VM cannot be destroyed, the job fails as `provisioning.cleanup_failed` with
+the VMID, because a VM Velnox made and could not remove is for a person to look at. Requests that
+change a VM are sent once and never retried: a create whose answer was lost must not be repeated.
+
+**Secrets.** A template's fixed passwords, product key and PDF password are one `TEMPLATE_SECRETS`
+credential each. The API writes them and cannot read them (ADR-009), so changing one must never need
+another decrypted; one blob would have. A clone therefore copies settings and not secrets — which is
+also the right answer, since an MSP's fixed passwords should not reach a customer by copying a
+template. A VM's passwords are decided by the worker (it is what can read a template's fixed ones),
+stored as a `GUEST_CREDENTIALS` credential before anything uses them, and dropped thirty days after
+hand-over.
+
+**The reveal, and the amendment to ADR-009.** `GUEST_CREDENTIALS` is the one infrastructure-adjacent
+kind the API may read, and only in `ProvisioningService.reveal`: `clusters.manage` on the cluster,
+written to the audit trail before the answer leaves — refusals too — and an answer with an expiry the
+page honours. That is the explicit break-glass the project's rules allow for a password reaching the
+frontend. ADR-009's point stands: the API still decrypts nothing it would use against
+infrastructure.
+
+**The installation record.** Mailed once — the row is claimed before the mail goes — with no
+password in the body. Without passwords for `VELNOX_ONLY`; with them for `ENCRYPTED_PDF`, encrypted
+AES-256 **revision 6**. pdfkit writes revision 5, whose password check is one SHA-256 and which ISO
+32000-2 deprecated for being cheap to guess against; the file key is the same in both, so it is
+rewrapped with Algorithm 2.B before pdfkit writes the dictionary. That reaches into pdfkit, which is
+therefore pinned. The PDF's password never travels in the mail: it is shown once to whoever asked, or
+set on the template.
+
+**Outgoing mail: enabled means proven.** The worker sends, because it may read the server's
+password. Changing the connection switches mail off until a test has gone out with the new settings.
+
+**Alternatives considered.** Proxmox's cloud-init drive (needs snippets, and so SSH). An answer
+file served over HTTP from Velnox (the guest would need a route to Velnox, which customer networks
+often do not give). A Windows install from a sysprepped template VM (fast, and a different product:
+it needs a golden image per customer and per edition, kept patched). Running the guest agent's
+`exec` to watch the install (it would give the job a shell into every customer VM; a file read is
+enough).
+
+**Cost.** The answer ISO holds unattend's reversible passwords on the node's storage for as long as
+the install runs. The fixture proves the whole flow but installs nothing; whether a real Setup and a
+real cloud-init accept what they are handed is proven by the generators' tests and the formats' own
+validators, and is listed in the known gaps until it has been seen on a real cluster.
+
+---
+
 ## Version targets
 
 | Component | Version |

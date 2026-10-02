@@ -8,7 +8,7 @@ not met its gate.
 
 ---
 
-## Current status: Phase 5A (the ISO library)
+## Current status: Phase 5B (building VMs) — built, not yet proven on a real cluster
 
 Sign-in works. The setup wizard creates the first administrator and then closes permanently. Every
 API endpoint that is not deliberately public requires a session, and the global guard is
@@ -26,9 +26,12 @@ reported rather than left looking busy. See [Watching, cancelling and approving 
 The **ISO library** holds installers and cloud images on the Velnox host, and copies them onto a
 cluster's storage and back. See [The ISO library](managing-the-library.md).
 
-**That copy is the only thing Velnox writes to your infrastructure.** It puts an ISO or disk image on
-a storage, and deletes one there when asked, each as a job. Nothing starts, stops, migrates, updates
-or reconfigures a node or a guest yet.
+**VMs are built from templates** — Windows unattended from its ISO, Linux from a cloud image — with
+their passwords generated or stored encrypted, shown only through an audited reveal, and a mail when
+they are ready. See [Building VMs from templates](building-vms.md).
+
+**Those two are the only things Velnox writes to your infrastructure:** files on storage, and new
+VMs. Nothing stops, migrates, updates or reconfigures an existing node or guest.
 
 What is **not** there yet, in order of how much it matters:
 
@@ -101,8 +104,45 @@ webhook, nothing that reaches you when you are not looking at the screen.
 Deliberate, and the smaller half of the problem on purpose. A stored alert needs raised /
 acknowledged / resolved / re-raised, and a half-built lifecycle produces a screen full of stale
 alarms nobody reads, which is worse than a screen that is honest about only knowing what is true now.
-Delivering them needs a notification channel — mail, a webhook — and there is none yet; Phase 5B
-brings the first one.
+Delivering them needs a notification channel. Mail exists since Phase 5B, but only for VMs that are
+ready; alerts do not use it yet.
+
+### Provisioning is proven against the fixture, not yet a real cluster
+`verify-provisioning.sh` drives the whole flow against the fixture Proxmox: templates, the refusals,
+the media copied to the node, the VM created, the answer CD built, attached, read back the way a
+guest reads it, ejected and deleted, the mail, the reveal, a failure and a cancellation cleaned up.
+The fixture installs nothing. So these are **not yet seen**:
+
+- Windows Setup running unattended from the answer file — including the Enter pressed at the UEFI
+  boot prompt, VirtIO drivers loading during Setup, the edition chosen by name, and a VM asking for a
+  product key at activation when none was given.
+- cloud-init configuring a real cloud image: keys working on first boot and password logins refused,
+  the mirror, the swap file. The output passes cloud-init's own schema check; that is not the same.
+- The Proxmox calls the fixture answers in its own way: `import-from` on create, `sendkey`, the guest
+  agent's file read, and the privileges a dedicated token needs for them.
+
+Until one of each has been built on a real cluster, Phase 5B is built, not finished.
+
+### A Windows ISO's edition list is read from ISOs built for the tests
+The list is read from `install.wim` inside the ISO's UDF filesystem. That reader is proven against
+ISOs made with genisoimage and wimlib, not against an ISO from Microsoft. If one cannot be read, the
+form says so and the edition is typed — unchecked.
+
+### The answer CD holds passwords while the install runs
+Unattend's hidden passwords are reversible, so the answer CD on the node's storage holds them for as
+long as Windows installs. It is deleted when the job ends, however it ends; if the worker dies
+mid-install, it stays until someone deletes it (`velnox-answers-<id>.iso`).
+
+### A VM's passwords are kept for thirty days
+Then they are deleted. The period is fixed; there is no setting yet. Nothing changes them on the VM.
+
+### Mail is plain SMTP, proven only against the fixture's sink
+STARTTLS and TLS go through nodemailer with certificate checking, but the harness tests only an
+unencrypted sink. There is one notification — a VM is ready — and none for alerts yet.
+
+### The installation record's encryption reaches into pdfkit
+Revision 6 is set by rewriting what pdfkit prepared, so pdfkit is pinned to 0.20.2; a newer one has
+to be checked before it is taken.
 
 ### The ISO library is proven against the fixture, not yet a real cluster
 Every movement — push, pull, delete, cancel halfway — is exercised by `verify-library.sh` over real
@@ -189,6 +229,11 @@ Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture
 `tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were
 translated from; `scripts/check-doc-sync.mjs` reports which ones have fallen behind. It warns, it
 does not block.
+
+### Resolved in Phase 5B
+- **Velnox sent no mail.** It does now, through a server an administrator sets up and proves with a
+  test first.
+- **Nothing could be built.** VMs are built from templates, and a failed build leaves no VM behind.
 
 ### Resolved in Phase 5A
 - **Nothing reached a node over SSH.** SSH exists now, per cluster and optional, for SFTP reads only,

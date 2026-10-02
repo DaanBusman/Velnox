@@ -411,6 +411,46 @@ andere zou tonen.
 een bestand op gedeelde opslag één rij is, hoeveel nodes het ook zien. Uniek op
 `(cluster_id, location_key, volid)`.
 
+## 6B. Autoconfig en uitrol
+
+Gebouwd in fase 5B (migratie `20260930090000_autoconfig`). ADR-039 legt de vorm uit.
+
+### `autoconfig_templates`
+`id, tenant_id, name, description, family (WINDOWS|LINUX), visibility (SHARED|PRIVATE),
+credential_delivery (VELNOX_ONLY|ENCRYPTED_PDF), pdf_password_source (SHOWN_ONCE|TEMPLATE),
+settings jsonb, secret_refs jsonb, cloned_from_id, cloned_from_name, created_by_id,
+created_by_label, created_at, updated_at`
+
+Van de MSP-root of van één klant. Het tenantfilter toont een tenant zijn eigen templates en de
+SHARED-templates van de MSP; wijzigen wordt gecontroleerd tegen de eigenaar. `settings` wordt
+gevalideerd door het gedeelde schema en door de API teruggegeven;
+`autoconfig_templates_family_matches` houdt het in overeenstemming met `family`. `secret_refs` koppelt
+elk geheim aan een eigen `TEMPLATE_SECRETS`-credential — nooit een waarde. Uniek op
+`(tenant_id, lower(name))`.
+
+### `provisionings`
+`id, tenant_id, template_id, template_name, family, template_snapshot jsonb, cluster_id,
+cluster_name, node, disk_storage, media_storage, bridge, vlan, hostname, network jsonb, vmid, state
+(QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED), job_id, addresses text[], requested_by_id,
+requested_by_label, requested_by_email, credential_delivery, credentials_credential_id,
+credentials_expire_at, document_password_credential_id, notify, notified_at, error_code,
+error_params jsonb, error_detail, started_at, finished_at, created_at, updated_at`
+
+De aanvraag en registratie van één VM. `template_snapshot` is het template zoals het werd gebruikt,
+zodat de registratie wijzigingen eraan overleeft. De trigger `provisionings_tenant_matches_cluster`
+houdt hem in de tenant van zijn cluster. `credentials_credential_id` is de `GUEST_CREDENTIALS` van de
+VM, leeggemaakt als ze verlopen of de bouw mislukt. `notified_at` wordt geclaimd voordat de mail
+vertrekt, en dat maakt dat hij één keer aankomt.
+
+### `system_settings`, mailkolommen
+`smtp_enabled, smtp_host, smtp_port, smtp_security (STARTTLS|TLS|NONE), smtp_username,
+smtp_password_credential_id, smtp_from, smtp_verified_at`. Aan vereist een host en een afzender
+(`system_settings_smtp_complete`); de API vereist daarnaast een test sinds de laatste wijziging.
+
+### Soorten credentials
+`TEMPLATE_SECRETS`, `DOCUMENT_PASSWORD` en `SMTP_PASSWORD` worden alleen door de worker gelezen.
+`GUEST_CREDENTIALS` wordt door de worker gelezen en, voor de vastgelegde onthulling, door de API.
+
 ---
 
 ## 7. Updates

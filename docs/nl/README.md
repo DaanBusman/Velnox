@@ -43,9 +43,14 @@ lijken.
 hervatbaar geüpload vanuit een browser, naar de opslag van elk cluster gekopieerd terwijl Proxmox de
 checksum controleert, en via SFTP met vastgepinde host keys weer van een cluster teruggehaald.
 
+**VM's bouwen** (fase 5B): Autoconfig-templates van de MSP of van een klant, en VM's die daar onbeheerd
+uit worden gebouwd — Windows vanaf zijn ISO met een gegenereerd antwoordbestand, Linux vanuit een cloud
+image — met elk wachtwoord gegenereerd of versleuteld opgeslagen, alleen getoond via een vastgelegde
+onthulling, en een installatieverslag dat wordt gemaild als de VM klaar is.
+
 > **Dit is nog steeds een build in aanbouw, geen afgerond product.** Velnox leest je infrastructuur,
-> en wijzigt die op één manier: het kopieert ISO's en disk-images naar de opslag van een cluster en
-> verwijdert ze daar. Onbeheerde VM-uitrol komt in fase 5B, updatebeheer in fase 6. Rollen zijn niet te bewerken, en aanmelden met
+> en wijzigt die op twee manieren: het kopieert ISO's en disk-images naar de opslag van een cluster, en
+> het bouwt nieuwe VM's vanuit templates. Updatebeheer komt in fase 6. Rollen zijn niet te bewerken, en aanmelden met
 > Microsoft Entra ID is alleen configuratie — de flow zelf is niet geschreven.
 
 Wat elke fase toevoegt, en wat er vandaag bewust ontbreekt:

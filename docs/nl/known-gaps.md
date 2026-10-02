@@ -11,7 +11,7 @@ heeft haar poort niet gehaald.
 
 ---
 
-## Huidige status: fase 5A (de ISO-bibliotheek)
+## Huidige status: fase 5B (VM's bouwen) — gebouwd, nog niet bewezen op een echt cluster
 
 Aanmelden werkt. De installatiewizard maakt de eerste beheerder aan en sluit daarna permanent. Elk
 API-endpoint dat niet bewust publiek is, vereist een sessie, en de globale guard beschermt
@@ -30,9 +30,12 @@ lijken. Zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md).
 De **ISO-bibliotheek** bevat installers en cloud images op de Velnox-host, en kopieert ze naar de
 opslag van een cluster en terug. Zie [De ISO-bibliotheek](managing-the-library.md).
 
-**Die kopie is het enige wat Velnox naar je infrastructuur schrijft.** Het zet een ISO of disk-image
-op een opslag, en verwijdert er een als daarom wordt gevraagd, elk als job. Er wordt nog geen node of
-gast gestart, gestopt, gemigreerd, bijgewerkt of geherconfigureerd.
+**VM's worden vanuit templates gebouwd** — Windows onbeheerd vanaf zijn ISO, Linux vanuit een cloud
+image — met hun wachtwoorden gegenereerd of versleuteld opgeslagen, alleen getoond via een vastgelegde
+onthulling, en een mail als ze klaar zijn. Zie [VM's bouwen vanuit templates](building-vms.md).
+
+**Die twee zijn het enige wat Velnox naar je infrastructuur schrijft:** bestanden op opslag, en
+nieuwe VM's. Niets stopt, migreert, werkt bij of herconfigureert een bestaande node of gast.
 
 Wat er **nog niet** is, op volgorde van hoe zwaar het weegt:
 
@@ -110,8 +113,49 @@ e-mail, geen webhook, niets dat je bereikt wanneer je niet naar het scherm kijkt
 Bewust, en met opzet de kleinere helft van het probleem. Een opgeslagen melding heeft
 gemeld / bevestigd / opgelost / opnieuw gemeld nodig, en een half gebouwde levenscyclus levert een
 scherm vol verouderde alarmen op dat niemand leest — erger dan een scherm dat er eerlijk over is dat
-het alleen weet wat er nú waar is. Ze bezorgen vereist een notificatiekanaal — mail, een webhook — en dat is er nog niet; fase 5B
-brengt het eerste.
+het alleen weet wat er nú waar is. Ze bezorgen vereist een notificatiekanaal. Mail bestaat sinds fase 5B, maar alleen voor VM's die
+klaar zijn; meldingen gebruiken het nog niet.
+
+### Uitrol is bewezen tegen de fixture, nog niet tegen een echt cluster
+`verify-provisioning.sh` doorloopt de hele stroom tegen de fixture-Proxmox: templates, de weigeringen,
+de media naar de node gekopieerd, de VM gemaakt, de antwoord-cd gebouwd, gekoppeld, teruggelezen
+zoals een gast hem leest, uitgeworpen en verwijderd, de mail, de onthulling, een mislukking en een
+annulering opgeruimd. De fixture installeert niets. Dit is dus **nog niet gezien**:
+
+- Windows Setup die onbeheerd draait vanuit het antwoordbestand — inclusief de Enter bij de
+  UEFI-opstartvraag, VirtIO-drivers die tijdens Setup laden, de editie gekozen op naam, en een VM die
+  bij activering om een productcode vraagt als er geen was opgegeven.
+- cloud-init dat een echt cloud image configureert: sleutels die bij de eerste start werken en
+  aanmelden met wachtwoord dat wordt geweigerd, de mirror, het wisselbestand. De uitvoer doorstaat de
+  eigen schemacontrole van cloud-init; dat is niet hetzelfde.
+- De Proxmox-aanroepen die de fixture op zijn eigen manier beantwoordt: `import-from` bij het maken,
+  `sendkey`, het lezen van een bestand via de guest agent, en de rechten die een eigen token daarvoor
+  nodig heeft.
+
+Tot er van elk één op een echt cluster is gebouwd, is fase 5B gebouwd, niet af.
+
+### De editielijst van een Windows-ISO is gelezen uit ISO's die voor de tests zijn gemaakt
+De lijst wordt gelezen uit `install.wim` in het UDF-bestandssysteem van de ISO. Die lezer is bewezen
+tegen ISO's gemaakt met genisoimage en wimlib, niet tegen een ISO van Microsoft. Kan er een niet worden
+gelezen, dan zegt het formulier dat en wordt de editie getypt — ongecontroleerd.
+
+### De antwoord-cd bevat wachtwoorden zolang de installatie loopt
+De verborgen wachtwoorden van unattend zijn omkeerbaar, dus de antwoord-cd op de opslag van de node
+bevat ze zolang Windows installeert. Hij wordt verwijderd als de job eindigt, hoe die ook eindigt;
+sterft de worker midden in een installatie, dan blijft hij staan tot iemand hem verwijdert
+(`velnox-answers-<id>.iso`).
+
+### De wachtwoorden van een VM worden dertig dagen bewaard
+Daarna worden ze verwijderd. De termijn is vast; er is nog geen instelling. Niets wijzigt ze op de VM.
+
+### Mail is gewone SMTP, alleen bewezen tegen de mailsink van de fixture
+STARTTLS en TLS gaan via nodemailer met certificaatcontrole, maar het harnas test alleen een
+onversleutelde sink. Er is één melding — een VM is klaar — en nog geen voor meldingen uit de
+inventarisatie.
+
+### De versleuteling van het installatieverslag grijpt in pdfkit in
+Revisie 6 wordt gezet door te herschrijven wat pdfkit voorbereidde, dus pdfkit staat vast op 0.20.2;
+een nieuwere moet worden gecontroleerd voordat hij wordt overgenomen.
 
 ### De ISO-bibliotheek is bewezen tegen de fixture, nog niet tegen een echt cluster
 Elke verplaatsing — pushen, terughalen, verwijderen, halverwege annuleren — wordt door
@@ -202,6 +246,12 @@ Fase 1 heeft twee besluiten uit fase 0 herzien (zie *Herzien in fase 1* in `arch
 `tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen vast van welke Engelse
 commit ze zijn vertaald; `scripts/check-doc-sync.mjs` meldt welke zijn achtergebleven. Het
 waarschuwt, het blokkeert niet.
+
+### Opgelost in fase 5B
+- **Velnox verstuurde geen mail.** Nu wel, via een server die een beheerder instelt en eerst met een
+  test bewijst.
+- **Er kon niets worden gebouwd.** VM's worden vanuit templates gebouwd, en een mislukte bouw laat geen
+  VM achter.
 
 ### Opgelost in fase 5A
 - **Er ging niets via SSH naar een node.** SSH bestaat nu, per cluster en optioneel, alleen voor

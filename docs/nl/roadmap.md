@@ -3,7 +3,7 @@
 > **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `2c5fd66`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is in uitvoering; fase 6–15 wachten op goedkeuring.
+**Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is gebouwd en wacht op bewijs op een echt cluster; fase 6–15 wachten op goedkeuring.
 
 Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
 acceptatiecriteria tegen een draaiende stack — 36 controles over elke afhankelijkheid, de
@@ -173,7 +173,17 @@ afgebroken overdracht laat aan geen van beide kanten een half bestand achter; de
 wordt geweigerd met het plafond erbij, niet met een schijffout; elk scherm toont vriendelijke namen en
 elke logregel de echte bestandsnaam.
 
-## Phase 5B — Autoconfig-templates en onbeheerde VM-uitrol · **XL**
+## Phase 5B — Autoconfig-templates en onbeheerde VM-uitrol · **XL** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (ADR-039, 0.5.9): templates van de MSP of van een klant, aangeboden, gekloond en
+privé gehouden zoals hieronder; elk geheim een eigen versleutelde credential; VM's gebouwd door één job
+die de media naar de node kopieert, een Autounattend.xml of een cloud-init-seed op een kleine cd zet,
+wacht tot de guest agent meldt dat de installatie klaar is, en bij een mislukking de VM vernietigt;
+een vastgelegde onthulling; mail die eerst wordt bewezen en dan aangezet; een installatieverslag
+versleuteld met AES-256 revisie 6. `verify-provisioning.sh` bewijst 89 controles tegen de fixture.
+**Niet als afgerond gemarkeerd** omdat de acceptatie hieronder spreekt van een gast die installeert
+zonder toetsaanslag en van gedrag bij de eerste start, en de fixture installeert niets — zie
+[Bekende hiaten](known-gaps.md).
 
 Aangevraagd door de eigenaar op 27-09-2026. Ingepland na fase 5 (jobs) en 5A (de ISO-bibliotheek),
 omdat uitrollen een job is en de eerste stap ervan "staat de ISO op die node" is.

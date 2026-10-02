@@ -38,9 +38,14 @@ detected and reported rather than left looking busy.
 uploaded resumably from a browser, copied onto any cluster's storage with Proxmox checking the
 checksum, and copied back off one over SFTP with pinned host keys.
 
+**Building VMs** (Phase 5B): Autoconfig templates owned by the MSP or a customer, and VMs built
+from them unattended — Windows from its ISO with a generated answer file, Linux from a cloud image —
+with every password generated or stored encrypted, shown only through an audited reveal, and an
+installation record mailed when the VM is ready.
+
 > **This is still a build in progress, not a finished product.** Velnox reads your infrastructure,
-> and changes it in one way only: it copies ISOs and disk images onto a cluster's storage and removes
-> them there. Unattended VM provisioning arrives in Phase 5B, update management in Phase 6. Roles cannot be edited, and signing in with Microsoft
+> and changes it in two ways only: it copies ISOs and disk images onto a cluster's storage, and it
+> builds new VMs from templates. Update management arrives in Phase 6. Roles cannot be edited, and signing in with Microsoft
 > Entra ID is configuration only — the flow itself is not written.
 
 What each phase adds, and what is deliberately missing today:
