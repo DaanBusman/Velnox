@@ -1,6 +1,6 @@
 # Velnox — Implementatieroadmap
 
-> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `2c5fd66`.
+> **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `76ed14f`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is gebouwd en wacht op bewijs op een echt cluster; fase 6–15 wachten op goedkeuring.

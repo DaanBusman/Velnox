@@ -1,6 +1,6 @@
 # Velnox — Bekende beperkingen
 
-> **Vertaling.** Bron: [docs/known-gaps.md](../known-gaps.md) @ `2c5fd66`.
+> **Vertaling.** Bron: [docs/known-gaps.md](../known-gaps.md) @ `76ed14f`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 Dit bestand is het eerlijke grootboek. Alles wat Velnox niet doet, niet volledig doet, of met handmatige
