@@ -1,6 +1,6 @@
 # Aan de slag met Velnox
 
-> **Vertaling.** Bron: [docs/getting-started.md](../getting-started.md) @ `76ed14f`.
+> **Vertaling.** Bron: [docs/getting-started.md](../getting-started.md) @ `9641dde`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Deze handleiding is voor wie Velnox zojuist heeft geïnstalleerd en naar een leeg scherm kijkt.**
