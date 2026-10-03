@@ -452,7 +452,15 @@
     "buildQUEUED": "Build queued",
     "buildRUNNING": "Being built",
     "buildFAILED": "Build failed",
-    "buildFailedHint": "Open the record for the reason."
+    "buildFailedHint": "Open the record for the reason.",
+    "subscriptionStatus": {
+      "notfound": "No-Subscription",
+      "active": "Active",
+      "new": "New, not yet checked",
+      "invalid": "Invalid",
+      "expired": "Expired",
+      "suspended": "Suspended"
+    }
   },
   "job": {
     "allStatuses": "All statuses",

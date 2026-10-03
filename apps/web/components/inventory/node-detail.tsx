@@ -23,6 +23,15 @@ export function NodeDetailView({ node }: { node: NodeDetailData }) {
   const format = useFormatter();
   const [tab, setTab] = useState<Tab>('overview');
 
+  // Proxmox reports the subscription as a word of its own (`notfound`,
+  // `active`, …); a word it adds later is shown as it said it.
+  const subscriptionKey = `inventory.subscriptionStatus.${node.subscriptionStatus?.toLowerCase()}`;
+  const subscription = node.subscriptionStatus
+    ? t.has(subscriptionKey)
+      ? t(subscriptionKey)
+      : node.subscriptionStatus
+    : null;
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: t('inventory.overview') },
     { key: 'storage', label: t('nav.storage') },
@@ -47,9 +56,9 @@ export function NodeDetailView({ node }: { node: NodeDetailData }) {
         <div className="flex flex-wrap items-center gap-2">
           <NodeStateBadge state={node.state} />
           <HealthBadge health={node.health} />
-          {node.subscriptionStatus && node.subscriptionStatus !== 'active' && (
+          {subscription && node.subscriptionStatus?.toLowerCase() !== 'active' && (
             <StatusBadge tone="warn">
-              {t('inventory.subscription', { status: node.subscriptionStatus })}
+              {t('inventory.subscription', { status: subscription })}
             </StatusBadge>
           )}
           {node.updatesAvailable !== null && node.updatesAvailable > 0 && (
@@ -116,7 +125,7 @@ export function NodeDetailView({ node }: { node: NodeDetailData }) {
               <span className="font-mono text-xs">{node.kernelVersion ?? <Absent />}</span>
             </KeyValue>
             <KeyValue label={t('inventory.subscriptionLabel')}>
-              {node.subscriptionStatus ?? <Absent />}
+              {subscription ?? <Absent />}
               {node.subscriptionLevel ? ` (${node.subscriptionLevel})` : ''}
             </KeyValue>
             <KeyValue label={t('inventory.uptime')}>{formatUptime(node.uptimeSeconds)}</KeyValue>

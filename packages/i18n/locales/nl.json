@@ -453,7 +453,15 @@
     "buildQUEUED": "Uitrol in wachtrij",
     "buildRUNNING": "Wordt uitgerold",
     "buildFAILED": "Uitrol mislukt",
-    "buildFailedHint": "Open de registratie voor de reden."
+    "buildFailedHint": "Open de registratie voor de reden.",
+    "subscriptionStatus": {
+      "notfound": "No-Subscription (Geen Abonnement)",
+      "active": "Actief",
+      "new": "Nieuw, nog niet gecontroleerd",
+      "invalid": "Ongeldig",
+      "expired": "Verlopen",
+      "suspended": "Opgeschort"
+    }
   },
   "job": {
     "allStatuses": "Alle statussen",
