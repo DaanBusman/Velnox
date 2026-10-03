@@ -12,6 +12,8 @@ import {
   WINDOWS_KEYBOARDS,
   WINDOWS_LANGUAGES,
   WINDOWS_TIME_ZONES,
+  parseTenantSecretKey,
+  perTenantAccount,
   type LibraryItemSummary,
   type TemplateOsFamily,
   type TemplateSummary,
@@ -161,6 +163,45 @@ function Secret({
   );
 }
 
+type SecretFieldProps = Omit<Parameters<typeof Secret>[0], 'label' | 'kind'>;
+
+/**
+ * One password per tenant, for the account set per tenant. A tenant left empty
+ * gets a password generated for each VM; the API says which are stored, and
+ * only to whoever may edit the template.
+ */
+function TenantPasswords({
+  account,
+  tenants,
+  secretPropsFor,
+}: {
+  account: 'administrator' | 'root';
+  tenants: TenantSummary[];
+  secretPropsFor: (key: string) => SecretFieldProps;
+}) {
+  const t = useTranslations();
+  return (
+    <div className="space-y-2 rounded border border-line p-3 md:col-span-2">
+      <p className="text-sm font-medium text-ink">{t('autoconfig.perTenantTitle')}</p>
+      <p className="text-xs text-ink-muted">{t('autoconfig.perTenantHint')}</p>
+      {tenants.length === 0 ? (
+        <p className="text-sm text-ink-muted">{t('autoconfig.noCustomers')}</p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {tenants.map((tenant) => (
+            <Secret
+              key={tenant.id}
+              {...secretPropsFor(`tenant:${tenant.id}:${account}`)}
+              label={tenant.kind === 'MSP_ROOT' ? t('autoconfig.ownerMsp') : tenant.name}
+              kind="password"
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const defaults = (family: TemplateOsFamily): any =>
   family === 'WINDOWS'
     ? {
@@ -249,6 +290,7 @@ export function TemplateEditor({
   const [name, setName] = useState(template?.name ?? '');
   const [description, setDescription] = useState(template?.description ?? '');
   const [visibility, setVisibility] = useState(template?.visibility ?? 'SHARED');
+  const [offered, setOffered] = useState<string[]>(template?.offeredTenantIds ?? []);
   const [delivery, setDelivery] = useState(template?.credentialDelivery ?? 'VELNOX_ONLY');
   const [pdfSource, setPdfSource] = useState(template?.pdfPasswordSource ?? 'SHOWN_ONCE');
   const [settings, setSettings] = useState<any>(() =>
@@ -274,6 +316,20 @@ export function TemplateEditor({
   const chosenIso = isos.find((item) => item.filename === settings.isoFilename);
   const editions = chosenIso?.windowsImages ?? null;
 
+  // Offering by name and passwords per tenant are an MSP template's.
+  const mspTenant = tenants.find((tenant) => tenant.kind === 'MSP_ROOT');
+  const mspOwned = template ? template.ownedByMsp : tenantId === mspTenant?.id;
+  const customers = tenants.filter(
+    (tenant) => tenant.kind !== 'MSP_ROOT' && tenant.status !== 'ARCHIVED',
+  );
+  // Whose password can be set: the MSP's own, and the customers it reaches.
+  const passwordTenants = [
+    ...(mspTenant ? [mspTenant] : []),
+    ...(visibility === 'SELECTED'
+      ? customers.filter((tenant) => offered.includes(tenant.id))
+      : customers),
+  ];
+
   const stored = (key: string) =>
     Boolean(template?.secretsSet[key as keyof typeof template.secretsSet]);
 
@@ -294,13 +350,21 @@ export function TemplateEditor({
     const cleaned = structuredClone(settings);
     if (cleaned.family === 'WINDOWS' && !cleaned.virtioIsoFilename)
       cleaned.virtioIsoFilename = null;
+    // A tenant's password typed before the account stopped being set per tenant
+    // is not sent: the API would refuse it.
+    const perTenant = perTenantAccount(cleaned);
     const secretChanges = Object.fromEntries(
-      Object.entries(secrets).filter(([, value]) => value !== undefined),
+      Object.entries(secrets).filter(
+        ([key, value]) =>
+          value !== undefined &&
+          (!key.startsWith('tenant:') || parseTenantSecretKey(key)?.account === perTenant),
+      ),
     );
     const common = {
       name: name.trim(),
       description,
       visibility,
+      offeredTenantIds: visibility === 'SELECTED' ? offered : [],
       credentialDelivery: delivery,
       pdfPasswordSource: pdfSource,
       settings: cleaned,
@@ -348,7 +412,17 @@ export function TemplateEditor({
                   value: tenant.id,
                   label: tenant.kind === 'MSP_ROOT' ? t('autoconfig.ownerMsp') : tenant.name,
                 }))}
-              onChange={setTenantId}
+              onChange={(id) => {
+                setTenantId(id);
+                // A customer's template is offered to nobody else and has no
+                // passwords per tenant: what only an MSP template can do goes.
+                if (id === mspTenant?.id) return;
+                if (visibility === 'SELECTED') setVisibility('SHARED');
+                if (settings.administratorPassword === 'PER_TENANT') {
+                  set('administratorPassword', 'FIXED');
+                }
+                if (settings.root?.password === 'PER_TENANT') set('root.password', 'FIXED');
+              }}
             />
           )}
           <Field label={t('autoconfig.name')}>
@@ -378,6 +452,9 @@ export function TemplateEditor({
             disabled={!editable}
             options={[
               { value: 'SHARED', label: t('autoconfig.visibilityShared') },
+              ...(mspOwned
+                ? [{ value: 'SELECTED' as const, label: t('autoconfig.visibilitySelected') }]
+                : []),
               { value: 'PRIVATE', label: t('autoconfig.visibilityPrivate') },
             ]}
             onChange={setVisibility}
@@ -415,6 +492,31 @@ export function TemplateEditor({
               label={t('autoconfig.pdfPassword')}
               kind="password"
             />
+          )}
+          {visibility === 'SELECTED' && mspOwned && (
+            <div className="md:col-span-2">
+              <p className="text-sm font-medium text-ink">{t('autoconfig.offeredTo')}</p>
+              <p className="mb-2 text-xs text-ink-muted">{t('autoconfig.offeredToHint')}</p>
+              {customers.length === 0 ? (
+                <p className="text-sm text-ink-muted">{t('autoconfig.noCustomers')}</p>
+              ) : (
+                <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {customers.map((tenant) => (
+                    <Check
+                      key={tenant.id}
+                      label={tenant.name}
+                      checked={offered.includes(tenant.id)}
+                      disabled={!editable}
+                      onChange={(on) =>
+                        setOffered((current) =>
+                          on ? [...current, tenant.id] : current.filter((id) => id !== tenant.id),
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </Card>
@@ -554,6 +656,9 @@ export function TemplateEditor({
                   options={[
                     { value: 'GENERATE', label: t('autoconfig.passwordGenerate') },
                     { value: 'FIXED', label: t('autoconfig.passwordFixed') },
+                    ...(mspOwned
+                      ? [{ value: 'PER_TENANT', label: t('autoconfig.passwordPerTenant') }]
+                      : []),
                   ]}
                   onChange={(value) => set('administratorPassword', value)}
                 />
@@ -562,6 +667,13 @@ export function TemplateEditor({
                     {...secretProps('administrator')}
                     label={t('autoconfig.administratorPassword')}
                     kind="password"
+                  />
+                )}
+                {settings.administratorPassword === 'PER_TENANT' && (
+                  <TenantPasswords
+                    account="administrator"
+                    tenants={passwordTenants}
+                    secretPropsFor={secretProps}
                   />
                 )}
               </div>
@@ -898,6 +1010,9 @@ export function TemplateEditor({
                     { value: 'NONE', label: t('autoconfig.passwordNone') },
                     { value: 'GENERATE', label: t('autoconfig.passwordGenerate') },
                     { value: 'FIXED', label: t('autoconfig.passwordFixed') },
+                    ...(mspOwned
+                      ? [{ value: 'PER_TENANT', label: t('autoconfig.passwordPerTenant') }]
+                      : []),
                   ]}
                   onChange={(value) => set('root.password', value)}
                 />
@@ -906,6 +1021,13 @@ export function TemplateEditor({
                     {...secretProps('root')}
                     label={t('autoconfig.rootPassword')}
                     kind="password"
+                  />
+                )}
+                {settings.root.password === 'PER_TENANT' && (
+                  <TenantPasswords
+                    account="root"
+                    tenants={passwordTenants}
+                    secretPropsFor={secretProps}
                   />
                 )}
               </div>

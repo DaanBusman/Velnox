@@ -416,16 +416,20 @@ een bestand op gedeelde opslag één rij is, hoeveel nodes het ook zien. Uniek o
 Gebouwd in fase 5B (migratie `20260930090000_autoconfig`). ADR-039 legt de vorm uit.
 
 ### `autoconfig_templates`
-`id, tenant_id, name, description, family (WINDOWS|LINUX), visibility (SHARED|PRIVATE),
-credential_delivery (VELNOX_ONLY|ENCRYPTED_PDF), pdf_password_source (SHOWN_ONCE|TEMPLATE),
-settings jsonb, secret_refs jsonb, cloned_from_id, cloned_from_name, created_by_id,
-created_by_label, created_at, updated_at`
+`id, tenant_id, name, description, family (WINDOWS|LINUX), visibility (SHARED|SELECTED|PRIVATE),
+offered_tenant_ids uuid[], credential_delivery (VELNOX_ONLY|ENCRYPTED_PDF), pdf_password_source
+(SHOWN_ONCE|TEMPLATE), settings jsonb, secret_refs jsonb, cloned_from_id, cloned_from_name,
+created_by_id, created_by_label, created_at, updated_at`
 
-Van de MSP-root of van één klant. Het tenantfilter toont een tenant zijn eigen templates en de
-SHARED-templates van de MSP; wijzigen wordt gecontroleerd tegen de eigenaar. `settings` wordt
+Van de MSP-root of van één klant. Het tenantfilter toont een tenant zijn eigen templates, de
+SHARED-templates van de MSP, en de SELECTED-templates van de MSP waarvan `offered_tenant_ids` hem
+noemt (migratie `20261003090000_template_offers`, met GIN-index);
+`autoconfig_templates_offers_only_when_selected` houdt de lijst anders leeg. Wijzigen wordt
+gecontroleerd tegen de eigenaar. `settings` wordt
 gevalideerd door het gedeelde schema en door de API teruggegeven;
 `autoconfig_templates_family_matches` houdt het in overeenstemming met `family`. `secret_refs` koppelt
-elk geheim aan een eigen `TEMPLATE_SECRETS`-credential — nooit een waarde. Uniek op
+elk geheim aan een eigen `TEMPLATE_SECRETS`-credential — nooit een waarde; het eigen Administrator- of
+root-wachtwoord van een tenant is de sleutel `tenant:<tenant-id>:administrator` (of `:root`). Uniek op
 `(tenant_id, lower(name))`.
 
 ### `provisionings`

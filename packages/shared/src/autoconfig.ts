@@ -27,10 +27,11 @@ export type TemplateOsFamily = (typeof TEMPLATE_OS_FAMILIES)[number];
  *
  * `SHARED` on an MSP template offers it to every tenant; on a tenant template
  * it means nothing more than `PRIVATE`, because a tenant template is never
- * offered outside its tenant. `PRIVATE` on an MSP template keeps it to MSP
- * staff.
+ * offered outside its tenant. `SELECTED` offers an MSP template to the tenants
+ * chosen on it, and only an MSP template can be `SELECTED`. `PRIVATE` on an MSP
+ * template keeps it to MSP staff.
  */
-export const TEMPLATE_VISIBILITIES = ['SHARED', 'PRIVATE'] as const;
+export const TEMPLATE_VISIBILITIES = ['SHARED', 'SELECTED', 'PRIVATE'] as const;
 export type TemplateVisibility = (typeof TEMPLATE_VISIBILITIES)[number];
 
 /**
@@ -52,9 +53,12 @@ export type PdfPasswordSource = (typeof PDF_PASSWORD_SOURCES)[number];
  *
  * `GENERATE` is the default and the recommendation: a fresh random password per
  * VM, so one leaked record opens one machine. `FIXED` takes the password stored
- * on the template. `NONE` is Linux only — a key-only account.
+ * on the template. `PER_TENANT` takes the password stored on the template for
+ * the tenant the VM is built for, and generates one like `GENERATE` when that
+ * tenant has none — for Windows' Administrator and Linux's root on an MSP
+ * template only. `NONE` is Linux only — a key-only account.
  */
-export const PASSWORD_MODES = ['GENERATE', 'FIXED', 'NONE'] as const;
+export const PASSWORD_MODES = ['GENERATE', 'FIXED', 'PER_TENANT', 'NONE'] as const;
 export type PasswordMode = (typeof PASSWORD_MODES)[number];
 
 // ---------------------------------------------------------------------------
@@ -247,7 +251,7 @@ const windowsAccount = z.object({
   }),
   displayName: z.string().trim().max(64).default(''),
   administrator: z.boolean().default(false),
-  password: passwordMode.exclude(['NONE']).default('GENERATE'),
+  password: passwordMode.exclude(['NONE', 'PER_TENANT']).default('GENERATE'),
 });
 
 export const windowsTemplateSchema = z
@@ -350,7 +354,7 @@ const linuxUser = z.object({
     .array(z.string().trim().regex(SSH_PUBLIC_KEY, 'An OpenSSH public key'))
     .max(20)
     .default([]),
-  password: passwordMode.default('NONE'),
+  password: passwordMode.exclude(['PER_TENANT']).default('NONE'),
 });
 
 export const linuxTemplateSchema = z
@@ -448,13 +452,44 @@ export type TemplateSettings = WindowsTemplate | LinuxTemplate;
 /**
  * The secrets a template can hold, keyed by what they are for.
  *
- * `accounts.<name>` for a Windows account or Linux user set to `FIXED`,
- * `administrator`, `root`, `productKey`, and `pdfPassword`. Stored as one JSON
- * object in the secret store; never returned by the API, only whether each is
- * set.
+ * `account:<name>` for a Windows account or Linux user set to `FIXED`,
+ * `administrator`, `root`, `productKey`, and `pdfPassword`; and
+ * `tenant:<tenant id>:administrator` or `…:root` for one tenant's password when
+ * the account is `PER_TENANT`. Each is its own credential; never returned by
+ * the API, only whether each is set.
  */
 export type TemplateSecretKey =
-  `account:${string}` | 'administrator' | 'root' | 'productKey' | 'pdfPassword';
+  | `account:${string}`
+  | 'administrator'
+  | 'root'
+  | 'productKey'
+  | 'pdfPassword'
+  | `tenant:${string}:administrator`
+  | `tenant:${string}:root`;
+
+/** The account whose password is set per tenant on this template, or null. */
+export function perTenantAccount(settings: TemplateSettings): 'administrator' | 'root' | null {
+  if (settings.family === 'WINDOWS') {
+    return settings.administratorPassword === 'PER_TENANT' ? 'administrator' : null;
+  }
+  return settings.root.password === 'PER_TENANT' ? 'root' : null;
+}
+
+/** The key one tenant's password is stored under. */
+export const tenantSecretKey = (
+  tenantId: string,
+  account: 'administrator' | 'root',
+): TemplateSecretKey => `tenant:${tenantId}:${account}`;
+
+/** `tenant:<uuid>:administrator` → its parts, or null for any other key. */
+export function parseTenantSecretKey(
+  key: string,
+): { tenantId: string; account: 'administrator' | 'root' } | null {
+  const match = /^tenant:([0-9a-f-]{36}):(administrator|root)$/i.exec(key);
+  return match
+    ? { tenantId: match[1]!.toLowerCase(), account: match[2] as 'administrator' | 'root' }
+    : null;
+}
 
 /** Which secrets a template's settings need present to be usable. */
 export function requiredTemplateSecrets(
@@ -623,12 +658,21 @@ export interface TemplateSummary {
   tenantName: string;
   ownedByMsp: boolean;
   visibility: TemplateVisibility;
+  /**
+   * The tenants a `SELECTED` template is offered to. Only to whoever may edit
+   * it; empty for everyone else, so a customer never learns who the others are.
+   */
+  offeredTenantIds: string[];
   credentialDelivery: CredentialDelivery;
   pdfPasswordSource: PdfPasswordSource;
   clonedFromId: string | null;
   clonedFromName: string | null;
   settings: TemplateSettings;
-  /** Which of the secrets the settings call for are stored. Never the values. */
+  /**
+   * Which of the secrets the settings call for are stored. Never the values.
+   * Tenants' own passwords appear here, as `tenant:<id>:…`, only to whoever may
+   * edit the template.
+   */
   secretsSet: Partial<Record<TemplateSecretKey, boolean>>;
   /** Secrets the settings need that are not stored: the template cannot be used until they are. */
   secretsMissing: TemplateSecretKey[];

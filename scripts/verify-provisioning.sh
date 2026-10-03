@@ -387,6 +387,47 @@ as_tenant call PATCH "/api/v1/autoconfig/templates/${CLONE_ID}" '{"description":
 check "the copy can be changed by its owner" 200 "$(last_status)"
 check "and the original is untouched" "" "$(call GET "/api/v1/autoconfig/templates/${WIN_TID}" | json description)"
 
+info "Offering to chosen customers, and a password per customer."
+SEL_T="$(call POST /api/v1/autoconfig/templates "$(T2="$CREATED_TENANT" body "{ tenantId: e.MSP, name: 'Chosen ' + e.RUN, visibility: 'SELECTED', offeredTenantIds: [e.T2], settings: Object.assign(${WIN_SETTINGS}, { administratorPassword: 'GENERATE' }) }")")"
+check "an MSP template offered to one chosen customer is created" 201 "$(last_status)"
+SEL_TID="$(printf '%s' "$SEL_T" | json id)"; TEMPLATES+=("$SEL_TID")
+NOTSEL_T="$(call POST /api/v1/autoconfig/templates "$(body "{ tenantId: e.MSP, name: 'Chosen elsewhere ' + e.RUN, visibility: 'SELECTED', offeredTenantIds: [e.TENANT_ID], settings: Object.assign(${WIN_SETTINGS}, { administratorPassword: 'GENERATE' }) }")")"
+NOTSEL_TID="$(printf '%s' "$NOTSEL_T" | json id)"; TEMPLATES+=("$NOTSEL_TID")
+SEL_OFFERED="$(as_tenant call GET "/api/v1/autoconfig/templates?offeredTo=${CREATED_TENANT}")"
+contains "offers: it is offered to the customer chosen" "$SEL_TID" "$SEL_OFFERED"
+lacks "offers: one offered to another customer is not" "$NOTSEL_TID" "$SEL_OFFERED"
+lacks "offers: nor listed for them at all" "$NOTSEL_TID" "$(as_tenant call GET /api/v1/autoconfig/templates)"
+as_tenant call GET "/api/v1/autoconfig/templates/${NOTSEL_TID}" >/dev/null
+check "offers: nor readable by them" 404 "$(last_status)"
+check "offers: the chosen customer does not learn who else is offered it" "[]" "$(as_tenant call GET "/api/v1/autoconfig/templates/${SEL_TID}" | json offeredTenantIds)"
+check "offers: the MSP does" "[\"${CREATED_TENANT}\"]" "$(call GET "/api/v1/autoconfig/templates/${SEL_TID}" | json offeredTenantIds)"
+check "offers: offering to nobody is refused" autoconfig.offer_empty "$(call POST /api/v1/autoconfig/templates "$(body "{ tenantId: e.MSP, name: 'Nobody ' + e.RUN, visibility: 'SELECTED', offeredTenantIds: [], settings: Object.assign(${WIN_SETTINGS}, { administratorPassword: 'GENERATE' }) }")" | json error.code)"
+check "offers: offering to a tenant that does not exist is refused" autoconfig.unknown_tenant "$(call POST /api/v1/autoconfig/templates "$(body "{ tenantId: e.MSP, name: 'Ghost ' + e.RUN, visibility: 'SELECTED', offeredTenantIds: ['00000000-0000-4000-8000-000000000000'], settings: Object.assign(${WIN_SETTINGS}, { administratorPassword: 'GENERATE' }) }")" | json error.code)"
+check "offers: a customer's template cannot be offered to chosen customers" autoconfig.msp_only "$(call POST /api/v1/autoconfig/templates "$(T2="$CREATED_TENANT" body "{ tenantId: e.TENANT_ID, name: 'Mine to offer ' + e.RUN, visibility: 'SELECTED', offeredTenantIds: [e.T2], settings: ${LINUX_SETTINGS} }")" | json error.code)"
+check "per customer: a customer's template cannot have a password per customer" autoconfig.msp_only "$(call POST /api/v1/autoconfig/templates "$(body "{ tenantId: e.TENANT_ID, name: 'Mine per customer ' + e.RUN, settings: Object.assign(${LINUX_SETTINGS}, { root: { allowLogin: true, password: 'PER_TENANT' } }) }")" | json error.code)"
+
+TENANT_PW="Harness-Tenant-${SHORT}-Pw7"
+OTHER_PW="Harness-Other-${SHORT}-Pw5"
+PT="$(call POST /api/v1/autoconfig/templates "$(TP="$TENANT_PW" OP="$OTHER_PW" T2="$CREATED_TENANT" body "{ tenantId: e.MSP, name: 'Per customer ' + e.RUN, visibility: 'SHARED', settings: Object.assign(${WIN_SETTINGS}, { administratorPassword: 'PER_TENANT' }), secrets: { ['tenant:' + e.TENANT_ID + ':administrator']: e.TP, ['tenant:' + e.T2 + ':administrator']: e.OP } }")")"
+check "per customer: an MSP template with an Administrator password per customer is created" 201 "$(last_status)"
+PT_TID="$(printf '%s' "$PT" | json id)"; TEMPLATES+=("$PT_TID")
+check "per customer: it needs no password of its own" "[]" "$(printf '%s' "$PT" | json secretsMissing)"
+check "per customer: the MSP sees which customers have one" true "$(printf '%s' "$PT" | json "secretsSet.tenant:${TENANT_ID}:administrator")"
+lacks "per customer: the response carries no password" "$TENANT_PW" "$PT"
+lacks "per customer: a customer does not see whose passwords are stored" "tenant:" "$(as_tenant call GET "/api/v1/autoconfig/templates/${PT_TID}" | json secretsSet)"
+check "per customer: the database holds no password" 0 "$(psql_at "SELECT count(*) FROM autoconfig_templates WHERE settings::text LIKE '%${TENANT_PW}%' OR secret_refs::text LIKE '%${TENANT_PW}%';")"
+check "per customer: a password for a tenant that does not exist is refused" autoconfig.unknown_tenant "$(call PATCH "/api/v1/autoconfig/templates/${PT_TID}" "$(TP="$TENANT_PW" body "{ secrets: { 'tenant:00000000-0000-4000-8000-000000000000:administrator': e.TP } }")" | json error.code)"
+check "per customer: a root password on a Windows template is refused" autoconfig.secret_unexpected "$(call PATCH "/api/v1/autoconfig/templates/${PT_TID}" "$(TP="$TENANT_PW" body "{ secrets: { ['tenant:' + e.TENANT_ID + ':root']: e.TP } }")" | json error.code)"
+check "per customer: a weak one is refused" 400 "$(call PATCH "/api/v1/autoconfig/templates/${PT_TID}" "$(body "{ secrets: { ['tenant:' + e.TENANT_ID + ':administrator']: 'short' } }")" >/dev/null; last_status)"
+PT_CLONE="$(as_tenant call POST "/api/v1/autoconfig/templates/${PT_TID}/clone" "$(T2="$CREATED_TENANT" body '{ tenantId: e.T2, name: "My per customer " + e.RUN }')")"
+TEMPLATES+=("$(printf '%s' "$PT_CLONE" | json id)")
+check "per customer: a customer's copy fixes the password on the template instead" FIXED "$(printf '%s' "$PT_CLONE" | json settings.administratorPassword)"
+check "per customer: and asks the customer for it" '["administrator"]' "$(printf '%s' "$PT_CLONE" | json secretsMissing)"
+
+RT="$(call POST /api/v1/autoconfig/templates "$(OP="$OTHER_PW" T2="$CREATED_TENANT" body "{ tenantId: e.MSP, name: 'Root per customer ' + e.RUN, settings: Object.assign(${LINUX_SETTINGS}, { root: { allowLogin: true, password: 'PER_TENANT' } }), secrets: { ['tenant:' + e.T2 + ':root']: e.OP } }")")"
+check "per customer: an MSP Linux template with root per customer is created" 201 "$(last_status)"
+RT_TID="$(printf '%s' "$RT" | json id)"; TEMPLATES+=("$RT_TID")
+
 # ---------------------------------------------------------------------------
 # Refusals before a job
 # ---------------------------------------------------------------------------
@@ -491,6 +532,34 @@ PDF="$(printf '%s' "$L_MAIL" | node -e '
 contains "linux: the attached record is encrypted" "/Encrypt" "$PDF"
 contains "linux: as AES-256 revision 6" "/R 6" "$PDF"
 lacks "linux: and the password is not readable in it" "$OPS_PW" "$PDF"
+
+info "Building with a password per customer."
+PT_HOST="pt${SHORT}"
+P="$(call POST /api/v1/provisionings "$(TID="$PT_TID" HOST="$PT_HOST" NOTIFY=no body "$PROV")")"
+check "per customer: windows accepted" 201 "$(last_status)"
+P_ID="$(printf '%s' "$P" | json provisioning.id)"
+P_JOB="$(printf '%s' "$P" | json job.id)"
+check "per customer: windows built" SUCCEEDED "$(wait_for "$P_JOB" 240 SUCCEEDED FAILED CANCELLED)"
+P_VMID="$(call GET "/api/v1/provisionings/${P_ID}" | json vmid)"
+P_UNATTEND="$(in_fixture "cat /fixture/store/answers-seen/${P_VMID}/Autounattend.xml")"
+contains "per customer: the guest was handed this customer's Administrator password" "$(P="$TENANT_PW" node -e 'process.stdout.write(Buffer.from(process.env.P + "AdministratorPassword", "utf16le").toString("base64"))')" "$P_UNATTEND"
+lacks "per customer: not another customer's" "$(P="$OTHER_PW" node -e 'process.stdout.write(Buffer.from(process.env.P + "AdministratorPassword", "utf16le").toString("base64"))')" "$P_UNATTEND"
+P_LOGS="$(call GET "/api/v1/jobs/${P_JOB}/logs")"
+contains "per customer: the job says where it came from" "the one set for this tenant" "$P_LOGS"
+lacks "per customer: without the password itself" "$TENANT_PW" "$P_LOGS"
+
+RT_HOST="root-${RUN}"
+Q="$(call POST /api/v1/provisionings "$(TID="$RT_TID" HOST="$RT_HOST" NOTIFY=no body "$PROV")")"
+check "per customer: linux accepted" 201 "$(last_status)"
+Q_ID="$(printf '%s' "$Q" | json provisioning.id)"
+Q_JOB="$(printf '%s' "$Q" | json job.id)"
+check "per customer: linux built for a customer without a root password of its own" SUCCEEDED "$(wait_for "$Q_JOB" 240 SUCCEEDED FAILED CANCELLED)"
+Q_ROOT="$(call POST "/api/v1/provisionings/${Q_ID}/reveal" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const a=JSON.parse(r).accounts.find(x=>x.name==="root");process.stdout.write(a&&a.password?a.password:"")})')"
+[[ ${#Q_ROOT} -ge 20 ]] && { green "per customer: root got a generated password"; PASS=$((PASS + 1)); } || { red "per customer: no generated root password revealed"; FAIL=$((FAIL + 1)); }
+[[ -n "$Q_ROOT" && "$Q_ROOT" != "$OTHER_PW" ]] && { green "per customer: not the password set for another customer"; PASS=$((PASS + 1)); } || { red "per customer: root got another customer's password"; FAIL=$((FAIL + 1)); }
+contains "per customer: the job says one was generated" "one was generated" "$(call GET "/api/v1/jobs/${Q_JOB}/logs")"
+Q_VMID="$(call GET "/api/v1/provisionings/${Q_ID}" | json vmid)"
+contains "per customer: cloud-init sets root's password, hashed" '"name": "root"' "$(in_fixture "cat /fixture/store/answers-seen/${Q_VMID}/user-data")"
 
 # ---------------------------------------------------------------------------
 # A failure, and a cancellation

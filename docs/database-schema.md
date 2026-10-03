@@ -406,16 +406,19 @@ shared storage's file is one row however many nodes see it. Unique on
 Built in Phase 5B (migration `20260930090000_autoconfig`). ADR-039 explains the shape.
 
 ### `autoconfig_templates`
-`id, tenant_id, name, description, family (WINDOWS|LINUX), visibility (SHARED|PRIVATE),
-credential_delivery (VELNOX_ONLY|ENCRYPTED_PDF), pdf_password_source (SHOWN_ONCE|TEMPLATE),
-settings jsonb, secret_refs jsonb, cloned_from_id, cloned_from_name, created_by_id,
-created_by_label, created_at, updated_at`
+`id, tenant_id, name, description, family (WINDOWS|LINUX), visibility (SHARED|SELECTED|PRIVATE),
+offered_tenant_ids uuid[], credential_delivery (VELNOX_ONLY|ENCRYPTED_PDF), pdf_password_source
+(SHOWN_ONCE|TEMPLATE), settings jsonb, secret_refs jsonb, cloned_from_id, cloned_from_name,
+created_by_id, created_by_label, created_at, updated_at`
 
-Owned by the MSP root or one customer. The tenancy filter shows a tenant its own templates and the
-MSP's SHARED ones; changing one is checked against its owner. `settings` is validated by the shared
+Owned by the MSP root or one customer. The tenancy filter shows a tenant its own templates, the
+MSP's SHARED ones, and the MSP's SELECTED ones whose `offered_tenant_ids` name it (migration
+`20261003090000_template_offers`, GIN-indexed); `autoconfig_templates_offers_only_when_selected`
+keeps the list empty otherwise. Changing one is checked against its owner. `settings` is validated by the shared
 schema and returned by the API; `autoconfig_templates_family_matches` keeps it in agreement with
-`family`. `secret_refs` maps each secret to its own `TEMPLATE_SECRETS` credential — never a value.
-Unique on `(tenant_id, lower(name))`.
+`family`. `secret_refs` maps each secret to its own `TEMPLATE_SECRETS` credential — never a value;
+a tenant's own Administrator or root password is the key `tenant:<tenant id>:administrator` (or
+`:root`). Unique on `(tenant_id, lower(name))`.
 
 ### `provisionings`
 `id, tenant_id, template_id, template_name, family, template_snapshot jsonb, cluster_id,

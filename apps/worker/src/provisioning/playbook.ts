@@ -311,8 +311,13 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
     return name;
   };
 
-  /** Every password this VM gets, decided once and stored before anything uses it. */
-  const decideCredentials = async (): Promise<{
+  /**
+   * Every password this VM gets, decided once and stored before anything uses it.
+   * `note` is told, without a value, where a password set per tenant came from.
+   */
+  const decideCredentials = async (
+    note: (text: string) => Promise<void>,
+  ): Promise<{
     credentials: GuestCredentials;
     passwords: Record<string, string>;
   }> => {
@@ -337,8 +342,27 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
       }
       return services.credentials.templateSecret(ref);
     };
+    /**
+     * The password stored for the tenant the VM is built for, or a new one when
+     * that tenant has none — the owner's choice: building never stops for it.
+     */
+    const forTenant = async (key: string): Promise<string> => {
+      const ref = refs[`tenant:${r.tenantId}:${key}`];
+      if (ref) {
+        await note(`The ${key} password is the one set for this tenant on the template`);
+        return services.credentials.templateSecret(ref);
+      }
+      await note(`No ${key} password is set for this tenant on the template; one was generated`);
+      return generatePassword();
+    };
     const decide = async (mode: string, key: string): Promise<string | null> =>
-      mode === 'GENERATE' ? generatePassword() : mode === 'FIXED' ? fixed(key) : null;
+      mode === 'GENERATE'
+        ? generatePassword()
+        : mode === 'FIXED'
+          ? fixed(key)
+          : mode === 'PER_TENANT'
+            ? forTenant(key)
+            : null;
 
     const passwords: Record<string, string> = {};
     const accounts: GuestCredentials['accounts'] = [];
@@ -535,7 +559,9 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
             if (!mac)
               throw new StepError(ERROR_CODES.generic, `VM ${vmid} has no network card to address`);
 
-            const { credentials, passwords } = await decideCredentials();
+            const { credentials, passwords } = await decideCredentials((text) =>
+              context.log('STDOUT', text),
+            );
             const network = r.network as unknown as ProvisionNetwork;
             const files =
               s.family === 'WINDOWS'

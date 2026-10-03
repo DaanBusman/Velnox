@@ -105,6 +105,12 @@ export const ERROR_CODES = {
   autoconfigEditionNotInIso: 'autoconfig.edition_not_in_iso',
   /** The library file is the wrong kind for what the template uses it as. */
   autoconfigMediaWrongKind: 'autoconfig.media_wrong_kind',
+  /** Offering to chosen tenants, or a password per tenant, on a template a tenant owns. */
+  autoconfigMspOnly: 'autoconfig.msp_only',
+  /** A template offered to chosen tenants, with none chosen. */
+  autoconfigOfferEmpty: 'autoconfig.offer_empty',
+  /** A tenant named on a template that does not exist, or is archived. */
+  autoconfigUnknownTenant: 'autoconfig.unknown_tenant',
 
   provisioningHostnameInvalid: 'provisioning.hostname_invalid',
   /** The storage cannot hold the VM's disks, or the installer. */

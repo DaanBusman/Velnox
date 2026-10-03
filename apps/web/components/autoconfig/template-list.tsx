@@ -188,9 +188,15 @@ export function TemplateList({
                     {template.ownedByMsp ? t('autoconfig.ownerMsp') : template.tenantName}
                   </td>
                   <td className="px-4 py-2.5">
-                    {template.visibility === 'SHARED' && template.ownedByMsp
-                      ? t('autoconfig.visibilityShared')
-                      : t('autoconfig.visibilityPrivate')}
+                    {!template.ownedByMsp || template.visibility === 'PRIVATE'
+                      ? t('autoconfig.visibilityPrivate')
+                      : template.visibility === 'SHARED'
+                        ? t('autoconfig.visibilityShared')
+                        : template.offeredTenantIds.length > 0
+                          ? t('autoconfig.visibilitySelectedCount', {
+                              count: template.offeredTenantIds.length,
+                            })
+                          : t('autoconfig.visibilitySelected')}
                   </td>
                   <td className="px-4 py-2.5">
                     {template.secretsMissing.length > 0 ? (

@@ -42,8 +42,10 @@ ADR-039 in [Technologiekeuzes](tech-decisions.md). De installers en cloud images
 
 **Administratie → Autoconfig.** Een template is van de MSP of van één klant:
 
-- Een **MSP-template** met *elke klant* wordt aan elke tenant aangeboden; met *alleen de eigenaar* is
-  het voor MSP-medewerkers, die er nog steeds voor elke klant mee kunnen bouwen.
+- Een **MSP-template** met *elke klant* wordt aan elke tenant aangeboden; met *gekozen klanten*
+  alleen aan de klanten die eronder zijn aangevinkt — bijvoorbeeld Bedrijf X — die niet zien aan wie
+  het nog meer wordt aangeboden; met *alleen de eigenaar* is het voor MSP-medewerkers.
+  MSP-medewerkers kunnen vanuit elk MSP-template voor elke klant bouwen.
 - Een **template van een klant** is alleen van die klant. Geen andere klant ziet het.
 
 Een template zien is het niet wijzigen. Een klant kan bouwen vanuit een MSP-template, en het
@@ -61,6 +63,13 @@ Het wachtwoord van elk account is een van:
 - **Vast op dit template** — één keer getypt, versleuteld opgeslagen, voor elke VM gebruikt. Minstens
   twaalf tekens, met drie van hoofdletters, kleine letters, cijfers en symbolen, omdat Windows die
   regel tijdens Setup toepast, waar niemand het zou zien mislukken.
+- **Vast per klant** — voor de Administrator van Windows en root van Linux, alleen op een
+  MSP-template. Elke klant krijgt een eigen wachtwoord, door de MSP onder het template ingesteld en
+  versleuteld opgeslagen; een VM die voor die klant wordt gebouwd, krijgt het. **Een klant zonder eigen
+  wachtwoord krijgt voor die VM een gegenereerd wachtwoord.** De uitvoer van de job zegt wat er
+  gebeurde, nooit het wachtwoord. Klanten zien deze wachtwoorden nooit, en ook niet van wie er een is
+  opgeslagen. Een kloon van zo'n template door een klant krijgt in plaats daarvan het wachtwoord
+  *vast op dit template*, en vraagt de klant het in te stellen.
 - **Geen** (Linux) — een account met alleen een sleutel.
 
 Een opgeslagen wachtwoord of productcode wordt nooit meer getoond. Het template zegt *Opgeslagen*, en je
@@ -188,6 +197,8 @@ Het wachtwoord wordt nooit meer getoond.
 | Wat je ziet | Wat het betekent |
 |---|---|
 | *Geheimen ontbreken* bij een template | Vaste wachtwoorden of een code die de instellingen vragen zijn niet opgeslagen — typisch voor een kloon. Open het en stel ze in. |
+| *Alleen een MSP-template kan aan gekozen klanten worden aangeboden …* | Een eigen template van een klant wordt aan niemand anders aangeboden, en heeft geen wachtwoorden per klant. |
+| *Kies minstens één klant …* | *Gekozen klanten* zonder aangevinkte klant. Vink er een aan, of kies een andere optie. |
 | *… heeft geen editie met de naam …* | Het template noemt een editie die de ISO niet heeft. Kies er een uit de lijst. |
 | *Opslag … accepteert geen …-inhoud* | Zet het inhoudstype aan op de opslag in Proxmox, of kies een andere. |
 | *Node … heeft geen bridge met de naam …* | Kies een bridge die op die node bestaat. |

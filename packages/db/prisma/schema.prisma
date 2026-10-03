@@ -1040,6 +1040,8 @@ enum TemplateOsFamily {
 enum TemplateVisibility {
   /// On an MSP template: offered to every tenant. On a tenant template: no wider than PRIVATE.
   SHARED
+  /// An MSP template offered to the tenants in `offered_tenant_ids`, and no others.
+  SELECTED
   PRIVATE
 
   @@map("template_visibility")
@@ -1071,6 +1073,11 @@ model AutoconfigTemplate {
   description String             @default("")
   family      TemplateOsFamily
   visibility  TemplateVisibility @default(SHARED)
+  /// The tenants a SELECTED template is offered to; empty for any other
+  /// visibility (`autoconfig_templates_offers_only_when_selected`). Plain ids,
+  /// like every list of tenants here that outlives nothing: tenants are
+  /// archived, not deleted.
+  offeredTenantIds String[] @default([]) @map("offered_tenant_ids") @db.Uuid
 
   credentialDelivery CredentialDelivery @default(VELNOX_ONLY) @map("credential_delivery")
   pdfPasswordSource  PdfPasswordSource  @default(SHOWN_ONCE) @map("pdf_password_source")
@@ -1078,7 +1085,8 @@ model AutoconfigTemplate {
   settings   Json
   /// `{ "administrator": "<credential id>", "account:ops": "<credential id>" }`:
   /// one TEMPLATE_SECRETS credential per secret, so changing one never needs
-  /// the others decrypted, which the API cannot do. Never the values.
+  /// the others decrypted, which the API cannot do. Never the values. A
+  /// tenant's own password is `"tenant:<tenant id>:administrator"` (or `:root`).
   secretRefs Json @default("{}") @map("secret_refs")
 
   /// A plain id and a copied name: a clone is independent of its source, and outlives it.
@@ -1094,6 +1102,7 @@ model AutoconfigTemplate {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([offeredTenantIds], type: Gin)
   @@map("autoconfig_templates")
 }
 

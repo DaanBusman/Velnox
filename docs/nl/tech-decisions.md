@@ -1241,6 +1241,21 @@ Setup en een echte cloud-init accepteren wat ze krijgen, is bewezen door de test
 de eigen validators van de formaten, en staat bij de bekende hiaten tot het op een echt cluster is
 gezien.
 
+**Aanvulling (0.5.12): aanbieden aan gekozen klanten, en een wachtwoord per klant.** Een MSP-template
+kan aan gekozen tenants worden aangeboden (`SELECTED`, met `offered_tenant_ids`) in plaats van aan
+allemaal of aan niemand, en het tenantfilter toont het alleen aan die tenants. De Administrator van
+Windows en root van Linux kunnen `PER_TENANT` zijn: het wachtwoord van elke tenant is nog een
+`TEMPLATE_SECRETS`-credential onder `tenant:<id>:administrator`, zodat de regel van één credential per
+geheim blijft gelden, en de worker neemt dat van de tenant waarvoor de VM wordt gebouwd. Een tenant
+zonder eigen wachtwoord krijgt een voor de VM gegenereerd wachtwoord — de keuze van de eigenaar, boven
+de uitrol weigeren of terugvallen op een gedeeld wachtwoord, omdat bouwen daar niet voor hoort te
+stoppen en geen klant stilzwijgend het wachtwoord van een ander hoort te delen. Beide zijn alleen van
+de MSP: een template van een klant wordt aan niemand anders aangeboden, en een klant ziet de lijst van
+tenants aan wie een template wordt aangeboden niet, en ook niet van wie er wachtwoorden zijn
+opgeslagen. Een kloon door een klant maakt van `PER_TENANT` `FIXED`, zonder het wachtwoord. De lijst
+van tenants is een gewone array, geen koppeltabel: tenants worden gearchiveerd, niet verwijderd, en
+het tenantfilter heeft alleen `hasSome` nodig.
+
 ---
 
 ## Versiedoelen

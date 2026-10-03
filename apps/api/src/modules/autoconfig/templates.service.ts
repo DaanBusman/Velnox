@@ -6,7 +6,9 @@ import {
   PRODUCT_KEY,
   VelnoxError,
   isAllowed,
+  parseTenantSecretKey,
   passwordProblem,
+  perTenantAccount,
   requiredTemplateSecrets,
   templateSettingsSchema,
   type CredentialDelivery,
@@ -25,7 +27,7 @@ import { assertAllowedAt, type Actor } from '../../common/actor';
  * Autoconfig templates: who sees them, who changes them, and their secrets.
  *
  * **Seeing** is the tenancy filter's job (tenancy.ts): a tenant's own templates,
- * and the MSP's shared ones. **Changing** is decided here, against the tenant
+ * the MSP's shared ones, and the MSP's ones offered to that tenant by name. **Changing** is decided here, against the tenant
  * that owns the template — never inferred from the fact that it is visible,
  * because an MSP template is visible to every tenant and editable by none of
  * them.
@@ -36,12 +38,21 @@ import { assertAllowedAt, type Actor } from '../../common/actor';
  * clone therefore starts without the source's fixed passwords, and lists them
  * as missing — an MSP's passwords are not handed to a customer by copying a
  * template.
+ *
+ * **Per tenant.** An MSP template can be offered to chosen tenants instead of
+ * all of them, and can take Windows' Administrator or Linux's root password
+ * from the tenant the VM is built for — one more credential per tenant, under
+ * `tenant:<id>:administrator`. Both are the MSP's to set; a customer sees
+ * neither which other tenants are offered the template nor whose passwords are
+ * stored.
  */
 
 export interface TemplateInput {
   name: string;
   description: string;
   visibility: TemplateVisibility;
+  /** The tenants a SELECTED template is offered to. Emptied for any other visibility. */
+  offeredTenantIds?: string[];
   credentialDelivery: CredentialDelivery;
   pdfPasswordSource: PdfPasswordSource;
   settings?: unknown;
@@ -104,7 +115,7 @@ export class TemplatesService {
 
   /** Whether a VM in `tenantId` may be built from this template by this actor. */
   offered(
-    row: { tenantId: string; visibility: TemplateVisibility },
+    row: { tenantId: string; visibility: TemplateVisibility; offeredTenantIds: string[] },
     tenantId: string,
     rootId: string,
     actor: Actor,
@@ -112,7 +123,9 @@ export class TemplatesService {
     if (row.tenantId === tenantId) return true;
     if (row.tenantId !== rootId) return false;
     if (row.visibility === 'SHARED') return true;
-    // A private MSP template, offered to MSP staff building for a customer.
+    if (row.visibility === 'SELECTED' && row.offeredTenantIds.includes(tenantId)) return true;
+    // A private MSP template, or one offered to other tenants, used by MSP
+    // staff building for a customer.
     return actor.isMspRoot;
   }
 
@@ -136,8 +149,20 @@ export class TemplatesService {
       credentialDelivery: row.credentialDelivery,
       pdfPasswordSource: row.pdfPasswordSource,
     });
+    const canEdit = isAllowed(actor.grants, PERMISSIONS.autoconfigManage, {
+      tenantId: row.tenantId,
+    });
     const secretsSet: Partial<Record<TemplateSecretKey, boolean>> = {};
     for (const key of required) secretsSet[key] = Boolean(refs[key]);
+    // Whose passwords are stored is the MSP's business, not another customer's.
+    const perTenant = perTenantAccount(settings);
+    if (canEdit && perTenant) {
+      for (const [key, credentialId] of Object.entries(refs)) {
+        if (credentialId && parseTenantSecretKey(key)?.account === perTenant) {
+          secretsSet[key as TemplateSecretKey] = true;
+        }
+      }
+    }
 
     return {
       id: row.id,
@@ -148,6 +173,7 @@ export class TemplatesService {
       tenantName: row.tenant.name,
       ownedByMsp: row.tenantId === rootId,
       visibility: row.visibility,
+      offeredTenantIds: canEdit ? row.offeredTenantIds : [],
       credentialDelivery: row.credentialDelivery,
       pdfPasswordSource: row.pdfPasswordSource,
       clonedFromId: row.clonedFromId,
@@ -155,7 +181,7 @@ export class TemplatesService {
       settings,
       secretsSet,
       secretsMissing: required.filter((key) => !refs[key]),
-      canEdit: isAllowed(actor.grants, PERMISSIONS.autoconfigManage, { tenantId: row.tenantId }),
+      canEdit,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };
@@ -171,6 +197,13 @@ export class TemplatesService {
   ): Promise<TemplateSummary> {
     assertAllowedAt(actor, PERMISSIONS.autoconfigManage, { tenantId: input.tenantId });
     const settings = this.parseSettings(input.settings);
+    const offeredTenantIds = await this.checkOffer(
+      input.tenantId,
+      input.visibility,
+      input.offeredTenantIds ?? [],
+      [],
+      settings,
+    );
 
     const row = await this.insert({
       tenantId: input.tenantId,
@@ -178,6 +211,7 @@ export class TemplatesService {
       description: input.description.trim(),
       family: settings.family,
       visibility: input.visibility,
+      offeredTenantIds,
       credentialDelivery: input.credentialDelivery,
       pdfPasswordSource: input.pdfPasswordSource,
       settings: settings as unknown as Prisma.InputJsonValue,
@@ -203,6 +237,7 @@ export class TemplatesService {
     await this.audited(AUDIT_ACTIONS.autoconfigTemplateCreated, saved, actor, {
       family: saved.family,
       visibility: saved.visibility,
+      offeredTenantIds: saved.offeredTenantIds,
       secretsChanged: Object.keys(input.secrets),
     });
     return this.summary(saved, actor, await this.mspRootId());
@@ -228,6 +263,14 @@ export class TemplatesService {
       credentialDelivery: input.credentialDelivery ?? row.credentialDelivery,
       pdfPasswordSource: input.pdfPasswordSource ?? row.pdfPasswordSource,
     };
+    const visibility = input.visibility ?? row.visibility;
+    const offeredTenantIds = await this.checkOffer(
+      row.tenantId,
+      visibility,
+      input.offeredTenantIds ?? row.offeredTenantIds,
+      row.offeredTenantIds,
+      settings,
+    );
 
     const refs = await this.applySecrets(
       { ...row, ...delivery },
@@ -243,7 +286,8 @@ export class TemplatesService {
         data: {
           ...(input.name !== undefined ? { name: input.name.trim() } : {}),
           ...(input.description !== undefined ? { description: input.description.trim() } : {}),
-          ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+          visibility,
+          offeredTenantIds,
           ...delivery,
           settings: settings as unknown as Prisma.InputJsonValue,
           secretRefs: refs as Prisma.InputJsonValue,
@@ -280,16 +324,30 @@ export class TemplatesService {
     }
     assertAllowedAt(actor, PERMISSIONS.autoconfigManage, { tenantId: input.tenantId });
 
+    const intoMsp = input.tenantId === root;
+    const settings = structuredClone(source.settings as unknown as TemplateSettings);
+    // A password per tenant is an MSP template's; in a customer's own copy it is
+    // simply the customer's password, fixed on the template, and set by them.
+    if (!intoMsp) {
+      if (settings.family === 'WINDOWS' && settings.administratorPassword === 'PER_TENANT') {
+        settings.administratorPassword = 'FIXED';
+      }
+      if (settings.family === 'LINUX' && settings.root.password === 'PER_TENANT') {
+        settings.root.password = 'FIXED';
+      }
+    }
+
     const copy = await this.insert({
       tenantId: input.tenantId,
       name: input.name.trim(),
       description: source.description,
       family: source.family,
       // A customer's copy of an MSP template is theirs, and nobody else's.
-      visibility: input.tenantId === root ? source.visibility : 'PRIVATE',
+      visibility: intoMsp ? source.visibility : 'PRIVATE',
+      offeredTenantIds: intoMsp ? source.offeredTenantIds : [],
       credentialDelivery: source.credentialDelivery,
       pdfPasswordSource: source.pdfPasswordSource,
-      settings: source.settings as Prisma.InputJsonValue,
+      settings: settings as unknown as Prisma.InputJsonValue,
       clonedFromId: source.id,
       clonedFromName: source.name,
       createdById: actor.id,
@@ -338,6 +396,49 @@ export class TemplatesService {
     return parsed.data as TemplateSettings;
   }
 
+  /**
+   * The offer as it will be stored: refused where it cannot apply, and new
+   * tenants checked. Offering by name and a password per tenant are the MSP's —
+   * a customer's template is never offered past its own tenant.
+   *
+   * Tenants already on the template are not checked again: one archived since
+   * must not stop every later edit. It is offered nothing, having no clusters.
+   */
+  private async checkOffer(
+    ownerTenantId: string,
+    visibility: TemplateVisibility,
+    offeredTenantIds: string[],
+    already: string[],
+    settings: TemplateSettings,
+  ): Promise<string[]> {
+    const root = await this.mspRootId();
+    if (ownerTenantId !== root && (visibility === 'SELECTED' || perTenantAccount(settings))) {
+      throw new VelnoxError(ERROR_CODES.autoconfigMspOnly, { status: 400 });
+    }
+    if (visibility !== 'SELECTED') return [];
+    const ids = [...new Set(offeredTenantIds.map((id) => id.toLowerCase()))];
+    if (ids.length === 0) throw new VelnoxError(ERROR_CODES.autoconfigOfferEmpty, { status: 400 });
+    await this.assertTenantsExist(ids.filter((id) => !already.includes(id)));
+    return ids;
+  }
+
+  /** Refuses a tenant that does not exist or is archived. */
+  private async assertTenantsExist(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const found = await this.prisma.client.tenant.findMany({
+      where: { id: { in: ids }, status: { not: 'ARCHIVED' } },
+      select: { id: true },
+    });
+    const known = new Set(found.map((tenant) => tenant.id));
+    const unknown = ids.find((id) => !known.has(id));
+    if (unknown) {
+      throw new VelnoxError(ERROR_CODES.autoconfigUnknownTenant, {
+        status: 400,
+        params: { tenantId: unknown },
+      });
+    }
+  }
+
   private async insert(data: Prisma.AutoconfigTemplateUncheckedCreateInput) {
     try {
       return await this.prisma.client.autoconfigTemplate.create({ data });
@@ -370,12 +471,19 @@ export class TemplatesService {
     current: SecretRefs,
     changes: Record<string, string | null>,
   ): Promise<SecretRefs> {
-    const allowed = new Set<string>(
+    const required = new Set<string>(
       requiredTemplateSecrets(settings, {
         credentialDelivery: row.credentialDelivery,
         pdfPasswordSource: row.pdfPasswordSource,
       }),
     );
+    // A tenant's own password is called for while the account is set per tenant.
+    const perTenant = perTenantAccount(settings);
+    const allowed = {
+      has: (key: string) =>
+        required.has(key) ||
+        (perTenant !== null && parseTenantSecretKey(key)?.account === perTenant),
+    };
 
     for (const [key, value] of Object.entries(changes)) {
       if (!allowed.has(key) && value !== null) {
@@ -400,6 +508,15 @@ export class TemplatesService {
         }
       }
     }
+
+    await this.assertTenantsExist([
+      ...new Set(
+        Object.entries(changes)
+          .filter(([, value]) => value !== null)
+          .map(([key]) => parseTenantSecretKey(key)?.tenantId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ]);
 
     const next: SecretRefs = { ...current };
     const retired: string[] = [];

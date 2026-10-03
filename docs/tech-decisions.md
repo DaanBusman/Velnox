@@ -1176,6 +1176,19 @@ the install runs. The fixture proves the whole flow but installs nothing; whethe
 real cloud-init accept what they are handed is proven by the generators' tests and the formats' own
 validators, and is listed in the known gaps until it has been seen on a real cluster.
 
+**Amendment (0.5.12): offering by name, and a password per customer.** An MSP template can be
+offered to chosen tenants (`SELECTED`, with `offered_tenant_ids`) instead of all or none, and the
+tenancy filter shows it to those tenants only. Windows' Administrator and Linux's root can be
+`PER_TENANT`: each tenant's password is one more `TEMPLATE_SECRETS` credential under
+`tenant:<id>:administrator`, so the rule of one credential per secret holds, and the worker takes the
+one for the tenant the VM is built for. A tenant without one gets a password generated for the VM —
+the owner's choice over refusing the build or falling back to a shared password, because building
+should not stop for it and no customer should silently share another's password. Both are the MSP's
+alone: a customer's template is offered to nobody else, and a customer sees neither the list of
+tenants offered a template nor whose passwords are stored. A customer's clone turns `PER_TENANT` into
+`FIXED`, without the password. The list of tenants is a plain array, not a join table: tenants are
+archived rather than deleted, and the tenancy filter needs only `hasSome`.
+
 ---
 
 ## Version targets

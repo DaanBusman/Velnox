@@ -37,8 +37,10 @@ see ADR-039 in [Technology decisions](tech-decisions.md). The installers and clo
 
 **Administration → Autoconfig.** A template belongs to the MSP or to one customer:
 
-- An **MSP template** marked *every customer* is offered to every tenant; marked *its owner only*, it
-  is for MSP staff, who can still build from it for any customer.
+- An **MSP template** marked *every customer* is offered to every tenant; marked *chosen customers*,
+  only to the customers ticked under it — say, Company X — who do not see who else is offered it;
+  marked *its owner only*, it is for MSP staff. MSP staff can build from any MSP template for any
+  customer.
 - A **customer's template** is theirs alone. No other customer sees it.
 
 Seeing a template is not changing it. A customer can build from an MSP template, and **Clone** it to
@@ -56,6 +58,12 @@ Each account's password is one of:
 - **Fixed on this template** — typed once, stored encrypted, used for every VM. At least twelve
   characters, with three of upper case, lower case, digits and symbols, because Windows applies that
   rule during Setup where nobody would see it fail.
+- **Fixed per customer** — for Windows' Administrator and Linux's root, on an MSP template only. Each
+  customer gets its own password, set by the MSP under the template and stored encrypted; a VM built
+  for that customer gets it. **A customer without one gets a password generated for that VM.** The
+  job output says which happened, never the password. Customers never see these passwords, nor whose
+  are stored. A customer's clone of such a template has the password *fixed on this template*
+  instead, and asks them to set it.
 - **None** (Linux) — a key-only account.
 
 A stored password or product key is never shown again. The template says *Stored*, and you can
@@ -176,6 +184,8 @@ The password is never shown again.
 | What you see | What it means |
 |---|---|
 | *Secrets missing* on a template | Fixed passwords or a key the settings call for are not stored — typical for a clone. Open it and set them. |
+| *Only an MSP template can be offered to chosen customers …* | A customer's own template is offered to nobody else, and has no passwords per customer. |
+| *Choose at least one customer …* | *Chosen customers* with none ticked. Tick one, or choose another option. |
 | *… has no edition called …* | The template names an edition the ISO does not have. Choose one from the list. |
 | *Storage … does not take … content* | Enable the content type on the storage in Proxmox, or choose another. |
 | *Node … has no bridge called …* | Choose a bridge that exists on that node. |

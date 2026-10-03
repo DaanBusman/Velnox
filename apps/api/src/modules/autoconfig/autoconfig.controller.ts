@@ -32,14 +32,22 @@ const uuidParam = new ParseUUIDPipe({ version: '4' });
  * refuses those the settings do not call for.
  */
 const secretsSchema = z.record(
-  z.string().regex(/^(account:[a-z_][a-z0-9_-]{0,31}|administrator|root|productKey|pdfPassword)$/i),
+  z
+    .string()
+    .regex(
+      /^(account:[a-z_][a-z0-9_-]{0,31}|administrator|root|productKey|pdfPassword|tenant:[0-9a-f-]{36}:(administrator|root))$/i,
+    ),
   z.string().min(1).max(200).nullable(),
 );
+
+/** The tenants a SELECTED template is offered to. */
+const offeredSchema = z.array(z.string().uuid()).max(500);
 
 const templateFields = {
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(2000).default(''),
   visibility: z.enum(TEMPLATE_VISIBILITIES).default('SHARED'),
+  offeredTenantIds: offeredSchema.default([]),
   credentialDelivery: z.enum(CREDENTIAL_DELIVERIES).default('VELNOX_ONLY'),
   pdfPasswordSource: z.enum(PDF_PASSWORD_SOURCES).default('SHOWN_ONCE'),
   /** Validated by the service against templateSettingsSchema, so the error names the field. */
@@ -54,6 +62,7 @@ const updateSchema = z
     name: templateFields.name.optional(),
     description: z.string().trim().max(2000).optional(),
     visibility: z.enum(TEMPLATE_VISIBILITIES).optional(),
+    offeredTenantIds: offeredSchema.optional(),
     credentialDelivery: z.enum(CREDENTIAL_DELIVERIES).optional(),
     pdfPasswordSource: z.enum(PDF_PASSWORD_SOURCES).optional(),
     settings: z.unknown().optional(),

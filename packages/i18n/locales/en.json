@@ -362,7 +362,10 @@
       "secret_unexpected": "The template settings do not use a secret called {key}.",
       "media_missing": "{filename} is not ready in the ISO library. Add it there first.",
       "edition_not_in_iso": "{filename} has no edition called “{edition}”. Choose one from the list read from the ISO.",
-      "media_wrong_kind": "{filename} is the wrong kind of file for this template: an installer must be an ISO, a Linux template needs a disk image."
+      "media_wrong_kind": "{filename} is the wrong kind of file for this template: an installer must be an ISO, a Linux template needs a disk image.",
+      "msp_only": "Only an MSP template can be offered to chosen customers or take a password per customer.",
+      "offer_empty": "Choose at least one customer to offer this template to.",
+      "unknown_tenant": "One of the chosen customers does not exist or is archived."
     },
     "provisioning": {
       "hostname_invalid": "That hostname cannot be used: letters, digits and dashes, not only digits, at most {max} characters, without a domain.",
@@ -1136,13 +1139,13 @@
     "windows": "Windows",
     "linux": "Linux",
     "owner": "Owner",
-    "ownerHint": "An MSP template can be offered to every customer; a customer’s own is theirs only.",
+    "ownerHint": "An MSP template can be offered to every customer or to chosen ones; a customer’s own is theirs only.",
     "ownerMsp": "MSP",
     "ownedByMsp": "An MSP template.",
     "ownedByTenant": "A template of {tenant}.",
     "chooseTenant": "Choose a tenant",
     "visibility": "Offered to",
-    "visibilityHint": "Shared: every customer may build from it. Private: only its owner.",
+    "visibilityHint": "Every customer may build from it, only the customers chosen below, or only its owner.",
     "visibilityShared": "Every customer",
     "visibilityPrivate": "Its owner only",
     "state": "State",
@@ -1252,7 +1255,15 @@
     "save": "Save",
     "create": "Create template",
     "back": "Back to templates",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "visibilitySelected": "Chosen customers",
+    "visibilitySelectedCount": "{count, plural, one {# chosen customer} other {# chosen customers}}",
+    "offeredTo": "Customers offered this template",
+    "offeredToHint": "Only these customers see it and may build from it. They do not see who else is offered it. MSP staff can always use it.",
+    "noCustomers": "There are no customers yet.",
+    "passwordPerTenant": "Fixed per customer",
+    "perTenantTitle": "Password per customer",
+    "perTenantHint": "A customer left empty gets a password generated for each VM. Only the MSP sets these, and customers never see them."
   },
   "provisioning": {
     "subtitle": "Every VM built from an Autoconfig template, with its installation record. VMs still being built also show under Virtual Machines.",

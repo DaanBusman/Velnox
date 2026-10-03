@@ -363,7 +363,10 @@
       "secret_unexpected": "De templateinstellingen gebruiken geen geheim met de naam {key}.",
       "media_missing": "{filename} is niet klaar in de ISO-bibliotheek. Voeg het daar eerst toe.",
       "edition_not_in_iso": "{filename} heeft geen editie met de naam “{edition}”. Kies er een uit de lijst die uit de ISO is gelezen.",
-      "media_wrong_kind": "{filename} is het verkeerde soort bestand voor dit template: een installer moet een ISO zijn, een Linux-template heeft een disk-image nodig."
+      "media_wrong_kind": "{filename} is het verkeerde soort bestand voor dit template: een installer moet een ISO zijn, een Linux-template heeft een disk-image nodig.",
+      "msp_only": "Alleen een MSP-template kan aan gekozen klanten worden aangeboden of een wachtwoord per klant hebben.",
+      "offer_empty": "Kies minstens één klant aan wie dit template wordt aangeboden.",
+      "unknown_tenant": "Een van de gekozen klanten bestaat niet of is gearchiveerd."
     },
     "provisioning": {
       "hostname_invalid": "Die hostnaam kan niet: letters, cijfers en streepjes, niet alleen cijfers, hoogstens {max} tekens, zonder domein.",
@@ -1137,13 +1140,13 @@
     "windows": "Windows",
     "linux": "Linux",
     "owner": "Eigenaar",
-    "ownerHint": "Een MSP-template kan aan elke klant worden aangeboden; dat van een klant is alleen van die klant.",
+    "ownerHint": "Een MSP-template kan aan elke klant of aan gekozen klanten worden aangeboden; dat van een klant is alleen van die klant.",
     "ownerMsp": "MSP",
     "ownedByMsp": "Een MSP-template.",
     "ownedByTenant": "Een template van {tenant}.",
     "chooseTenant": "Kies een tenant",
     "visibility": "Aangeboden aan",
-    "visibilityHint": "Gedeeld: elke klant mag eruit bouwen. Privé: alleen de eigenaar.",
+    "visibilityHint": "Elke klant mag eruit bouwen, alleen de klanten die je hieronder kiest, of alleen de eigenaar.",
     "visibilityShared": "Elke klant",
     "visibilityPrivate": "Alleen de eigenaar",
     "state": "Status",
@@ -1253,7 +1256,15 @@
     "save": "Opslaan",
     "create": "Template maken",
     "back": "Terug naar templates",
-    "saved": "Opgeslagen."
+    "saved": "Opgeslagen.",
+    "visibilitySelected": "Gekozen klanten",
+    "visibilitySelectedCount": "{count, plural, one {# gekozen klant} other {# gekozen klanten}}",
+    "offeredTo": "Klanten die dit template aangeboden krijgen",
+    "offeredToHint": "Alleen deze klanten zien het en mogen eruit bouwen. Ze zien niet aan wie het nog meer wordt aangeboden. MSP-medewerkers kunnen het altijd gebruiken.",
+    "noCustomers": "Er zijn nog geen klanten.",
+    "passwordPerTenant": "Vast per klant",
+    "perTenantTitle": "Wachtwoord per klant",
+    "perTenantHint": "Een klant zonder eigen wachtwoord krijgt per VM een gegenereerd wachtwoord. Alleen de MSP stelt deze in, en klanten zien ze nooit."
   },
   "provisioning": {
     "subtitle": "Elke VM die vanuit een Autoconfig-template is gebouwd, met de installatieregistratie. VM’s die nog worden uitgerold staan ook bij Virtuele machines.",
