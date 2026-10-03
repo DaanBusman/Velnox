@@ -1,6 +1,6 @@
 # VM's bouwen vanuit templates
 
-> **Vertaling.** Bron: [docs/building-vms.md](../building-vms.md) @ `9641dde`.
+> **Vertaling.** Bron: [docs/building-vms.md](../building-vms.md) @ `3d7bf4c`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Een template zegt wat een VM moet zijn; Velnox bouwt hem en ziet de installatie tot het eind.**
