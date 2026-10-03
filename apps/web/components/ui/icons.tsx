@@ -255,7 +255,6 @@ export const NAV_ICONS: Record<string, (props: IconProps) => ReactElement> = {
   storage: IconStorage,
   networks: IconNetwork,
   library: IconStorage,
-  provisioning: IconVirtualMachine,
   autoconfig: IconAutomation,
   mail: IconSettings,
   updates: IconUpdates,

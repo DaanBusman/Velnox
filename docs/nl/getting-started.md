@@ -135,7 +135,7 @@ Werkt vandaag:
 | **Dashboard** | Aantallen van wat je kunt zien, en suggesties voor wat nu de moeite waard is |
 | **Tenants**, **Locaties** | Je klanten en hun locaties — zie [Je omgeving indelen](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtuele machines**, **Containers**, **Opslag**, **Netwerken** | De Proxmox-inventarisatie, volgens schema uitgelezen — zie [Clusters toevoegen en de inventarisatie lezen](managing-infrastructure.md) |
-| **Nieuwe VM’s**, **Autoconfig** | VM’s die onbeheerd vanuit templates worden gebouwd, en de templates — zie [VM's bouwen vanuit templates](building-vms.md) |
+| **Virtuele machines → Nieuwe VM**, **Autoconfig** | VM’s die onbeheerd vanuit templates worden gebouwd, en de templates — zie [VM's bouwen vanuit templates](building-vms.md) |
 | **ISO-bibliotheek** | Installers en cloud images op de Velnox-host, naar elk cluster te kopiëren — zie [De ISO-bibliotheek](managing-the-library.md) |
 | **Meldingen** | Condities berekend uit de inventarisatie: offline nodes, verouderde uitlezingen, Ceph-vlaggen |
 | **Jobs** | Werk dat loopt en zijn geschiedenis, live — zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md) |

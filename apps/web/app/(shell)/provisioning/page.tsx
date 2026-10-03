@@ -84,6 +84,14 @@ export default async function ProvisioningListPage() {
                       <StatusBadge tone={tone(row.state)}>
                         {t(`provisioning.states.${row.state}`)}
                       </StatusBadge>
+                      {row.currentStep && (
+                        <span className="ml-2 text-xs text-ink-muted">
+                          {t.has(`provisioning.steps.${row.currentStep}`)
+                            ? t(`provisioning.steps.${row.currentStep}`)
+                            : row.currentStep}
+                          {row.progressPct !== null && ` · ${row.progressPct}%`}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5">{row.requestedByLabel ?? '—'}</td>
                   </tr>

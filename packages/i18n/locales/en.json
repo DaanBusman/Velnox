@@ -446,7 +446,13 @@
     "workloadSTOPPED": "Stopped",
     "workloadSearch": "Name, ID, node or tag…",
     "workloadUNKNOWN": "Unknown",
-    "workloadsSubtitle": "Virtual machines and containers, as the cluster last reported them."
+    "workloadsSubtitle": "Virtual machines and containers, as the cluster last reported them.",
+    "newVm": "New VM",
+    "buildHistory": "Build history",
+    "buildQUEUED": "Build queued",
+    "buildRUNNING": "Being built",
+    "buildFAILED": "Build failed",
+    "buildFailedHint": "Open the record for the reason."
   },
   "job": {
     "allStatuses": "All statuses",
@@ -617,7 +623,7 @@
     "virtualMachines": "Virtual Machines",
     "library": "ISO library",
     "autoconfig": "Autoconfig",
-    "provisioning": "New VMs",
+    "provisioning": "VM builds",
     "mail": "Outgoing mail"
   },
   "placeholder": {
@@ -1241,7 +1247,7 @@
     "saved": "Saved."
   },
   "provisioning": {
-    "subtitle": "VMs built from Autoconfig templates, and their installation records.",
+    "subtitle": "Every VM built from an Autoconfig template, with its installation record. VMs still being built also show under Virtual Machines.",
     "empty": "No VMs have been built from templates yet.",
     "newTitle": "Build a VM",
     "newDescription": "From a template, onto a cluster. The installation runs by itself.",
@@ -1315,7 +1321,17 @@
     "password": "Password",
     "administrator": "Administrator",
     "switchedOff": "switched off",
-    "keyOnly": "key only"
+    "keyOnly": "key only",
+    "steps": {
+      "check": "Checking",
+      "media": "Copying the installer",
+      "create": "Creating the VM",
+      "answers": "Writing the answers",
+      "start": "Starting",
+      "install": "Installing",
+      "finish": "Finishing",
+      "notify": "Mailing the requester"
+    }
   },
   "mail": {
     "subtitle": "How Velnox sends mail: when a VM is ready, and later for other notifications.",

@@ -107,7 +107,7 @@ missing until they are set, and cannot build until then.
 
 ## Building a VM
 
-**Infrastructure → New VMs → Build a VM** (or **Build a VM** on a template). Needs
+**Infrastructure → Virtual Machines → New VM** (or **Build a VM** on a template). Needs
 `workloads.provision` on the cluster. Choose the cluster, a template offered to its tenant, the
 node, the storage for the disks and for the installer, the bridge and an optional VLAN, a hostname
 — without a domain; at most 15 characters for Windows, whose network name is cut off there — and
@@ -132,6 +132,11 @@ Then it runs as a job you can follow and cancel:
    storage. It held the passwords.
 8. **Notify** — once, to whoever asked.
 
+**While it runs, the VM is listed under Virtual Machines** with the state of its build — queued, or
+being built with the step it is on and how far the job has got — instead of a guest's state. The
+page refreshes itself until no build is under way. Once the VM is ready it shows as any other VM; a
+build that failed stays in the list for a day, marked as failed, with its record a click away.
+
 **If it fails or is cancelled, the VM is destroyed** with its disks, the answer CD is deleted, and the
 passwords are dropped. If Velnox could not destroy the VM, the record says so with its VM ID — remove
 it in Proxmox.
@@ -140,7 +145,8 @@ it in Proxmox.
 
 ## The record, and the passwords
 
-**New VMs** lists what was built. A record shows the template, cluster and node, the VM ID, the
+**Build history**, at the top of Virtual Machines, lists everything built from templates, finished
+or not. A record shows the template, cluster and node, the VM ID, the
 addresses the guest reported, who asked, how long it took, and why it failed if it did.
 
 **Show the passwords**, for whoever may manage that cluster (`clusters.manage`): each time is

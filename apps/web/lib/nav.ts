@@ -30,6 +30,14 @@ export interface NavItem {
    * exactly the role that exists to read it.
    */
   supersededBy?: string;
+  /**
+   * Other paths that belong to this entry, so it stays highlighted on them.
+   *
+   * One use: building VMs. Its pages live under `/provisioning` — the mailed
+   * links to a record point there — but it is reached from Virtual Machines,
+   * which is where a VM being built is shown.
+   */
+  alsoMatches?: string[];
 }
 
 export interface NavGroup {
@@ -60,17 +68,12 @@ export const NAVIGATION: NavGroup[] = [
         href: '/virtual-machines',
         phase: null,
         requiresPermission: 'workloads.read',
+        alsoMatches: ['/provisioning'],
       },
       { key: 'containers', href: '/containers', phase: null, requiresPermission: 'workloads.read' },
       { key: 'storage', href: '/storage', phase: null, requiresPermission: 'storage.read' },
       { key: 'networks', href: '/networks', phase: null, requiresPermission: 'networks.read' },
       { key: 'library', href: '/library', phase: null, requiresPermission: 'library.read' },
-      {
-        key: 'provisioning',
-        href: '/provisioning',
-        phase: null,
-        requiresPermission: 'workloads.read',
-      },
     ],
   },
   {
@@ -127,6 +130,14 @@ export function isNavItemVisible(item: NavItem, permissions: ReadonlySet<string>
   if (item.requiresPermission && !permissions.has(item.requiresPermission)) return false;
   if (item.supersededBy && permissions.has(item.supersededBy)) return false;
   return true;
+}
+
+/** Whether this entry is the one to highlight at this path. */
+export function isNavItemActive(item: NavItem, pathname: string): boolean {
+  if (item.href === '/') return pathname === '/';
+  return [item.href, ...(item.alsoMatches ?? [])].some(
+    (href) => pathname === href || pathname.startsWith(`${href}/`),
+  );
 }
 
 const BY_HREF = new Map<string, NavItem>(

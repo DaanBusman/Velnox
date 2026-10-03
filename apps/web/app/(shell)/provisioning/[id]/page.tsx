@@ -72,6 +72,14 @@ export default async function ProvisioningPage({ params }: Props) {
           <dl>
             <KeyValue label={t('provisioning.state')}>
               <StatusBadge tone={tone(p.state)}>{t(`provisioning.states.${p.state}`)}</StatusBadge>
+              {p.currentStep && (
+                <span className="ml-2 text-xs text-ink-muted">
+                  {t.has(`provisioning.steps.${p.currentStep}`)
+                    ? t(`provisioning.steps.${p.currentStep}`)
+                    : p.currentStep}
+                  {p.progressPct !== null && ` · ${p.progressPct}%`}
+                </span>
+              )}
             </KeyValue>
             <KeyValue label={t('provisioning.vmid')}>{p.vmid ?? '—'}</KeyValue>
             <KeyValue label={t('provisioning.cluster')}>

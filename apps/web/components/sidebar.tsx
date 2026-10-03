@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import clsx from 'clsx';
-import { NAVIGATION, isNavItemVisible } from '@/lib/nav';
+import { NAVIGATION, isNavItemActive, isNavItemVisible } from '@/lib/nav';
 import { NAV_ICONS } from '@/components/ui/icons';
 import { ProductMark } from '@/components/ui/product-mark';
 import { ServerManagement } from '@/components/server-management';
@@ -57,8 +57,7 @@ export function Sidebar({
               )}
               <ul className="space-y-0.5">
                 {items.map((item) => {
-                  const active =
-                    item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                  const active = isNavItemActive(item, pathname);
                   const Icon = NAV_ICONS[item.key];
 
                   return (

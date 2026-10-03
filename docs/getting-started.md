@@ -131,7 +131,7 @@ Working today:
 | **Tenants**, **Sites** | Your customers and their locations — see [Organising your fleet](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtual machines**, **Containers**, **Storage**, **Networks** | The Proxmox inventory, read on a schedule — see [Adding clusters and reading the inventory](managing-infrastructure.md) |
 | **ISO library** | Installers and cloud images on the Velnox host, copied onto any cluster — see [The ISO library](managing-the-library.md) |
-| **New VMs**, **Autoconfig** | VMs built unattended from templates, and the templates — see [Building VMs from templates](building-vms.md) |
+| **Virtual Machines → New VM**, **Autoconfig** | VMs built unattended from templates, and the templates — see [Building VMs from templates](building-vms.md) |
 | **Alerts** | Conditions computed from the inventory: offline nodes, stale reads, Ceph flags |
 | **Jobs** | Work in progress and its history, live — see [Watching, cancelling and approving jobs](working-with-jobs.md) |
 | **Users** | Accounts, roles, enabling and disabling — see [Managing users and access](managing-access.md) |

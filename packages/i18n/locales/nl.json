@@ -447,7 +447,13 @@
     "workloadSTOPPED": "Gestopt",
     "workloadSearch": "Naam, ID, node of label…",
     "workloadUNKNOWN": "Onbekend",
-    "workloadsSubtitle": "Virtuele machines en containers, zoals het cluster ze het laatst meldde."
+    "workloadsSubtitle": "Virtuele machines en containers, zoals het cluster ze het laatst meldde.",
+    "newVm": "Nieuwe VM",
+    "buildHistory": "Uitrolgeschiedenis",
+    "buildQUEUED": "Uitrol in wachtrij",
+    "buildRUNNING": "Wordt uitgerold",
+    "buildFAILED": "Uitrol mislukt",
+    "buildFailedHint": "Open de registratie voor de reden."
   },
   "job": {
     "allStatuses": "Alle statussen",
@@ -618,7 +624,7 @@
     "virtualMachines": "Virtuele machines",
     "library": "ISO-bibliotheek",
     "autoconfig": "Autoconfig",
-    "provisioning": "Nieuwe VM’s",
+    "provisioning": "VM-uitrollen",
     "mail": "Uitgaande mail"
   },
   "placeholder": {
@@ -1242,7 +1248,7 @@
     "saved": "Opgeslagen."
   },
   "provisioning": {
-    "subtitle": "VM’s gebouwd vanuit Autoconfig-templates, en hun installatieverslagen.",
+    "subtitle": "Elke VM die vanuit een Autoconfig-template is gebouwd, met de installatieregistratie. VM’s die nog worden uitgerold staan ook bij Virtuele machines.",
     "empty": "Er zijn nog geen VM’s vanuit templates gebouwd.",
     "newTitle": "VM bouwen",
     "newDescription": "Vanuit een template, op een cluster. De installatie loopt vanzelf.",
@@ -1316,7 +1322,17 @@
     "password": "Wachtwoord",
     "administrator": "Beheerder",
     "switchedOff": "uitgeschakeld",
-    "keyOnly": "alleen sleutel"
+    "keyOnly": "alleen sleutel",
+    "steps": {
+      "check": "Controleren",
+      "media": "Installatiemedium kopiëren",
+      "create": "VM aanmaken",
+      "answers": "Antwoorden schrijven",
+      "start": "Starten",
+      "install": "Installeren",
+      "finish": "Afronden",
+      "notify": "Aanvrager mailen"
+    }
   },
   "mail": {
     "subtitle": "Hoe Velnox mail verstuurt: als een VM klaar is, en later voor andere meldingen.",

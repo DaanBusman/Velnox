@@ -25,6 +25,12 @@ import { JobsService } from '../jobs/jobs.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
 import { TemplatesService } from './templates.service';
 
+/** Where a build's job has got to; read for builds still under way. */
+interface JobProgress {
+  currentStep: string | null;
+  progressPct: number | null;
+}
+
 /** How long a reveal's answer may stay on screen. The page clears it after. */
 const REVEAL_DISPLAY_MS = 5 * 60_000;
 
@@ -246,7 +252,7 @@ export class ProvisioningService {
       },
     });
 
-    return { provisioning: this.summary(saved), job, documentPassword };
+    return { provisioning: this.summary(saved, job), job, documentPassword };
   }
 
   private async assertStorage(nodeId: string, name: string, content: string, node: string) {
@@ -315,11 +321,31 @@ export class ProvisioningService {
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
-    return rows.map((row) => this.summary(row));
+    const jobs = await this.progressOf(rows);
+    return rows.map((row) => this.summary(row, row.jobId ? jobs.get(row.jobId) : undefined));
   }
 
   async get(id: string): Promise<ProvisioningSummary> {
-    return this.summary(await this.row(id));
+    const row = await this.row(id);
+    const jobs = await this.progressOf([row]);
+    return this.summary(row, row.jobId ? jobs.get(row.jobId) : undefined);
+  }
+
+  /**
+   * Where the job of each build still under way has got to, so a list can show it
+   * without the reader opening every job. Finished builds are not looked up: their
+   * state says everything.
+   */
+  private async progressOf(rows: Provisioning[]): Promise<Map<string, JobProgress>> {
+    const ids = rows
+      .filter((row) => row.jobId !== null && (row.state === 'QUEUED' || row.state === 'RUNNING'))
+      .map((row) => row.jobId as string);
+    if (ids.length === 0) return new Map();
+    const jobs = await this.prisma.client.job.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, currentStep: true, progressPct: true },
+    });
+    return new Map(jobs.map((job) => [job.id, job]));
   }
 
   private async row(id: string): Promise<Provisioning> {
@@ -328,7 +354,8 @@ export class ProvisioningService {
     return row;
   }
 
-  summary(row: Provisioning): ProvisioningSummary {
+  summary(row: Provisioning, job?: JobProgress): ProvisioningSummary {
+    const underway = row.state === 'QUEUED' || row.state === 'RUNNING';
     const started = row.startedAt?.getTime() ?? null;
     const finished = row.finishedAt?.getTime() ?? null;
     return {
@@ -344,6 +371,8 @@ export class ProvisioningService {
       hostname: row.hostname,
       state: row.state,
       jobId: row.jobId,
+      currentStep: underway ? (job?.currentStep ?? null) : null,
+      progressPct: underway ? (job?.progressPct ?? null) : null,
       addresses: row.addresses,
       requestedByLabel: row.requestedByLabel,
       startedAt: row.startedAt?.toISOString() ?? null,

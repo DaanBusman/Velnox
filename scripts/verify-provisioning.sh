@@ -130,6 +130,26 @@ upload() {
 }
 
 job_field() { call GET "/api/v1/jobs/$1" | json "$2"; }
+
+# A page as the web renders it for the admin, as text, in a locale.
+page_text() {
+  curl --silent --insecure --max-time 60 --cookie "$JAR" --cookie "velnox_locale=$1" "${BASE}$2" |
+    node -e '
+      let r = ""; process.stdin.on("data", (c) => (r += c)).on("end", () => {
+        process.stdout.write(r.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, " ")
+          .replace(/&#x27;/g, "\x27").replace(/&amp;/g, "&").replace(/\s+/g, " "));
+      });'
+}
+# The href of the sidebar entry marked as the current page.
+current_nav() {
+  curl --silent --insecure --max-time 60 --cookie "$JAR" "${BASE}$1" |
+    node -e '
+      let r = ""; process.stdin.on("data", (c) => (r += c)).on("end", () => {
+        const a = (r.match(/<a\b[^>]*>/g) || []).find((tag) => tag.includes("aria-current=\"page\""));
+        const m = a && /href="([^"]*)"/.exec(a);
+        process.stdout.write(m ? m[1] : "");
+      });'
+}
 wait_for() {
   local id="$1" timeout="$2"
   shift 2
@@ -493,11 +513,27 @@ C="$(call POST /api/v1/provisionings "$(TID="$LIN_TID" HOST="cancel-${RUN}" NOTI
 C_ID="$(printf '%s' "$C" | json provisioning.id)"
 C_JOB="$(printf '%s' "$C" | json job.id)"
 wait_step "$C_JOB" install 120 || red "cancel: the job never reached the install wait"
+# While it installs: the build is shown under Virtual Machines with where it has got to.
+check "underway: the record carries the job's step" install "$(call GET "/api/v1/provisionings/${C_ID}" | json currentStep)"
+check "underway: so does the list" install "$(call GET /api/v1/provisionings | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const p=JSON.parse(r).find(x=>x.id===process.argv[1]);process.stdout.write(p&&p.currentStep||"")})' "$C_ID")"
+VMS_EN="$(page_text en /virtual-machines)"
+contains "underway: Virtual Machines lists the VM being built" "cancel-${RUN}" "$VMS_EN"
+contains "underway: with the build's state" "Being built" "$VMS_EN"
+contains "underway: and the step it is on" "Installing" "$VMS_EN"
+contains "underway: Virtual Machines offers a new VM" "New VM" "$VMS_EN"
+contains "underway: a failed build stays listed for a while" "Build failed" "$VMS_EN"
+VMS_NL="$(page_text nl /virtual-machines)"
+contains "underway: in Dutch too" "Wordt uitgerold" "$VMS_NL"
+contains "underway: with the step in Dutch" "Installeren" "$VMS_NL"
+lacks "underway: no untranslated key on the page" "inventory.build" "$VMS_NL"
+lacks "underway: the sidebar no longer has its own entry for building VMs" "New VMs" "$VMS_EN"
+check "underway: a build's record keeps Virtual Machines highlighted" /virtual-machines "$(current_nav "/provisioning/${C_ID}")"
 call POST "/api/v1/jobs/${C_JOB}/cancel" >/dev/null
 check "cancel: the job is cancelled" CANCELLED "$(wait_for "$C_JOB" 120 CANCELLED SUCCEEDED FAILED)"
 check "cancel: the record says so" CANCELLED "$(call GET "/api/v1/provisionings/${C_ID}" | json state)"
 C_VMID="$(call GET "/api/v1/provisionings/${C_ID}" | json vmid)"
 contains "cancel: its VM was destroyed" "vm ${C_VMID} destroyed (purge=1)" "$(FIXLOG)"
+lacks "cancel: a cancelled build is not listed under Virtual Machines" "cancel-${RUN}" "$(page_text en /virtual-machines)"
 
 # ---------------------------------------------------------------------------
 

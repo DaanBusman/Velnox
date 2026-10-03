@@ -659,6 +659,10 @@ export interface ProvisioningSummary {
   hostname: string;
   state: ProvisioningState;
   jobId: string | null;
+  /** The job's step while the VM is being built (`check`, `media`, … `notify`); null otherwise. */
+  currentStep: string | null;
+  /** The job's overall progress while the VM is being built; null otherwise. */
+  progressPct: number | null;
   addresses: string[];
   requestedByLabel: string | null;
   startedAt: string | null;

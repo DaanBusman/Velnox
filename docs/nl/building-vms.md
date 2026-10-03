@@ -115,7 +115,7 @@ klant te komen. De kloon noemt ze als ontbrekend tot ze zijn ingesteld, en kan t
 
 ## Een VM bouwen
 
-**Infrastructuur → Nieuwe VM’s → VM bouwen** (of **VM bouwen** bij een template). Vraagt
+**Infrastructuur → Virtuele machines → Nieuwe VM** (of **VM bouwen** bij een template). Vraagt
 `workloads.provision` op het cluster. Kies het cluster, een template dat aan zijn tenant wordt
 aangeboden, de node, de opslag voor de schijven en voor de installer, de bridge en eventueel een VLAN,
 een hostnaam — zonder domein; hoogstens 15 tekens voor Windows, waarvan de netwerknaam daar wordt
@@ -140,6 +140,12 @@ Daarna loopt het als een job die je kunt volgen en annuleren:
    opslag verwijderd. Die bevatte de wachtwoorden.
 8. **Melden** — één keer, aan wie erom vroeg.
 
+**Zolang het loopt, staat de VM bij Virtuele machines** met de status van de uitrol — in de wachtrij,
+of wordt uitgerold met de stap waar hij is en hoe ver de job is — in plaats van de status van een gast.
+De pagina ververst zichzelf tot er geen uitrol meer loopt. Is de VM klaar, dan staat hij er als elke
+andere VM; een mislukte uitrol blijft een dag in de lijst, gemarkeerd als mislukt, met de registratie
+één klik verder.
+
 **Mislukt of geannuleerd: dan wordt de VM vernietigd** met zijn schijven, de antwoord-cd verwijderd en
 worden de wachtwoorden niet bewaard. Kon Velnox de VM niet vernietigen, dan zegt de registratie dat met
 het VM-ID — verwijder hem in Proxmox.
@@ -148,7 +154,8 @@ het VM-ID — verwijder hem in Proxmox.
 
 ## Het verslag, en de wachtwoorden
 
-**Nieuwe VM's** toont wat er is gebouwd. Een registratie toont het template, cluster en node, het
+**Uitrolgeschiedenis**, boven aan Virtuele machines, toont alles wat vanuit templates is gebouwd,
+klaar of niet. Een registratie toont het template, cluster en node, het
 VM-ID, de adressen die de gast meldde, wie het vroeg, hoe lang het duurde, en waarom het mislukte als
 dat zo was.
 

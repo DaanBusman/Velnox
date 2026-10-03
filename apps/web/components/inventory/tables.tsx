@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
+import type { ProvisioningSummary } from '@velnox/shared';
 import type {
   AlertRow,
   InterfaceRow,
@@ -198,13 +199,26 @@ const WORKLOAD_TONE: Record<WorkloadSummary['state'], StatusTone> = {
   UNKNOWN: 'unknown',
 };
 
+const BUILD_TONE: Record<string, StatusTone> = {
+  QUEUED: 'neutral',
+  RUNNING: 'warn',
+  FAILED: 'error',
+};
+
 export function WorkloadTable({
   workloads,
+  builds = [],
   title,
   description,
   showCluster = true,
 }: {
   workloads: WorkloadSummary[];
+  /**
+   * VMs Velnox is building, shown above the inventory with the build's state
+   * instead of a guest's. Whoever passes them leaves out the inventory row of a
+   * VM that is also here, so a VM is listed once.
+   */
+  builds?: ProvisioningSummary[];
   title: string;
   description: string;
   showCluster?: boolean;
@@ -224,11 +238,23 @@ export function WorkloadTable({
     );
   }, [workloads, search]);
 
+  const visibleBuilds = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return builds;
+    return builds.filter(
+      (build) =>
+        build.hostname.toLowerCase().includes(needle) ||
+        (build.vmid !== null && String(build.vmid).includes(needle)) ||
+        build.node.toLowerCase().includes(needle) ||
+        build.templateName.toLowerCase().includes(needle),
+    );
+  }, [builds, search]);
+
   return (
     <Card title={title} description={description} bodyClassName="">
       <Search value={search} onChange={setSearch} placeholder={t('inventory.workloadSearch')} />
 
-      {visible.length === 0 ? (
+      {visible.length === 0 && visibleBuilds.length === 0 ? (
         <p className="px-4 py-6 text-sm text-ink-muted">{t('inventory.noWorkloads')}</p>
       ) : (
         <div className="max-h-[65vh] overflow-auto">
@@ -264,6 +290,71 @@ export function WorkloadTable({
               </tr>
             </thead>
             <tbody>
+              {visibleBuilds.map((build) => (
+                <tr key={`build-${build.id}`} className={ROW}>
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-ink-muted">
+                    {build.vmid ?? <Absent />}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Link
+                      href={`/provisioning/${build.id}`}
+                      className="font-medium text-ink underline-offset-2 hover:underline"
+                    >
+                      {build.hostname}
+                    </Link>
+                    <span className="mt-0.5 block text-[11px] text-ink-muted">
+                      {build.templateName}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge tone={BUILD_TONE[build.state] ?? 'neutral'}>
+                        {t(`inventory.build${build.state}`)}
+                      </StatusBadge>
+                      {build.state === 'RUNNING' && build.currentStep && (
+                        <span className="text-[11px] text-ink-muted">
+                          {t.has(`provisioning.steps.${build.currentStep}`)
+                            ? t(`provisioning.steps.${build.currentStep}`)
+                            : build.currentStep}
+                          {build.progressPct !== null && ` · ${build.progressPct}%`}
+                        </span>
+                      )}
+                      {build.state === 'FAILED' && (
+                        <span className="text-[11px] text-ink-muted">
+                          {t('inventory.buildFailedHint')}
+                        </span>
+                      )}
+                    </div>
+                    {build.state === 'RUNNING' && build.progressPct !== null && (
+                      <div
+                        className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-surface-2"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={build.progressPct}
+                      >
+                        <div
+                          className="h-full rounded-full bg-accent transition-[width]"
+                          style={{ width: `${Math.min(100, Math.max(0, build.progressPct))}%` }}
+                        />
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-ink-muted">{build.node}</td>
+                  {showCluster && (
+                    <td className="px-3 py-2.5 text-ink-muted">{build.clusterName}</td>
+                  )}
+                  <td className="px-3 py-2.5 text-right text-ink-muted">
+                    <Absent />
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-ink-muted">
+                    <Absent />
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-ink-muted">
+                    <Absent />
+                  </td>
+                </tr>
+              ))}
               {visible.map((workload) => (
                 <tr key={workload.id} className={ROW}>
                   <td className="px-4 py-2.5 text-right font-mono tabular-nums text-ink-muted">
