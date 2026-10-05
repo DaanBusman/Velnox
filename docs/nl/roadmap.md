@@ -3,7 +3,7 @@
 > **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `76ed14f`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is gebouwd en wacht op bewijs op een echt cluster; fase 6–15 wachten op goedkeuring.
+**Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is gebouwd en wacht op bewijs op een echt cluster; fase 5C is de volgende; fase 6–15 wachten op goedkeuring.
 
 Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
 acceptatiecriteria tegen een draaiende stack — 36 controles over elke afhankelijkheid, de
@@ -18,7 +18,9 @@ passeren via lijsten, filters, directe id-opvragingen en schrijfacties — 34 co
 daartegen de volledige toevoeg-en-uitlees-stroom — 51 controles. `scripts/verify-jobs.sh` voert het
 jobsysteem door annuleren, goedkeuringen en een gedode worker — 44 controles — en
 `scripts/verify-library.sh` verplaatst echte bytes door de ISO-bibliotheek, naar de opslag van de
-fixture en via SFTP weer terug — 73 controles. Elk vond echte fouten die de unittests niet konden
+fixture en via SFTP weer terug — 73 controles. `scripts/verify-provisioning.sh` bouwt VM's tegen de
+fixture — 137 controles — en `scripts/verify-audit.sh` bewijst de reikwijdte, export en bewaartermijn van
+het auditlog — 27. Elk vond echte fouten die de unittests niet konden
 vinden (ADR-030, ADR-031, ADR-032, ADR-036, ADR-037).
 
 Elke fase eindigt met dezelfde poort. Een fase is **niet** klaar voordat dit alles waar is:
@@ -299,6 +301,41 @@ een login met wachtwoord, tenzij de template dat toestond. Een
 mislukte installatie laat geen half aangemaakte VM achter. De verklaring noemt de hostname, het adres,
 de duur en de template, en het bericht komt één keer aan.
 
+## Phase 5C — Tenant-hiërarchie, platformbeheer en support · **L**
+
+Gevraagd door de eigenaar op 5 oktober 2026, vóór fase 6–9B, omdat de eerste twee de grens tussen
+tenants en het vertrouwen in de installatie zelf veranderen — allebei pijnlijk om achteraf in te
+bouwen zodra updates en upgrades tegen de clusters van klanten draaien.
+
+- **Tenant-hiërarchie.** Een klanttenant is standaard een *hoofd-tenant*, of een *sub-tenant* van
+  één hoofd-tenant, gekozen bij het aanmaken. Alleen de MSP maakt en beheert tenants. Rollen in een
+  hoofd-tenant gelden ook in zijn sub-tenants. Een gebruiker kan lid zijn van meerdere sub-tenants
+  zonder lid te zijn van hun hoofd-tenant, maar alleen van sub-tenants onder dezelfde hoofd-tenant.
+  Een klant ziet **Tenants** alleen als hij bij een hoofd-tenant hoort met sub-tenants die hij mag
+  zien. Het tenantfilter, elke lijst, de reikwijdte van het auditlog en het isolatieharnas volgen.
+- **Certificaten vanuit de interface.** Het eigen certificaat van Caddy, Let's Encrypt met
+  automatische verlenging (HTTP-01), of een geüpload certificaat met sleutel, gekozen in Serverbeheer
+  en toegepast via de admin-API van Caddy op het interne netwerk — zonder shell-commando's. Een
+  geüploade sleutel wordt versleuteld opgeslagen. Draait het alleen-lezen certificaatpaneel terug
+  (besluit van de eigenaar); de ADR zegt wat dat kost.
+- **Supportlogs per tenant.** Een export, naast het auditlog, van wat Velnox voor één tenant deed —
+  jobs, hun stappen en uitvoer, inventarisatierondes — en de taakgeschiedenis van de Proxmox-nodes
+  van die tenant, inclusief taken die iemand rechtstreeks op Proxmox startte, elk als zodanig
+  gemarkeerd. Voor supportzaken; dezelfde reikwijdteregels als het auditlog.
+- **Software na een onbeheerde installatie.** Windows-templates kunnen na de installatie MSI- of
+  EXE-pakketten uitvoeren, met eigen argumenten, desgewenst als het Administrator-account. De
+  pakketten worden door de klant of de MSP geüpload en per tenant opgeslagen: de ene tenant ziet die
+  van een andere nooit.
+
+**Acceptatie:** de resources van een sub-tenant zijn zichtbaar voor de beheerders van zijn
+hoofd-tenant en voor geen andere klant, bewezen met het isolatieharnas uitgebreid naar drie niveaus;
+een gebruiker in twee sub-tenants van één hoofd-tenant bereikt die twee en verder niets; certificaten
+zijn in de interface tussen de drie modi te wisselen en het geserveerde certificaat wordt na elke
+wissel gecontroleerd, Let's Encrypt bewezen tegen een ACME-stagingserver; een supportexport voor één
+tenant bevat zijn jobs en de Proxmox-taken van zijn nodes, de niet door Velnox gestarte gemarkeerd,
+en niets van een andere tenant; een template installeert een geüploade MSI met argumenten, en een
+pakket van de ene tenant is voor een andere onzichtbaar en onbruikbaar.
+
 ## Phase 6 — Updatebeheer · **M**
 
 Update-inventaris per node (classificatie beveiliging / kernel / Proxmox), detectie van vereiste
@@ -321,6 +358,29 @@ bij; de uitvoering weigert te starten op een reeds verminderd cluster; de quorum
 onder property-tests voor clustergroottes 1–15; een node die de validatie niet doorstaat stopt de
 uitvoering en rapporteert `partially_succeeded`; workloads worden teruggemigreerd of expliciet
 verantwoord.
+
+## Phase 7B — Cluster resource scheduling (plaatsingsregels en balanceren) · **L**
+
+Gevraagd door de eigenaar op 5 oktober 2026: gekozen VM's uit elkaar houden, zodat ze nooit op
+dezelfde node draaien, is het belangrijkst. Een eigen kopje in de zijbalk, **Plaatsing**, onder
+Beheer — niet onder Migraties, dat gaat over workloads binnenhalen vanuit VMware en Hyper-V (fase
+11–12): plaatsing is een blijvende eigenschap van een cluster die de eigenaar één keer instelt en
+Velnox waar houdt, geen eenmalige verhuizing.
+
+Plaatsingsregels per cluster: **uit elkaar houden** (anti-affinity — deze VM's delen nooit een node),
+**bij elkaar houden**, en **voorkeursnodes**. Op PVE 9, waar de HA-manager van Proxmox hier eigen
+regels voor heeft (node- en resource-affinity), schrijft en leest Velnox die, zodat de regels ook
+gelden als Velnox niet draait; op PVE 8, waar die er niet zijn, controleert Velnox de regels en stelt
+live migraties voor of voert ze uit als jobs. Optioneel balanceren op belasting, standaard uit, met
+een drempel en een rustperiode, zonder ooit een regel te breken. Het bouwt op de migratie- en
+onderhoudsmoduscode van fase 7, en de rolling update van fase 7 houdt zich aan de regels als hij een
+node leegmaakt.
+
+**Acceptatie:** twee VM's in een uit-elkaar-regel komen nooit op één node, niet door Velnox' eigen
+verplaatsingen en niet door een rolling update die een node leegmaakt; een overtreding op een cluster
+wordt gemeld en, als dat mag, gecorrigeerd met een migratiejob; op PVE 9 staat de regel in de eigen
+HA-regels van Proxmox en overleeft hij het stoppen van Velnox; balanceren verplaatst niets zolang een
+cluster gedegradeerd is.
 
 ## Phase 8 — Framework voor major upgrades (generiek) · **L**
 
@@ -457,6 +517,22 @@ dat de toestandsmachine twee keer gebouwd wordt. Phase 8 (generiek framework) ga
 zodat genericiteit door constructie bewezen wordt — twee structureel verschillende workflows op één
 ongewijzigde engine — in plaats van achteraf beweerd.
 
+**Fase 5C vóór fase 6** (toegevoegd op 5 oktober 2026): de tenant-hiërarchie verandert de
+isolatiegrens die elke latere tabel en elk later endpoint erft — dezelfde reden waarom fase 2–3 eerst
+kwamen — en certificaatbeheer verandert hoe ver de installatie zelf wordt vertrouwd. Beide zijn nu
+goedkoper dan nadat updates en upgrades tegen de clusters van klanten draaien.
+
+**Fase 6 tot en met 9B samen — het advies van 5 oktober 2026.** Haalbaar als één traject, niet als
+één stap. Ze vormen twee ketens: 6 → 7 → 7B (updates, dan rolling updates die updates per node nodig
+hebben, dan plaatsing die de migratiecode van rolling updates nodig heeft) en 8 → 9A → 9B (het
+framework, dan de twee workflows die het bewijzen). Bouw ze in die volgorde binnen één gecombineerd
+traject, houd per fase de eigen acceptatie en het eigen harnas, en plan twee bewijsmomenten op echte
+hardware in plaats van één aan het eind: een PVE 8-cluster met drie nodes voor 6–7B, en hetzelfde
+cluster met Ceph voor 9A–9B — de fixture kan quorum, live migratie en een Ceph-upgrade niet bewijzen,
+net zoals hij in 5B geen onbeheerde installatie kon bewijzen. Wat het combineren veilig maakt, is dat
+6–7 en 8–9B bijna geen code delen tot 9B 9A samenstelt, zodat de twee ketens naast elkaar gebouwd en
+los bewezen kunnen worden.
+
 **9A (Ceph) vóór 9B (PVE 8→9)** volgt de werkelijke beperking: een PVE major release levert een specifieke
 Ceph-release en ondersteunt de vorige niet, dus Ceph moet geüpgraded worden terwijl het cluster nog op de
 huidige PVE- en Debian-release draait. Ze in die volgorde bouwen betekent bovendien dat 9B 9A kan
@@ -491,6 +567,7 @@ referentiedocumenten, die uitleggen hoe het systeem in elkaar zit; zie ADR-026 i
 | 3 | Een klanttenant aanmaken; een locatie toevoegen; een toekenning onder globaal bereik brengen |
 | 4 | Een cluster toevoegen; een node toevoegen; infrastructuurcredentials opslaan; inventaris lezen |
 | 5 | Jobs volgen, annuleren en goedkeuren |
+| 5C | Sub-tenants en wie wat ziet; certificaten vanuit de interface; supportlogs exporteren; software na een installatie |
 | 6 | Updates beoordelen en toepassen |
 | 7–9 | Een rolling update uitvoeren; een major upgrade uitvoeren; de workflows voor Ceph en PVE 8 → 9 |
 | 10 | Een rotatiebeleid instellen; noodtoegang tot een wachtwoord |

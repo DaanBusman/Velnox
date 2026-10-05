@@ -1,6 +1,6 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phases 0 to 5 and 5A complete. Phase 5B is built and awaits proof on a real cluster; phases 6–15 await approval.
+**Status:** Phases 0 to 5 and 5A complete. Phase 5B is built and awaits proof on a real cluster; Phase 5C is next; phases 6–15 await approval.
 
 Each landed phase is verified rather than asserted. `bash scripts/verify-stack.sh` asserts its acceptance criteria
 against a running stack — 36 checks covering every dependency, the migration state, security headers,
@@ -14,7 +14,8 @@ and writes — 34 checks. `scripts/verify-proxmox.sh` stands up a fixture Proxmo
 certificate and drives the whole add-and-discover flow against it — 51 checks. `scripts/verify-jobs.sh`
 drives the job system through cancellation, approvals and a killed worker — 44 checks — and
 `scripts/verify-library.sh` moves real bytes through the ISO library, onto the fixture's storage and
-back off it over SFTP — 73 checks. Each found real bugs the unit tests could not (ADR-030, ADR-031,
+back off it over SFTP — 73 checks. `scripts/verify-provisioning.sh` builds VMs against the fixture — 137
+checks — and `scripts/verify-audit.sh` proves the audit log's scope, export and retention — 27. Each found real bugs the unit tests could not (ADR-030, ADR-031,
 ADR-032, ADR-036, ADR-037).
 
 Every phase ends with the same gate. A phase is **not** finished until all of these are true:
@@ -278,6 +279,39 @@ mail that carries the PDF. A Linux VM with the SSH switch on accepts a key login
 refuses a password login unless the template allowed it. A failed install leaves no half-created VM. The installation record
 names the hostname, the address, the duration and the template, and the notification arrives once.
 
+## Phase 5C — Tenant hierarchy, platform administration and support · **L**
+
+Asked for by the owner on 5 October 2026, before Phases 6–9B, because the first two change the
+tenancy boundary and the installation's own trust — both painful to retrofit once updates and
+upgrades run against customers' clusters.
+
+- **Tenant hierarchy.** A customer tenant is a *main tenant* by default, or a *sub-tenant* of one
+  main tenant, chosen when it is created. Only the MSP creates and manages tenants. Roles held in a
+  main tenant apply in its sub-tenants. A user can be a member of several sub-tenants without being a
+  member of their main tenant, but only of sub-tenants under the same main tenant. A customer sees
+  **Tenants** only when they belong to a main tenant that has sub-tenants they may see. The tenancy
+  filter, every list, the audit log's scope and the isolation harness follow.
+- **Certificates from the interface.** Caddy's own certificate, Let's Encrypt with automatic renewal
+  (HTTP-01), or an uploaded certificate and key, chosen in Server management and applied through
+  Caddy's admin API on the internal network — no shell commands. An uploaded key is stored encrypted.
+  Reverses the read-only certificate panel (owner's decision); its ADR says what that costs.
+- **Support logs per tenant.** An export, beside the audit log, of what Velnox did for one tenant —
+  jobs, their steps and output, discovery runs — and the task history of that tenant's Proxmox
+  nodes, including tasks a person started on Proxmox directly, each marked as such. For support
+  cases; the same scope rules as the audit log.
+- **Software after an unattended install.** Windows templates can run MSI or EXE packages after the
+  install, with their own arguments, optionally as the Administrator account. The packages are
+  uploaded by the customer or the MSP and stored per tenant: one tenant never sees another's.
+
+**Acceptance:** a sub-tenant's resources are visible to its main tenant's administrators and to no
+other customer, proven by the isolation harness extended to three levels; a user in two sub-tenants
+of one main tenant reaches both and nothing else; certificates can be switched between the three
+modes in the interface and the served certificate is verified after each switch, Let's Encrypt
+proven against a staging ACME server; a support export for one tenant contains its jobs and its
+nodes' Proxmox tasks, those not started by Velnox marked, and nothing of another tenant; a template
+installs an uploaded MSI with arguments, and a package uploaded by one tenant is invisible to and
+unusable by another.
+
 ## Phase 6 — Update management · **M**
 
 Update inventory per node (security / kernel / Proxmox classification), reboot-required detection,
@@ -298,6 +332,27 @@ Configurable concurrency with the central safety invariant.
 the run refuses to start on an already-degraded cluster; the quorum invariant holds under property
 tests for cluster sizes 1–15; a node failing post-validation stops the run and reports
 `partially_succeeded`; workloads are migrated back or accounted for explicitly.
+
+## Phase 7B — Cluster resource scheduling (placement rules and balancing) · **L**
+
+Asked for by the owner on 5 October 2026: keeping chosen VMs apart, so that they never run on the
+same node, matters most. Its own sidebar heading, **Placement**, under Operations — not under
+Migrations, which is about bringing workloads in from VMware and Hyper-V (Phases 11–12): placement
+is an ongoing property of a cluster that the owner sets once and Velnox keeps true, not a one-off
+move.
+
+Placement rules per cluster: **keep apart** (anti-affinity — these VMs never share a node), **keep
+together**, and **prefer nodes**. On PVE 9, where Proxmox's HA manager has rules of its own for this
+(node and resource affinity), Velnox writes and reads those, so the rules hold even when Velnox is
+not running; on PVE 8, where it does not, Velnox checks the rules and proposes or performs live
+migrations as jobs. Optional balancing by load, off by default, with a threshold and a quiet period,
+never breaking a rule. Phase 7's migration and maintenance-mode code is what it builds on, and the
+rolling update of Phase 7 honours the rules when it empties a node.
+
+**Acceptance:** two VMs in a keep-apart rule are never placed on one node, by Velnox's own moves or
+by a rolling update emptying a node; a violation found on a cluster is reported and, if allowed,
+corrected by a migration job; on PVE 9 the rule exists in Proxmox's own HA rules and survives
+Velnox being stopped; balancing moves nothing while a cluster is degraded.
 
 ## Phase 8 — Major upgrade framework (generic) · **L**
 
@@ -430,6 +485,21 @@ building the state machine twice. Phase 8 (generic framework) precedes 9A and 9B
 proven by construction — two structurally different workflows on one unchanged engine — rather than
 claimed afterwards.
 
+**Phase 5C before Phase 6** (added 5 October 2026): the tenant hierarchy changes the isolation
+boundary every later table and endpoint inherits — the same reason Phases 2–3 came first — and
+certificate management changes how far the installation itself is trusted. Both are cheaper now than
+after updates and upgrades run against customers' clusters.
+
+**Phases 6 to 9B together — the advice given on 5 October 2026.** Feasible as one effort, not as one
+step. They form two chains: 6 → 7 → 7B (updates, then rolling updates that need single-node updates,
+then placement that needs rolling updates' migration code) and 8 → 9A → 9B (the framework, then the
+two workflows that prove it). Build them in that order inside one combined effort, keep each phase's
+own acceptance and harness, and plan two proof points on real hardware rather than one at the end: a
+three-node PVE 8 cluster for 6–7B, and the same cluster with Ceph for 9A–9B — the fixture cannot
+prove quorum, live migration or a Ceph upgrade, exactly as it could not prove an unattended install
+in 5B. What makes combining them safe is that 6–7 and 8–9B share almost no code until 9B composes
+9A, so the two chains can be built side by side and proven separately.
+
 **9A (Ceph) before 9B (PVE 8→9)** follows the real-world constraint: a PVE major release ships a
 specific Ceph release and does not support the previous one, so Ceph must be upgraded while the
 cluster is still on its current PVE and Debian release. Building them in that order also means 9B
@@ -463,8 +533,9 @@ ADR-026 in [tech-decisions.md](tech-decisions.md).
 | 3 | Creating a customer tenant; adding a site; scoping a grant below global |
 | 4 | Adding a cluster; adding a node; storing infrastructure credentials; reading inventory |
 | 5 | Watching, cancelling and approving jobs |
+| 5C | Sub-tenants and who sees what; certificates from the interface; exporting support logs; software after an install |
 | 6 | Reviewing and applying updates |
-| 7–9 | Running a rolling update; running a major upgrade; the Ceph and PVE 8 → 9 workflows |
+| 7–9 | Running a rolling update; placement rules; running a major upgrade; the Ceph and PVE 8 → 9 workflows |
 | 10 | Setting a rotation policy; break-glass reveal |
 | 11–12 | Assessing and running a VMware or Hyper-V migration |
 
