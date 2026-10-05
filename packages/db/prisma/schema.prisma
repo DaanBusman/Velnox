@@ -117,8 +117,11 @@ model Tenant {
 
   status TenantStatus @default(ACTIVE)
 
-  /// Reserved for hierarchical tenants. v1 supports one level below the root.
+  /// The main tenant of a sub-tenant; null for a main tenant and the MSP root.
+  /// Two levels under the MSP, fixed at creation (`tenants_hierarchy_two_levels`).
   parentTenantId String? @map("parent_tenant_id") @db.Uuid
+  parentTenant   Tenant?  @relation("TenantHierarchy", fields: [parentTenantId], references: [id], onDelete: Restrict)
+  subTenants     Tenant[] @relation("TenantHierarchy")
 
   /// Per-tenant overrides, including an MFA policy stricter than the installation's.
   settings Json @default("{}")
@@ -145,6 +148,7 @@ model Tenant {
   provisionings       Provisioning[]
 
   @@index([kind])
+  @@index([parentTenantId])
   @@map("tenants")
 }
 

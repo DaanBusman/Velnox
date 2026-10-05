@@ -325,6 +325,94 @@ check "msp: reads tenant B by id" 200 "$(status msp GET "/api/v1/tenants/${TENAN
 check "msp: reads tenant B's site by id" 200 "$(status msp GET "/api/v1/sites/${SITE_B}")"
 
 # ---------------------------------------------------------------------------
+# Main tenants and sub-tenants (Phase 5C)
+# ---------------------------------------------------------------------------
+
+info "Main and sub-tenants: one family, and nobody else's."
+
+count_names() { grep -o "\"name\":\"${RUN} $1\"" | wc -l | tr -d ' '; }
+role_id() {
+  call msp GET /api/v1/roles | node -e '
+    let raw = ""; process.stdin.on("data", (c) => (raw += c));
+    process.stdin.on("end", () => {
+      const role = (JSON.parse(raw).roles ?? []).find((r) => r.key === process.argv[1]);
+      if (role) process.stdout.write(role.id);
+    });' "$1" 2>/dev/null
+}
+
+MAIN="$(call msp POST /api/v1/tenants "{\"name\":\"${RUN} Holding\"}" | json id)"
+check "hierarchy: a tenant is a main tenant by default" MAIN "$(call msp GET "/api/v1/tenants/${MAIN}" | json level)"
+SUB1="$(call msp POST /api/v1/tenants "{\"name\":\"${RUN} Holding NL\",\"parentTenantId\":\"${MAIN}\"}" | json id)"
+check "hierarchy: the MSP creates a sub-tenant under it" 201 "$(last_status)"
+SUB2="$(call msp POST /api/v1/tenants "{\"name\":\"${RUN} Holding BE\",\"parentTenantId\":\"${MAIN}\"}" | json id)"
+check "hierarchy: the sub-tenant knows its main tenant" "${RUN} Holding" "$(call msp GET "/api/v1/tenants/${SUB1}" | json parentTenantName)"
+check "hierarchy: a sub-tenant cannot have sub-tenants" 400 \
+  "$(status msp POST /api/v1/tenants "{\"name\":\"${RUN} Too deep\",\"parentTenantId\":\"${SUB1}\"}")"
+MSP_ROOT_ID="$(call msp GET /api/v1/tenants | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const t=(JSON.parse(r).tenants??[]).find(x=>x.kind==="MSP_ROOT");if(t)process.stdout.write(t.id)})')"
+check "hierarchy: the MSP organisation is nobody's main tenant" 400 \
+  "$(status msp POST /api/v1/tenants "{\"name\":\"${RUN} Under MSP\",\"parentTenantId\":\"${MSP_ROOT_ID}\"}")"
+
+SITE_MAIN="$(call msp POST /api/v1/sites "{\"tenantId\":\"${MAIN}\",\"name\":\"${RUN} Site Holding\"}" | json id)"
+SITE_SUB1="$(call msp POST /api/v1/sites "{\"tenantId\":\"${SUB1}\",\"name\":\"${RUN} Site NL\"}" | json id)"
+SITE_SUB2="$(call msp POST /api/v1/sites "{\"tenantId\":\"${SUB2}\",\"name\":\"${RUN} Site BE\"}" | json id)"
+
+READ_ONLY_ROLE="$(role_id tenant_read_only)"
+HOLDING_ID="$(call msp POST /api/v1/users \
+  "{\"email\":\"${RUN}-holding@example.invalid\",\"displayName\":\"Holding Administrator\",\"password\":\"${PASSWORD}\",\"tenantId\":\"${MAIN}\"}" | json id)"
+call msp POST "/api/v1/users/${HOLDING_ID}/role-assignments" \
+  "{\"roleId\":\"${TENANT_ADMIN_ROLE}\",\"scopeType\":\"TENANT\",\"scopeId\":\"${MAIN}\"}" >/dev/null
+NL_ID="$(call msp POST /api/v1/users \
+  "{\"email\":\"${RUN}-nl@example.invalid\",\"displayName\":\"NL Reader\",\"password\":\"${PASSWORD}\",\"tenantId\":\"${SUB1}\"}" | json id)"
+call msp POST "/api/v1/users/${NL_ID}/role-assignments" \
+  "{\"roleId\":\"${READ_ONLY_ROLE}\",\"scopeType\":\"TENANT\",\"scopeId\":\"${SUB1}\"}" >/dev/null
+check "membership: a sub-tenant's account can join a sibling sub-tenant" 201 \
+  "$(status msp POST "/api/v1/users/${NL_ID}/role-assignments" \
+    "{\"roleId\":\"${READ_ONLY_ROLE}\",\"scopeType\":\"TENANT\",\"scopeId\":\"${SUB2}\"}")"
+check "membership: but not another customer" 409 \
+  "$(status msp POST "/api/v1/users/${NL_ID}/role-assignments" \
+    "{\"roleId\":\"${READ_ONLY_ROLE}\",\"scopeType\":\"TENANT\",\"scopeId\":\"${TENANT_B}\"}")"
+
+check "holding: signs in" 200 "$(sign_in holding "${RUN}-holding@example.invalid" "$PASSWORD")"
+HOLDING_TENANTS="$(call holding GET /api/v1/tenants)"
+check "holding: sees its main tenant and both sub-tenants" 3 \
+  "$(printf '%s' "$HOLDING_TENANTS" | grep -o "\"name\":\"${RUN} Holding[^\"]*\"" | wc -l | tr -d ' ')"
+check "holding: and no other customer" 0 "$(printf '%s' "$HOLDING_TENANTS" | count_names Beta)"
+check "holding: reaches three tenants" 3 "$(call holding GET /api/v1/auth/me | json user.reachableTenants)"
+check "holding: its role applies in a sub-tenant (reads its site)" 200 "$(status holding GET "/api/v1/sites/${SITE_SUB1}")"
+check "holding: and can change things there (creates a site)" 201 \
+  "$(status holding POST /api/v1/sites "{\"tenantId\":\"${SUB2}\",\"name\":\"${RUN} Site BE 2\"}")"
+check "holding: another customer's site stays out of reach" 404 "$(status holding GET "/api/v1/sites/${SITE_B}")"
+check "holding: a customer cannot create tenants" 403 \
+  "$(status holding POST /api/v1/tenants "{\"name\":\"${RUN} Own sub\",\"parentTenantId\":\"${MAIN}\"}")"
+HOLDING_AUDIT="$(call holding GET "/api/v1/audit-events?tenantId=${SUB1}&limit=50")"
+check "holding: reads a sub-tenant's audit log" 200 "$(last_status)"
+case "$HOLDING_AUDIT" in
+  *"\"tenantName\":\"${RUN} Holding NL\""*) green "holding: and finds that sub-tenant's events in it"; PASS=$((PASS + 1)) ;;
+  *) red "holding: the sub-tenant's events were not in its audit log"; FAIL=$((FAIL + 1)) ;;
+esac
+
+check "nl: signs in" 200 "$(sign_in nl "${RUN}-nl@example.invalid" "$PASSWORD")"
+NL_TENANTS="$(call nl GET /api/v1/tenants)"
+check "nl: sees the two sub-tenants it belongs to" 2 \
+  "$(printf '%s' "$NL_TENANTS" | grep -o "\"name\":\"${RUN} Holding [A-Z][A-Z]\"" | wc -l | tr -d ' ')"
+check "nl: not the main tenant it is not a member of" 0 "$(printf '%s' "$NL_TENANTS" | count_names Holding)"
+check "nl: reaches two tenants" 2 "$(call nl GET /api/v1/auth/me | json user.reachableTenants)"
+check "nl: reads the sibling sub-tenant's site" 200 "$(status nl GET "/api/v1/sites/${SITE_SUB2}")"
+check "nl: not the main tenant's site" 404 "$(status nl GET "/api/v1/sites/${SITE_MAIN}")"
+check "nl: not another customer's" 404 "$(status nl GET "/api/v1/sites/${SITE_B}")"
+
+check "alpha: a customer outside the family sees none of it" 404 "$(status alpha GET "/api/v1/sites/${SITE_SUB1}")"
+
+check "hierarchy: a main tenant with active sub-tenants is not archived" 409 \
+  "$(status msp DELETE "/api/v1/tenants/${MAIN}")"
+
+call msp PATCH "/api/v1/users/${HOLDING_ID}/status" '{"status":"DISABLED"}' >/dev/null
+call msp PATCH "/api/v1/users/${NL_ID}/status" '{"status":"DISABLED"}' >/dev/null
+check "hierarchy: sub-tenants archive" "200 200" \
+  "$(status msp DELETE "/api/v1/tenants/${SUB1}") $(status msp DELETE "/api/v1/tenants/${SUB2}")"
+check "hierarchy: then the main tenant" 200 "$(status msp DELETE "/api/v1/tenants/${MAIN}")"
+
+# ---------------------------------------------------------------------------
 # Put it back
 # ---------------------------------------------------------------------------
 

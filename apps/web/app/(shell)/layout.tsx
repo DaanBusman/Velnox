@@ -91,6 +91,10 @@ export default async function ShellLayout({ children }: { children: React.ReactN
           // The sidebar hides what this account cannot use — a courtesy, not the
           // control. The API refuses every one of these regardless.
           permissions={session.user.permissions}
+          viewer={{
+            isMspRoot: session.user.isMspRoot,
+            reachableTenants: session.user.reachableTenants ?? 1,
+          }}
         />
 
         <div className="flex min-w-0 flex-1 flex-col">

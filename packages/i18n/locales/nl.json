@@ -396,6 +396,10 @@
     "mail": {
       "not_configured": "Uitgaande mail is niet ingesteld, dus er kan niemand worden gewaarschuwd. Een beheerder stelt het in onder Notificatiebeheer → Uitgaande mail.",
       "send_failed": "De mail is niet verstuurd: {reason}"
+    },
+    "tenant": {
+      "parent_invalid": "Een sub-tenant hoort bij een actieve hoofd-tenant van een klant — niet bij de MSP-organisatie en niet bij een andere sub-tenant.",
+      "has_sub_tenants": "{count, plural, one {Deze hoofd-tenant heeft nog # actieve sub-tenant.} other {Deze hoofd-tenant heeft nog # actieve sub-tenants.}} Archiveer die eerst."
     }
   },
   "inventory": {
@@ -990,7 +994,15 @@
     "saved": "Opgeslagen.",
     "auditRetention": "Auditlog bewaren",
     "auditRetentionForever": "Voor altijd",
-    "auditRetentionYears": "{years, plural, one {# jaar} other {# jaar}}"
+    "auditRetentionYears": "{years, plural, one {# jaar} other {# jaar}}",
+    "levelLabel": "Soort",
+    "levelMain": "Hoofd-tenant",
+    "levelSub": "Sub-tenant",
+    "parentLabel": "Hoort bij hoofd-tenant",
+    "parentHint": "Rollen in de hoofd-tenant gelden ook in zijn sub-tenants. Dit is later niet te wijzigen.",
+    "noMains": "Er is nog geen hoofd-tenant om een sub-tenant onder te maken.",
+    "subOf": "Sub-tenant van {name}",
+    "subCount": "{count, plural, one {# sub-tenant} other {# sub-tenants}}"
   },
   "tls": {
     "acmeAccount": "ACME-account",

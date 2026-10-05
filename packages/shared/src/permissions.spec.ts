@@ -8,6 +8,7 @@ import {
   grantedPermissions,
   holdsPrivilegedPermission,
   isAllowed,
+  withSubTenantGrants,
   isPermission,
   isPrivilegedPermission,
   systemRole,
@@ -315,5 +316,38 @@ describe('canResetMfa', () => {
         msp,
       );
     });
+  });
+});
+
+describe('withSubTenantGrants (Phase 5C)', () => {
+  const MAIN = 'main';
+  const subs = new Map([[MAIN, ['sub-1', 'sub-2']]]);
+  const grant = (scopeType: 'GLOBAL' | 'TENANT' | 'SITE', scopeId: string | null) => ({
+    permission: 'sites.read' as const,
+    scopeType,
+    scopeId,
+  });
+
+  it('carries a role in a main tenant into each of its sub-tenants', () => {
+    const grants = withSubTenantGrants([grant('TENANT', MAIN)], subs);
+    expect(isAllowed(grants, 'sites.read', { tenantId: 'sub-1' })).toBe(true);
+    expect(isAllowed(grants, 'sites.read', { tenantId: 'sub-2' })).toBe(true);
+    expect(isAllowed(grants, 'sites.read', { tenantId: MAIN })).toBe(true);
+  });
+
+  it('carries nothing upwards or sideways from a sub-tenant', () => {
+    const grants = withSubTenantGrants([grant('TENANT', 'sub-1')], subs);
+    expect(isAllowed(grants, 'sites.read', { tenantId: MAIN })).toBe(false);
+    expect(isAllowed(grants, 'sites.read', { tenantId: 'sub-2' })).toBe(false);
+  });
+
+  it('leaves site grants and other tenants alone', () => {
+    const grants = withSubTenantGrants([grant('SITE', 'site-in-main')], subs);
+    expect(grants).toHaveLength(1);
+    expect(
+      isAllowed(withSubTenantGrants([grant('TENANT', 'other')], subs), 'sites.read', {
+        tenantId: 'sub-1',
+      }),
+    ).toBe(false);
   });
 });

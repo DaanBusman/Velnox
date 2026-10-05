@@ -9,6 +9,7 @@ import {
   isPermission,
   type Grant,
   type ScopeType,
+  withSubTenantGrants,
 } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -241,17 +242,43 @@ export class AuthService {
       this.prisma.client.systemSettings.findUnique({ where: { id: 1 } }),
     ]);
 
-    const grants: Grant[] = [];
+    const direct: Grant[] = [];
     for (const assignment of assignments) {
       for (const { permission } of assignment.role.permissions) {
         if (!isPermission(permission)) continue;
-        grants.push({
+        direct.push({
           permission,
           scopeType: assignment.scopeType as ScopeType,
           scopeId: assignment.scopeId,
         });
       }
     }
+
+    /*
+     * Roles held in a main tenant apply in its sub-tenants (Phase 5C). The
+     * grants are widened here, once, so every check and every filter after this
+     * sees them without knowing tenants have levels.
+     */
+    const tenantGrantIds = [
+      ...new Set(
+        assignments
+          .filter((assignment) => assignment.scopeType === 'TENANT' && assignment.scopeId)
+          .map((assignment) => assignment.scopeId as string),
+      ),
+    ];
+    const subTenants = tenantGrantIds.length
+      ? await this.prisma.client.tenant.findMany({
+          where: { parentTenantId: { in: tenantGrantIds }, deletedAt: null },
+          select: { id: true, parentTenantId: true },
+        })
+      : [];
+    const subTenantsOf = new Map<string, string[]>();
+    for (const sub of subTenants) {
+      const list = subTenantsOf.get(sub.parentTenantId!) ?? [];
+      list.push(sub.id);
+      subTenantsOf.set(sub.parentTenantId!, list);
+    }
+    const grants = withSubTenantGrants(direct, subTenantsOf);
 
     const installationPolicy = settings?.mfaPolicy ?? 'OPTIONAL';
     const tenantPolicy = readTenantMfaPolicy(tenant?.settings);
@@ -276,6 +303,7 @@ export class AuthService {
       ...new Set([
         user.tenantId,
         ...assignments.map((a) => a.tenantId).filter((id): id is string => id !== null),
+        ...subTenants.map((sub) => sub.id),
       ]),
     ];
 

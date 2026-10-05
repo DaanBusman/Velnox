@@ -241,6 +241,12 @@ Een job waarvan de worker sterft, wordt op mislukt gezet met `job.worker_lost` z
 verloopt en een verzoening het merkt — gemeten op 33–34 seconden. Tot die tijd staat hij nog op
 **Actief**. Zie ADR-035 voor waarom de lease niet korter is.
 
+### Sub-tenants: twee randen
+Een Autoconfig-template dat aan gekozen klanten wordt aangeboden, wordt aan precies de aangevinkte
+tenants aangeboden: een hoofd-tenant aanvinken biedt het niet aan zijn sub-tenants aan. En iemand die
+via een rol lid is van een sub-tenant, met zijn account thuis in een zuster, staat niet in de lijst
+Gebruikers van die sub-tenant — zijn rol staat op zijn account, onder de zuster. Zie ADR-042.
+
 ### Het auditlog wordt beschermd door een trigger, niet door een aparte databaserol
 Oude gebeurtenissen kunnen alleen via de bewaartermijnfunctie worden verwijderd, en een gewone `DELETE`
 of `UPDATE` wordt geweigerd. Maar de applicatie en die functie delen één databaserol, die eigenaar is

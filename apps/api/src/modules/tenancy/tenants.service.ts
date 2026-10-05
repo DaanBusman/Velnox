@@ -25,6 +25,13 @@ export interface TenantSummary {
   name: string;
   slug: string;
   kind: 'MSP_ROOT' | 'CUSTOMER';
+  /** MSP for the MSP organisation; MAIN or SUB for a customer (Phase 5C). */
+  level: 'MSP' | 'MAIN' | 'SUB';
+  /** The main tenant of a sub-tenant. */
+  parentTenantId: string | null;
+  parentTenantName: string | null;
+  /** Active sub-tenants of a main tenant. */
+  subTenantCount: number;
   status: TenantStatus;
   /** The stricter-of-two policy is resolved at sign-in; this is the tenant's own. */
   mfaPolicy: MfaPolicy;
@@ -38,7 +45,16 @@ export interface TenantSummary {
 export interface TenantInput {
   name: string;
   mfaPolicy?: MfaPolicy;
+  /** Create it as a sub-tenant of this main tenant; absent creates a main tenant. */
+  parentTenantId?: string;
 }
+
+const DESCRIBE_INCLUDE = {
+  _count: {
+    select: { users: true, sites: true, subTenants: { where: { deletedAt: null } } },
+  },
+  parentTenant: { select: { name: true } },
+} as const;
 
 @Injectable()
 export class TenantsService {
@@ -50,9 +66,7 @@ export class TenantsService {
   async list(): Promise<TenantSummary[]> {
     const tenants = await this.prisma.client.tenant.findMany({
       where: { deletedAt: null },
-      include: {
-        _count: { select: { users: true, sites: true } },
-      },
+      include: DESCRIBE_INCLUDE,
       // The MSP organisation first, then customers alphabetically. Sorting by
       // name alone would file the MSP itself somewhere in the middle of its own
       // customer list.
@@ -65,7 +79,7 @@ export class TenantsService {
   async get(id: string): Promise<TenantSummary> {
     const tenant = await this.prisma.client.tenant.findFirst({
       where: { id, deletedAt: null },
-      include: { _count: { select: { users: true, sites: true } } },
+      include: DESCRIBE_INCLUDE,
     });
 
     // Out of scope and not existing are the same 404 on purpose: a different
@@ -96,14 +110,35 @@ export class TenantsService {
     const name = input.name.trim();
     const slug = await this.freeSlug(name);
 
+    /*
+     * A sub-tenant belongs to an active customer main tenant — not the MSP, not
+     * another sub-tenant. The database says the same (two levels, fixed at
+     * creation); this gives the reason in words.
+     */
+    if (input.parentTenantId) {
+      const parent = await this.prisma.client.tenant.findFirst({
+        where: { id: input.parentTenantId, deletedAt: null },
+        select: { kind: true, status: true, parentTenantId: true },
+      });
+      if (
+        !parent ||
+        parent.kind !== 'CUSTOMER' ||
+        parent.parentTenantId !== null ||
+        parent.status !== 'ACTIVE'
+      ) {
+        throw new VelnoxError(ERROR_CODES.tenantParentInvalid, { status: 400 });
+      }
+    }
+
     const tenant = await this.prisma.client.tenant.create({
       data: {
         name,
         slug,
         kind: 'CUSTOMER',
+        parentTenantId: input.parentTenantId ?? null,
         settings: input.mfaPolicy ? { mfaPolicy: input.mfaPolicy } : {},
       },
-      include: { _count: { select: { users: true, sites: true } } },
+      include: DESCRIBE_INCLUDE,
     });
 
     await this.audit.success(AUDIT_ACTIONS.tenantCreated, {
@@ -114,7 +149,7 @@ export class TenantsService {
       resourceType: 'tenant',
       resourceId: tenant.id,
       resourceLabel: tenant.name,
-      metadata: { slug },
+      metadata: { slug, ...(input.parentTenantId ? { parentTenantId: input.parentTenantId } : {}) },
     });
 
     return this.describe(tenant);
@@ -155,6 +190,8 @@ export class TenantsService {
      * which does not involve a database prompt, which is exactly the class of
      * mistake the founding administrator rule exists to prevent.
      */
+    if (input.status && input.status !== 'ACTIVE') await this.assertNoActiveSubTenants(id);
+
     if (existing.kind === 'MSP_ROOT' && input.status && input.status !== 'ACTIVE') {
       throw new VelnoxError(ERROR_CODES.validation, {
         status: 409,
@@ -235,6 +272,8 @@ export class TenantsService {
       });
     }
 
+    await this.assertNoActiveSubTenants(id);
+
     const active = await this.prisma.client.user.count({
       where: { tenantId: id, status: 'ACTIVE', deletedAt: null },
     });
@@ -266,6 +305,22 @@ export class TenantsService {
   }
 
   /**
+   * A main tenant goes last: suspending or archiving it with sub-tenants still
+   * active would leave them reachable through a main tenant nobody can use.
+   */
+  private async assertNoActiveSubTenants(id: string): Promise<void> {
+    const subs = await this.prisma.client.tenant.count({
+      where: { parentTenantId: id, deletedAt: null, status: { not: 'ARCHIVED' } },
+    });
+    if (subs > 0) {
+      throw new VelnoxError(ERROR_CODES.tenantHasSubTenants, {
+        status: 409,
+        params: { count: subs },
+      });
+    }
+  }
+
+  /**
    * A slug nobody else is using.
    *
    * Read-then-write, so two simultaneous creations could still collide on the
@@ -286,14 +341,20 @@ export class TenantsService {
     status: TenantStatus;
     settings: unknown;
     auditRetentionDays: number | null;
+    parentTenantId: string | null;
+    parentTenant: { name: string } | null;
     createdAt: Date;
-    _count: { users: number; sites: number };
+    _count: { users: number; sites: number; subTenants: number };
   }): TenantSummary {
     return {
       id: tenant.id,
       name: tenant.name,
       slug: tenant.slug,
       kind: tenant.kind === 'MSP_ROOT' ? 'MSP_ROOT' : 'CUSTOMER',
+      level: tenant.kind === 'MSP_ROOT' ? 'MSP' : tenant.parentTenantId ? 'SUB' : 'MAIN',
+      parentTenantId: tenant.parentTenantId,
+      parentTenantName: tenant.parentTenant?.name ?? null,
+      subTenantCount: tenant._count.subTenants,
       status: tenant.status,
       mfaPolicy: readSettings(tenant.settings).mfaPolicy ?? 'OPTIONAL',
       auditRetentionDays: tenant.auditRetentionDays,

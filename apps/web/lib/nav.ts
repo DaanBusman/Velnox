@@ -38,6 +38,18 @@ export interface NavItem {
    * which is where a VM being built is shown.
    */
   alsoMatches?: string[];
+  /**
+   * Shown to a customer only when they reach more than one tenant — a main
+   * tenant with sub-tenants, or several sub-tenants (Phase 5C). MSP staff
+   * always see it. A list of one is not worth a menu entry.
+   */
+  needsSeveralTenants?: boolean;
+}
+
+/** Who is looking, for the entries that depend on more than permissions. */
+export interface NavViewer {
+  isMspRoot: boolean;
+  reachableTenants: number;
 }
 
 export interface NavGroup {
@@ -54,7 +66,13 @@ export const NAVIGATION: NavGroup[] = [
   {
     labelKey: null,
     items: [
-      { key: 'tenants', href: '/tenants', phase: null, requiresPermission: 'tenants.read' },
+      {
+        key: 'tenants',
+        href: '/tenants',
+        phase: null,
+        requiresPermission: 'tenants.read',
+        needsSeveralTenants: true,
+      },
       { key: 'sites', href: '/sites', phase: null, requiresPermission: 'sites.read' },
     ],
   },
@@ -133,9 +151,16 @@ export const NAVIGATION: NavGroup[] = [
 ];
 
 /** Whether this entry should appear for someone holding these permissions. */
-export function isNavItemVisible(item: NavItem, permissions: ReadonlySet<string>): boolean {
+export function isNavItemVisible(
+  item: NavItem,
+  permissions: ReadonlySet<string>,
+  viewer?: NavViewer,
+): boolean {
   if (item.requiresPermission && !permissions.has(item.requiresPermission)) return false;
   if (item.supersededBy && permissions.has(item.supersededBy)) return false;
+  if (item.needsSeveralTenants && viewer && !viewer.isMspRoot && viewer.reachableTenants < 2) {
+    return false;
+  }
   return true;
 }
 

@@ -206,6 +206,8 @@ export function describePrincipal(principal: Principal) {
     displayName: principal.user.displayName,
     tenantId: principal.user.tenantId,
     isMspRoot: principal.isMspRoot,
+    /** How many tenants this account reaches; a customer sees Tenants only when it is more than one. */
+    reachableTenants: principal.accessibleTenantIds.length,
     permissions: grantedPermissions(principal.grants),
     mfa: {
       enrolled: principal.user.mfaEnrolled,

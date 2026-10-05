@@ -52,6 +52,11 @@ export function TenantAdmin({
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
+  const [parentTenantId, setParentTenantId] = useState('');
+  const [asSubTenant, setAsSubTenant] = useState(false);
+  // Main tenants a sub-tenant can be created under: active customers that are
+  // not sub-tenants themselves.
+  const mains = tenants.filter((tenant) => tenant.level === 'MAIN' && tenant.status === 'ACTIVE');
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -65,6 +70,22 @@ export function TenantAdmin({
         tenant.name.toLowerCase().includes(needle) || tenant.slug.includes(needle),
     );
   }, [tenants, search]);
+
+  /*
+   * Each main tenant followed by its sub-tenants, the MSP first. A sub-tenant
+   * whose main tenant this viewer cannot see stands on its own.
+   */
+  const visibleIds = new Set(visible.map((tenant) => tenant.id));
+  const ordered = useMemo(() => {
+    const out: TenantSummary[] = [];
+    const subsOf = (id: string) => visible.filter((tenant) => tenant.parentTenantId === id);
+    for (const tenant of visible) {
+      if (tenant.level === 'SUB' && visibleIds.has(tenant.parentTenantId ?? '')) continue;
+      out.push(tenant, ...subsOf(tenant.id));
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   async function run(key: string, action: () => Promise<{ ok: boolean; error?: ApiFailure }>) {
     setPending(key);
@@ -83,9 +104,16 @@ export function TenantAdmin({
 
   async function create(event: FormEvent) {
     event.preventDefault();
-    const ok = await run('create', () => apiPost('/tenants', { name }));
+    const ok = await run('create', () =>
+      apiPost('/tenants', {
+        name,
+        ...(asSubTenant && parentTenantId ? { parentTenantId } : {}),
+      }),
+    );
     if (ok) {
       setName('');
+      setAsSubTenant(false);
+      setParentTenantId('');
       setCreating(false);
     }
   }
@@ -98,7 +126,9 @@ export function TenantAdmin({
         title={t('tenants.title')}
         description={t('tenants.subtitle')}
         actions={
-          canManage && (
+          // Only the MSP creates tenants; the API refuses anyone else.
+          canManage &&
+          viewerIsMsp && (
             <Button variant={creating ? 'secondary' : 'primary'} onClick={() => setCreating(!creating)}>
               {creating ? t('common.cancel') : t('tenants.add')}
             </Button>
@@ -121,6 +151,53 @@ export function TenantAdmin({
                 />
               )}
             </Field>
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-medium text-ink-muted">{t('tenants.levelLabel')}</legend>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="radio"
+                  name="level"
+                  checked={!asSubTenant}
+                  onChange={() => setAsSubTenant(false)}
+                />
+                {t('tenants.levelMain')}
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="radio"
+                  name="level"
+                  checked={asSubTenant}
+                  disabled={mains.length === 0}
+                  onChange={() => {
+                    setAsSubTenant(true);
+                    if (!parentTenantId && mains[0]) setParentTenantId(mains[0].id);
+                  }}
+                />
+                {t('tenants.levelSub')}
+              </label>
+              {mains.length === 0 && (
+                <p className="text-xs text-ink-muted">{t('tenants.noMains')}</p>
+              )}
+              {asSubTenant && (
+                <Field label={t('tenants.parentLabel')} hint={t('tenants.parentHint')}>
+                  {(props) => (
+                    <select
+                      {...props}
+                      value={parentTenantId}
+                      required
+                      onChange={(event) => setParentTenantId(event.target.value)}
+                      className="h-9 w-full max-w-sm rounded border border-line bg-surface px-2.5 text-sm text-ink"
+                    >
+                      {mains.map((main) => (
+                        <option key={main.id} value={main.id}>
+                          {main.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+              )}
+            </fieldset>
             <Button type="submit" pending={pending === 'create'}>
               {t('tenants.add')}
             </Button>
@@ -168,16 +245,32 @@ export function TenantAdmin({
                 </tr>
               </thead>
               <tbody>
-                {visible.map((tenant) => {
+                {ordered.map((tenant) => {
                   const isOpen = expanded === tenant.id;
+                  const nested = tenant.level === 'SUB' && visibleIds.has(tenant.parentTenantId ?? '');
                   const isMsp = tenant.kind === 'MSP_ROOT';
                   const isOwn = tenant.id === currentTenantId;
 
                   return (
                     <Fragment key={tenant.id}>
                       <tr className="border-b border-line/70 align-middle hover:bg-surface-2/50">
-                        <td className="px-4 py-2.5">
+                        <td className={nested ? 'py-2.5 pl-9 pr-4' : 'px-4 py-2.5'}>
+                          {nested && (
+                            <span aria-hidden className="mr-1.5 text-ink-muted">
+                              ↳
+                            </span>
+                          )}
                           <span className="font-medium text-ink">{tenant.name}</span>
+                          {tenant.level === 'SUB' && (
+                            <span className="ml-2 rounded border border-line bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+                              {t('tenants.subOf', { name: tenant.parentTenantName ?? '—' })}
+                            </span>
+                          )}
+                          {tenant.level === 'MAIN' && tenant.subTenantCount > 0 && (
+                            <span className="ml-2 rounded border border-line bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+                              {t('tenants.subCount', { count: tenant.subTenantCount })}
+                            </span>
+                          )}
                           {isMsp && (
                             <span className="ml-2 rounded border border-line bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
                               {t('tenants.mspOrganisation')}

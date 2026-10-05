@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAVIGATION, activeNavHref, findNavItem } from './nav';
+import { NAVIGATION, activeNavHref, findNavItem, isNavItemVisible } from './nav';
 
 const items = NAVIGATION.flatMap((group) => group.items);
 
@@ -31,5 +31,19 @@ describe('the navigation', () => {
   it('has one entry for updates and major upgrades', () => {
     expect(items.some((item) => item.key === 'majorUpgrades')).toBe(false);
     expect(findNavItem('/major-upgrades')?.key).toBe('updates');
+  });
+});
+
+describe('Tenants in the sidebar (Phase 5C)', () => {
+  const tenants = items.find((item) => item.key === 'tenants')!;
+  const held = new Set(['tenants.read']);
+
+  it('is shown to MSP staff', () => {
+    expect(isNavItemVisible(tenants, held, { isMspRoot: true, reachableTenants: 1 })).toBe(true);
+  });
+
+  it('is shown to a customer who reaches several tenants, and not to one who reaches one', () => {
+    expect(isNavItemVisible(tenants, held, { isMspRoot: false, reachableTenants: 3 })).toBe(true);
+    expect(isNavItemVisible(tenants, held, { isMspRoot: false, reachableTenants: 1 })).toBe(false);
   });
 });

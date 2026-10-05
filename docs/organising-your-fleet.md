@@ -53,7 +53,31 @@ stricter of the installation's and its tenant's**. A customer whose contract dem
 to `Required for everyone` without changing anything for anyone else, and the installation-wide
 setting can never be loosened by a tenant.
 
-Open the tenant's **Details** and change **Second factor**.
+Open the tenant's **Details**, change **Two-factor authentication**, and **Save**.
+
+### Main tenants and sub-tenants
+
+A customer tenant is a **main tenant**, or a **sub-tenant** of one main tenant — for a customer with
+several companies or branches, say a holding with a Dutch and a Belgian company. Choose it under
+**Kind** when you add the tenant: *Main tenant* is the default; *Sub-tenant* asks which main tenant
+it belongs to. The choice is fixed once the tenant exists.
+
+- **Roles held in a main tenant apply in its sub-tenants.** A Tenant Administrator of the holding
+  manages the holding and both companies, without separate grants.
+- **A role held in a sub-tenant stays there.** It reaches neither the main tenant nor the other
+  sub-tenants.
+- **Someone can be a member of several sub-tenants** of the same main tenant without being a member
+  of the main tenant: give their account a role in each (see *Scope a permission* below). Never in
+  another customer's tenants.
+- **Two levels only.** A sub-tenant has no sub-tenants of its own, and the MSP organisation is
+  nobody's main tenant.
+- **Only the MSP creates tenants**, of either kind.
+- A customer sees **Tenants** in the sidebar only when they reach more than one tenant — the
+  administrators of a main tenant with sub-tenants, or someone in several sub-tenants.
+- **Archive the sub-tenants first.** A main tenant with active sub-tenants cannot be suspended or
+  archived.
+
+The list shows each main tenant with its sub-tenants under it.
 
 ---
 
@@ -119,9 +143,10 @@ which customer it reaches.
   `roles.manage` covering that same customer. This is the rule that stops delegation from being a
   way to widen access: an administrator given one customer can hand that customer out and nothing
   more.
-- **A customer's account stays inside its own tenant.** Granting someone in Contoso a scope in
-  Northwind is refused. Only accounts in the MSP organisation may hold a grant pointing at somebody
-  else's tenant — that is what managing other people's infrastructure means.
+- **A customer's account stays inside its own customer.** Granting someone in Contoso a scope in
+  Northwind is refused. Within one customer it may reach the other tenants of the same family — the
+  main tenant and its sub-tenants. Only accounts in the MSP organisation may hold a grant pointing at
+  somebody else's tenant — that is what managing other people's infrastructure means.
 - **"Every tenant" needs a home in the MSP organisation.** The database refuses it for anyone else,
   and the option is not offered.
 

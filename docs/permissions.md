@@ -45,8 +45,9 @@ that cluster alone.
 **`GLOBAL` is only assignable to members of the MSP root tenant** — your own organisation. A
 customer's administrator cannot hold a global grant, no matter which role they are given.
 
-Until multi-tenancy lands in phase 3 there is one tenant, so in practice every grant today is global
-and the scopes below it have nothing to point at yet.
+**A grant at `TENANT` on a main tenant also covers its sub-tenants** (Phase 5C). A grant on a
+sub-tenant covers that sub-tenant alone. See *Main tenants and sub-tenants* in
+[Organising your fleet](organising-your-fleet.md).
 
 ---
 

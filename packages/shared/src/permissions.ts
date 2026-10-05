@@ -425,3 +425,27 @@ export const systemRole = (key: SystemRoleKey): SystemRoleDefinition => {
 
 /** The role the setup wizard grants to the first administrator, at GLOBAL scope. */
 export const FIRST_ADMINISTRATOR_ROLE: SystemRoleKey = 'msp_super_administrator';
+
+/**
+ * Grants as they apply once main tenants pass theirs to their sub-tenants
+ * (Phase 5C).
+ *
+ * A role held in a main tenant applies in each of its sub-tenants: every grant
+ * at TENANT scope on a main tenant is repeated for each sub-tenant. Nothing
+ * else flows — not a grant on a sub-tenant (it does not reach its main tenant
+ * or its siblings), not a SITE or CLUSTER grant, not GLOBAL, which needs no
+ * help. Pure, so `isAllowed` stays the single decision and stays testable.
+ */
+export function withSubTenantGrants(
+  grants: readonly Grant[],
+  subTenantsOf: ReadonlyMap<string, readonly string[]>,
+): Grant[] {
+  const out: Grant[] = [...grants];
+  for (const grant of grants) {
+    if (grant.scopeType !== 'TENANT' || !grant.scopeId) continue;
+    for (const sub of subTenantsOf.get(grant.scopeId) ?? []) {
+      out.push({ permission: grant.permission, scopeType: 'TENANT', scopeId: sub });
+    }
+  }
+  return out;
+}

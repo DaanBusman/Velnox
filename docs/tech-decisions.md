@@ -1247,6 +1247,37 @@ written back once and is removed by the next read; provisioning removes the VMs 
 
 ---
 
+## ADR-042 — Main tenants and sub-tenants: grants widened once, at sign-in
+
+**Decision:** A customer tenant is a main tenant or a sub-tenant of one main tenant
+(`tenants.parent_tenant_id`), two levels under the MSP, chosen at creation and never changed — a
+trigger refuses deeper nesting, the MSP as a parent, and any later change. Only the MSP creates
+tenants. When a principal is resolved, every grant at TENANT scope on a main tenant is repeated for
+each of its sub-tenants (`withSubTenantGrants`), and those sub-tenants join the tenants the principal
+reaches. Nothing else changes: `isAllowed`, the tenancy filter, every list and every check see
+ordinary grants and an ordinary list of tenants. A grant on a sub-tenant reaches nothing else. A
+customer's account may be granted roles in any tenant of its own family — the main tenant and its
+sub-tenants — which is how someone is a member of several sub-tenants of one customer without being
+a member of the main tenant, and never of another customer's. The audit log reads every tenant
+where the reader holds `audit.read`, so a main tenant's administrators read its sub-tenants' too.
+A customer sees Tenants in the sidebar only when it reaches more than one.
+
+**Why widen grants rather than teach the checks about levels.** Every check in the product is
+`isAllowed` over a list of grants and every query is filtered by a list of tenants — both
+deliberately dumb, and tested exhaustively. Widening the inputs once keeps them that way; teaching
+each of them about parents would put the hierarchy in a hundred places, and the one that was
+forgotten would be the leak.
+
+**Why fixed at creation.** Moving a tenant under another main tenant would silently hand every
+administrator of the new main tenant its infrastructure, and take it from the old. That is a
+decision worth a new tenant and an explicit migration, not a field in a form.
+
+**What it does not do yet.** An Autoconfig template offered to a main tenant is not offered to its
+sub-tenants: tick them too. A member of a sub-tenant whose home is a sibling is not listed under the
+sibling's Users. Both are in the known gaps.
+
+---
+
 ## Version targets
 
 | Component | Version |

@@ -14,6 +14,8 @@ export interface SessionUser {
   displayName: string;
   tenantId: string;
   isMspRoot: boolean;
+  /** How many tenants this account reaches. */
+  reachableTenants: number;
   permissions: string[];
   mfa: {
     enrolled: boolean;
@@ -33,6 +35,11 @@ export interface TenantSummary {
   name: string;
   slug: string;
   kind: 'MSP_ROOT' | 'CUSTOMER';
+  /** MSP organisation, or a customer's main tenant or sub-tenant (Phase 5C). */
+  level: 'MSP' | 'MAIN' | 'SUB';
+  parentTenantId: string | null;
+  parentTenantName: string | null;
+  subTenantCount: number;
   status: 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
   mfaPolicy: 'OPTIONAL' | 'REQUIRED_FOR_PRIVILEGED' | 'REQUIRED';
   /** Days its audit events are kept; null is for ever. */

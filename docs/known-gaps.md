@@ -224,6 +224,12 @@ A job whose worker dies is failed with `job.worker_lost` once its lease lapses a
 notices — measured at 33–34 seconds. Until then it still reads **Running**. See ADR-035 for why the
 lease is not shorter.
 
+### Sub-tenants: two edges
+An Autoconfig template offered to chosen customers is offered to exactly the tenants ticked: ticking
+a main tenant does not offer it to its sub-tenants. And someone who is a member of a sub-tenant
+through a role, with their account at home in a sibling, does not appear in that sub-tenant's Users
+list — their role is on their account, under the sibling. See ADR-042.
+
 ### The audit log is protected by a trigger, not by a separate database role
 Old events can only be removed through the retention function, and an ordinary `DELETE` or `UPDATE`
 is refused. But the application and that function share one database role, which owns the table and

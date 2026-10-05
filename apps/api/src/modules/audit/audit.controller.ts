@@ -2,7 +2,7 @@ import { Controller, Get, Query, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { ERROR_CODES, PERMISSIONS, VelnoxError } from '@velnox/shared';
+import { ERROR_CODES, PERMISSIONS, VelnoxError, isAllowed } from '@velnox/shared';
 import { zodQuery } from '../../common/zod-validation.pipe';
 import { RequirePermissionSomewhere } from '../../common/auth.guard';
 import { AuditQueryService } from './audit-query.service';
@@ -37,13 +37,20 @@ export class AuditController {
   ) {}
 
   /**
-   * Whose trail a request reads. From the principal, never the query string,
-   * except that MSP staff — who may read every tenant's — can narrow it to one.
+   * Whose trail a request reads. From the principal, never the query string:
+   * MSP staff read every tenant's and may narrow it to one; anyone else reads
+   * the tenants they hold `audit.read` in — their own, and since Phase 5C the
+   * sub-tenants of a main tenant they hold it in — and may narrow to one of
+   * those. Asking for any other tenant reads what they may read.
    */
-  private scope(request: Request, requested: string | undefined): string | null {
+  private scope(request: Request, requested: string | undefined): string[] | null {
     const principal = request.velnoxPrincipal;
     if (!principal) throw new VelnoxError(ERROR_CODES.authSessionExpired, { status: 401 });
-    return principal.isMspRoot ? (requested ?? null) : principal.user.tenantId;
+    if (principal.isMspRoot) return requested ? [requested] : null;
+    const readable = principal.accessibleTenantIds.filter((tenantId) =>
+      isAllowed(principal.grants, PERMISSIONS.auditRead, { tenantId }),
+    );
+    return requested && readable.includes(requested) ? [requested] : readable;
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.auditRead)
@@ -68,7 +75,7 @@ export class AuditController {
       ...(query.result ? { result: query.result } : {}),
       ...(query.from ? { from: query.from } : {}),
       ...(query.to ? { to: query.to } : {}),
-      tenantId: this.scope(request, query.tenantId),
+      tenantIds: this.scope(request, query.tenantId),
     });
   }
 
@@ -85,14 +92,14 @@ export class AuditController {
     @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
-    const tenantId = this.scope(request, query.tenantId);
+    const tenantIds = this.scope(request, query.tenantId);
     const principal = request.velnoxPrincipal!;
     const filters = {
       ...(query.action ? { action: query.action } : {}),
       ...(query.result ? { result: query.result } : {}),
       ...(query.from ? { from: query.from } : {}),
       ...(query.to ? { to: query.to } : {}),
-      tenantId,
+      tenantIds,
     };
 
     await this.writer.success(AUDIT_ACTIONS.auditExported, {
@@ -101,7 +108,8 @@ export class AuditController {
       actorLabel: principal.user.email,
       tenantId: principal.user.tenantId,
       resourceType: 'audit_trail',
-      metadata: { format: query.format, ...filters },
+      // The tenant asked for, as before, and the tenants actually read.
+      metadata: { format: query.format, ...filters, tenantId: query.tenantId ?? null },
     });
 
     const stamp = new Date().toISOString().slice(0, 10);

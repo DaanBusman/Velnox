@@ -36,7 +36,8 @@ export interface AuditQuery {
   cursor?: string;
   action?: string;
   result?: AuditResult;
-  tenantId?: string | null;
+  /** The tenants to read; null reads every tenant (MSP staff only). */
+  tenantIds?: string[] | null;
   /** Inclusive lower and exclusive upper bound on `at`, ISO 8601. */
   from?: string;
   to?: string;
@@ -79,7 +80,7 @@ export class AuditQueryService {
     return {
       ...(query.action ? { action: { startsWith: query.action } } : {}),
       ...(query.result ? { result: query.result } : {}),
-      ...(query.tenantId ? { tenantId: query.tenantId } : {}),
+      ...(query.tenantIds ? { tenantId: { in: query.tenantIds } } : {}),
       ...(query.from || query.to
         ? {
             at: {

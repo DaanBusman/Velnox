@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import clsx from 'clsx';
-import { NAVIGATION, activeNavHref, isNavItemVisible } from '@/lib/nav';
+import { NAVIGATION, activeNavHref, isNavItemVisible, type NavViewer } from '@/lib/nav';
 import { NAV_ICONS } from '@/components/ui/icons';
 import { ProductMark } from '@/components/ui/product-mark';
 import { ServerManagement } from '@/components/server-management';
@@ -14,16 +14,20 @@ export function Sidebar({
   product,
   version,
   permissions,
+  viewer,
 }: {
   product: string;
   version: string;
   permissions: string[];
+  viewer: NavViewer;
 }) {
   const t = useTranslations();
   const pathname = usePathname();
   const held = useMemo(() => new Set(permissions), [permissions]);
   const activeHref = activeNavHref(
-    NAVIGATION.flatMap((group) => group.items.filter((item) => isNavItemVisible(item, held))),
+    NAVIGATION.flatMap((group) =>
+      group.items.filter((item) => isNavItemVisible(item, held, viewer)),
+    ),
     pathname,
   );
 
@@ -48,7 +52,7 @@ export function Sidebar({
 
       <div className="flex-1 overflow-y-auto px-2 py-2.5">
         {NAVIGATION.map((group, index) => {
-          const items = group.items.filter((item) => isNavItemVisible(item, held));
+          const items = group.items.filter((item) => isNavItemVisible(item, held, viewer));
           // A group whose every entry is gated away leaves no empty heading.
           if (items.length === 0) return null;
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { checkPasswordStrength, hashPassword } from '@velnox/crypto';
 import { ERROR_CODES, PERMISSIONS, VelnoxError, canResetMfa, type ScopeType } from '@velnox/shared';
+import { withSystemScope } from '@velnox/db';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -316,7 +317,7 @@ export class UserAdminService {
       if (!tenant) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
 
       assertAllowedAt(actor, PERMISSIONS.rolesManage, { tenantId: scopeId });
-      assertScopeStaysInTenant(scopeId, target);
+      await this.assertScopeStaysInFamily(scopeId, target);
       return { scopeType: 'TENANT', scopeId };
     }
 
@@ -331,7 +332,7 @@ export class UserAdminService {
         tenantId: site.tenantId,
         siteId: site.id,
       });
-      assertScopeStaysInTenant(site.tenantId, target);
+      await this.assertScopeStaysInFamily(site.tenantId, target);
       return { scopeType: 'SITE', scopeId };
     }
 
@@ -346,6 +347,38 @@ export class UserAdminService {
       status: 409,
       message: 'Grants at cluster scope arrive with the Proxmox inventory in Phase 4',
       params: { scopeType: input.scopeType, phase: 4 },
+    });
+  }
+
+  /**
+   * A grant reaches the account's own tenant, or another tenant of the same
+   * family — a main tenant and its sub-tenants (Phase 5C). That is what makes
+   * someone a member of several sub-tenants of one customer without being a
+   * member of the main tenant, and never of two customers. MSP accounts are not
+   * bound by it.
+   */
+  private async assertScopeStaysInFamily(
+    scopeTenantId: string,
+    target: { tenantId: string; isMspRoot: boolean },
+  ): Promise<void> {
+    if (target.isMspRoot || scopeTenantId === target.tenantId) return;
+    const tenants = await withSystemScope(
+      'a family is read across its tenants',
+      async () =>
+        await this.prisma.client.tenant.findMany({
+          where: { id: { in: [scopeTenantId, target.tenantId] } },
+          select: { id: true, parentTenantId: true },
+        }),
+    );
+    const family = (id: string) => {
+      const tenant = tenants.find((row) => row.id === id);
+      return tenant ? (tenant.parentTenantId ?? tenant.id) : null;
+    };
+    const home = family(target.tenantId);
+    if (home && home === family(scopeTenantId)) return;
+    throw new VelnoxError(ERROR_CODES.authzTenantForbidden, {
+      status: 409,
+      params: { reason: 'scope_outside_home_tenant' },
     });
   }
 
@@ -543,14 +576,3 @@ export class UserAdminService {
  * customer's own account it is the isolation boundary being crossed by
  * administration rather than by code, and it is refused.
  */
-function assertScopeStaysInTenant(
-  scopeTenantId: string,
-  target: { tenantId: string; isMspRoot: boolean },
-): void {
-  if (target.isMspRoot || scopeTenantId === target.tenantId) return;
-
-  throw new VelnoxError(ERROR_CODES.authzTenantForbidden, {
-    status: 409,
-    params: { reason: 'scope_outside_home_tenant' },
-  });
-}

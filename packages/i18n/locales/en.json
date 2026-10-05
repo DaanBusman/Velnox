@@ -395,6 +395,10 @@
     "mail": {
       "not_configured": "Outgoing mail is not set up, so nobody can be notified. An administrator sets it up under Notifications → Outgoing mail.",
       "send_failed": "The mail was not sent: {reason}"
+    },
+    "tenant": {
+      "parent_invalid": "A sub-tenant belongs to an active customer main tenant — not the MSP organisation and not another sub-tenant.",
+      "has_sub_tenants": "{count, plural, one {This main tenant still has # active sub-tenant.} other {This main tenant still has # active sub-tenants.}} Archive those first."
     }
   },
   "inventory": {
@@ -989,7 +993,15 @@
     "saved": "Saved.",
     "auditRetention": "Keep the audit log",
     "auditRetentionForever": "For ever",
-    "auditRetentionYears": "{years, plural, one {# year} other {# years}}"
+    "auditRetentionYears": "{years, plural, one {# year} other {# years}}",
+    "levelLabel": "Kind",
+    "levelMain": "Main tenant",
+    "levelSub": "Sub-tenant",
+    "parentLabel": "Belongs to main tenant",
+    "parentHint": "Roles held in the main tenant apply in its sub-tenants. This cannot be changed later.",
+    "noMains": "There is no main tenant yet to create a sub-tenant under.",
+    "subOf": "Sub-tenant of {name}",
+    "subCount": "{count, plural, one {# sub-tenant} other {# sub-tenants}}"
   },
   "tls": {
     "acmeAccount": "ACME account",

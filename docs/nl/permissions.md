@@ -49,8 +49,9 @@ op `CLUSTER` dekt alleen dat cluster.
 **`GLOBAL` is alleen toekenbaar aan leden van de MSP-hoofdtenant** — je eigen organisatie. De
 beheerder van een klant kan geen globale toekenning hebben, welke rol hij ook krijgt.
 
-Tot multi-tenancy in fase 3 landt is er één tenant, dus in de praktijk is elke toekenning vandaag
-globaal en hebben de bereiken daaronder nog niets om naar te wijzen.
+**Een toekenning op `TENANT` op een hoofd-tenant dekt ook zijn sub-tenants** (fase 5C). Een
+toekenning op een sub-tenant dekt alleen die sub-tenant. Zie *Hoofd-tenants en sub-tenants* in
+[Je omgeving inrichten](organising-your-fleet.md).
 
 ---
 

@@ -112,6 +112,11 @@ export const ERROR_CODES = {
   /** A tenant named on a template that does not exist, or is archived. */
   autoconfigUnknownTenant: 'autoconfig.unknown_tenant',
 
+  /** A sub-tenant's main tenant must be an active customer main tenant. */
+  tenantParentInvalid: 'tenant.parent_invalid',
+  /** A main tenant with active sub-tenants cannot be archived or suspended first. */
+  tenantHasSubTenants: 'tenant.has_sub_tenants',
+
   provisioningHostnameInvalid: 'provisioning.hostname_invalid',
   /** The storage cannot hold the VM's disks, or the installer. */
   provisioningStorageUnsuitable: 'provisioning.storage_unsuitable',

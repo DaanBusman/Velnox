@@ -56,7 +56,31 @@ Elke tenant heeft een eigen beleid voor de tweede factor, en het geldende beleid
 kan op `Verplicht voor iedereen` gezet worden zonder dat er voor iemand anders iets verandert, en het
 installatiebrede beleid kan door een tenant nooit versoepeld worden.
 
-Open **Details** van de tenant en wijzig **Tweede factor**.
+Open **Details** van de tenant, wijzig **Tweefactorauthenticatie** en kies **Opslaan**.
+
+### Hoofd-tenants en sub-tenants
+
+Een klanttenant is een **hoofd-tenant**, of een **sub-tenant** van één hoofd-tenant — voor een klant
+met meerdere bedrijven of vestigingen, bijvoorbeeld een holding met een Nederlands en een Belgisch
+bedrijf. Kies het onder **Soort** bij het toevoegen van de tenant: *Hoofd-tenant* is de standaard;
+*Sub-tenant* vraagt bij welke hoofd-tenant hij hoort. De keuze ligt vast zodra de tenant bestaat.
+
+- **Rollen in een hoofd-tenant gelden ook in zijn sub-tenants.** Een Tenant Administrator van de
+  holding beheert de holding en beide bedrijven, zonder aparte toekenningen.
+- **Een rol in een sub-tenant blijft daar.** Hij bereikt de hoofd-tenant niet en de andere
+  sub-tenants ook niet.
+- **Iemand kan lid zijn van meerdere sub-tenants** van dezelfde hoofd-tenant zonder lid te zijn van de
+  hoofd-tenant: geef het account in elk ervan een rol (zie *Een recht beperken* hieronder). Nooit in de
+  tenants van een andere klant.
+- **Maximaal twee niveaus.** Een sub-tenant heeft geen eigen sub-tenants, en de MSP-organisatie is
+  van niemand de hoofd-tenant.
+- **Alleen de MSP maakt tenants aan**, van beide soorten.
+- Een klant ziet **Tenants** in de zijbalk alleen als hij meer dan één tenant bereikt — de beheerders
+  van een hoofd-tenant met sub-tenants, of iemand in meerdere sub-tenants.
+- **Archiveer eerst de sub-tenants.** Een hoofd-tenant met actieve sub-tenants kan niet worden
+  opgeschort of gearchiveerd.
+
+De lijst toont elke hoofd-tenant met zijn sub-tenants eronder.
 
 ---
 
@@ -123,9 +147,11 @@ bereikt.
   `roles.manage` dat diezelfde klant dekt. Deze regel voorkomt dat delegeren een manier wordt om
   toegang te verbreden: een beheerder die één klant heeft gekregen kan die klant uitdelen en verder
   niets.
-- **Het account van een klant blijft binnen de eigen tenant.** Iemand bij Contoso een bereik bij
-  Northwind geven wordt geweigerd. Alleen accounts in de MSP-organisatie mogen een recht hebben dat
-  naar de tenant van iemand anders wijst — dat is wat het beheren van andermans infrastructuur ís.
+- **Het account van een klant blijft binnen de eigen klant.** Iemand bij Contoso een bereik bij
+  Northwind geven wordt geweigerd. Binnen één klant mag het de andere tenants van dezelfde familie
+  bereiken — de hoofd-tenant en zijn sub-tenants. Alleen accounts in de MSP-organisatie mogen een recht
+  hebben dat naar de tenant van iemand anders wijst — dat is wat het beheren van andermans
+  infrastructuur ís.
 - **"Alle tenants" vereist een thuis in de MSP-organisatie.** De database weigert het voor ieder
   ander, en de optie wordt niet aangeboden.
 

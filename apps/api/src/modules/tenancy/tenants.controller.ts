@@ -24,6 +24,8 @@ const mfaPolicy = z.enum(['OPTIONAL', 'REQUIRED_FOR_PRIVILEGED', 'REQUIRED']);
 const createSchema = z.object({
   name: z.string().trim().min(2).max(120),
   mfaPolicy: mfaPolicy.optional(),
+  /** Make it a sub-tenant of this main tenant. Absent makes a main tenant. */
+  parentTenantId: z.string().uuid().optional(),
 });
 
 const updateSchema = z

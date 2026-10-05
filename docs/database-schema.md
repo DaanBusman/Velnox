@@ -73,7 +73,7 @@ erDiagram
 | name | text | |
 | slug | citext unique | used in URLs |
 | kind | enum | `MSP_ROOT` \| `CUSTOMER` |
-| parent_tenant_id | uuid null | reserved for future sub-tenants; v1 is one level under root |
+| parent_tenant_id | uuid null | the main tenant of a sub-tenant; null for a main tenant and the MSP root. Two levels under the MSP, fixed at creation (`tenants_hierarchy_two_levels`, migration `20261006090000_tenant_hierarchy`) |
 | status | enum | `ACTIVE` \| `SUSPENDED` \| `ARCHIVED` |
 | settings | jsonb | branding, defaults, notification targets |
 | audit_retention_days | int null | how long its audit events are kept; null is for ever, at least 365 (`tenants_audit_retention_at_least_a_year`); the MSP root's also covers events of no tenant |

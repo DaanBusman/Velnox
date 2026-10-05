@@ -77,7 +77,7 @@ erDiagram
 | name | text | |
 | slug | citext uniek | gebruikt in URL's |
 | kind | enum | `MSP_ROOT` \| `CUSTOMER` |
-| parent_tenant_id | uuid null | gereserveerd voor toekomstige subtenants; v1 kent één niveau onder de root |
+| parent_tenant_id | uuid null | de hoofd-tenant van een sub-tenant; null voor een hoofd-tenant en de MSP-root. Twee niveaus onder de MSP, vast bij het aanmaken (`tenants_hierarchy_two_levels`, migratie `20261006090000_tenant_hierarchy`) |
 | status | enum | `ACTIVE` \| `SUSPENDED` \| `ARCHIVED` |
 | settings | jsonb | huisstijl, standaarden, notificatiebestemmingen |
 | audit_retention_days | int null | hoe lang de auditgebeurtenissen bewaard blijven; null is voor altijd, minstens 365 (`tenants_audit_retention_at_least_a_year`); die van de MSP-root geldt ook voor gebeurtenissen zonder tenant |

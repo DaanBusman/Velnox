@@ -1318,6 +1318,38 @@ verwijderd; de uitrol verwijdert de VM's die hij vernietigt zelf.
 
 ---
 
+## ADR-042 — Hoofd-tenants en sub-tenants: rechten één keer verbreed, bij het aanmelden
+
+**Besluit:** Een klanttenant is een hoofd-tenant of een sub-tenant van één hoofd-tenant
+(`tenants.parent_tenant_id`), twee niveaus onder de MSP, gekozen bij het aanmaken en nooit gewijzigd —
+een trigger weigert dieper nesten, de MSP als ouder en elke latere wijziging. Alleen de MSP maakt
+tenants aan. Bij het bepalen van een principal wordt elke toekenning op TENANT-niveau op een
+hoofd-tenant herhaald voor elk van zijn sub-tenants (`withSubTenantGrants`), en die sub-tenants
+komen bij de tenants die de principal bereikt. Verder verandert er niets: `isAllowed`, het
+tenantfilter, elke lijst en elke controle zien gewone toekenningen en een gewone lijst tenants. Een
+toekenning op een sub-tenant bereikt verder niets. Het account van een klant mag rollen krijgen in
+elke tenant van de eigen familie — de hoofd-tenant en zijn sub-tenants — en zo is iemand lid van
+meerdere sub-tenants van één klant zonder lid te zijn van de hoofd-tenant, en nooit van die van een
+andere klant. Het auditlog leest elke tenant waarin de lezer `audit.read` heeft, dus de beheerders
+van een hoofd-tenant lezen ook dat van zijn sub-tenants. Een klant ziet Tenants in de zijbalk alleen
+als hij meer dan één tenant bereikt.
+
+**Waarom rechten verbreden in plaats van de controles over niveaus te leren.** Elke controle in het
+product is `isAllowed` over een lijst toekenningen en elke query wordt gefilterd op een lijst tenants
+— allebei bewust dom, en uitputtend getest. De invoer één keer verbreden houdt ze zo; elk ervan over
+ouders leren zou de hiërarchie op honderd plekken zetten, en de vergeten plek zou het lek zijn.
+
+**Waarom vast bij het aanmaken.** Een tenant onder een andere hoofd-tenant verplaatsen zou elke
+beheerder van de nieuwe hoofd-tenant stilzwijgend zijn infrastructuur geven, en die van de oude
+afnemen. Dat is een besluit dat een nieuwe tenant en een expliciete migratie waard is, geen veld in
+een formulier.
+
+**Wat het nog niet doet.** Een Autoconfig-template dat aan een hoofd-tenant wordt aangeboden, wordt
+niet aan zijn sub-tenants aangeboden: vink die ook aan. Een lid van een sub-tenant met een zuster als
+thuistenant staat niet in de Gebruikers van die zuster. Beide staan bij de bekende hiaten.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |
