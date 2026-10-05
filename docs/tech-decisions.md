@@ -1221,6 +1221,32 @@ years" promises not to do).
 
 ---
 
+## ADR-041 — Live status follows whoever is watching
+
+**Decision:** Besides the scheduled full inventory, a cluster's light status is read while someone
+is looking at it, as often as their screen refreshes. The web server sends the viewer's refresh
+interval with its inventory reads (`x-velnox-refresh`); the API records each cluster in the response
+in a Redis sorted set (`velnox:live:watch`, members `<cluster>:<seconds>`, scored by when the watch
+lapses — three refreshes, at least ten seconds); the worker reads the set every second and reads
+`/cluster/resources` for each watched cluster as often as its most eager viewer asks, one read in
+flight per cluster, backing off thirty seconds after a failure. It writes node state and usage, guest
+state and usage, guests added and removed — by discovery's own rule for the same call — and storage
+use. Nothing else.
+
+**Why this shape.** The owner asked for the inventory to keep pace with the screens, down to two
+seconds. Running full discovery that often would be dozens of calls per node every two seconds; one
+call per cluster is what the screens actually show. Driving it from viewers rather than a schedule
+means a cluster nobody looks at costs nothing, and only clusters in a response the viewer was allowed
+to read can be watched. The API still never talks to Proxmox (ADR-009): it writes to Redis, the
+worker reads Proxmox.
+
+**Cost.** Proxmox refreshes these figures itself about every ten seconds, so faster reads mostly
+confirm the same numbers — the price of the screens never being behind Proxmox. A worker keeps one
+client per watched cluster for five minutes. A guest destroyed while a read is in flight can be
+written back once and is removed by the next read; provisioning removes the VMs it destroys itself.
+
+---
+
 ## Version targets
 
 | Component | Version |

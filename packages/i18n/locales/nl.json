@@ -115,7 +115,7 @@
     "createExplainer": "De credential wordt versleuteld opgeslagen en daarna getoetst tegen het certificaat dat je hebt bevestigd. Werkt hij niet, dan wordt er niets toegevoegd.",
     "daemon": "Daemon",
     "detailDescription": "Beheerd voor {tenant}.",
-    "discoveryInterval": "Uitlezen elke",
+    "discoveryInterval": "Volledige inventarisatie elke",
     "discoveryOff": "Alleen op verzoek",
     "endpoint": "Eindpunt",
     "everyMinutes": "{minutes} minuten",
@@ -221,7 +221,10 @@
       "passphrase": "Wachtwoordzin, als de sleutel er een heeft",
       "save": "Opslaan en de bevestigde nodes vertrouwen",
       "unconfirmedNodes": "Met een node zonder bevestigde host key wordt geen verbinding gemaakt. Stel SSH opnieuw in om hem te bevestigen."
-    }
+    },
+    "liveStatus": "Live status",
+    "liveEvery": "Elke {seconds} s zolang je kijkt — status, CPU, geheugen, opslaggebruik",
+    "liveOff": "Uit: je schermen verversen niet automatisch (Instellingen)"
   },
   "common": {
     "cancel": "Annuleren",

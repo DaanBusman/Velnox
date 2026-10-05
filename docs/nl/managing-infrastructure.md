@@ -159,13 +159,24 @@ is maar niet aangekoppeld toont streepjes, geen lege schijf.
 
 ## Uitlezen: wanneer het gebeurt, en wat er gebeurt als iets kapot is
 
-Elk cluster wordt volgens schema uitgelezen, standaard elke 30 minuten. Wijzig dat per cluster op de
-clusterpagina, of zet het op **Alleen op verzoek** om het schema voor één klant uit te zetten zonder
-iemand anders te raken.
+Er zijn twee soorten uitlezen, en ze verschillen:
 
-Er is geen knop die een ronde op verzoek start. De clusterschermen lezen zichzelf elke twee seconden
-opnieuw en **Refresh** doet dat direct, maar beide lezen wat Velnox al heeft — ze benaderen Proxmox
-niet. Een ronde buiten het schema betekent het interval voor dat cluster verkorten.
+- **De volledige inventarisatie** — versies, repositories, updates, Ceph, interfaces, bestanden op
+  opslag — wordt volgens schema uitgelezen, standaard elke 30 minuten. Wijzig dat per cluster op de
+  clusterpagina, of zet het op **Alleen op verzoek** om het schema voor één klant uit te zetten zonder
+  iemand anders te raken.
+- **Live status** — of elke node en gast draait, CPU, geheugen, uptime, opslaggebruik, en gasten die
+  zijn aangemaakt of verwijderd — wordt uitgelezen zolang iemand kijkt. Elk scherm met de inventaris
+  van een cluster vraagt erom op het verversinterval van de kijker (**Instellingen → Schermen
+  automatisch verversen**, standaard twee seconden); de kijker die het vaakst ververst bepaalt het
+  tempo, en ongeveer tien seconden nadat de laatste kijker weg is stopt het. Het is één aanroep naar
+  Proxmox (`/cluster/resources`) per cluster. Staat verversen uit, dan vraagt een scherm er niet om.
+  De clusterpagina toont onder *Live status* wat er geldt.
+
+Proxmox rekent die cijfers zelf ongeveer elke tien seconden opnieuw uit, dus tussen twee van zijn
+updates tonen meerdere uitlezingen achter elkaar dezelfde getallen. Er is geen knop die een volledige
+inventarisatie op verzoek start; een ronde buiten het schema betekent het interval voor dat cluster
+verkorten.
 
 Drie gedragingen zijn het weten waard, want die maken de inventarisatie betrouwbaar:
 

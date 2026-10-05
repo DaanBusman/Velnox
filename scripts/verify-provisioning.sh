@@ -185,7 +185,7 @@ cleanup() {
   for user in "${CREATED_USERS[@]}"; do
     psql_at "UPDATE users SET status = 'DISABLED' WHERE id = '${user}';" >/dev/null 2>&1
   done
-  [[ -n "$CREATED_TENANT" ]] && psql_at "UPDATE tenants SET status = 'ARCHIVED' WHERE id = '${CREATED_TENANT}';" >/dev/null 2>&1
+  [[ -n "$CREATED_TENANT" ]] && psql_at "UPDATE tenants SET status = 'ARCHIVED', deleted_at = now() WHERE id = '${CREATED_TENANT}';" >/dev/null 2>&1
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -286,7 +286,7 @@ else
 fi
 unset VELNOX_ADMIN_PASSWORD
 
-TENANT_ID="$(call GET /api/v1/tenants | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const t=JSON.parse(r).tenants.find(x=>x.kind!=="MSP_ROOT");process.stdout.write(t?t.id:"")})')"
+TENANT_ID="$(call GET /api/v1/tenants | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const t=JSON.parse(r).tenants.find(x=>x.kind!=="MSP_ROOT"&&x.status==="ACTIVE");process.stdout.write(t?t.id:"")})')"
 [[ -n "$TENANT_ID" ]] || { red "no customer tenant to build in"; exit 1; }
 OTHER="$(call POST /api/v1/tenants "$(R="$RUN" body '{ name: "Other " + e.R }')")"
 CREATED_TENANT="$(printf '%s' "$OTHER" | json id)"
@@ -602,7 +602,17 @@ check "cancel: the job is cancelled" CANCELLED "$(wait_for "$C_JOB" 120 CANCELLE
 check "cancel: the record says so" CANCELLED "$(call GET "/api/v1/provisionings/${C_ID}" | json state)"
 C_VMID="$(call GET "/api/v1/provisionings/${C_ID}" | json vmid)"
 contains "cancel: its VM was destroyed" "vm ${C_VMID} destroyed (purge=1)" "$(FIXLOG)"
-lacks "cancel: a cancelled build is not listed under Virtual Machines" "cancel-${RUN}" "$(page_text en /virtual-machines)"
+# The VM is removed from the inventory when it is destroyed; a live read that
+# began just before may write it back once, and the next read — one refresh
+# later — removes it again. So: gone within a few seconds.
+CANCEL_SEEN=""
+for attempt in $(seq 1 8); do
+  CANCEL_SEEN="$(page_text en /virtual-machines)"
+  [[ "$CANCEL_SEEN" != *"cancel-${RUN}"* ]] && break
+  sleep 1
+done
+info "cancelled VM gone from the list after ${attempt} read(s)"
+lacks "cancel: a cancelled build is not listed under Virtual Machines" "cancel-${RUN}" "$CANCEL_SEEN"
 
 # ---------------------------------------------------------------------------
 

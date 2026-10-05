@@ -175,3 +175,19 @@ export interface PingJobStatusResponse {
  */
 export const AUDIT_RETENTION_CHOICES = [365, 730, 1095, 1825, 2555, 3650] as const;
 export type AuditRetentionDays = (typeof AUDIT_RETENTION_CHOICES)[number];
+
+/**
+ * Live status: what a screen being watched asks the worker for.
+ *
+ * The API records, per cluster, which refresh intervals viewers are using, as
+ * members `<clusterId>:<seconds>` of one sorted set scored by when the watch
+ * lapses. The worker reads the set every second and reads a cluster's light
+ * status from Proxmox as often as its most eager viewer refreshes.
+ */
+export const LIVE_WATCH_KEY = 'velnox:live:watch';
+/** The header the web server sends with the viewer's refresh interval, in seconds. */
+export const LIVE_REFRESH_HEADER = 'x-velnox-refresh';
+/** The intervals a viewer can choose, besides off. */
+export const LIVE_REFRESH_CHOICES = [2, 5, 10, 30, 60] as const;
+/** How long a watch outlives the last read: a few missed refreshes, never under this. */
+export const LIVE_WATCH_MIN_TTL_SECONDS = 10;

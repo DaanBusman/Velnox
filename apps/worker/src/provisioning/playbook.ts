@@ -808,6 +808,13 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
                   `destroying VM ${vmid}: ${error instanceof Error ? error.message : 'unknown'}`,
                 );
             }
+            // Gone from Proxmox, so gone from the inventory now — not at the
+            // next read, which live status may have made after it was created.
+            if (!problems.some((problem) => problem.startsWith(`destroying VM ${vmid}`))) {
+              await prisma.workload
+                .deleteMany({ where: { clusterId: r.clusterId!, vmid } })
+                .catch(() => undefined);
+            }
           }
           for (const volid of [answerVolid, incompleteUpload]) {
             if (!volid) continue;

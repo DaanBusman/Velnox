@@ -112,7 +112,7 @@ cleanup() {
     psql_at "UPDATE users SET status = 'DISABLED' WHERE id = '${user}';" >/dev/null 2>&1
   done
   for tenant in "${CREATED_TENANTS[@]}"; do
-    psql_at "UPDATE tenants SET status = 'ARCHIVED', audit_retention_days = NULL WHERE id = '${tenant}';" >/dev/null 2>&1
+    psql_at "UPDATE tenants SET status = 'ARCHIVED', deleted_at = now(), audit_retention_days = NULL WHERE id = '${tenant}';" >/dev/null 2>&1
   done
   rm -rf "$WORK"
 }

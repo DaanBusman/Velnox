@@ -1,5 +1,7 @@
 import type { VelnoxPrismaClient } from '@velnox/db';
+import { mapWorkload } from '@velnox/proxmox';
 import type {
+  ClusterResource,
   DiscoveredCluster,
   DiscoveredContents,
   DiscoveredNode,
@@ -270,7 +272,7 @@ export async function persistDiscovery(
   };
 }
 
-async function upsertWorkload(
+export async function upsertWorkload(
   prisma: VelnoxPrismaClient,
   cluster: { id: string; tenantId: string },
   workload: DiscoveredWorkload,
@@ -357,4 +359,87 @@ export async function persistContents(
       },
     });
   }
+}
+
+/**
+ * Write a cluster's light status, read from `/cluster/resources` alone.
+ *
+ * What a screen being watched needs to be current: whether each node is up,
+ * its CPU, memory and uptime; each guest's state and usage; each storage's
+ * use. One call, so it can run every few seconds. Everything else — versions,
+ * repositories, updates, Ceph, interfaces, files — is discovery's, on its own
+ * schedule.
+ *
+ * Guests that appear are added and guests that are gone are removed, by the
+ * same rule discovery applies to the same call: a VM created or destroyed since
+ * the last discovery shows as such at once.
+ */
+export async function persistLive(
+  prisma: VelnoxPrismaClient,
+  cluster: { id: string; tenantId: string },
+  resources: ClusterResource[],
+  now: Date,
+): Promise<{ nodes: number; workloads: number; storages: number }> {
+  const nodes = await prisma.node.findMany({
+    where: { clusterId: cluster.id },
+    select: { id: true, name: true },
+  });
+  const nodeIdByName = new Map(nodes.map((node) => [node.name, node.id]));
+  let nodeCount = 0;
+  let storageCount = 0;
+  let workloadCount = 0;
+
+  const seen: number[] = [];
+  for (const resource of resources) {
+    if (resource.type === 'node' && resource.node && nodeIdByName.has(resource.node)) {
+      const online = resource.status === 'online';
+      await prisma.node.update({
+        where: { id: nodeIdByName.get(resource.node)! },
+        data: {
+          state: online ? 'ONLINE' : resource.status === 'offline' ? 'OFFLINE' : 'UNKNOWN',
+          ...(online
+            ? {
+                cpuUsage: typeof resource.cpu === 'number' ? resource.cpu : null,
+                memoryUsedBytes: big(typeof resource.mem === 'number' ? resource.mem : null),
+                memoryTotalBytes: big(typeof resource.maxmem === 'number' ? resource.maxmem : null),
+                uptimeSeconds: seconds(
+                  typeof resource.uptime === 'number' ? resource.uptime : null,
+                ),
+              }
+            : {}),
+        },
+      });
+      nodeCount += 1;
+    } else if (resource.type === 'storage' && resource.node && resource.storage) {
+      const nodeId = nodeIdByName.get(resource.node);
+      if (!nodeId) continue;
+      const total = typeof resource.maxdisk === 'number' ? resource.maxdisk : null;
+      const used = typeof resource.disk === 'number' ? resource.disk : null;
+      const result = await prisma.nodeStorage.updateMany({
+        where: { nodeId, name: resource.storage },
+        data: {
+          active: resource.status === 'available',
+          totalBytes: big(total),
+          usedBytes: big(used),
+          availableBytes: big(total !== null && used !== null ? Math.max(0, total - used) : null),
+        },
+      });
+      storageCount += result.count;
+    } else {
+      const workload = mapWorkload(resource);
+      if (!workload) continue;
+      await upsertWorkload(prisma, cluster, workload, nodeIdByName, now);
+      seen.push(workload.vmid);
+      workloadCount += 1;
+    }
+  }
+
+  // Discovery's rule, on the same list: an answer that names guests is the
+  // whole list of them.
+  if (seen.length > 0) {
+    await prisma.workload.deleteMany({ where: { clusterId: cluster.id, vmid: { notIn: seen } } });
+  }
+
+  await prisma.cluster.update({ where: { id: cluster.id }, data: { lastSeenAt: now } });
+  return { nodes: nodeCount, workloads: workloadCount, storages: storageCount };
 }

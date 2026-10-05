@@ -1,5 +1,6 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { LiveWatchInterceptor } from './live-watch.interceptor';
 import { z } from 'zod';
 import { PERMISSIONS } from '@velnox/shared';
 import { RequirePermissionSomewhere } from '../../common/auth.guard';
@@ -19,6 +20,7 @@ export class NodesController {
   constructor(private readonly inventory: InventoryReadService) {}
 
   @RequirePermissionSomewhere(PERMISSIONS.nodesRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get()
   @ApiOperation({ summary: 'List nodes' })
   async list(@Query(zodQuery(nodeListSchema)) query: z.infer<typeof nodeListSchema>) {
@@ -26,6 +28,7 @@ export class NodesController {
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.nodesRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get(':id')
   @ApiOperation({
     summary: 'One node, with its storage, network, guests and Ceph daemons',

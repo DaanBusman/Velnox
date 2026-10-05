@@ -180,6 +180,11 @@ export function ClusterDetail({
               ? t('clusters.discoveryOff')
               : t('clusters.everyMinutes', { minutes: cluster.discoveryIntervalMinutes })}
           </KeyValue>
+          <KeyValue label={t('clusters.liveStatus')}>
+            {refreshSeconds > 0
+              ? t('clusters.liveEvery', { seconds: refreshSeconds })
+              : t('clusters.liveOff')}
+          </KeyValue>
         </dl>
       </Card>
 

@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { LiveWatchInterceptor } from './live-watch.interceptor';
 import { z } from 'zod';
 import { PERMISSIONS } from '@velnox/shared';
 import { RequirePermissionSomewhere } from '../../common/auth.guard';
@@ -29,6 +30,7 @@ export class ResourcesController {
   ) {}
 
   @RequirePermissionSomewhere(PERMISSIONS.storageRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get('storage')
   @ApiOperation({ summary: 'Every storage on every node' })
   async storage(@Query(zodQuery(filterSchema)) query: z.infer<typeof filterSchema>) {

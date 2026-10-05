@@ -11,6 +11,8 @@ import type {
   TlsStatusResponse,
 } from '@velnox/shared';
 import { cookies } from 'next/headers';
+import { LIVE_REFRESH_HEADER } from '@velnox/shared';
+import { refreshSeconds } from '@/lib/preferences';
 import type {
   AlertRow,
   AuditEventView,
@@ -126,11 +128,17 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
 async function readAs<T>(
   path: string,
 ): Promise<{ ok: true; data: T } | { ok: false; code: string }> {
-  const cookieHeader = await forwardedCookies();
+  const [cookieHeader, refresh] = await Promise.all([forwardedCookies(), refreshSeconds()]);
 
   try {
     const response = await fetch(`${INTERNAL_API_URL}${path}`, {
-      headers: { accept: 'application/json', cookie: cookieHeader },
+      headers: {
+        accept: 'application/json',
+        cookie: cookieHeader,
+        // The viewer's refresh interval: the inventory reads use it to keep the
+        // clusters on this screen live for as long as it is being looked at.
+        ...(refresh > 0 ? { [LIVE_REFRESH_HEADER]: String(refresh) } : {}),
+      },
       cache: 'no-store',
       signal: AbortSignal.timeout(5_000),
     });

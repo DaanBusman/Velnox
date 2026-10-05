@@ -10,8 +10,10 @@ import {
   Post,
   Query,
   Req,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { LiveWatchInterceptor } from './live-watch.interceptor';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { PERMISSIONS, isFingerprint } from '@velnox/shared';
@@ -100,6 +102,7 @@ export class ClustersController {
   ) {}
 
   @RequirePermissionSomewhere(PERMISSIONS.clustersRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get()
   @ApiOperation({ summary: 'List clusters' })
   async list(@Query(zodQuery(listSchema)) query: z.infer<typeof listSchema>) {
@@ -139,6 +142,7 @@ export class ClustersController {
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.clustersRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get(':id')
   @ApiOperation({ summary: 'One cluster' })
   get(@Param('id', uuidParam) id: string) {

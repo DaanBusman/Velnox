@@ -114,7 +114,7 @@
     "createExplainer": "The credential is stored encrypted and then proved against the certificate you confirmed. If it does not work, nothing is added.",
     "daemon": "Daemon",
     "detailDescription": "Managed for {tenant}.",
-    "discoveryInterval": "Read every",
+    "discoveryInterval": "Full inventory every",
     "discoveryOff": "Only when asked",
     "endpoint": "Endpoint",
     "everyMinutes": "{minutes} minutes",
@@ -220,7 +220,10 @@
       "passphrase": "Passphrase, if the key has one",
       "save": "Save and trust the confirmed nodes",
       "unconfirmedNodes": "A node without a confirmed host key is not connected to. Set SSH up again to confirm it."
-    }
+    },
+    "liveStatus": "Live status",
+    "liveEvery": "Every {seconds} s while you look at it — state, CPU, memory, storage use",
+    "liveOff": "Off: your screens do not refresh automatically (Settings)"
   },
   "common": {
     "cancel": "Cancel",

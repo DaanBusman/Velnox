@@ -151,13 +151,23 @@ dashes, not an empty disk.
 
 ## Discovery: when it runs, and what it does when things are broken
 
-Every cluster is read on a schedule, every 30 minutes by default. Change it per cluster on the
-cluster's page, or set it to **Only when asked** to turn the schedule off for one customer without
-affecting anyone else.
+Two kinds of reading, and they are different:
 
-There is no button that starts a run on demand. The cluster screens re-read themselves every two
-seconds and **Refresh** re-reads them now, but both of those read what Velnox already holds — they
-do not reach Proxmox. A run outside the schedule means shortening the interval for that cluster.
+- **The full inventory** — versions, repositories, updates, Ceph, interfaces, files on storage — is
+  read on a schedule, every 30 minutes by default. Change it per cluster on the cluster's page, or
+  set it to **Only when asked** to turn the schedule off for one customer without affecting anyone
+  else.
+- **Live status** — whether each node and guest is up, CPU, memory, uptime, storage use, and guests
+  created or removed — is read while someone is looking. Every screen showing a cluster's inventory
+  asks for it at the viewer's own refresh interval (**Settings → Refresh screens automatically**,
+  two seconds by default); the most eager viewer of a cluster sets its pace, and about ten seconds
+  after the last viewer leaves it stops. It is one call to Proxmox (`/cluster/resources`) per
+  cluster. With refreshing switched off, a screen asks for none. The cluster page shows which
+  applies under *Live status*.
+
+Proxmox itself recalculates those figures about every ten seconds, so between two of its updates
+several reads in a row show the same numbers. There is no button that starts a full inventory on
+demand; a run outside the schedule means shortening the interval for that cluster.
 
 Three behaviours are worth knowing, because they are what makes the inventory trustworthy:
 

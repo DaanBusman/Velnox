@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { LiveWatchInterceptor } from './live-watch.interceptor';
 import { z } from 'zod';
 import { PERMISSIONS } from '@velnox/shared';
 import { RequirePermissionSomewhere } from '../../common/auth.guard';
@@ -27,6 +28,7 @@ export class WorkloadsController {
   constructor(private readonly inventory: InventoryReadService) {}
 
   @RequirePermissionSomewhere(PERMISSIONS.workloadsRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get('workloads')
   @ApiOperation({ summary: 'List virtual machines and containers' })
   async list(@Query(zodQuery(workloadListSchema)) query: z.infer<typeof workloadListSchema>) {
@@ -34,6 +36,7 @@ export class WorkloadsController {
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.workloadsRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get('virtual-machines')
   @ApiOperation({ summary: 'List virtual machines' })
   async virtualMachines(
@@ -43,6 +46,7 @@ export class WorkloadsController {
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.workloadsRead)
+  @UseInterceptors(LiveWatchInterceptor)
   @Get('containers')
   @ApiOperation({ summary: 'List containers' })
   async containers(@Query(zodQuery(workloadListSchema)) query: z.infer<typeof workloadListSchema>) {

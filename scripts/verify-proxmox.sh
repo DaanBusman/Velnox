@@ -397,6 +397,26 @@ AFTER="$(call GET "/api/v1/nodes?clusterId=${CLUSTER_ID}" | json nodes.0.id)"
 
 check "a second run keeps the same row ids" "$BEFORE" "$AFTER"
 
+# Live status: a screen being watched keeps its cluster current between
+# discovery runs. The web server sends the viewer's refresh interval; reading
+# the cluster with it is what a page refreshing every two seconds does.
+LIVE_RUNS="$(call GET "/api/v1/clusters/${CLUSTER_ID}/discovery-runs" | json runs.0.id)"
+LIVE_BEFORE="$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastSeenAt)"
+LIVE_AFTER="$LIVE_BEFORE"
+for _ in $(seq 1 10); do
+  curl --silent --insecure --cookie "$JAR" --header 'x-velnox-refresh: 2' --output /dev/null "${BASE}/api/v1/clusters/${CLUSTER_ID}"
+  sleep 1
+  LIVE_AFTER="$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastSeenAt)"
+  [[ "$LIVE_AFTER" != "$LIVE_BEFORE" ]] && break
+done
+check "live: a watched cluster is read again within seconds" yes "$([[ "$LIVE_AFTER" != "$LIVE_BEFORE" ]] && echo yes || echo no)"
+check "live: without a discovery run" "$LIVE_RUNS" "$(call GET "/api/v1/clusters/${CLUSTER_ID}/discovery-runs" | json runs.0.id)"
+contains "live: the watch is recorded with the viewer's interval" "${CLUSTER_ID}:2" "$(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T redis sh -c 'redis-cli --no-auth-warning ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} zrange velnox:live:watch 0 -1' 2>/dev/null)"
+sleep 12
+QUIET="$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastSeenAt)"
+sleep 4
+check "live: once nobody watches, it stops" "$QUIET" "$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastSeenAt)"
+
 docker rm -f "$FIXTURE_NAME" >/dev/null 2>&1
 call POST "/api/v1/clusters/${CLUSTER_ID}/discover" >/dev/null
 

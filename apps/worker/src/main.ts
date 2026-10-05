@@ -51,6 +51,7 @@ import { notifyProvisioned } from './provisioning/notify';
 import type { ProvisioningServices } from './provisioning/playbook';
 import { sweepProvisionings } from './provisioning/sweep';
 import { pruneAuditEvents } from './audit/retention';
+import { LIVE_TICK_MS, LivePoller } from './inventory/live';
 
 /**
  * Velnox worker.
@@ -251,6 +252,28 @@ async function bootstrap(): Promise<void> {
     { name: SCHEDULER_TICK_JOB },
   );
 
+  /*
+   * Live status, for the clusters someone is looking at right now — see
+   * LivePoller. Its own Redis connection: it reads every second, and a slow
+   * read must not hold up the heartbeat.
+   */
+  const liveRedis = new Redis({ ...redisConnection(config), maxRetriesPerRequest: 2 });
+  liveRedis.on('error', (error) => logger.debug({ err: error }, 'Live status Redis error'));
+  const livePoller = new LivePoller(inventoryContext, liveRedis);
+  let liveTicking = false;
+  const liveTimer = setInterval(() => {
+    if (liveTicking) return;
+    liveTicking = true;
+    livePoller
+      .tick()
+      .catch((error: unknown) =>
+        logger.debug({ err: rootRedactor.value(error) }, 'Live status tick failed'),
+      )
+      .finally(() => {
+        liveTicking = false;
+      });
+  }, LIVE_TICK_MS);
+
   // ------------------------------------------------------------------
   // Jobs
   // ------------------------------------------------------------------
@@ -400,6 +423,9 @@ async function bootstrap(): Promise<void> {
     // dist-upgrade must never be killed part-way through.
     clearInterval(reconcileTimer);
     clearInterval(sweepTimer);
+    clearInterval(liveTimer);
+    livePoller.close();
+    liveRedis.disconnect();
     await worker.close();
     await inventoryWorker.close();
     await jobsWorker.close();

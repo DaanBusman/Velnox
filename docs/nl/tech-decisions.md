@@ -1290,6 +1290,34 @@ zouden er dan nog zijn om te lezen, en dat is precies wat "N jaar bewaard" beloo
 
 ---
 
+## ADR-041 — Live status volgt wie er kijkt
+
+**Besluit:** Naast de geplande volledige inventarisatie wordt de lichte status van een cluster
+uitgelezen zolang iemand ernaar kijkt, zo vaak als diens scherm ververst. De webserver stuurt het
+verversinterval van de kijker mee met zijn inventarisaanvragen (`x-velnox-refresh`); de API legt elk
+cluster uit het antwoord vast in een gesorteerde Redis-set (`velnox:live:watch`, leden
+`<cluster>:<seconden>`, gescoord op wanneer het kijken verloopt — drie verversingen, minstens tien
+seconden); de worker leest de set elke seconde en leest `/cluster/resources` voor elk bekeken cluster
+zo vaak als de gretigste kijker vraagt, één uitlezing tegelijk per cluster, met dertig seconden pauze
+na een fout. Hij schrijft de status en het gebruik van nodes en gasten, toegevoegde en verwijderde
+gasten — volgens de eigen regel van de inventarisatie voor dezelfde aanroep — en opslaggebruik. Verder
+niets.
+
+**Waarom zo.** De eigenaar vroeg dat de inventaris de schermen bijhoudt, tot twee seconden. De
+volledige inventarisatie zo vaak draaien zou tientallen aanroepen per node per twee seconden zijn;
+één aanroep per cluster is wat de schermen echt tonen. Het laten afhangen van kijkers in plaats van
+een schema betekent dat een cluster waar niemand naar kijkt niets kost, en dat alleen clusters uit
+een antwoord dat de kijker mocht lezen bekeken kunnen worden. De API praat nog steeds niet met
+Proxmox (ADR-009): hij schrijft naar Redis, de worker leest Proxmox.
+
+**Kosten.** Proxmox ververst deze cijfers zelf ongeveer elke tien seconden, dus snellere uitlezingen
+bevestigen meestal dezelfde getallen — de prijs van schermen die nooit achterlopen op Proxmox. Een
+worker houdt per bekeken cluster vijf minuten een client aan. Een gast die wordt vernietigd terwijl
+een uitlezing loopt, kan één keer worden teruggeschreven en wordt bij de volgende uitlezing
+verwijderd; de uitrol verwijdert de VM's die hij vernietigt zelf.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |
