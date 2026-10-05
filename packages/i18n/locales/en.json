@@ -406,7 +406,7 @@
     "memory": "Memory",
     "name": "Name",
     "networkSearch": "Interface, address or node…",
-    "networksPageDescription": "Network interfaces across every node you can see.",
+    "networksPageDescription": "The network interfaces of one cluster, across its nodes.",
     "networksSubtitle": "Network interfaces as each node reports them.",
     "noNetworks": "No interfaces to show.",
     "noNodes": "No nodes to show. Add a cluster first.",
@@ -431,7 +431,7 @@
     "storageActive": "Active",
     "storageDisabled": "Disabled",
     "storageInactive": "Not active",
-    "storagePageDescription": "Storage across every node you can see.",
+    "storagePageDescription": "The storage of one cluster, across its nodes.",
     "storageSearch": "Name, type or node…",
     "storageSubtitle": "Storage as each node reports it. A figure Velnox does not have is a dash, never a zero.",
     "subscription": "Subscription: {status}",
@@ -464,7 +464,17 @@
       "invalid": "Invalid",
       "expired": "Expired",
       "suspended": "Suspended"
-    }
+    },
+    "filter": "Filter",
+    "filterAll": "All",
+    "filterBy": "Filter by {column}",
+    "filterClear": "Clear filters",
+    "filterShown": "{shown} of {total} shown",
+    "scopeTenant": "Tenant: {tenant}",
+    "scopeCluster": "Cluster",
+    "scopePickTenantTitle": "Choose a tenant first",
+    "scopePickTenantBody": "Networks and storage are shown per cluster, within one tenant — the MSP organisation too. Choose the tenant here or in the top bar.",
+    "scopeNoClusters": "{tenant} has no clusters yet."
   },
   "job": {
     "allStatuses": "All statuses",

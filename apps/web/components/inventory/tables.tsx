@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import clsx from 'clsx';
 import { useMemo, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import type { ProvisioningSummary } from '@velnox/shared';
@@ -430,6 +431,127 @@ export function WorkloadTable({
   );
 }
 
+/**
+ * Filters per column, for the storage and network tables.
+ *
+ * A text field where the values are free (a name, an address), a list of the
+ * values present where they are few (a type, a node, a state). Every filter
+ * narrows; an empty one does nothing. Kept here rather than as a generic table,
+ * because each table's cells render their own way and only the matching is
+ * shared.
+ */
+type ColumnFilter<Row> = {
+  key: string;
+  label: string;
+  /** What the filter compares against, as text. */
+  value: (row: Row) => string;
+  kind: 'text' | 'select';
+};
+
+function useColumnFilters<Row>(rows: Row[], columns: ColumnFilter<Row>[]) {
+  const [filters, setFilters] = useState<Record<string, string>>({});
+
+  const options = useMemo(() => {
+    const out: Record<string, string[]> = {};
+    for (const column of columns) {
+      if (column.kind !== 'select') continue;
+      out[column.key] = [...new Set(rows.map(column.value).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b),
+      );
+    }
+    return out;
+    // `columns` is rebuilt every render with the same shape; the rows decide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  const visible = useMemo(
+    () =>
+      rows.filter((row) =>
+        columns.every((column) => {
+          const wanted = (filters[column.key] ?? '').trim().toLowerCase();
+          if (!wanted) return true;
+          const value = column.value(row).toLowerCase();
+          return column.kind === 'select' ? value === wanted : value.includes(wanted);
+        }),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, filters],
+  );
+
+  const active = Object.values(filters).some((value) => value.trim() !== '');
+  const set = (key: string, value: string) =>
+    setFilters((current) => ({ ...current, [key]: value }));
+  const clear = () => setFilters({});
+
+  return { filters, options, visible, active, set, clear };
+}
+
+function FilterCell<Row>({
+  column,
+  state,
+  className,
+}: {
+  column: ColumnFilter<Row> | null;
+  state: ReturnType<typeof useColumnFilters<Row>>;
+  className?: string;
+}) {
+  const t = useTranslations();
+  if (!column) return <th className={className} />;
+  const label = t('inventory.filterBy', { column: column.label });
+  return (
+    <th className={clsx('px-3 pb-2 font-normal', className)}>
+      {column.kind === 'text' ? (
+        <input
+          type="search"
+          aria-label={label}
+          placeholder={t('inventory.filter')}
+          value={state.filters[column.key] ?? ''}
+          onChange={(event) => state.set(column.key, event.target.value)}
+          className="h-7 w-full min-w-20 rounded border border-line bg-surface px-2 text-xs text-ink focus:border-accent focus:outline-none"
+        />
+      ) : (
+        <select
+          aria-label={label}
+          value={state.filters[column.key] ?? ''}
+          onChange={(event) => state.set(column.key, event.target.value)}
+          className="h-7 w-full min-w-20 rounded border border-line bg-surface px-1.5 text-xs text-ink focus:border-accent focus:outline-none"
+        >
+          <option value="">{t('inventory.filterAll')}</option>
+          {(state.options[column.key] ?? []).map((option) => (
+            <option key={option} value={option.toLowerCase()}>
+              {option}
+            </option>
+          ))}
+        </select>
+      )}
+    </th>
+  );
+}
+
+function FilterSummary({
+  shown,
+  total,
+  active,
+  onClear,
+}: {
+  shown: number;
+  total: number;
+  active: boolean;
+  onClear: () => void;
+}) {
+  const t = useTranslations();
+  return (
+    <div className="flex items-center gap-3 border-b border-line px-4 py-2 text-xs text-ink-muted">
+      <span>{t('inventory.filterShown', { shown, total })}</span>
+      {active && (
+        <button type="button" onClick={onClear} className="text-accent underline">
+          {t('inventory.filterClear')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function StorageTable({
   storages,
   showNode = true,
@@ -438,102 +560,135 @@ export function StorageTable({
   showNode?: boolean;
 }) {
   const t = useTranslations();
-  const [search, setSearch] = useState('');
 
-  const visible = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    if (!needle) return storages;
-    return storages.filter(
-      (storage) =>
-        storage.name.toLowerCase().includes(needle) ||
-        storage.type.toLowerCase().includes(needle) ||
-        (storage.nodeName ?? '').toLowerCase().includes(needle),
-    );
-  }, [storages, search]);
+  const stateText = (storage: StorageRow) =>
+    storage.active
+      ? t('inventory.storageActive')
+      : storage.enabled
+        ? t('inventory.storageInactive')
+        : t('inventory.storageDisabled');
+
+  const columns: (ColumnFilter<StorageRow> | null)[] = [
+    { key: 'name', label: t('inventory.name'), kind: 'text', value: (row) => row.name },
+    { key: 'type', label: t('inventory.type'), kind: 'select', value: (row) => row.type },
+    ...(showNode
+      ? [
+          {
+            key: 'node',
+            label: t('inventory.node'),
+            kind: 'select' as const,
+            value: (row: StorageRow) => row.nodeName ?? '',
+          },
+        ]
+      : []),
+    { key: 'state', label: t('inventory.state'), kind: 'select', value: stateText },
+    null,
+    {
+      key: 'content',
+      label: t('inventory.content'),
+      kind: 'text',
+      value: (row) => row.content.join(', '),
+    },
+  ];
+  const filter = useColumnFilters(
+    storages,
+    columns.filter((column): column is ColumnFilter<StorageRow> => column !== null),
+  );
+  const visible = filter.visible;
 
   return (
     <Card title={t('nav.storage')} description={t('inventory.storageSubtitle')} bodyClassName="">
-      <Search value={search} onChange={setSearch} placeholder={t('inventory.storageSearch')} />
-
-      {visible.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-ink-muted">{t('inventory.noStorage')}</p>
-      ) : (
-        <div className="max-h-[65vh] overflow-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead className={THEAD}>
-              <tr>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  {t('inventory.name')}
-                </th>
+      <FilterSummary
+        shown={visible.length}
+        total={storages.length}
+        active={filter.active}
+        onClear={filter.clear}
+      />
+      <div className="max-h-[65vh] overflow-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className={THEAD}>
+            <tr>
+              <th scope="col" className="px-4 py-2 font-medium">
+                {t('inventory.name')}
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                {t('inventory.type')}
+              </th>
+              {showNode && (
                 <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.type')}
+                  {t('inventory.node')}
                 </th>
-                {showNode && (
-                  <th scope="col" className="px-3 py-2 font-medium">
-                    {t('inventory.node')}
-                  </th>
-                )}
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.state')}
-                </th>
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.usage')}
-                </th>
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.content')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((storage, index) => (
-                <tr
-                  key={storage.id ?? `${storage.nodeId}-${storage.name}-${index}`}
-                  className={ROW}
-                >
-                  <td className="px-4 py-2.5 font-medium text-ink">{storage.name}</td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">{storage.type}</td>
-                  {showNode && (
-                    <td className="px-3 py-2.5 text-ink-muted">
-                      {storage.nodeId ? (
-                        <Link
-                          href={`/nodes/${storage.nodeId}`}
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {storage.nodeName}
-                        </Link>
-                      ) : (
-                        <Absent />
-                      )}
-                    </td>
-                  )}
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <StatusBadge
-                        tone={storage.active ? 'ok' : storage.enabled ? 'warn' : 'neutral'}
-                      >
-                        {storage.active
-                          ? t('inventory.storageActive')
-                          : storage.enabled
-                            ? t('inventory.storageInactive')
-                            : t('inventory.storageDisabled')}
-                      </StatusBadge>
-                      {storage.shared && (
-                        <StatusBadge tone="neutral">{t('inventory.shared')}</StatusBadge>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <UsageBar used={storage.usedBytes} total={storage.totalBytes} />
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-ink-muted">
-                    {storage.content.join(', ') || <Absent />}
-                  </td>
-                </tr>
+              )}
+              <th scope="col" className="px-3 py-2 font-medium">
+                {t('inventory.state')}
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                {t('inventory.usage')}
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                {t('inventory.content')}
+              </th>
+            </tr>
+            <tr>
+              {columns.map((column, index) => (
+                <FilterCell
+                  key={column?.key ?? `none-${index}`}
+                  column={column}
+                  state={filter}
+                  className={index === 0 ? 'pl-4' : undefined}
+                />
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-6 text-sm text-ink-muted">
+                  {t('inventory.noStorage')}
+                </td>
+              </tr>
+            )}
+            {visible.map((storage, index) => (
+              <tr key={storage.id ?? `${storage.nodeId}-${storage.name}-${index}`} className={ROW}>
+                <td className="px-4 py-2.5 font-medium text-ink">{storage.name}</td>
+                <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">{storage.type}</td>
+                {showNode && (
+                  <td className="px-3 py-2.5 text-ink-muted">
+                    {storage.nodeId ? (
+                      <Link
+                        href={`/nodes/${storage.nodeId}`}
+                        className="underline-offset-2 hover:underline"
+                      >
+                        {storage.nodeName}
+                      </Link>
+                    ) : (
+                      <Absent />
+                    )}
+                  </td>
+                )}
+                <td className="px-3 py-2.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusBadge
+                      tone={storage.active ? 'ok' : storage.enabled ? 'warn' : 'neutral'}
+                    >
+                      {stateText(storage)}
+                    </StatusBadge>
+                    {storage.shared && (
+                      <StatusBadge tone="neutral">{t('inventory.shared')}</StatusBadge>
+                    )}
+                  </div>
+                </td>
+                <td className="px-3 py-2.5">
+                  <UsageBar used={storage.usedBytes} total={storage.totalBytes} />
+                </td>
+                <td className="px-3 py-2.5 text-xs text-ink-muted">
+                  {storage.content.join(', ') || <Absent />}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }
@@ -546,94 +701,117 @@ export function InterfaceTable({
   showNode?: boolean;
 }) {
   const t = useTranslations();
-  const [search, setSearch] = useState('');
 
-  const visible = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    if (!needle) return interfaces;
-    return interfaces.filter(
-      (entry) =>
-        entry.name.toLowerCase().includes(needle) ||
-        (entry.cidr ?? '').includes(needle) ||
-        (entry.nodeName ?? '').toLowerCase().includes(needle),
-    );
-  }, [interfaces, search]);
+  const ports = (entry: InterfaceRow) => [...entry.bridgePorts, ...entry.slaves].join(', ');
+  const columns: ColumnFilter<InterfaceRow>[] = [
+    { key: 'name', label: t('inventory.interface'), kind: 'text', value: (row) => row.name },
+    { key: 'type', label: t('inventory.type'), kind: 'select', value: (row) => row.type },
+    ...(showNode
+      ? [
+          {
+            key: 'node',
+            label: t('inventory.node'),
+            kind: 'select' as const,
+            value: (row: InterfaceRow) => row.nodeName ?? '',
+          },
+        ]
+      : []),
+    { key: 'address', label: t('inventory.address'), kind: 'text', value: (row) => row.cidr ?? '' },
+    {
+      key: 'gateway',
+      label: t('inventory.gateway'),
+      kind: 'text',
+      value: (row) => row.gateway ?? '',
+    },
+    { key: 'ports', label: t('inventory.ports'), kind: 'text', value: ports },
+    {
+      key: 'state',
+      label: t('inventory.state'),
+      kind: 'select',
+      value: (row) => (row.active ? t('inventory.up') : t('inventory.down')),
+    },
+  ];
+  const filter = useColumnFilters(interfaces, columns);
+  const visible = filter.visible;
 
   return (
     <Card title={t('nav.networks')} description={t('inventory.networksSubtitle')} bodyClassName="">
-      <Search value={search} onChange={setSearch} placeholder={t('inventory.networkSearch')} />
-
-      {visible.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-ink-muted">{t('inventory.noNetworks')}</p>
-      ) : (
-        <div className="max-h-[65vh] overflow-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead className={THEAD}>
-              <tr>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  {t('inventory.interface')}
+      <FilterSummary
+        shown={visible.length}
+        total={interfaces.length}
+        active={filter.active}
+        onClear={filter.clear}
+      />
+      <div className="max-h-[65vh] overflow-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className={THEAD}>
+            <tr>
+              {columns.map((column, index) => (
+                <th
+                  key={column.key}
+                  scope="col"
+                  className={clsx('py-2 font-medium', index === 0 ? 'px-4' : 'px-3')}
+                >
+                  {column.label}
                 </th>
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.type')}
-                </th>
-                {showNode && (
-                  <th scope="col" className="px-3 py-2 font-medium">
-                    {t('inventory.node')}
-                  </th>
-                )}
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.address')}
-                </th>
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.gateway')}
-                </th>
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.ports')}
-                </th>
-                <th scope="col" className="px-3 py-2 font-medium">
-                  {t('inventory.state')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((entry, index) => (
-                <tr key={entry.id ?? `${entry.nodeId}-${entry.name}-${index}`} className={ROW}>
-                  <td className="px-4 py-2.5 font-medium text-ink">{entry.name}</td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">{entry.type}</td>
-                  {showNode && (
-                    <td className="px-3 py-2.5 text-ink-muted">
-                      {entry.nodeId ? (
-                        <Link
-                          href={`/nodes/${entry.nodeId}`}
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {entry.nodeName}
-                        </Link>
-                      ) : (
-                        <Absent />
-                      )}
-                    </td>
-                  )}
-                  <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">
-                    {entry.cidr ?? <Absent />}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">
-                    {entry.gateway ?? <Absent />}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">
-                    {[...entry.bridgePorts, ...entry.slaves].join(', ') || <Absent />}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <StatusBadge tone={entry.active ? 'ok' : 'neutral'}>
-                      {entry.active ? t('inventory.up') : t('inventory.down')}
-                    </StatusBadge>
-                  </td>
-                </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </tr>
+            <tr>
+              {columns.map((column, index) => (
+                <FilterCell
+                  key={column.key}
+                  column={column}
+                  state={filter}
+                  className={index === 0 ? 'pl-4' : undefined}
+                />
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-6 text-sm text-ink-muted">
+                  {t('inventory.noNetworks')}
+                </td>
+              </tr>
+            )}
+            {visible.map((entry, index) => (
+              <tr key={entry.id ?? `${entry.nodeId}-${entry.name}-${index}`} className={ROW}>
+                <td className="px-4 py-2.5 font-medium text-ink">{entry.name}</td>
+                <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">{entry.type}</td>
+                {showNode && (
+                  <td className="px-3 py-2.5 text-ink-muted">
+                    {entry.nodeId ? (
+                      <Link
+                        href={`/nodes/${entry.nodeId}`}
+                        className="underline-offset-2 hover:underline"
+                      >
+                        {entry.nodeName}
+                      </Link>
+                    ) : (
+                      <Absent />
+                    )}
+                  </td>
+                )}
+                <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">
+                  {entry.cidr ?? <Absent />}
+                </td>
+                <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">
+                  {entry.gateway ?? <Absent />}
+                </td>
+                <td className="px-3 py-2.5 font-mono text-xs text-ink-muted">
+                  {ports(entry) || <Absent />}
+                </td>
+                <td className="px-3 py-2.5">
+                  <StatusBadge tone={entry.active ? 'ok' : 'neutral'}>
+                    {entry.active ? t('inventory.up') : t('inventory.down')}
+                  </StatusBadge>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }

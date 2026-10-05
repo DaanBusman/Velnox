@@ -140,9 +140,14 @@ geheim dat niemand gaat roteren.
 Open een cluster voor de nodes, de gasten, Ceph en — op het tabblad **Uitleesrondes** — wat de laatste
 pogingen wel en niet konden lezen.
 
-**Nodes**, **Virtuele machines**, **Containers**, **Opslag** en **Netwerken** tonen dezelfde gegevens
-over alle clusters die je kunt zien, voor wanneer de vraag "waar staat die schijf" is in plaats van
-"hoe gaat het met dit cluster".
+**Nodes**, **Virtuele machines** en **Containers** tonen dezelfde gegevens over alle clusters die je
+kunt zien, voor wanneer de vraag "waar staat die schijf" is in plaats van "hoe gaat het met dit
+cluster".
+
+**Opslag** en **Netwerken** worden per cluster getoond, binnen één tenant — ook de MSP-organisatie.
+Staat in de bovenbalk *alle tenants* geselecteerd, dan vragen ze eerst er een te kiezen; kies daarna
+het cluster boven de tabel. Elke kolom is te filteren: typ in het vak onder een naam of een adres, of
+kies een type, node of status uit de lijst. *Filters wissen* toont weer alles.
 
 ### Cijfers die ontbreken, en cijfers die nul zijn
 

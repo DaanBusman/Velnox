@@ -407,7 +407,7 @@
     "memory": "Geheugen",
     "name": "Naam",
     "networkSearch": "Interface, adres of node…",
-    "networksPageDescription": "Netwerkinterfaces op elke node die je kunt zien.",
+    "networksPageDescription": "De netwerkinterfaces van één cluster, over al zijn nodes.",
     "networksSubtitle": "Netwerkinterfaces zoals elke node ze meldt.",
     "noNetworks": "Geen interfaces om te tonen.",
     "noNodes": "Geen nodes om te tonen. Voeg eerst een cluster toe.",
@@ -432,7 +432,7 @@
     "storageActive": "Actief",
     "storageDisabled": "Uitgeschakeld",
     "storageInactive": "Niet actief",
-    "storagePageDescription": "Opslag op elke node die je kunt zien.",
+    "storagePageDescription": "De opslag van één cluster, over al zijn nodes.",
     "storageSearch": "Naam, type of node…",
     "storageSubtitle": "Opslag zoals elke node die meldt. Een cijfer dat Velnox niet heeft is een streepje, nooit een nul.",
     "subscription": "Abonnement: {status}",
@@ -465,7 +465,17 @@
       "invalid": "Ongeldig",
       "expired": "Verlopen",
       "suspended": "Opgeschort"
-    }
+    },
+    "filter": "Filteren",
+    "filterAll": "Alle",
+    "filterBy": "Filteren op {column}",
+    "filterClear": "Filters wissen",
+    "filterShown": "{shown} van {total} getoond",
+    "scopeTenant": "Tenant: {tenant}",
+    "scopeCluster": "Cluster",
+    "scopePickTenantTitle": "Kies eerst een tenant",
+    "scopePickTenantBody": "Netwerken en opslag worden per cluster getoond, binnen één tenant — ook de MSP-organisatie. Kies de tenant hier of in de bovenbalk.",
+    "scopeNoClusters": "{tenant} heeft nog geen clusters."
   },
   "job": {
     "allStatuses": "Alle statussen",

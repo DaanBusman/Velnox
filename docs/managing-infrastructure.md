@@ -133,9 +133,13 @@ is going to rotate.
 Open a cluster for its nodes, its guests, its Ceph and — on the **Discovery runs** tab — what the
 last few attempts could and could not read.
 
-**Nodes**, **Virtual Machines**, **Containers**, **Storage** and **Networks** are the same data
-across every cluster you can see, for when the question is "where is the disk" rather than "how is
-this cluster".
+**Nodes**, **Virtual Machines** and **Containers** are the same data across every cluster you can
+see, for when the question is "where is the disk" rather than "how is this cluster".
+
+**Storage** and **Networks** are shown one cluster at a time, within one tenant — the MSP
+organisation included. With *all tenants* selected in the top bar they ask you to choose one first;
+then choose the cluster above the table. Every column can be filtered: type in the box under a name
+or an address, or pick a type, node or state from the list. *Clear filters* shows everything again.
 
 ### Figures that are missing, and figures that are zero
 
