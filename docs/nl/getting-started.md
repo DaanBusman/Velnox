@@ -142,10 +142,9 @@ Werkt vandaag:
 | **Gebruikers** | Accounts, rollen, in- en uitschakelen — zie [Gebruikers en toegang beheren](managing-access.md) |
 | **Rollen & rechten** | Wat elke rol toekent — zie [Rollen en rechten](permissions.md) |
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
-| **Beveiliging** | Meervoudige authenticatie voor je eigen account |
-| **Single sign-on** | De wizard voor Microsoft Entra ID |
+| **Beveiliging** | Meervoudige authenticatie voor je eigen account en, voor beheerders, single sign-on — de wizard voor Microsoft Entra ID |
 | **Serverbeheer** | De installatie zelf: servicestatus, auditlog, certificaat, upgradeprocedure, en Over deze server |
-| **Instellingen** | Taal, hoe vaak schermen verversen, en het bronaanbod — per browser, voor iedereen toegankelijk |
+| **Instellingen** | Taal, hoe vaak schermen verversen, de dynamische achtergrond, en het bronaanbod — per browser, voor iedereen toegankelijk |
 | **Documentatie** | Deze documentatie, offline, gestempeld met de draaiende versie |
 
 **Serverbeheer** opent als een venster over waar je mee bezig was, vanaf de onderkant van de

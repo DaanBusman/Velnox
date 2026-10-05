@@ -79,8 +79,10 @@ export const NAVIGATION: NavGroup[] = [
   {
     labelKey: 'sectionOperations',
     items: [
-      { key: 'updates', href: '/updates', phase: 6 },
-      { key: 'majorUpgrades', href: '/major-upgrades', phase: 8 },
+      // Updates and major upgrades are one destination, as the owner asked:
+      // minor updates (Phase 6) and major upgrades (Phases 8–9B) of the same
+      // nodes are read side by side.
+      { key: 'updates', href: '/updates', phase: 6, alsoMatches: ['/major-upgrades'] },
       { key: 'migrations', href: '/migrations', phase: 11 },
       { key: 'automation', href: '/automation', phase: 8 },
       {
@@ -107,7 +109,6 @@ export const NAVIGATION: NavGroup[] = [
         supersededBy: 'system.manage',
       },
       { key: 'security', href: '/settings/security', phase: null },
-      { key: 'sso', href: '/settings/sso', phase: null, requiresPermission: 'system.manage' },
       // Open to everyone, for two reasons. It holds per-viewer preferences,
       // which every account has; and it carries the source offer, which AGPL
       // section 13 requires to be reachable by anyone interacting with the
@@ -138,16 +139,35 @@ export function isNavItemVisible(item: NavItem, permissions: ReadonlySet<string>
   return true;
 }
 
-/** Whether this entry is the one to highlight at this path. */
-export function isNavItemActive(item: NavItem, pathname: string): boolean {
-  if (item.href === '/') return pathname === '/';
-  return [item.href, ...(item.alsoMatches ?? [])].some(
-    (href) => pathname === href || pathname.startsWith(`${href}/`),
+/** How closely an entry matches a path: the length of its matching prefix, or -1. */
+function matchLength(item: NavItem, pathname: string): number {
+  if (item.href === '/') return pathname === '/' ? 1 : -1;
+  return Math.max(
+    -1,
+    ...[item.href, ...(item.alsoMatches ?? [])]
+      .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+      .map((href) => href.length),
   );
 }
 
+/**
+ * The one entry to highlight at this path: the most specific match among the
+ * entries shown. `/settings/security` lights Security, not Settings as well —
+ * a prefix match alone lit both.
+ */
+export function activeNavHref(items: NavItem[], pathname: string): string | null {
+  let best: { href: string; length: number } | null = null;
+  for (const item of items) {
+    const length = matchLength(item, pathname);
+    if (length > (best?.length ?? -1)) best = { href: item.href, length };
+  }
+  return best?.href ?? null;
+}
+
 const BY_HREF = new Map<string, NavItem>(
-  NAVIGATION.flatMap((group) => group.items).map((item) => [item.href, item]),
+  NAVIGATION.flatMap((group) => group.items).flatMap((item) =>
+    [item.href, ...(item.alsoMatches ?? [])].map((href) => [href, item] as const),
+  ),
 );
 
 /** Look up a nav entry for a path, so an unknown URL can still 404 properly. */

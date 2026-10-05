@@ -237,7 +237,7 @@ build rather than a sample, so an endpoint added later cannot quietly escape the
 **You need:** `system.manage`, and in Entra the Application Administrator, Cloud Application
 Administrator or Global Administrator role.
 
-Go to **Single sign-on** under Administration. It is a six-step wizard, because connecting a
+Go to **Security** under Administration and scroll to **Single sign-on** (shown to administrators). It is a six-step wizard, because connecting a
 directory means switching between two browser tabs several times and the order matters.
 
 | Step | What happens |

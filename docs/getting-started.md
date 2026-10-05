@@ -137,10 +137,9 @@ Working today:
 | **Users** | Accounts, roles, enabling and disabling — see [Managing users and access](managing-access.md) |
 | **Roles & permissions** | What each role grants — see [Roles and permissions](permissions.md) |
 | **Audit log** | Every authentication and authorisation event, newest first |
-| **Security** | Two-factor authentication for your own account |
-| **Single sign-on** | The Microsoft Entra ID wizard |
+| **Security** | Two-factor authentication for your own account and, for administrators, single sign-on — the Microsoft Entra ID wizard |
 | **Server management** | The installation itself: service status, audit log, certificate, upgrade procedure, and About this server |
-| **Settings** | Language, how often screens refresh, and the source offer — per browser, open to everyone |
+| **Settings** | Language, how often screens refresh, the moving background, and the source offer — per browser, open to everyone |
 | **Documentation** | This documentation, offline, stamped with the running version |
 
 **Server management** opens as a window over whatever you were doing, from the bottom of the

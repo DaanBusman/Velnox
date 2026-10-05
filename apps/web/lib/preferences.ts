@@ -32,6 +32,13 @@ export type RefreshSeconds = (typeof REFRESH_CHOICES)[number];
 /** The cadence shipped before this was a setting, kept as the default. */
 export const DEFAULT_REFRESH_SECONDS: RefreshSeconds = 2;
 
+/** Whether the signed-in screens move behind their content. Off by default. */
+export const MOTION_BACKGROUND_COOKIE = 'velnox_motion_bg';
+
+export async function motionBackground(): Promise<boolean> {
+  return (await cookies()).get(MOTION_BACKGROUND_COOKIE)?.value === '1';
+}
+
 export function isRefreshSeconds(value: number): value is RefreshSeconds {
   return (REFRESH_CHOICES as readonly number[]).includes(value);
 }

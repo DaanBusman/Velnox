@@ -3,7 +3,7 @@
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { LOCALES, LOCALE_LABELS, type Locale } from '@velnox/i18n';
-import { setLocale, setRefreshInterval } from '@/app/actions';
+import { setLocale, setMotionBackground, setRefreshInterval } from '@/app/actions';
 import { Card } from '@/components/ui/primitives';
 import { Field } from '@/components/ui/form';
 
@@ -23,10 +23,12 @@ export function InterfaceSettings({
   locale,
   refreshSeconds,
   refreshChoices,
+  motionBackground,
 }: {
   locale: string;
   refreshSeconds: number;
   refreshChoices: readonly number[];
+  motionBackground: boolean;
 }) {
   const t = useTranslations();
   const [pending, startTransition] = useTransition();
@@ -84,6 +86,25 @@ export function InterfaceSettings({
             </select>
           )}
         </Field>
+
+        <label className="flex items-start gap-2.5 text-sm text-ink">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={motionBackground}
+            disabled={pending}
+            onChange={(event) => {
+              const next = event.target.checked;
+              startTransition(async () => {
+                await setMotionBackground(next);
+              });
+            }}
+          />
+          <span>
+            {t('settings.motionLabel')}
+            <span className="block text-xs text-ink-muted">{t('settings.motionHint')}</span>
+          </span>
+        </label>
       </div>
     </Card>
   );

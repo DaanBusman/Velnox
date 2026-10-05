@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { InterfaceSettings } from '@/components/interface-settings';
 import { Card, Mono, Notice, PageHeader } from '@/components/ui/primitives';
-import { REFRESH_CHOICES, refreshSeconds } from '@/lib/preferences';
+import { REFRESH_CHOICES, motionBackground, refreshSeconds } from '@/lib/preferences';
 import { tryGetSourceOffer } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -32,10 +32,11 @@ export async function generateMetadata(): Promise<Metadata> {
  * every screen are that home. See NOTICE and docs/architecture.md section 15.
  */
 export default async function SettingsPage() {
-  const [t, locale, refresh, source] = await Promise.all([
+  const [t, locale, refresh, moving, source] = await Promise.all([
     getTranslations(),
     getLocale(),
     refreshSeconds(),
+    motionBackground(),
     tryGetSourceOffer(),
   ]);
 
@@ -48,6 +49,7 @@ export default async function SettingsPage() {
           locale={locale}
           refreshSeconds={refresh}
           refreshChoices={REFRESH_CHOICES}
+          motionBackground={moving}
         />
 
         <Card title={t('about.title')} description={t('settings.aboutBody')}>

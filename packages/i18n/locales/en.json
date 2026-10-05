@@ -656,7 +656,7 @@
     "sso": "Single sign-on",
     "storage": "Storage",
     "tenants": "Tenants",
-    "updates": "Updates",
+    "updates": "Updates & upgrades",
     "users": "Users",
     "virtualMachines": "Virtual Machines",
     "library": "ISO library",
@@ -767,7 +767,9 @@
     "refreshLabel": "Refresh screens automatically",
     "refreshOff": "Off — only when I press Refresh",
     "subtitle": "Preferences for this browser.",
-    "title": "Settings"
+    "title": "Settings",
+    "motionLabel": "Moving background",
+    "motionHint": "Slow, soft shapes behind the screens, in the colours of the light or dark theme. Still if your system asks for reduced motion."
   },
   "sites": {
     "add": "Add site",

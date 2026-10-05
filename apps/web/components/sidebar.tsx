@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import clsx from 'clsx';
-import { NAVIGATION, isNavItemActive, isNavItemVisible } from '@/lib/nav';
+import { NAVIGATION, activeNavHref, isNavItemVisible } from '@/lib/nav';
 import { NAV_ICONS } from '@/components/ui/icons';
 import { ProductMark } from '@/components/ui/product-mark';
 import { ServerManagement } from '@/components/server-management';
@@ -22,6 +22,10 @@ export function Sidebar({
   const t = useTranslations();
   const pathname = usePathname();
   const held = useMemo(() => new Set(permissions), [permissions]);
+  const activeHref = activeNavHref(
+    NAVIGATION.flatMap((group) => group.items.filter((item) => isNavItemVisible(item, held))),
+    pathname,
+  );
 
   return (
     <nav
@@ -57,7 +61,7 @@ export function Sidebar({
               )}
               <ul className="space-y-0.5">
                 {items.map((item) => {
-                  const active = isNavItemActive(item, pathname);
+                  const active = item.href === activeHref;
                   const Icon = NAV_ICONS[item.key];
 
                   return (

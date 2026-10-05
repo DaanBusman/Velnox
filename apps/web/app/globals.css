@@ -406,3 +406,73 @@ body {
   max-width: 100%;
   height: auto;
 }
+
+/* ---------------------------------------------------------------------------
+ * The moving background (Settings → Moving background). Off unless chosen.
+ * Colours come from the theme, so light and dark each get their own; the
+ * shapes are large, blurred and slow, so they read as light in a room rather
+ * than as something to look at.
+ * ------------------------------------------------------------------------- */
+:root {
+  --velnox-orb-1: color-mix(in srgb, var(--velnox-accent) 38%, transparent);
+  --velnox-orb-2: color-mix(in srgb, #8b5cf6 30%, transparent);
+  --velnox-orb-3: color-mix(in srgb, #14b8a6 28%, transparent);
+}
+.dark {
+  --velnox-orb-1: color-mix(in srgb, var(--velnox-accent) 42%, transparent);
+  --velnox-orb-2: color-mix(in srgb, #8b5cf6 36%, transparent);
+  --velnox-orb-3: color-mix(in srgb, #14b8a6 30%, transparent);
+}
+.velnox-motion-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.velnox-orb {
+  position: absolute;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 9999px;
+  filter: blur(60px);
+  will-change: transform;
+}
+.velnox-orb-1 {
+  background: radial-gradient(circle, var(--velnox-orb-1), transparent 65%);
+  top: -20vmax;
+  left: -10vmax;
+  animation: velnox-drift-1 46s ease-in-out infinite alternate;
+}
+.velnox-orb-2 {
+  background: radial-gradient(circle, var(--velnox-orb-2), transparent 65%);
+  bottom: -25vmax;
+  right: -15vmax;
+  animation: velnox-drift-2 58s ease-in-out infinite alternate;
+}
+.velnox-orb-3 {
+  background: radial-gradient(circle, var(--velnox-orb-3), transparent 65%);
+  top: 30vh;
+  left: 35vw;
+  animation: velnox-drift-3 70s ease-in-out infinite alternate;
+}
+@keyframes velnox-drift-1 {
+  to {
+    transform: translate(30vw, 25vh) scale(1.15);
+  }
+}
+@keyframes velnox-drift-2 {
+  to {
+    transform: translate(-35vw, -20vh) scale(0.9);
+  }
+}
+@keyframes velnox-drift-3 {
+  to {
+    transform: translate(-20vw, 15vh) scale(1.2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .velnox-orb {
+    animation: none;
+  }
+}

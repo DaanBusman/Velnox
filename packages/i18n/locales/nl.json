@@ -657,7 +657,7 @@
     "sso": "Eenmalige aanmelding",
     "storage": "Opslag",
     "tenants": "Tenants",
-    "updates": "Updates",
+    "updates": "Updates & upgrades",
     "users": "Gebruikers",
     "virtualMachines": "Virtuele machines",
     "library": "ISO-bibliotheek",
@@ -768,7 +768,9 @@
     "refreshLabel": "Schermen automatisch verversen",
     "refreshOff": "Uit — alleen als ik op Refresh druk",
     "subtitle": "Voorkeuren voor deze browser.",
-    "title": "Instellingen"
+    "title": "Instellingen",
+    "motionLabel": "Dynamische achtergrond",
+    "motionHint": "Langzaam bewegende, zachte vormen achter de schermen, in de kleuren van het lichte of donkere thema. Staat stil als je systeem om minder beweging vraagt."
   },
   "sites": {
     "add": "Locatie toevoegen",

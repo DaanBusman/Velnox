@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActivityBar } from '@/components/activity-bar';
+import { MotionBackground } from '@/components/motion-background';
+import { motionBackground } from '@/lib/preferences';
 import { UploadsProvider } from '@/components/library/uploads-provider';
 import { SessionKeepAlive } from '@/components/session-keepalive';
 import { SessionRecovery } from '@/components/session-recovery';
@@ -39,6 +41,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
    * So the browser is asked to try the exchange first, and only lands on the
    * sign-in form when it fails.
    */
+  const moving = await motionBackground();
   if (!session) return <SessionRecovery />;
 
   // The session exists but still owes a second factor. The API would refuse
@@ -71,6 +74,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
 
   return (
     <UploadsProvider>
+      {moving && <MotionBackground />}
       <SessionKeepAlive />
 
       <a
@@ -80,7 +84,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
         {t('layout.skipToContent')}
       </a>
 
-      <div className="flex h-dvh overflow-hidden">
+      <div className="relative z-[1] flex h-dvh overflow-hidden">
         <Sidebar
           product={product}
           version={version}

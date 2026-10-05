@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { isLocale, LOCALE_COOKIE } from '@velnox/i18n';
-import { isRefreshSeconds, REFRESH_COOKIE } from '@/lib/preferences';
+import { isRefreshSeconds, MOTION_BACKGROUND_COOKIE, REFRESH_COOKIE } from '@/lib/preferences';
 import { SELECTED_TENANT_COOKIE } from '@/lib/tenant-selection';
 
 /**
@@ -45,6 +45,18 @@ export async function setRefreshInterval(seconds: number): Promise<void> {
     httpOnly: false, // a display preference; it carries no authority
   });
 
+  revalidatePath('/', 'layout');
+}
+
+/** The moving background behind the signed-in screens: a display preference. */
+export async function setMotionBackground(on: boolean): Promise<void> {
+  const store = await cookies();
+  store.set(MOTION_BACKGROUND_COOKIE, on ? '1' : '0', {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax',
+    httpOnly: false, // a display preference; it carries no authority
+  });
   revalidatePath('/', 'layout');
 }
 

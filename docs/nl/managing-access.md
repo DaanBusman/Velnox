@@ -247,7 +247,7 @@ kan ontsnappen.
 **Je hebt nodig:** `system.manage`, en in Entra de rol Application Administrator, Cloud Application
 Administrator of Global Administrator.
 
-Ga naar **Single sign-on** onder Beheer. Het is een wizard van zes stappen, omdat het koppelen van
+Ga naar **Beveiliging** onder Administratie en scrol naar **Single sign-on** (zichtbaar voor beheerders). Het is een wizard van zes stappen, omdat het koppelen van
 een directory betekent dat je een paar keer tussen twee browsertabbladen wisselt en de volgorde
 ertoe doet.
 
