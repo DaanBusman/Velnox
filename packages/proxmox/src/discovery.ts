@@ -1,4 +1,5 @@
 import { locationKeyFor } from '@velnox/shared';
+import { FingerprintMismatchError, ProxmoxUnreachableError } from './transport';
 import type {
   CephFlag,
   CephMetadata,
@@ -192,6 +193,12 @@ export interface DiscoveredCluster {
   problems: string[];
   discoveredAt: string;
   contents: DiscoveredContents;
+  /**
+   * The error the first call failed with, when it failed — the one that says
+   * why a cluster that answered nothing answered nothing (unreachable, refused
+   * credentials, a changed certificate). Null when the first call succeeded.
+   */
+  firstError?: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -521,7 +528,38 @@ async function attempt<T>(
 export async function discoverCluster(client: ProxmoxClient): Promise<DiscoveredCluster> {
   const problems: string[] = [];
 
-  const version = await attempt('version', problems, () => client.version());
+  let firstError: unknown = null;
+  const version = await attempt('version', problems, () =>
+    client.version().catch((error: unknown) => {
+      firstError = error;
+      throw error;
+    }),
+  );
+
+  /*
+   * Nothing answers when the first call could not reach the host, or met a
+   * certificate other than the pinned one: every call after it would fail the
+   * same way, each after its own retries, and a dead host took about a minute
+   * to be reported dead. Stop here instead; the caller treats a run that
+   * learned nothing as a failure and keeps the previous inventory.
+   */
+  if (
+    firstError instanceof ProxmoxUnreachableError ||
+    firstError instanceof FingerprintMismatchError
+  ) {
+    return {
+      ...assembleCluster({
+        version: null,
+        clusterStatus: [],
+        nodes: [],
+        resources: [],
+        ceph: null,
+        problems,
+      }),
+      firstError,
+      contents: { items: [], coveredLocations: [] },
+    };
+  }
   const clusterStatus =
     (await attempt('cluster status', problems, () => client.clusterStatus())) ?? [];
   const nodeList = (await attempt('node list', problems, () => client.nodes())) ?? [];
@@ -590,6 +628,7 @@ export async function discoverCluster(client: ProxmoxClient): Promise<Discovered
 
   return {
     ...assembleCluster({ version, clusterStatus, nodes: nodeFacts, resources, ceph, problems }),
+    firstError,
     contents,
   };
 }

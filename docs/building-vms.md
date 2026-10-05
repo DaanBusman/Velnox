@@ -35,7 +35,7 @@ see ADR-039 in [Technology decisions](tech-decisions.md). The installers and clo
 
 ## Templates
 
-**Administration → Autoconfig.** A template belongs to the MSP or to one customer:
+**Operations → Autoconfig.** A template belongs to the MSP or to one customer:
 
 - An **MSP template** marked *every customer* is offered to every tenant; marked *chosen customers*,
   only to the customers ticked under it — say, Company X — who do not see who else is offered it;
@@ -166,7 +166,7 @@ after that the record says they are no longer kept. Change them on the VM before
 
 ## Outgoing mail
 
-**Administration → Outgoing mail**, for `system.manage`. In this order:
+**Notifications → Outgoing mail**, for `system.manage`. In this order:
 
 1. **Save** the server: host, port, encryption, sender, and a username and password if the server
    needs them. STARTTLS is required when chosen — a server that does not offer it is refused, not

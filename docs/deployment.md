@@ -550,7 +550,7 @@ docker volume prune
 
 ### Outgoing mail
 
-Velnox sends mail when a VM it built is ready. Set the server up under **Administration → Outgoing
+Velnox sends mail when a VM it built is ready. Set the server up under **Notifications → Outgoing
 mail** — see [Building VMs from templates](building-vms.md#outgoing-mail). The host must be able to
 reach that server on its port; the worker is what connects. The server's password is stored
 encrypted in the database, so it is in the database backup and needs `.env` to be read, like every

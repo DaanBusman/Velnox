@@ -567,7 +567,7 @@ docker volume prune
 
 ### Uitgaande mail
 
-Velnox verstuurt mail als een VM die het bouwde klaar is. Stel de server in onder **Administratie →
+Velnox verstuurt mail als een VM die het bouwde klaar is. Stel de server in onder **Notificatiebeheer →
 Uitgaande mail** — zie [VM's bouwen vanuit templates](building-vms.md#uitgaande-mail). De host moet
 die server op zijn poort kunnen bereiken; de worker is wat verbinding maakt. Het wachtwoord van de
 server staat versleuteld in de database, dus het zit in de databaseback-up en heeft `.env` nodig om te

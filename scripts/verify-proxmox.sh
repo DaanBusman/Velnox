@@ -411,6 +411,7 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 check "an unreachable cluster is marked failed" FAILED "$(printf '%s' "$GONE" | json connectionState)"
+check "and says why, as a code the interface translates" cluster.unreachable "$(printf '%s' "$GONE" | json lastErrorCode)"
 check "and keeps the inventory it had" 3 "$(printf '%s' "$GONE" | json nodeCount)"
 
 STILL="$(call GET "/api/v1/nodes?clusterId=${CLUSTER_ID}")"

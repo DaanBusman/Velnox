@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDue } from './scheduler';
+import { discoveryJobId, isDue } from './scheduler';
 
 /**
  * When a cluster is due for discovery.
@@ -52,6 +52,30 @@ describe('isDue', () => {
     // the failure would be a cluster hammered every minute.
     expect(isDue({ discoveryIntervalMinutes: -5, lastDiscoveryAt: minutesAgo(1) }, NOW)).toBe(
       false,
+    );
+  });
+});
+
+describe('discoveryJobId', () => {
+  const cluster = { id: 'c1', discoveryIntervalMinutes: 30 };
+
+  it('is the same within one interval, so an overlapping tick queues nothing twice', () => {
+    expect(discoveryJobId(cluster, new Date('2026-09-13T12:00:00Z'))).toBe(
+      discoveryJobId(cluster, new Date('2026-09-13T12:29:59Z')),
+    );
+  });
+
+  it('changes with the next interval, so a cluster that failed is tried again', () => {
+    // The bug this pins: the id was derived from the last *successful* run, so
+    // after a failure it never changed and BullMQ ignored every retry.
+    expect(discoveryJobId(cluster, new Date('2026-09-13T12:00:00Z'))).not.toBe(
+      discoveryJobId(cluster, new Date('2026-09-13T12:30:00Z')),
+    );
+  });
+
+  it('does not collide when the interval changes', () => {
+    expect(discoveryJobId(cluster, NOW)).not.toBe(
+      discoveryJobId({ ...cluster, discoveryIntervalMinutes: 15 }, NOW),
     );
   });
 });

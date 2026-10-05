@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useState } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import type { CheckStatus, ReadinessResponse } from '@velnox/shared';
+import { Button } from '@/components/ui/form';
 import { Card, Notice, StatusBadge, type StatusTone } from '@/components/ui/primitives';
+import { refreshSecondsInBrowser } from '@/lib/refresh-preference';
 import { PanelLoading } from './panel-state';
 
 const TONE: Record<CheckStatus, StatusTone> = {
@@ -35,15 +37,29 @@ const CHECK_LABEL_KEY: Record<string, string> = {
  * (it is an infrastructure probe, not versioned API), and it answers 503 with
  * the report still in the body. Treating that 503 as a failure would replace
  * the reason the installation is down with "something went wrong".
+ *
+ * Read again on the viewer's own refresh interval while the tab is visible,
+ * and on demand. It used to be read once, when the tab opened — so a worker
+ * that came back stayed "down" on screen until the window was closed.
  */
-function useReadiness(): { loading: boolean; readiness: ReadinessResponse | null } {
-  const [state, setState] = useState<{ loading: boolean; readiness: ReadinessResponse | null }>({
-    loading: true,
-    readiness: null,
-  });
+function useReadiness(): {
+  loading: boolean;
+  refreshing: boolean;
+  readiness: ReadinessResponse | null;
+  checkedAt: Date | null;
+  refresh: () => void;
+} {
+  const [state, setState] = useState<{
+    loading: boolean;
+    readiness: ReadinessResponse | null;
+    checkedAt: Date | null;
+  }>({ loading: true, readiness: null, checkedAt: null });
+  const [refreshing, setRefreshing] = useState(false);
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     let live = true;
+    setRefreshing(true);
 
     void (async () => {
       let readiness: ReadinessResponse | null = null;
@@ -60,26 +76,45 @@ function useReadiness(): { loading: boolean; readiness: ReadinessResponse | null
       } catch {
         readiness = null;
       }
-      if (live) setState({ loading: false, readiness });
+      if (!live) return;
+      setState({ loading: false, readiness, checkedAt: new Date() });
+      setRefreshing(false);
     })();
 
     return () => {
       live = false;
     };
+  }, [nonce]);
+
+  useEffect(() => {
+    const seconds = refreshSecondsInBrowser();
+    if (seconds === 0) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') setNonce((n) => n + 1);
+    }, seconds * 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  return state;
+  const refresh = useCallback(() => setNonce((n) => n + 1), []);
+  return { ...state, refreshing, refresh };
 }
 
 export function StatusPanel() {
   const t = useTranslations();
-  const { loading, readiness } = useReadiness();
+  const format = useFormatter();
+  const { loading, refreshing, readiness, checkedAt, refresh } = useReadiness();
 
   if (loading) return <PanelLoading />;
 
+  const refreshButton = (
+    <Button variant="secondary" className="h-8 text-xs" pending={refreshing} onClick={refresh}>
+      {t('common.refresh')}
+    </Button>
+  );
+
   if (!readiness) {
     return (
-      <Card title={t('system.title')} description={t('system.subtitle')}>
+      <Card title={t('system.title')} description={t('system.subtitle')} actions={refreshButton}>
         <Notice tone="error">{t('system.unreachable')}</Notice>
       </Card>
     );
@@ -92,9 +127,12 @@ export function StatusPanel() {
       title={t('system.title')}
       description={t('system.subtitle')}
       actions={
-        <StatusBadge tone={TONE[readiness.status]}>
-          {t(`status.dependency.${readiness.status}`)}
-        </StatusBadge>
+        <div className="flex items-center gap-2">
+          <StatusBadge tone={TONE[readiness.status]}>
+            {t(`status.dependency.${readiness.status}`)}
+          </StatusBadge>
+          {refreshButton}
+        </div>
       }
     >
       <table className="w-full border-collapse text-sm">
@@ -165,6 +203,11 @@ export function StatusPanel() {
       </table>
 
       <p className="mt-3 text-xs text-ink-muted">{t('system.workerHint')}</p>
+      {checkedAt && (
+        <p className="mt-1 text-xs text-ink-muted">
+          {t('system.checkedAt', { time: format.dateTime(checkedAt, { timeStyle: 'medium' }) })}
+        </p>
+      )}
     </Card>
   );
 }

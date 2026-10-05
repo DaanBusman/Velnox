@@ -377,7 +377,7 @@
       "credentials_gone": "The passwords of this VM are no longer kept in Velnox."
     },
     "mail": {
-      "not_configured": "Outgoing mail is not set up, so nobody can be notified. An administrator sets it up under Server management.",
+      "not_configured": "Outgoing mail is not set up, so nobody can be notified. An administrator sets it up under Notifications → Outgoing mail.",
       "send_failed": "The mail was not sent: {reason}"
     }
   },
@@ -563,7 +563,8 @@
     "themeDark": "Dark",
     "themeLight": "Light",
     "themeSystem": "System",
-    "userMenu": "Account"
+    "userMenu": "Account",
+    "sectionNotifications": "Notifications"
   },
   "mfa": {
     "badgeEnrolled": "Enabled",
@@ -924,7 +925,8 @@
     "subtitle": "Live readiness of this installation",
     "title": "Service status",
     "unreachable": "Could not reach the API.",
-    "workerHint": "The worker has no network port by design; its liveness is reported through a heartbeat."
+    "workerHint": "The worker has no network port by design; its liveness is reported through a heartbeat.",
+    "checkedAt": "Checked at {time}."
   },
   "tenants": {
     "add": "Add tenant",
@@ -937,7 +939,7 @@
     "details": "Details",
     "identifier": "Identifier",
     "mfaOPTIONAL": "Optional",
-    "mfaPolicy": "Second factor",
+    "mfaPolicy": "Two-factor authentication",
     "mfaREQUIRED": "Required for everyone",
     "mfaREQUIRED_FOR_PRIVILEGED": "Required for privileged accounts",
     "mspCannotBeArchived": "The MSP organisation cannot be suspended or archived. Doing so would disable the accounts that administer this installation, including yours.",
@@ -955,7 +957,8 @@
     "statusSUSPENDED": "Suspended",
     "subtitle": "The MSP organisation and the customers it manages. Isolation between them is enforced in the data layer, not by this list.",
     "suspend": "Suspend",
-    "title": "Tenants"
+    "title": "Tenants",
+    "saved": "Saved."
   },
   "tls": {
     "acmeAccount": "ACME account",
@@ -1052,9 +1055,9 @@
   },
   "library": {
     "subtitle": "ISOs and cloud images on the Velnox host, ready to copy onto any cluster.",
-    "capacityTitle": "Space",
-    "capacityDescription": "The library may hold {maxGb} GB, and at least {minFreeGb} GB of the disk it shares with the database must stay free.",
-    "capacityUsed": "{used} of {ceiling} in use. {free} of disk free; {floor} must stay free.",
+    "capacityTitle": "Storage space",
+    "capacityDescription": "How much the library can hold. It may use up to {maxGb} GB, and always leaves {minFreeGb} GB free on the disk for the database.",
+    "capacityUsed": "{used} of {ceiling} used. There is room for {room} more.",
     "addTitle": "Add a file",
     "addDescription": "From a URL, which the worker fetches, or from this browser, sent in pieces that survive a dropped connection.",
     "fromUrl": "From a URL",
@@ -1124,7 +1127,8 @@
       "drivers": "drivers",
       "businessEditions": "business editions",
       "consumerEditions": "consumer editions"
-    }
+    },
+    "capacityDiskLimits": "The disk is what limits it: {free} is free there, and {floor} of that has to stay free."
   },
   "autoconfig": {
     "subtitle": "Templates that VMs are built from: Windows with an answer file, Linux from a cloud image.",

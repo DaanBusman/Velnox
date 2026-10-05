@@ -30,8 +30,9 @@ export interface TickResult {
  * Enqueue discovery for every cluster that is due.
  *
  * "Due" is measured from `lastDiscoveryAt`, not from when the last job was
- * queued. A cluster whose discovery keeps failing is therefore retried at its
- * interval rather than hammered — the timestamp only moves on success.
+ * queued. A cluster whose discovery keeps failing is therefore retried once per
+ * interval rather than hammered: the timestamp only moves on success, and the
+ * job id (`discoveryJobId`) allows one attempt per interval.
  */
 export async function runSchedulerTick(
   prisma: VelnoxPrismaClient,
@@ -49,24 +50,10 @@ export async function runSchedulerTick(
     for (const cluster of clusters) {
       if (!isDue(cluster, now)) continue;
 
-      const dueAt = cluster.lastDiscoveryAt
-        ? cluster.lastDiscoveryAt.getTime() + cluster.discoveryIntervalMinutes * 60_000
-        : now.getTime();
-
-      /*
-       * A stable job id per cluster per due-window.
-       *
-       * BullMQ ignores an `add` whose job id already exists, so a tick that
-       * overlaps a run still in flight cannot queue a second one against the
-       * same cluster. Without this, a cluster slower than its own interval would
-       * accumulate discovery jobs until the queue was nothing else.
-       */
-      const jobId = `discover:${cluster.id}:${Math.floor(dueAt / 60_000)}`;
-
       await queue.add(
         JOB_NAMES.inventoryDiscover,
         { clusterId: cluster.id, requestedBy: null },
-        { jobId },
+        { jobId: discoveryJobId(cluster, now) },
       );
 
       enqueued += 1;
@@ -74,6 +61,29 @@ export async function runSchedulerTick(
 
     return { considered: clusters.length, enqueued };
   });
+}
+
+/**
+ * The job id for one cluster's scheduled discovery: stable within one interval,
+ * new in the next.
+ *
+ * BullMQ ignores an `add` whose job id already exists, so a tick that overlaps
+ * a run still in flight cannot queue a second one against the same cluster.
+ * Without this, a cluster slower than its own interval would accumulate
+ * discovery jobs until the queue was nothing else.
+ *
+ * Counted from the clock, not from `lastDiscoveryAt`. That was the first
+ * design, and `lastDiscoveryAt` only moves on success: after one failed run the
+ * id never changed again, BullMQ kept the failed job under it, and every later
+ * attempt was ignored — a cluster that failed once was never read again, and
+ * stayed "the last attempt failed" after it came back.
+ */
+export function discoveryJobId(
+  cluster: { id: string; discoveryIntervalMinutes: number },
+  now: Date,
+): string {
+  const window = Math.floor(now.getTime() / (cluster.discoveryIntervalMinutes * 60_000));
+  return `discover:${cluster.id}:w${cluster.discoveryIntervalMinutes}-${window}`;
 }
 
 /**

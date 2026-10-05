@@ -146,6 +146,17 @@ export function ClusterDetail({
 
         {cluster.connectionState === 'FAILED' && (
           <Notice tone="error" title={t('clusters.lastRunFailed')}>
+            {cluster.lastErrorCode &&
+              cluster.lastErrorCode !== 'generic' &&
+              t.has(`errors.${cluster.lastErrorCode}`) && (
+                <p className="mb-1">
+                  {t(`errors.${cluster.lastErrorCode}`, {
+                    host: cluster.endpointHost,
+                    node: cluster.endpointHost,
+                    authKind: cluster.authKind,
+                  })}
+                </p>
+              )}
             <p className="font-mono text-xs">{cluster.lastErrorDetail ?? cluster.lastErrorCode}</p>
             <p className="mt-2">{t('clusters.staleWarning')}</p>
           </Notice>

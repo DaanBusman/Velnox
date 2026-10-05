@@ -83,6 +83,12 @@ export const NAVIGATION: NavGroup[] = [
       { key: 'majorUpgrades', href: '/major-upgrades', phase: 8 },
       { key: 'migrations', href: '/migrations', phase: 11 },
       { key: 'automation', href: '/automation', phase: 8 },
+      {
+        key: 'autoconfig',
+        href: '/autoconfig',
+        phase: null,
+        requiresPermission: 'autoconfig.read',
+      },
       { key: 'jobs', href: '/jobs', phase: null, requiresPermission: 'jobs.read' },
       { key: 'alerts', href: '/alerts', phase: null, requiresPermission: 'alerts.read' },
       { key: 'reports', href: '/reports', phase: 8 },
@@ -100,21 +106,21 @@ export const NAVIGATION: NavGroup[] = [
         requiresPermission: 'audit.read',
         supersededBy: 'system.manage',
       },
-      {
-        key: 'autoconfig',
-        href: '/autoconfig',
-        phase: null,
-        requiresPermission: 'autoconfig.read',
-      },
       { key: 'security', href: '/settings/security', phase: null },
       { key: 'sso', href: '/settings/sso', phase: null, requiresPermission: 'system.manage' },
-      { key: 'mail', href: '/settings/mail', phase: null, requiresPermission: 'system.manage' },
       // Open to everyone, for two reasons. It holds per-viewer preferences,
       // which every account has; and it carries the source offer, which AGPL
       // section 13 requires to be reachable by anyone interacting with the
       // software — Server management, where the fuller version lives, is
       // administrators only.
       { key: 'settings', href: '/settings', phase: null },
+    ],
+  },
+  {
+    // How Velnox tells people things. Mail first; other channels join it here.
+    labelKey: 'sectionNotifications',
+    items: [
+      { key: 'mail', href: '/settings/mail', phase: null, requiresPermission: 'system.manage' },
     ],
   },
   {

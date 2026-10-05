@@ -378,7 +378,7 @@
       "credentials_gone": "De wachtwoorden van deze VM worden niet meer in Velnox bewaard."
     },
     "mail": {
-      "not_configured": "Uitgaande mail is niet ingesteld, dus er kan niemand worden gewaarschuwd. Een beheerder stelt het in onder Serverbeheer.",
+      "not_configured": "Uitgaande mail is niet ingesteld, dus er kan niemand worden gewaarschuwd. Een beheerder stelt het in onder Notificatiebeheer → Uitgaande mail.",
       "send_failed": "De mail is niet verstuurd: {reason}"
     }
   },
@@ -564,7 +564,8 @@
     "themeDark": "Donker",
     "themeLight": "Licht",
     "themeSystem": "Systeem",
-    "userMenu": "Account"
+    "userMenu": "Account",
+    "sectionNotifications": "Notificatiebeheer"
   },
   "mfa": {
     "badgeEnrolled": "Ingeschakeld",
@@ -925,7 +926,8 @@
     "subtitle": "Actuele gereedheid van deze installatie",
     "title": "Servicestatus",
     "unreachable": "De API is niet bereikbaar.",
-    "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld."
+    "workerHint": "De worker heeft bewust geen netwerkpoort; zijn beschikbaarheid wordt via een hartslag gemeld.",
+    "checkedAt": "Gecontroleerd om {time}."
   },
   "tenants": {
     "add": "Tenant toevoegen",
@@ -938,7 +940,7 @@
     "details": "Details",
     "identifier": "Aanduiding",
     "mfaOPTIONAL": "Optioneel",
-    "mfaPolicy": "Tweede factor",
+    "mfaPolicy": "Tweefactorauthenticatie",
     "mfaREQUIRED": "Verplicht voor iedereen",
     "mfaREQUIRED_FOR_PRIVILEGED": "Verplicht voor accounts met verhoogde rechten",
     "mspCannotBeArchived": "De MSP-organisatie kan niet opgeschort of gearchiveerd worden. Daarmee zouden de accounts die deze installatie beheren uitgeschakeld worden, het uwe inbegrepen.",
@@ -956,7 +958,8 @@
     "statusSUSPENDED": "Opgeschort",
     "subtitle": "De MSP-organisatie en de klanten die zij beheert. De scheiding daartussen wordt in de datalaag afgedwongen, niet door deze lijst.",
     "suspend": "Opschorten",
-    "title": "Tenants"
+    "title": "Tenants",
+    "saved": "Opgeslagen."
   },
   "tls": {
     "acmeAccount": "ACME-account",
@@ -1053,9 +1056,9 @@
   },
   "library": {
     "subtitle": "ISO’s en cloud-images op de Velnox-host, klaar om naar elk cluster te kopiëren.",
-    "capacityTitle": "Ruimte",
-    "capacityDescription": "De bibliotheek mag {maxGb} GB bevatten, en van de schijf die ze met de database deelt moet minstens {minFreeGb} GB vrij blijven.",
-    "capacityUsed": "{used} van {ceiling} in gebruik. {free} schijfruimte vrij; {floor} moet vrij blijven.",
+    "capacityTitle": "Opslagruimte",
+    "capacityDescription": "Hoeveel de bibliotheek kan bevatten. Ze mag maximaal {maxGb} GB gebruiken, en laat op de schijf altijd {minFreeGb} GB vrij voor de database.",
+    "capacityUsed": "{used} van {ceiling} gebruikt. Er past nog {room} bij.",
     "addTitle": "Een bestand toevoegen",
     "addDescription": "Vanaf een URL, die de worker ophaalt, of vanuit deze browser, verstuurd in stukken die een weggevallen verbinding overleven.",
     "fromUrl": "Vanaf een URL",
@@ -1125,7 +1128,8 @@
       "drivers": "drivers",
       "businessEditions": "zakelijke edities",
       "consumerEditions": "consumentenedities"
-    }
+    },
+    "capacityDiskLimits": "De schijf is hier de beperking: daar is nog {free} vrij, en {floor} daarvan moet vrij blijven."
   },
   "autoconfig": {
     "subtitle": "Templates waaruit VM’s worden gebouwd: Windows met een antwoordbestand, Linux vanuit een cloud image.",

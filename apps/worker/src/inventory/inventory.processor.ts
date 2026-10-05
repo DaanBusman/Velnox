@@ -1,7 +1,14 @@
 import type { Job } from 'bullmq';
 import { withSystemScope, type VelnoxPrismaClient } from '@velnox/db';
-import { ProxmoxClient, discoverCluster, inspectCertificate } from '@velnox/proxmox';
-import { rootRedactor } from '@velnox/shared';
+import {
+  FingerprintMismatchError,
+  ProxmoxClient,
+  ProxmoxHttpError,
+  ProxmoxUnreachableError,
+  discoverCluster,
+  inspectCertificate,
+} from '@velnox/proxmox';
+import { ERROR_CODES, rootRedactor } from '@velnox/shared';
 import type { CredentialReader } from './credentials';
 import { persistDiscovery } from './persist';
 
@@ -151,8 +158,9 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
        * fixture and expects the previous inventory to survive.
        */
       if (discovered.nodes.length === 0 && discovered.problems.length > 0) {
-        throw new Error(
+        throw new DiscoveryFailed(
           `Learned nothing about ${cluster.name}: ${discovered.problems[0] ?? 'no detail'}`,
+          discoveryErrorCode(discovered.firstError),
         );
       }
 
@@ -196,7 +204,7 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
       };
     } catch (error) {
       const detail = rootRedactor.text(error instanceof Error ? error.message : String(error));
-      const code = error instanceof Error ? error.name : 'Error';
+      const code = error instanceof DiscoveryFailed ? error.code : discoveryErrorCode(error);
 
       await context.prisma.discoveryRun.update({
         where: { id: run.id },
@@ -225,4 +233,30 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
       throw error;
     }
   });
+}
+
+/** A run that learned nothing, with the catalogue code that says why. */
+class DiscoveryFailed extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message);
+    this.name = 'DiscoveryFailed';
+  }
+}
+
+/**
+ * The catalogue code for why a cluster could not be read.
+ *
+ * Stored on the cluster and the run, and translated by the interface. It used
+ * to be the error's class name — "Error" — which no screen can explain.
+ */
+export function discoveryErrorCode(error: unknown): string {
+  if (error instanceof ProxmoxUnreachableError) return ERROR_CODES.clusterUnreachable;
+  if (error instanceof FingerprintMismatchError) return ERROR_CODES.nodeFingerprintMismatch;
+  if (error instanceof ProxmoxHttpError && (error.status === 401 || error.status === 403)) {
+    return ERROR_CODES.clusterAuthFailed;
+  }
+  return ERROR_CODES.generic;
 }

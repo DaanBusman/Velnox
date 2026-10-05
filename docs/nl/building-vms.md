@@ -40,7 +40,7 @@ ADR-039 in [Technologiekeuzes](tech-decisions.md). De installers en cloud images
 
 ## Templates
 
-**Administratie → Autoconfig.** Een template is van de MSP of van één klant:
+**Beheer → Autoconfig.** Een template is van de MSP of van één klant:
 
 - Een **MSP-template** met *elke klant* wordt aan elke tenant aangeboden; met *gekozen klanten*
   alleen aan de klanten die eronder zijn aangevinkt — bijvoorbeeld Bedrijf X — die niet zien aan wie
@@ -177,7 +177,7 @@ zegt de registratie dat ze niet meer worden bewaard. Wijzig ze daarvoor op de VM
 
 ## Uitgaande mail
 
-**Administratie → Uitgaande mail**, voor `system.manage`. In deze volgorde:
+**Notificatiebeheer → Uitgaande mail**, voor `system.manage`. In deze volgorde:
 
 1. **Sla** de server **op**: host, poort, versleuteling, afzender, en een gebruikersnaam en wachtwoord
    als de server die vraagt. STARTTLS is verplicht als het is gekozen — een server die het niet biedt

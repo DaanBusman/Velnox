@@ -133,6 +133,12 @@ export function LibraryView({
     router.refresh();
   }
 
+  // What still fits: the library's own budget, or the disk, whichever is tighter.
+  const ceilingRoom = capacity.ceilingBytes - capacity.usedBytes;
+  const diskRoom = capacity.diskFreeBytes - capacity.diskFloorBytes;
+  const room = Math.max(0, Math.min(ceilingRoom, diskRoom));
+  const diskLimits = diskRoom < ceilingRoom;
+
   return (
     <div className="space-y-4">
       {failure && <FormError>{describeError(failure)}</FormError>}
@@ -173,10 +179,17 @@ export function LibraryView({
           {t('library.capacityUsed', {
             used: bytes(capacity.usedBytes, format),
             ceiling: bytes(capacity.ceilingBytes, format),
-            free: bytes(capacity.diskFreeBytes, format),
-            floor: bytes(capacity.diskFloorBytes, format),
+            room: bytes(room, format),
           })}
         </p>
+        {diskLimits && (
+          <p className="mt-1 text-sm text-ink-muted">
+            {t('library.capacityDiskLimits', {
+              free: bytes(capacity.diskFreeBytes, format),
+              floor: bytes(capacity.diskFloorBytes, format),
+            })}
+          </p>
+        )}
       </Card>
 
       {canManage && (

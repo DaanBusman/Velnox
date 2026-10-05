@@ -231,14 +231,9 @@ export function TenantAdmin({
                                 isMsp={isMsp}
                                 isOwn={isOwn}
                                 pending={pending}
-                                onRename={(value) =>
-                                  run(`rename:${tenant.id}`, () =>
-                                    apiPatch(`/tenants/${tenant.id}`, { name: value }),
-                                  )
-                                }
-                                onPolicy={(value) =>
-                                  run(`policy:${tenant.id}`, () =>
-                                    apiPatch(`/tenants/${tenant.id}`, { mfaPolicy: value }),
+                                onSave={(changes) =>
+                                  run(`save:${tenant.id}`, () =>
+                                    apiPatch(`/tenants/${tenant.id}`, changes),
                                   )
                                 }
                                 onStatus={(value) =>
@@ -284,8 +279,7 @@ function TenantControls({
   isMsp,
   isOwn,
   pending,
-  onRename,
-  onPolicy,
+  onSave,
   onStatus,
   onArchive,
 }: {
@@ -293,14 +287,28 @@ function TenantControls({
   isMsp: boolean;
   isOwn: boolean;
   pending: string | null;
-  onRename: (value: string) => Promise<boolean>;
-  onPolicy: (value: MfaPolicy) => Promise<boolean>;
+  onSave: (changes: { name?: string; mfaPolicy?: MfaPolicy }) => Promise<boolean>;
   onStatus: (value: 'ACTIVE' | 'SUSPENDED') => Promise<boolean>;
   onArchive: () => Promise<boolean>;
 }) {
   const t = useTranslations();
   const [name, setName] = useState(tenant.name);
+  const [policy, setPolicy] = useState<MfaPolicy>(tenant.mfaPolicy);
+  const [saved, setSaved] = useState(false);
   const [confirming, setConfirming] = useState(false);
+
+  /*
+   * One form, one Save. The second-factor policy used to save the moment it
+   * changed, beside a Save button that belonged to the name alone and stayed
+   * grey — so changing the policy looked like something that could not be
+   * saved. Now both are edited first and saved together, and the button lights
+   * up as soon as either differs from what is stored.
+   */
+  const changes = {
+    ...(name.trim() !== tenant.name ? { name: name.trim() } : {}),
+    ...(policy !== tenant.mfaPolicy ? { mfaPolicy: policy } : {}),
+  };
+  const dirty = Object.keys(changes).length > 0;
 
   return (
     <div className="space-y-3">
@@ -308,7 +316,8 @@ function TenantControls({
         className="flex flex-wrap items-end gap-2"
         onSubmit={async (event) => {
           event.preventDefault();
-          await onRename(name);
+          if (!dirty) return;
+          setSaved(await onSave(changes));
         }}
       >
         <Field label={t('tenants.name')}>
@@ -316,40 +325,52 @@ function TenantControls({
             <TextInput
               {...props}
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSaved(false);
+              }}
               minLength={2}
               maxLength={120}
               className="h-8 w-56 text-xs"
             />
           )}
         </Field>
+        <Field label={t('tenants.mfaPolicy')}>
+          {(props) => (
+            <select
+              {...props}
+              value={policy}
+              onChange={(event) => {
+                setPolicy(event.target.value as MfaPolicy);
+                setSaved(false);
+              }}
+              className="h-8 rounded border border-line bg-surface px-2 text-xs text-ink"
+            >
+              {MFA_POLICIES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`tenants.mfa${value}`)}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
         <Button
           type="submit"
-          variant="secondary"
           className="h-8 text-xs"
-          disabled={name.trim() === tenant.name}
-          pending={pending === `rename:${tenant.id}`}
+          variant={dirty ? 'primary' : 'secondary'}
+          disabled={!dirty}
+          pending={pending === `save:${tenant.id}`}
         >
           {t('common.save')}
         </Button>
+        {saved && !dirty && (
+          <span role="status" className="self-center text-xs text-ok">
+            {t('tenants.saved')}
+          </span>
+        )}
       </form>
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-xs text-ink-muted">
-          {t('tenants.mfaPolicy')}
-          <select
-            value={tenant.mfaPolicy}
-            disabled={pending === `policy:${tenant.id}`}
-            onChange={(event) => void onPolicy(event.target.value as MfaPolicy)}
-            className="h-8 rounded border border-line bg-surface px-2 text-xs text-ink"
-          >
-            {MFA_POLICIES.map((policy) => (
-              <option key={policy} value={policy}>
-                {t(`tenants.mfa${policy}`)}
-              </option>
-            ))}
-          </select>
-        </label>
 
         {!isMsp && (
           <Button
