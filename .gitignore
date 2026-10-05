@@ -22,3 +22,6 @@ apps/web/generated/
 # TLS material for the running installation: the generated mode file, and any
 # certificate and private key the operator supplied. Never committed.
 deploy/caddy/tls/
+
+# Personal notes that stay on this machine (the owner's manual test plan).
+*.local.txt
