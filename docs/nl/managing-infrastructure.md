@@ -1,6 +1,6 @@
 # Clusters toevoegen en de inventarisatie lezen
 
-> **Vertaling.** Bron: [docs/managing-infrastructure.md](../managing-infrastructure.md) @ `62d7fac`.
+> **Vertaling.** Bron: [docs/managing-infrastructure.md](../managing-infrastructure.md) @ `6825d64`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Alles over het onder beheer brengen van Proxmox en weten wat er staat.** Elk hoofdstuk is één taak,
