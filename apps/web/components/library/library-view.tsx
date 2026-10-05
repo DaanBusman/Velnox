@@ -13,7 +13,7 @@ import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { FriendlyName, useFriendlyName } from './friendly-name';
 import { PushDialog } from './push-dialog';
-import { uploadToLibrary } from './upload';
+import { useUploads } from './uploads-provider';
 
 const bytes = (value: number | null, format: ReturnType<typeof useFormatter>): string => {
   if (value === null) return '—';
@@ -57,18 +57,20 @@ export function LibraryView({
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [url, setUrl] = useState('');
   const [adding, setAdding] = useState(false);
-  const [upload, setUpload] = useState<{ name: string; sent: number; total: number } | null>(null);
   const [resumeTarget, setResumeTarget] = useState<LibraryItemSummary | null>(null);
   const [pushing, setPushing] = useState<LibraryItemSummary | null>(null);
   const [renaming, setRenaming] = useState<LibraryItemSummary | null>(null);
   const [removing, setRemoving] = useState<LibraryItemSummary | null>(null);
   const [notice, setNotice] = useState<{ jobId: string; text: string } | null>(null);
-  const uploadAbort = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
+  // Uploads belong to the shell, so they survive leaving this page and a
+  // refresh of it; see UploadsProvider.
+  const uploads = useUploads();
+  const uploading = uploads.active.length > 0;
 
-  const interacting = upload !== null || pushing !== null || renaming !== null || removing !== null;
-  // Paused while anything is open or uploading: a refresh can remount the tree,
-  // and an upload or a half-filled form that vanishes is work lost.
+  const interacting = pushing !== null || renaming !== null || removing !== null;
+  // Paused while a dialog or form is open: a refresh can remount the tree, and
+  // a half-filled form that vanishes is work lost.
   useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !interacting);
 
   const { capacity } = data;
@@ -91,29 +93,10 @@ export function LibraryView({
     router.refresh();
   }
 
-  async function startUpload(file: File) {
+  function startUpload(file: File) {
     setFailure(null);
-    const controller = new AbortController();
-    uploadAbort.current = controller;
-    setUpload({ name: file.name, sent: 0, total: file.size });
-    const result = await uploadToLibrary({
-      file,
-      resume: resumeTarget ?? undefined,
-      signal: controller.signal,
-      onProgress: (sent, total) => setUpload({ name: file.name, sent, total }),
-    });
-    setUpload(null);
+    uploads.start(file, resumeTarget ?? undefined);
     setResumeTarget(null);
-    uploadAbort.current = null;
-    if (!result.ok) {
-      if (result.error.code !== 'library.upload_paused') setFailure(result.error);
-    } else if (result.job) {
-      setNotice({
-        jobId: result.job.id,
-        text: t('library.uploadChecking', { filename: result.item.filename }),
-      });
-    }
-    router.refresh();
   }
 
   async function saveRename(item: LibraryItemSummary, title: string, language: string | null) {
@@ -142,6 +125,29 @@ export function LibraryView({
   return (
     <div className="space-y-4">
       {failure && <FormError>{describeError(failure)}</FormError>}
+      {uploads.finished.map((done) => (
+        <Notice key={done.key} tone={done.error ? 'error' : 'neutral'}>
+          {done.error ? (
+            describeError(done.error)
+          ) : (
+            <>
+              {t('library.uploadChecking', { filename: done.name })}{' '}
+              {done.jobId && (
+                <Link className="text-accent underline" href={`/jobs/${done.jobId}`}>
+                  {t('library.followJob')}
+                </Link>
+              )}
+            </>
+          )}{' '}
+          <button
+            type="button"
+            className="text-xs text-ink-muted underline"
+            onClick={() => uploads.dismiss(done.key)}
+          >
+            {t('common.dismiss')}
+          </button>
+        </Notice>
+      ))}
       {notice && (
         <Notice tone="neutral">
           {notice.text}{' '}
@@ -233,22 +239,22 @@ export function LibraryView({
                     ref={fileInput}
                     type="file"
                     accept=".iso,.img,.qcow2,.raw"
-                    disabled={upload !== null}
+                    disabled={uploading}
                     className="block w-full text-sm text-ink file:mr-3 file:rounded file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-sm file:text-ink"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
                       event.target.value = '';
-                      if (file) void startUpload(file);
+                      if (file) startUpload(file);
                     }}
                   />
                 )}
               </Field>
-              {upload && (
-                <div className="space-y-1">
+              {uploads.active.map((upload) => (
+                <div key={upload.key} className="space-y-1">
                   <div className="h-2 w-full overflow-hidden rounded bg-surface-3" aria-hidden>
                     <div
                       className="h-full bg-accent"
-                      style={{ width: `${(upload.sent / upload.total) * 100}%` }}
+                      style={{ width: `${(upload.sent / Math.max(1, upload.total)) * 100}%` }}
                     />
                   </div>
                   <p className="text-xs text-ink-muted">
@@ -258,11 +264,12 @@ export function LibraryView({
                       total: bytes(upload.total, format),
                     })}
                   </p>
-                  <Button variant="secondary" onClick={() => uploadAbort.current?.abort()}>
+                  <p className="text-xs text-ink-muted">{t('library.uploadBackground')}</p>
+                  <Button variant="secondary" onClick={() => uploads.pause(upload.key)}>
                     {t('library.pause')}
                   </Button>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </Card>
@@ -357,7 +364,7 @@ export function LibraryView({
                           {canManage &&
                             item.state === 'RECEIVING' &&
                             item.source === 'UPLOAD' &&
-                            upload === null && (
+                            !uploading && (
                               <Button
                                 variant="secondary"
                                 onClick={() => {

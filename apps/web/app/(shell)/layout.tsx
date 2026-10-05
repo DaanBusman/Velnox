@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { ActivityBar } from '@/components/activity-bar';
+import { UploadsProvider } from '@/components/library/uploads-provider';
 import { SessionKeepAlive } from '@/components/session-keepalive';
 import { SessionRecovery } from '@/components/session-recovery';
 import { Sidebar } from '@/components/sidebar';
@@ -68,7 +70,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   const version = info?.version ?? '';
 
   return (
-    <>
+    <UploadsProvider>
       <SessionKeepAlive />
 
       <a
@@ -105,8 +107,9 @@ export default async function ShellLayout({ children }: { children: React.ReactN
               </a>
             </footer>
           </main>
+          <ActivityBar />
         </div>
       </div>
-    </>
+    </UploadsProvider>
   );
 }

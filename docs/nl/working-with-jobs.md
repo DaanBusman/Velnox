@@ -22,6 +22,11 @@ De lijst leest zichzelf opnieuw in volgens jouw verversinstelling (**Instellinge
 automatisch verversen**) en pauzeert zolang er een formulier op openstaat. Een job openen toont hem
 **live**: gebeurtenissen komen binnen op het moment dat ze plaatsvinden, niet pas bij herladen.
 
+**Lopende jobs**, onderin elke pagina, is dezelfde lijst beperkt tot wat er nu gebeurt: jobs die nog
+niet klaar zijn, en die in het afgelopen half uur zijn afgerond, met hun status en voortgang, plus
+uploads naar de ISO-bibliotheek. Klik erop om hem te openen of te sluiten; dat onthoudt hij in deze
+browser.
+
 ## Wat de statussen betekenen
 
 | Status | Betekenis |

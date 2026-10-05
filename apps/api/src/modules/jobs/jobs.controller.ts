@@ -29,6 +29,12 @@ const listSchema = z.object({
   status: z.enum(JOB_STATUSES).optional(),
   type: z.string().trim().max(80).optional(),
   tenantId: z.string().uuid().optional(),
+  /**
+   * Only jobs that are not finished — and, with `finishedSince`, those that
+   * finished after that moment too. What the running-jobs bar reads.
+   */
+  active: z.enum(['true', 'false']).optional(),
+  finishedSince: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
 });
 
@@ -91,7 +97,9 @@ export class JobsController {
   @Get()
   @ApiOperation({ summary: 'List jobs, newest first' })
   list(@Query(zodQuery(listSchema)) query: z.infer<typeof listSchema>, @Req() request: Request) {
-    return this.jobs.list(query, actorOf(request)).then((jobs) => ({ jobs }));
+    return this.jobs
+      .list({ ...query, active: query.active === 'true' }, actorOf(request))
+      .then((jobs) => ({ jobs }));
   }
 
   @RequirePermission(PERMISSIONS.systemManage)

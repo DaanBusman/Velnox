@@ -228,7 +228,8 @@
     "search": "Search",
     "selected": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
     "unknown": "Unknown",
-    "yes": "Yes"
+    "yes": "Yes",
+    "dismiss": "Dismiss"
   },
   "dashboard": {
     "phaseNoticeBody": "Authentication, the setup wizard, roles, optional two-factor authentication, tenants, Proxmox inventory and the job system work. Update management arrives in phase 6. The tiles below count what this account can see; a tile still showing a dash names the phase that fills it.",
@@ -1128,7 +1129,8 @@
       "businessEditions": "business editions",
       "consumerEditions": "consumer editions"
     },
-    "capacityDiskLimits": "The disk is what limits it: {free} is free there, and {floor} of that has to stay free."
+    "capacityDiskLimits": "The disk is what limits it: {free} is free there, and {floor} of that has to stay free.",
+    "uploadBackground": "You can go to other pages while this runs; it is shown at the bottom of the window. Reloading or closing the page stops it — it can be resumed from here with the same file."
   },
   "autoconfig": {
     "subtitle": "Templates that VMs are built from: Windows with an answer file, Linux from a cloud image.",
@@ -1388,5 +1390,19 @@
     "switchOff": "Switch mail off",
     "switchedOn": "Mail is on.",
     "switchedOff": "Mail is off."
+  },
+  "activity": {
+    "title": "Running jobs",
+    "running": "{count, plural, =0 {none running} one {# running} other {# running}}",
+    "uploads": "{count, plural, one {# upload} other {# uploads}}",
+    "show": "Show",
+    "hide": "Hide",
+    "uploadsTitle": "Uploads",
+    "jobsTitle": "Jobs, and those finished in the last half hour",
+    "recent": "Finished in the last half hour",
+    "empty": "No jobs running, and none finished in the last half hour.",
+    "allJobs": "All jobs",
+    "uploadDone": "Uploaded",
+    "uploadFailed": "Failed"
   }
 }

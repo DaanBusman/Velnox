@@ -57,6 +57,11 @@ handtekening.
 Kies het bestand onder **Vanaf deze computer**. Het gaat omhoog in stukken van 32 MiB, en een stuk
 dat door een netwerkprobleem mislukt wordt los opnieuw verstuurd.
 
+**Het loopt door terwijl je elders in Velnox werkt.** Ga naar een andere pagina en de upload gaat
+verder; de voortgang staat bij **Lopende jobs** onderin het venster, waar je hem ook kunt pauzeren.
+Herladen of sluiten van de pagina stopt hem wel, dus zolang er een loopt vraagt de browser eerst om
+bevestiging.
+
 **Wordt de upload onderbroken** — tabblad gesloten, laptop in slaap, verbinding weg — dan blijft de
 regel in de lijst staan als *Komt binnen*. Kies daar **Upload hervatten** en kies hetzelfde bestand
 opnieuw: Velnox vraagt de server hoe ver hij kwam en gaat vanaf daar verder. Het moet dezelfde naam en

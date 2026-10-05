@@ -7,6 +7,7 @@ import {
   JOB_EVENT_KEYS,
   JOB_TYPES,
   PERMISSIONS,
+  TERMINAL_JOB_STATUSES,
   VelnoxError,
   assertTransition,
   isAllowed,
@@ -274,14 +275,27 @@ export class JobsService {
   // -------------------------------------------------------------------------
 
   async list(
-    filter: { status?: JobStatus; type?: string; tenantId?: string; limit: number },
+    filter: {
+      status?: JobStatus;
+      type?: string;
+      tenantId?: string;
+      active?: boolean;
+      finishedSince?: string;
+      limit: number;
+    },
     actor: Actor,
   ): Promise<JobSummary[]> {
+    const unfinished = { status: { notIn: [...TERMINAL_JOB_STATUSES] } };
     const rows = await this.prisma.client.job.findMany({
       where: {
         ...(filter.status ? { status: filter.status } : {}),
         ...(filter.type ? { type: filter.type } : {}),
         ...(filter.tenantId ? { tenantId: filter.tenantId } : {}),
+        ...(filter.active
+          ? filter.finishedSince
+            ? { OR: [unfinished, { finishedAt: { gte: new Date(filter.finishedSince) } }] }
+            : unfinished
+          : {}),
       },
       include: jobInclude,
       orderBy: { queuedAt: 'desc' },

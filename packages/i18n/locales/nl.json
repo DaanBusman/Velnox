@@ -229,7 +229,8 @@
     "search": "Zoeken",
     "selected": "{count, plural, =0 {Niets geselecteerd} one {# geselecteerd} other {# geselecteerd}}",
     "unknown": "Onbekend",
-    "yes": "Ja"
+    "yes": "Ja",
+    "dismiss": "Sluiten"
   },
   "dashboard": {
     "phaseNoticeBody": "Authenticatie, de installatiewizard, rollen, optionele tweefactorauthenticatie, tenants, de Proxmox-inventarisatie en het jobsysteem werken. Updatebeheer komt in fase 6. De tegels hieronder tellen wat dit account kan zien; een tegel met nog een streepje noemt de fase die hem vult.",
@@ -1129,7 +1130,8 @@
       "businessEditions": "zakelijke edities",
       "consumerEditions": "consumentenedities"
     },
-    "capacityDiskLimits": "De schijf is hier de beperking: daar is nog {free} vrij, en {floor} daarvan moet vrij blijven."
+    "capacityDiskLimits": "De schijf is hier de beperking: daar is nog {free} vrij, en {floor} daarvan moet vrij blijven.",
+    "uploadBackground": "Je kunt naar andere pagina’s gaan terwijl dit loopt; onderin het venster zie je de voortgang. Herladen of sluiten van de pagina stopt het — vanaf hier is het met hetzelfde bestand te hervatten."
   },
   "autoconfig": {
     "subtitle": "Templates waaruit VM’s worden gebouwd: Windows met een antwoordbestand, Linux vanuit een cloud image.",
@@ -1389,5 +1391,19 @@
     "switchOff": "Mail uitzetten",
     "switchedOn": "Mail staat aan.",
     "switchedOff": "Mail staat uit."
+  },
+  "activity": {
+    "title": "Lopende jobs",
+    "running": "{count, plural, =0 {geen lopend} one {# lopend} other {# lopend}}",
+    "uploads": "{count, plural, one {# upload} other {# uploads}}",
+    "show": "Tonen",
+    "hide": "Verbergen",
+    "uploadsTitle": "Uploads",
+    "jobsTitle": "Jobs, en die in het afgelopen half uur zijn afgerond",
+    "recent": "Afgerond in het afgelopen half uur",
+    "empty": "Geen lopende jobs, en geen in het afgelopen half uur afgerond.",
+    "allJobs": "Alle jobs",
+    "uploadDone": "Geüpload",
+    "uploadFailed": "Mislukt"
   }
 }

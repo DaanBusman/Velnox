@@ -18,6 +18,11 @@ The list re-reads itself on your refresh setting (**Settings → Refresh screens
 pauses while a form on it is open. Opening a job shows it **live**: its events arrive as they
 happen, not when you reload.
 
+**Running jobs**, at the bottom of every page, is the same list narrowed to what is happening now:
+jobs that are not finished, and those that finished in the last half hour, with their status and
+progress, and uploads to the ISO library. Click it to open or close it; it remembers which, in this
+browser.
+
 ## What the statuses mean
 
 | Status | Meaning |

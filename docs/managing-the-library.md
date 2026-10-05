@@ -53,6 +53,10 @@ keep their signature.
 Choose the file under **From this computer**. It goes up in 32 MiB pieces, and a piece that fails for
 a network reason is sent again on its own.
 
+**It keeps going while you work elsewhere in Velnox.** Move to any other page and the upload carries
+on; its progress shows in **Running jobs** at the bottom of the window, where it can also be paused.
+Reloading or closing the page does stop it, so the browser asks first while one is running.
+
 **If the upload is interrupted** — the tab closed, the laptop went to sleep, the connection dropped —
 the entry stays in the list as *Arriving*. Choose **Continue upload** on it and pick the same file
 again: Velnox asks the server how far it got and carries on from there. It has to be the same name
