@@ -44,6 +44,7 @@ export default async function TenantsPage() {
         tenants={tenants.data.tenants}
         canManage={permissions.has('tenants.manage')}
         currentTenantId={session?.user.tenantId ?? null}
+        viewerIsMsp={session?.user.isMspRoot ?? false}
       />
     </>
   );

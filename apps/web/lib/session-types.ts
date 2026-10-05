@@ -35,6 +35,8 @@ export interface TenantSummary {
   kind: 'MSP_ROOT' | 'CUSTOMER';
   status: 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
   mfaPolicy: 'OPTIONAL' | 'REQUIRED_FOR_PRIVILEGED' | 'REQUIRED';
+  /** Days its audit events are kept; null is for ever. */
+  auditRetentionDays: number | null;
   userCount: number;
   siteCount: number;
   createdAt: string;
@@ -121,6 +123,8 @@ export interface RoleSummary {
 export interface AuditEventView {
   id: string;
   at: string;
+  tenantId: string | null;
+  tenantName: string | null;
   action: string;
   result: 'SUCCESS' | 'FAILURE' | 'DENIED';
   actorType: string;

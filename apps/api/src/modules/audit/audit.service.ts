@@ -39,6 +39,9 @@ export const AUDIT_ACTIONS = {
 
   permissionDenied: 'authz.permission_denied',
 
+  /** Someone downloaded part of the audit trail. The filters are in the metadata. */
+  auditExported: 'audit.exported',
+
   userCreated: 'user.created',
   userUpdated: 'user.updated',
   roleAssigned: 'role.assigned',

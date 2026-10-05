@@ -224,6 +224,12 @@ A job whose worker dies is failed with `job.worker_lost` once its lease lapses a
 notices — measured at 33–34 seconds. Until then it still reads **Running**. See ADR-035 for why the
 lease is not shorter.
 
+### The audit log is protected by a trigger, not by a separate database role
+Old events can only be removed through the retention function, and an ordinary `DELETE` or `UPDATE`
+is refused. But the application and that function share one database role, which owns the table and
+could drop the trigger, and there is no hash chain to show that rows were removed some other way. See
+ADR-040; Phase 15 hardens it.
+
 ### Documentation drift is now possible
 Phase 1 amended two Phase 0 decisions (see *Amended in Phase 1* in `architecture.md` and
 `tech-decisions.md`). The Dutch translations under `docs/nl/` record the English commit they were

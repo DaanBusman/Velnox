@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Fragment, useMemo, useState, type FormEvent } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
+import { AUDIT_RETENTION_CHOICES } from '@velnox/shared';
 import type { TenantSummary } from '@/lib/session-types';
 import { apiDelete, apiPatch, apiPost, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
@@ -35,11 +36,14 @@ export function TenantAdmin({
   tenants,
   canManage,
   currentTenantId,
+  viewerIsMsp,
 }: {
   tenants: TenantSummary[];
   canManage: boolean;
   /** The tenant the viewer's own account lives in. Archiving it is refused. */
   currentTenantId: string | null;
+  /** Only MSP staff decide how long a tenant's audit trail is kept. */
+  viewerIsMsp: boolean;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -230,6 +234,7 @@ export function TenantAdmin({
                                 tenant={tenant}
                                 isMsp={isMsp}
                                 isOwn={isOwn}
+                                canSetRetention={viewerIsMsp}
                                 pending={pending}
                                 onSave={(changes) =>
                                   run(`save:${tenant.id}`, () =>
@@ -278,6 +283,7 @@ function TenantControls({
   tenant,
   isMsp,
   isOwn,
+  canSetRetention,
   pending,
   onSave,
   onStatus,
@@ -286,14 +292,20 @@ function TenantControls({
   tenant: TenantSummary;
   isMsp: boolean;
   isOwn: boolean;
+  canSetRetention: boolean;
   pending: string | null;
-  onSave: (changes: { name?: string; mfaPolicy?: MfaPolicy }) => Promise<boolean>;
+  onSave: (changes: {
+    name?: string;
+    mfaPolicy?: MfaPolicy;
+    auditRetentionDays?: number | null;
+  }) => Promise<boolean>;
   onStatus: (value: 'ACTIVE' | 'SUSPENDED') => Promise<boolean>;
   onArchive: () => Promise<boolean>;
 }) {
   const t = useTranslations();
   const [name, setName] = useState(tenant.name);
   const [policy, setPolicy] = useState<MfaPolicy>(tenant.mfaPolicy);
+  const [retention, setRetention] = useState<number | null>(tenant.auditRetentionDays);
   const [saved, setSaved] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -307,6 +319,9 @@ function TenantControls({
   const changes = {
     ...(name.trim() !== tenant.name ? { name: name.trim() } : {}),
     ...(policy !== tenant.mfaPolicy ? { mfaPolicy: policy } : {}),
+    ...(canSetRetention && retention !== tenant.auditRetentionDays
+      ? { auditRetentionDays: retention }
+      : {}),
   };
   const dirty = Object.keys(changes).length > 0;
 
@@ -354,6 +369,28 @@ function TenantControls({
             </select>
           )}
         </Field>
+        {canSetRetention && (
+          <Field label={t('tenants.auditRetention')}>
+            {(props) => (
+              <select
+                {...props}
+                value={retention ?? ''}
+                onChange={(event) => {
+                  setRetention(event.target.value === '' ? null : Number(event.target.value));
+                  setSaved(false);
+                }}
+                className="h-8 rounded border border-line bg-surface px-2 text-xs text-ink"
+              >
+                <option value="">{t('tenants.auditRetentionForever')}</option>
+                {AUDIT_RETENTION_CHOICES.map((days) => (
+                  <option key={days} value={days}>
+                    {t('tenants.auditRetentionYears', { years: Math.round(days / 365) })}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        )}
         <Button
           type="submit"
           className="h-8 text-xs"

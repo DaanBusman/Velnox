@@ -62,7 +62,19 @@
     "newest": "Terug naar de nieuwste",
     "older": "Oudere gebeurtenissen",
     "recent": "Gebeurtenissen",
-    "subtitle": "Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst."
+    "subtitle": "Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst.",
+    "filterTenant": "Tenant",
+    "filterAllTenants": "Alle tenants",
+    "filterFrom": "Vanaf",
+    "filterTo": "Tot",
+    "columnTenant": "Tenant",
+    "export": "Exporteren",
+    "exportCsv": "CSV downloaden",
+    "exportJson": "JSON downloaden",
+    "exportHint": "Alles wat aan deze filters voldoet, oudste eerst — niet alleen wat hieronder geladen is. De download wordt vastgelegd in het auditlog.",
+    "retentionForever": "{tenant} bewaart zijn auditlog voor altijd.",
+    "retentionYears": "{tenant} bewaart zijn auditlog {years} jaar; oudere gebeurtenissen worden verwijderd, en elke verwijdering wordt hier vastgelegd.",
+    "retentionInstallation": "De bewaartermijn stel je per tenant in, onder Tenants. Gebeurtenissen die bij geen tenant horen volgen die van de MSP-organisatie."
   },
   "auth": {
     "apiUnreachableBody": "De interface draait, maar de API antwoordt niet. Inloggen werkt pas als dat wel het geval is.",
@@ -970,7 +982,10 @@
     "subtitle": "De MSP-organisatie en de klanten die zij beheert. De scheiding daartussen wordt in de datalaag afgedwongen, niet door deze lijst.",
     "suspend": "Opschorten",
     "title": "Tenants",
-    "saved": "Opgeslagen."
+    "saved": "Opgeslagen.",
+    "auditRetention": "Auditlog bewaren",
+    "auditRetentionForever": "Voor altijd",
+    "auditRetentionYears": "{years, plural, one {# jaar} other {# jaar}}"
   },
   "tls": {
     "acmeAccount": "ACME-account",

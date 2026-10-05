@@ -123,6 +123,11 @@ model Tenant {
   /// Per-tenant overrides, including an MFA policy stricter than the installation's.
   settings Json @default("{}")
 
+  /// How long this tenant's audit events are kept, in days; null keeps them
+  /// for ever. At least a year (`tenants_audit_retention_at_least_a_year`).
+  /// The MSP organisation's also governs events that belong to no tenant.
+  auditRetentionDays Int? @map("audit_retention_days")
+
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)

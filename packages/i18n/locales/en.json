@@ -61,7 +61,19 @@
     "newest": "Back to newest",
     "older": "Older events",
     "recent": "Events",
-    "subtitle": "Every authentication and authorisation event, oldest kept, newest first."
+    "subtitle": "Every authentication and authorisation event, oldest kept, newest first.",
+    "filterTenant": "Tenant",
+    "filterAllTenants": "All tenants",
+    "filterFrom": "From",
+    "filterTo": "Until",
+    "columnTenant": "Tenant",
+    "export": "Export",
+    "exportCsv": "Download CSV",
+    "exportJson": "Download JSON",
+    "exportHint": "Everything matching these filters, oldest first — not only what is loaded below. The download is recorded in the audit log.",
+    "retentionForever": "{tenant} keeps its audit log for ever.",
+    "retentionYears": "{tenant} keeps its audit log for {years, plural, one {# year} other {# years}}; older events are removed, and each removal is recorded here.",
+    "retentionInstallation": "Retention is set per tenant, under Tenants. Events that belong to no tenant follow the MSP organisation’s."
   },
   "auth": {
     "apiUnreachableBody": "The interface is running but the API did not answer. Signing in will not work until it does.",
@@ -969,7 +981,10 @@
     "subtitle": "The MSP organisation and the customers it manages. Isolation between them is enforced in the data layer, not by this list.",
     "suspend": "Suspend",
     "title": "Tenants",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "auditRetention": "Keep the audit log",
+    "auditRetentionForever": "For ever",
+    "auditRetentionYears": "{years, plural, one {# year} other {# years}}"
   },
   "tls": {
     "acmeAccount": "ACME account",

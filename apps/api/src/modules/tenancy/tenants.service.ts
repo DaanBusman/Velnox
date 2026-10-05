@@ -28,6 +28,8 @@ export interface TenantSummary {
   status: TenantStatus;
   /** The stricter-of-two policy is resolved at sign-in; this is the tenant's own. */
   mfaPolicy: MfaPolicy;
+  /** Days this tenant's audit events are kept; null is for ever. */
+  auditRetentionDays: number | null;
   userCount: number;
   siteCount: number;
   createdAt: string;
@@ -120,13 +122,30 @@ export class TenantsService {
 
   async update(
     id: string,
-    input: { name?: string; status?: TenantStatus; mfaPolicy?: MfaPolicy },
+    input: {
+      name?: string;
+      status?: TenantStatus;
+      mfaPolicy?: MfaPolicy;
+      auditRetentionDays?: number | null;
+    },
     actor: Actor,
   ): Promise<TenantSummary> {
     const existing = await this.prisma.client.tenant.findFirst({ where: { id, deletedAt: null } });
     if (!existing) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
 
     assertAllowedAt(actor, PERMISSIONS.tenantsManage, { tenantId: id });
+
+    /*
+     * How long a tenant's audit trail is kept is the MSP's decision, never the
+     * tenant's own: a customer administrator shortening it would be shortening
+     * the record of what they themselves did.
+     */
+    if (input.auditRetentionDays !== undefined && !actor.isMspRoot) {
+      throw new VelnoxError(ERROR_CODES.authzForbidden, {
+        status: 403,
+        params: { permission: PERMISSIONS.tenantsManage, reason: 'msp_only' },
+      });
+    }
 
     /*
      * The MSP organisation cannot be suspended.
@@ -153,6 +172,9 @@ export class TenantsService {
         ...(input.name ? { name: input.name.trim() } : {}),
         ...(input.status ? { status: input.status } : {}),
         ...(input.mfaPolicy ? { settings } : {}),
+        ...(input.auditRetentionDays !== undefined
+          ? { auditRetentionDays: input.auditRetentionDays }
+          : {}),
       },
     });
 
@@ -168,6 +190,9 @@ export class TenantsService {
         ...(input.name ? { name: tenant.name } : {}),
         ...(input.status ? { status: tenant.status } : {}),
         ...(input.mfaPolicy ? { mfaPolicy: input.mfaPolicy } : {}),
+        ...(input.auditRetentionDays !== undefined
+          ? { auditRetentionDays: input.auditRetentionDays }
+          : {}),
       },
     });
 
@@ -260,6 +285,7 @@ export class TenantsService {
     kind: string;
     status: TenantStatus;
     settings: unknown;
+    auditRetentionDays: number | null;
     createdAt: Date;
     _count: { users: number; sites: number };
   }): TenantSummary {
@@ -270,6 +296,7 @@ export class TenantsService {
       kind: tenant.kind === 'MSP_ROOT' ? 'MSP_ROOT' : 'CUSTOMER',
       status: tenant.status,
       mfaPolicy: readSettings(tenant.settings).mfaPolicy ?? 'OPTIONAL',
+      auditRetentionDays: tenant.auditRetentionDays,
       userCount: tenant._count.users,
       siteCount: tenant._count.sites,
       createdAt: tenant.createdAt.toISOString(),

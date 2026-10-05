@@ -168,3 +168,10 @@ export interface PingJobStatusResponse {
   result: { processedBy: string; durationMs: number; message: string } | null;
   failedReason: string | null;
 }
+
+/**
+ * How long a tenant's audit events may be kept, in days, when not for ever.
+ * At least a year: the database refuses anything shorter as well.
+ */
+export const AUDIT_RETENTION_CHOICES = [365, 730, 1095, 1825, 2555, 3650] as const;
+export type AuditRetentionDays = (typeof AUDIT_RETENTION_CHOICES)[number];

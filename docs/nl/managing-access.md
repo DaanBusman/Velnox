@@ -289,11 +289,25 @@ achter dat de configuratie fout is, en niet bij iemands eerste aanmelding.
 Administrator.
 
 Open **Serverbeheer** onderaan de zijbalk en kies **Auditlog**. Gebeurtenissen staan nieuwste eerst,
-zijn te filteren op actie, en oudere pagina's worden aangevuld in plaats van dat ze vervangen wat je
-aan het lezen bent.
+zijn te filteren op actie en op een periode (*Vanaf*, *Tot*), en oudere pagina's worden aangevuld in
+plaats van dat ze vervangen wat je aan het lezen bent. MSP-medewerkers kunnen het ook beperken tot
+één tenant; een beheerder van een klant ziet het auditlog van de eigen tenant en niets anders, wat
+hij ook vraagt.
+
+**Exporteren.** *CSV downloaden* en *JSON downloaden* geven alles wat aan de filters voldoet, oudste
+eerst — niet alleen wat op het scherm geladen is — met dezelfde reikwijdte als het lezen. De download
+wordt zelf in het auditlog vastgelegd, met zijn filters. In de CSV krijgt een waarde die een
+spreadsheet als formule zou lezen een aanhalingsteken ervoor, zodat een naam die iemand anders koos
+niet in die van jou kan worden uitgevoerd.
+
+**Hoe lang het bewaard blijft** stelt de MSP per tenant in, onder **Tenants** — *Auditlog bewaren*:
+voor altijd (de standaard), of één tot tien jaar. Oudere gebeurtenissen worden door de worker
+verwijderd, en elke verwijdering wordt in het auditlog van dezelfde tenant vastgelegd met hoeveel en
+van vóór wanneer. Gebeurtenissen die bij geen tenant horen volgen de termijn van de MSP-organisatie.
+Exporteer wat je nodig hebt voordat je de termijn verkort.
 
 Heb je `audit.read` maar geen `system.manage` — MSP Read Only, of een Tenant Administrator — dan is
-er voor jou geen Serverbeheer-venster, en blijft **Auditlog** onder Beheer in de zijbalk staan.
+er voor jou geen Serverbeheer-venster, en blijft **Auditlog** onder Administratie in de zijbalk staan.
 Zelfde paneel, zelfde gegevens; alleen de weg ernaartoe verschilt.
 
 Elke authenticatie- en autorisatiegebeurtenis wordt vastgelegd: aanmeldingen en mislukte pogingen,
@@ -302,9 +316,10 @@ accounts, het instellen van meervoudige authenticatie, gebruik van herstelcodes,
 de identityprovider.
 
 De tabel is **append-only**, afgedwongen door een databasetrigger die `UPDATE` en `DELETE` weigert —
-ook vanuit Velnox zelf. Een gebeurtenis kan achteraf niet worden gewijzigd of verwijderd door iemand
-die geen superuseraccount op de database van de machine heeft gekregen, en dat is iets anders en veel
-groters om te bezitten.
+ook vanuit Velnox zelf. De enige uitzondering is het verwijderen na de bewaartermijn hierboven, dat
+via één databasefunctie loopt die alles jonger dan een jaar weigert; verder kan een gebeurtenis
+achteraf niet worden gewijzigd of verwijderd door iemand die geen databaseaccount op de machine heeft
+gekregen, en dat is iets anders en veel groters om te bezitten.
 
 Auditrecords bevatten nooit een wachtwoord, een token, een secret of een herstelcode. Veldnamen die
 op een credential lijken worden geredigeerd voordat er iets wordt weggeschreven, en er is een test

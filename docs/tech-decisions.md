@@ -1191,6 +1191,36 @@ archived rather than deleted, and the tenancy filter needs only `hasSome`.
 
 ---
 
+## ADR-040 — The audit log: retention per tenant, removed one way, and exported
+
+**Decision:** How long a tenant's audit events are kept is a per-tenant setting
+(`tenants.audit_retention_days`), for ever by default, otherwise one to ten years, never less than one
+— the database refuses less. Only MSP staff set it: a customer administrator shortening it would be
+shortening the record of what they did. The worker's sweep removes older events through one database
+function, `velnox_prune_audit_events`, the only path the append-only trigger lets a `DELETE` through;
+the function refuses a cutoff younger than a year, and the sweep records each removal in the same
+tenant's log (`audit.pruned`, with the count and the cutoff), so a gap is never unexplained. The MSP
+organisation's setting also covers events that belong to no tenant.
+
+**Export** streams every matching event, oldest first, as CSV or JSON Lines, in the same scope as
+reading — a customer gets their own tenant whatever they ask for — and is itself recorded with its
+filters before it starts. Paged by `(at, id)`, so events in the same millisecond are not skipped. CSV
+cells a spreadsheet would read as a formula are prefixed with a quote mark.
+
+**What this does not do, stated plainly.** R-20 asked for pruning under a separate database role and a
+hash chain. Neither exists: the application connects as the one role that owns the tables, so the
+trigger stops a stray `DELETE` or `UPDATE` — an injected one included — but not someone who can run
+arbitrary SQL as that role, who could drop the trigger. A separate role belongs with the PostgreSQL
+hardening of Phase 15.
+
+**Alternatives considered.** Retention as one installation-wide setting (the owner asked for it per
+tenant, and customers' obligations differ). Moving old events to an archive table instead of removing
+them (the table would still grow; export is the archive, and the guide says to export first). A
+deletion flag instead of deletion (the rows would still be there to read, which is what "kept for N
+years" promises not to do).
+
+---
+
 ## Version targets
 
 | Component | Version |

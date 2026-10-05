@@ -1258,6 +1258,38 @@ het tenantfilter heeft alleen `hasSome` nodig.
 
 ---
 
+## ADR-040 — Het auditlog: bewaartermijn per tenant, op één manier verwijderd, en geëxporteerd
+
+**Besluit:** Hoe lang de auditgebeurtenissen van een tenant bewaard blijven is een instelling per
+tenant (`tenants.audit_retention_days`), standaard voor altijd, anders één tot tien jaar, nooit korter
+dan één — de database weigert korter. Alleen MSP-medewerkers stellen het in: een beheerder van een
+klant die het verkort, verkort het verslag van wat hij zelf deed. De opruimtaak van de worker
+verwijdert oudere gebeurtenissen via één databasefunctie, `velnox_prune_audit_events`, de enige weg
+waarlangs de append-only-trigger een `DELETE` doorlaat; de functie weigert een grens jonger dan een
+jaar, en de opruimtaak legt elke verwijdering vast in het auditlog van dezelfde tenant
+(`audit.pruned`, met het aantal en de grens), zodat een gat nooit onverklaard is. De instelling van de
+MSP-organisatie geldt ook voor gebeurtenissen die bij geen tenant horen.
+
+**Exporteren** streamt elke passende gebeurtenis, oudste eerst, als CSV of JSON Lines, met dezelfde
+reikwijdte als lezen — een klant krijgt zijn eigen tenant, wat hij ook vraagt — en wordt zelf
+vastgelegd met zijn filters voordat het begint. Gepagineerd op `(at, id)`, zodat gebeurtenissen in
+dezelfde milliseconde niet worden overgeslagen. CSV-cellen die een spreadsheet als formule zou lezen
+krijgen een aanhalingsteken ervoor.
+
+**Wat dit niet doet, eerlijk gezegd.** R-20 vroeg om opschonen onder een aparte databaserol en om een
+hashketen. Geen van beide bestaat: de applicatie verbindt als de ene rol die eigenaar is van de
+tabellen, dus de trigger houdt een verdwaalde `DELETE` of `UPDATE` tegen — ook een geïnjecteerde —
+maar niet iemand die willekeurige SQL als die rol kan uitvoeren, die de trigger kan verwijderen. Een
+aparte rol hoort bij de PostgreSQL-verharding van fase 15.
+
+**Overwogen alternatieven.** Eén bewaartermijn voor de hele installatie (de eigenaar vroeg om per
+tenant, en de verplichtingen van klanten verschillen). Oude gebeurtenissen naar een archieftabel
+verplaatsen in plaats van verwijderen (de tabel groeit dan nog steeds; de export is het archief, en
+de handleiding zegt eerst te exporteren). Een verwijdermarkering in plaats van verwijderen (de rijen
+zouden er dan nog zijn om te lezen, en dat is precies wat "N jaar bewaard" belooft niet te doen).
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

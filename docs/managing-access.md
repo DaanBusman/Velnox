@@ -276,8 +276,19 @@ out that the configuration is wrong now rather than at someone's first sign-in.
 Administrator.
 
 Open **Server management** at the bottom of the sidebar and choose **Audit log**. Events are newest
-first, can be filtered by action, and older pages are appended rather than replacing what you are
-reading.
+first, can be filtered by action and by a period (*From*, *Until*), and older pages are appended
+rather than replacing what you are reading. MSP staff can also narrow it to one tenant; a customer's
+administrator sees their own tenant's log and nothing else, whatever they ask for.
+
+**Export.** *Download CSV* and *Download JSON* give everything matching the filters, oldest first —
+not only what is loaded on screen — in the same scope as reading it. The download is itself written
+to the audit log, with its filters. In the CSV, a value that a spreadsheet would read as a formula is
+prefixed with a quote mark, so a name chosen by someone else cannot run in yours.
+
+**How long it is kept** is set per tenant, by the MSP, under **Tenants** — *Keep the audit log*: for
+ever (the default), or one to ten years. Events older than that are removed by the worker, each
+removal recorded in the same tenant's log with how many and before when. Events that belong to no
+tenant follow the MSP organisation's period. Export what you need before shortening it.
 
 If you hold `audit.read` but not `system.manage` — MSP Read Only, or a Tenant Administrator — there
 is no Server management window for you, and **Audit log** stays in the sidebar under Administration
@@ -288,9 +299,10 @@ refused permissions, role grants and revocations, account status changes, two-fa
 recovery-code use, and changes to the identity provider.
 
 The table is **append-only**, enforced by a database trigger that refuses `UPDATE` and `DELETE` —
-including from Velnox itself. An event cannot be altered or removed after the fact by anyone who has
-not been given a database superuser account on the machine, which is a different and much larger
-thing to have.
+including from Velnox itself. The single exception is the retention removal above, which goes through
+one database function that refuses anything younger than a year; an event cannot otherwise be
+altered or removed after the fact by anyone who has not been given a database account on the
+machine, which is a different and much larger thing to have.
 
 Audit records never contain a password, a token, a secret or a recovery code. Field names that look
 like credentials are redacted before anything is written, and there is a test pinning which names

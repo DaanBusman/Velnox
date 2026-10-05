@@ -241,6 +241,12 @@ Een job waarvan de worker sterft, wordt op mislukt gezet met `job.worker_lost` z
 verloopt en een verzoening het merkt — gemeten op 33–34 seconden. Tot die tijd staat hij nog op
 **Actief**. Zie ADR-035 voor waarom de lease niet korter is.
 
+### Het auditlog wordt beschermd door een trigger, niet door een aparte databaserol
+Oude gebeurtenissen kunnen alleen via de bewaartermijnfunctie worden verwijderd, en een gewone `DELETE`
+of `UPDATE` wordt geweigerd. Maar de applicatie en die functie delen één databaserol, die eigenaar is
+van de tabel en de trigger zou kunnen verwijderen, en er is geen hashketen die laat zien dat rijen op
+een andere manier zijn verwijderd. Zie ADR-040; fase 15 verhardt het.
+
 ### Documentatiedrift is nu mogelijk
 Fase 1 heeft twee besluiten uit fase 0 herzien (zie *Herzien in fase 1* in `architecture.md` en
 `tech-decisions.md`). De Nederlandse vertalingen onder `docs/nl/` leggen vast van welke Engelse

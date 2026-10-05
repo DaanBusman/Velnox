@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import clsx from 'clsx';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
-import type { AuditEventView } from '@/lib/session-types';
+import type { AuditEventView, TenantSummary } from '@/lib/session-types';
 import { useApiResource } from './use-api-resource';
 import { PanelError, PanelLoading } from './panel-state';
 
@@ -15,6 +15,15 @@ const TONE = {
 } as const;
 
 const PAGE_SIZE = 50;
+
+/** A `yyyy-mm-dd` from a date field as the start of that day, here, in ISO. */
+const startOfDay = (value: string): string => new Date(`${value}T00:00:00`).toISOString();
+/** …and the start of the day after, so "until" includes the day chosen. */
+const endOfDay = (value: string): string => {
+  const date = new Date(`${value}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+  return date.toISOString();
+};
 
 /**
  * The audit trail, inside Server management.
@@ -32,23 +41,55 @@ export function AuditPanel() {
   const format = useFormatter();
 
   const [action, setAction] = useState('');
+  const [tenantId, setTenantId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [cursor, setCursor] = useState<string | null>(null);
   const [older, setOlder] = useState<AuditEventView[]>([]);
+  const loadedOnce = useRef(false);
+
+  // The filters, as the API takes them — shared by the list and the export.
+  const filters = useMemo(() => {
+    const params = new URLSearchParams();
+    if (action) params.set('action', action);
+    if (tenantId) params.set('tenantId', tenantId);
+    if (from) params.set('from', startOfDay(from));
+    if (to) params.set('to', endOfDay(to));
+    return params;
+  }, [action, tenantId, from, to]);
 
   const query = useMemo(() => {
-    const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
-    if (action) params.set('action', action);
+    const params = new URLSearchParams(filters);
+    params.set('limit', String(PAGE_SIZE));
     if (cursor) params.set('cursor', cursor);
     return `/audit-events?${params.toString()}`;
-  }, [action, cursor]);
+  }, [filters, cursor]);
 
   const page = useApiResource<{ events: AuditEventView[]; nextCursor: string | null }>(query);
   const actions = useApiResource<{ actions: string[] }>('/audit-events/actions');
+  // The tenants this account reaches: one for a customer, all of them for the MSP.
+  const tenants = useApiResource<{ tenants: TenantSummary[] }>('/tenants');
+  const tenantList = tenants.data?.tenants ?? [];
+  const msp = tenantList.find((tenant) => tenant.kind === 'MSP_ROOT');
+  const shownTenant =
+    tenantList.find((tenant) => tenant.id === tenantId) ??
+    (tenantList.length === 1 ? tenantList[0] : undefined);
+  const exportHref = (format: 'csv' | 'json') => {
+    const params = new URLSearchParams(filters);
+    params.set('format', format);
+    return `/api/v1/audit-events/export?${params.toString()}`;
+  };
 
-  if (page.state === 'loading' && older.length === 0) return <PanelLoading />;
+  // Only the first load replaces the panel. After that the filters stay on
+  // screen while a new selection loads, instead of blinking away and back.
+  if (page.state === 'ready') loadedOnce.current = true;
+  if (page.state === 'loading' && older.length === 0 && !loadedOnce.current)
+    return <PanelLoading />;
   if (page.state === 'failed') return <PanelError error={page.error} />;
 
   const events = [...older, ...(page.data?.events ?? [])];
+  // Which tenant a row belongs to matters only while more than one is shown.
+  const showTenant = tenantList.length > 1 && !tenantId;
   const nextCursor = page.data?.nextCursor ?? null;
 
   function loadOlder() {
@@ -57,16 +98,25 @@ export function AuditPanel() {
     setCursor(nextCursor);
   }
 
-  function changeAction(next: string) {
-    setAction(next);
+  function changeFilter(apply: () => void) {
+    apply();
     setOlder([]);
     setCursor(null);
   }
+  const changeAction = (next: string) => changeFilter(() => setAction(next));
 
   return (
     <div className="space-y-5">
       <Notice tone="neutral" title={t('audit.appendOnlyTitle')}>
-        {t('audit.appendOnlyBody')}
+        {t('audit.appendOnlyBody')}{' '}
+        {shownTenant
+          ? shownTenant.auditRetentionDays === null
+            ? t('audit.retentionForever', { tenant: shownTenant.name })
+            : t('audit.retentionYears', {
+                tenant: shownTenant.name,
+                years: Math.round(shownTenant.auditRetentionDays / 365),
+              })
+          : msp && t('audit.retentionInstallation')}
       </Notice>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -86,20 +136,83 @@ export function AuditPanel() {
           </select>
         </label>
 
+        {tenantList.length > 1 && (
+          <label className="flex flex-col gap-1 text-xs text-ink-muted">
+            {t('audit.filterTenant')}
+            <select
+              value={tenantId}
+              onChange={(event) => changeFilter(() => setTenantId(event.target.value))}
+              className="h-8 min-w-44 rounded border border-line bg-surface px-2 text-sm text-ink shadow-card"
+            >
+              <option value="">{t('audit.filterAllTenants')}</option>
+              {tenantList.map((tenant) => (
+                <option key={tenant.id} value={tenant.id}>
+                  {tenant.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <label className="flex flex-col gap-1 text-xs text-ink-muted">
+          {t('audit.filterFrom')}
+          <input
+            type="date"
+            value={from}
+            max={to || undefined}
+            onChange={(event) => changeFilter(() => setFrom(event.target.value))}
+            className="h-8 rounded border border-line bg-surface px-2 text-sm text-ink shadow-card"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-ink-muted">
+          {t('audit.filterTo')}
+          <input
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(event) => changeFilter(() => setTo(event.target.value))}
+            className="h-8 rounded border border-line bg-surface px-2 text-sm text-ink shadow-card"
+          />
+        </label>
+
         <p className="ml-auto text-xs text-ink-muted">
           {t('server.audit.loadedCount', { count: events.length })}
         </p>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+        <span className="font-medium text-ink">{t('audit.export')}</span>
+        <a
+          href={exportHref('csv')}
+          download
+          className="rounded border border-line bg-surface px-2.5 py-1 text-ink shadow-card hover:border-line-strong"
+        >
+          {t('audit.exportCsv')}
+        </a>
+        <a
+          href={exportHref('json')}
+          download
+          className="rounded border border-line bg-surface px-2.5 py-1 text-ink shadow-card hover:border-line-strong"
+        >
+          {t('audit.exportJson')}
+        </a>
+        <span>{t('audit.exportHint')}</span>
+      </div>
+
       <Card title={t('audit.recent')} bodyClassName="p-0">
         {events.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-ink-muted">{t('audit.empty')}</p>
+          <p className="px-4 py-6 text-center text-sm text-ink-muted">
+            {page.state === 'loading' ? t('common.loading') : t('audit.empty')}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-surface-2/80 text-left text-xs text-ink-muted backdrop-blur">
                 <tr>
                   <th className="px-4 py-2 font-medium">{t('audit.columnWhen')}</th>
+                  {showTenant && (
+                    <th className="px-4 py-2 font-medium">{t('audit.columnTenant')}</th>
+                  )}
                   <th className="px-4 py-2 font-medium">{t('audit.columnAction')}</th>
                   <th className="px-4 py-2 font-medium">{t('audit.columnActor')}</th>
                   <th className="px-4 py-2 font-medium">{t('audit.columnResult')}</th>
@@ -108,7 +221,7 @@ export function AuditPanel() {
               </thead>
               <tbody>
                 {events.map((event) => (
-                  <Row key={event.id} event={event} format={format} />
+                  <Row key={event.id} event={event} format={format} showTenant={showTenant} />
                 ))}
               </tbody>
             </table>
@@ -136,9 +249,11 @@ export function AuditPanel() {
 function Row({
   event,
   format,
+  showTenant,
 }: {
   event: AuditEventView;
   format: ReturnType<typeof useFormatter>;
+  showTenant: boolean;
 }) {
   /*
    * Metadata is a free-shaped JSON object, so values can be nested. `String()`
@@ -164,6 +279,9 @@ function Row({
       <td className="whitespace-nowrap px-4 py-2 text-xs text-ink-muted">
         {format.dateTime(new Date(event.at), { dateStyle: 'short', timeStyle: 'medium' })}
       </td>
+      {showTenant && (
+        <td className="px-4 py-2 text-xs text-ink-muted">{event.tenantName ?? '—'}</td>
+      )}
       <td className="px-4 py-2 font-mono text-xs text-ink">{event.action}</td>
       <td className="px-4 py-2 text-xs text-ink-muted">{event.actorLabel ?? event.actorType}</td>
       <td className="px-4 py-2">

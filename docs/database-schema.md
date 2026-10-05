@@ -76,6 +76,7 @@ erDiagram
 | parent_tenant_id | uuid null | reserved for future sub-tenants; v1 is one level under root |
 | status | enum | `ACTIVE` \| `SUSPENDED` \| `ARCHIVED` |
 | settings | jsonb | branding, defaults, notification targets |
+| audit_retention_days | int null | how long its audit events are kept; null is for ever, at least 365 (`tenants_audit_retention_at_least_a_year`); the MSP root's also covers events of no tenant |
 
 **Invariant:** exactly one row with `kind = MSP_ROOT`, enforced by a partial unique index. It is
 created by the setup wizard and can never be deleted.
@@ -535,14 +536,16 @@ cannot be executed — the UI shows them; it does not hide them behind a "migrat
 ## 10. Audit, alerts, notifications, settings
 
 ### `audit_events` (append-only)
-`id, at, tenant_id, actor_type (USER|API_TOKEN|SYSTEM|SCHEDULER), actor_id, actor_label,
+`id, at, tenant_id, actor_type (USER|API_TOKEN|SYSTEM|SCHEDULER|ANONYMOUS), actor_id, actor_label,
 impersonated_by, action, resource_type, resource_id, resource_label, result (SUCCESS|FAILURE|DENIED),
-ip, user_agent, request_id, job_id, metadata jsonb, prev_hash, hash`
+ip, user_agent, request_id, metadata jsonb`
 
-`prev_hash`/`hash` form an optional hash chain per tenant, so tampering at the database level is
-detectable. `metadata` passes through the same redaction pipeline as logs before insert. A trigger
-denies `UPDATE`/`DELETE` to the application role; retention pruning runs as a separate maintenance
-role and is itself audited.
+`metadata` passes through the same redaction pipeline as logs before insert. A trigger refuses
+`UPDATE` always, and `DELETE` except inside `velnox_prune_audit_events(tenant, include_unowned,
+before)` (migration `20261005090000_audit_retention`), which refuses a cutoff younger than a year;
+the worker's retention sweep is its only caller and records each removal as `audit.pruned`. See
+ADR-040. A hash chain (`prev_hash`/`hash`) and a separate database role for pruning were designed
+and are **not built**: the application and the prune function share one database role.
 
 ### `alerts`
 `id, tenant_id, severity, kind, resource_type, resource_id, title, detail, status

@@ -80,6 +80,7 @@ erDiagram
 | parent_tenant_id | uuid null | gereserveerd voor toekomstige subtenants; v1 kent één niveau onder de root |
 | status | enum | `ACTIVE` \| `SUSPENDED` \| `ARCHIVED` |
 | settings | jsonb | huisstijl, standaarden, notificatiebestemmingen |
+| audit_retention_days | int null | hoe lang de auditgebeurtenissen bewaard blijven; null is voor altijd, minstens 365 (`tenants_audit_retention_at_least_a_year`); die van de MSP-root geldt ook voor gebeurtenissen zonder tenant |
 
 **Invariant:** precies één rij met `kind = MSP_ROOT`, afgedwongen door een partiële unieke index. Die
 wordt door de installatiewizard aangemaakt en kan nooit worden verwijderd.
@@ -548,14 +549,16 @@ migreren".
 ## 10. Audit, meldingen, notificaties, instellingen
 
 ### `audit_events` (alleen-toevoegen)
-`id, at, tenant_id, actor_type (USER|API_TOKEN|SYSTEM|SCHEDULER), actor_id, actor_label,
+`id, at, tenant_id, actor_type (USER|API_TOKEN|SYSTEM|SCHEDULER|ANONYMOUS), actor_id, actor_label,
 impersonated_by, action, resource_type, resource_id, resource_label, result (SUCCESS|FAILURE|DENIED),
-ip, user_agent, request_id, job_id, metadata jsonb, prev_hash, hash`
+ip, user_agent, request_id, metadata jsonb`
 
-`prev_hash`/`hash` vormen een optionele hashketen per tenant, zodat manipulatie op databaseniveau
-detecteerbaar is. `metadata` gaat door dezelfde redactiepijplijn als logs vóór het invoegen. Een trigger
-weigert `UPDATE`/`DELETE` vanuit de applicatierol; opschonen op basis van bewaartermijn draait onder een
-aparte rol en wordt zelf geaudit.
+`metadata` gaat door dezelfde redactiepijplijn als logs vóór het invoegen. Een trigger weigert `UPDATE`
+altijd, en `DELETE` behalve binnen `velnox_prune_audit_events(tenant, include_unowned, before)`
+(migratie `20261005090000_audit_retention`), die een grens jonger dan een jaar weigert; de
+opruimtaak van de worker is de enige aanroeper en legt elke verwijdering vast als `audit.pruned`. Zie
+ADR-040. Een hashketen (`prev_hash`/`hash`) en een aparte databaserol voor het opschonen waren
+ontworpen en zijn **niet gebouwd**: de applicatie en de opschoonfunctie delen één databaserol.
 
 ### `alerts`
 `id, tenant_id, severity, kind, resource_type, resource_id, title, detail, status (OPEN|ACKNOWLEDGED|

@@ -50,6 +50,7 @@ import { Mailer } from './mail/mailer';
 import { notifyProvisioned } from './provisioning/notify';
 import type { ProvisioningServices } from './provisioning/playbook';
 import { sweepProvisionings } from './provisioning/sweep';
+import { pruneAuditEvents } from './audit/retention';
 
 /**
  * Velnox worker.
@@ -364,6 +365,13 @@ async function bootstrap(): Promise<void> {
         })
         .catch((error: unknown) =>
           logger.error({ err: rootRedactor.value(error) }, 'Sweeping provisioning records failed'),
+        ),
+      pruneAuditEvents(prisma)
+        .then((result) => {
+          if (result.removed > 0) logger.info(result, 'Removed audit events past their retention');
+        })
+        .catch((error: unknown) =>
+          logger.error({ err: rootRedactor.value(error) }, 'Applying audit retention failed'),
         ),
     ]);
   await sweep();

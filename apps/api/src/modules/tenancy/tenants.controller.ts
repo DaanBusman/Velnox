@@ -13,7 +13,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { PERMISSIONS } from '@velnox/shared';
+import { AUDIT_RETENTION_CHOICES, PERMISSIONS } from '@velnox/shared';
 import { RequirePermission, RequirePermissionSomewhere } from '../../common/auth.guard';
 import { zodBody } from '../../common/zod-validation.pipe';
 import { actorOf } from '../../common/actor';
@@ -31,6 +31,15 @@ const updateSchema = z
     name: z.string().trim().min(2).max(120).optional(),
     status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
     mfaPolicy: mfaPolicy.optional(),
+    /** Days, from the offered choices; null keeps the audit trail for ever. MSP only. */
+    auditRetentionDays: z
+      .number()
+      .int()
+      .refine((days) => (AUDIT_RETENTION_CHOICES as readonly number[]).includes(days), {
+        message: 'One of the offered periods',
+      })
+      .nullable()
+      .optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'Nothing to change' });
 
