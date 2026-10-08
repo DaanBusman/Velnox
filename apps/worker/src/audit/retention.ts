@@ -33,6 +33,11 @@ export async function pruneAuditEvents(
     for (const tenant of tenants) {
       const days = tenant.auditRetentionDays!;
       const before = new Date(now.getTime() - days * DAY_MS);
+      // The one way old audit events may go is a database function, which the
+      // typed client cannot call. Tenant scoping is its first argument — one
+      // tenant per call, named from the tenant row just read — and the function
+      // itself refuses anything younger than a year.
+      // eslint-disable-next-line no-restricted-syntax
       const rows = await prisma.$queryRaw<{ removed: number }[]>`
         SELECT velnox_prune_audit_events(
           ${tenant.id}::uuid, ${tenant.kind === 'MSP_ROOT'}, ${before}::timestamptz

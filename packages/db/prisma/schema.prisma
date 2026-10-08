@@ -81,6 +81,10 @@ model SystemSettings {
   smtpFrom                 String?      @map("smtp_from")
   smtpVerifiedAt           DateTime?    @map("smtp_verified_at") @db.Timestamptz(3)
 
+  /// How long Proxmox tasks are kept for the support logs, in days: 1 to 30
+  /// (`system_settings_support_retention_range`). Shortened with support.manage.
+  supportLogRetentionDays Int @default(30) @map("support_log_retention_days")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -672,6 +676,7 @@ model Cluster {
   cephDaemons     CephDaemon[]
   discoveryRuns   DiscoveryRun[]
   storageContents StorageContent[]
+  proxmoxTasks    ProxmoxTask[]
   provisionings   Provisioning[]
 
   @@index([tenantId])
@@ -1597,4 +1602,52 @@ model Approval {
   @@index([jobId])
   @@index([tenantId, requestedAt])
   @@map("approvals")
+}
+
+// ---------------------------------------------------------------------------
+// Support logs (Phase 5C)
+// ---------------------------------------------------------------------------
+
+/// Who started a Proxmox task, as far as Velnox can tell.
+enum ProxmoxTaskOrigin {
+  /// Started with the credential Velnox uses for this cluster.
+  VELNOX
+  /// Started by anyone or anything else — a person on the Proxmox interface,
+  /// a script, a backup schedule.
+  OUTSIDE_VELNOX
+
+  @@map("proxmox_task_origin")
+}
+
+/// A task from a node's task history, read during discovery and kept for the
+/// support logs for at most `system_settings.support_log_retention_days`.
+model ProxmoxTask {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  clusterId String @map("cluster_id") @db.Uuid
+
+  node String
+  upid String
+  /// `qmstart`, `vzdump`, `imgcopy`, …
+  type     String
+  /// What the task acted on — usually a VMID — when Proxmox says.
+  objectId String? @map("object_id")
+  /// As Proxmox records it: `root@pam`, or `velnox@pve!velnox` for a token.
+  user     String
+  origin   ProxmoxTaskOrigin
+  /// `OK`, an error text, or null while it runs.
+  status   String?
+
+  startedAt DateTime  @map("started_at") @db.Timestamptz(3)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@unique([clusterId, upid])
+  @@index([tenantId, startedAt])
+  @@index([clusterId, node, startedAt])
+  @@map("proxmox_tasks")
 }

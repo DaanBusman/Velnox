@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import type { AuditEventView, TenantSummary } from '@/lib/session-types';
 import { useApiResource } from './use-api-resource';
+import { SupportLogsCard } from './support-logs-card';
 import { PanelError, PanelLoading } from './panel-state';
 
 const TONE = {
@@ -198,6 +199,8 @@ export function AuditPanel() {
         </a>
         <span>{t('audit.exportHint')}</span>
       </div>
+
+      <SupportLogsCard filters={filters} />
 
       <Card title={t('audit.recent')} bodyClassName="p-0">
         {events.length === 0 ? (

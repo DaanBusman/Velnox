@@ -13,7 +13,7 @@ import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import pino from 'pino';
 import { loadWorkerConfig, redisConnection, secretValues } from '@velnox/config';
-import { createPrismaClient, ensureLibraryDirs } from '@velnox/db';
+import { createPrismaClient, ensureLibraryDirs, withSystemScope } from '@velnox/db';
 import { JOB_NAMES, JOB_QUEUE, QUEUE_NAMES, rootRedactor } from '@velnox/shared';
 import { Heartbeat } from './heartbeat';
 import { processPing, type PingJobData, type PingJobResult } from './processors/ping.processor';
@@ -52,6 +52,7 @@ import type { ProvisioningServices } from './provisioning/playbook';
 import { sweepProvisionings } from './provisioning/sweep';
 import { pruneAuditEvents } from './audit/retention';
 import { LIVE_TICK_MS, LivePoller } from './inventory/live';
+import { pruneTasks } from './inventory/tasks';
 
 /**
  * Velnox worker.
@@ -388,6 +389,20 @@ async function bootstrap(): Promise<void> {
         })
         .catch((error: unknown) =>
           logger.error({ err: rootRedactor.value(error) }, 'Sweeping provisioning records failed'),
+        ),
+      withSystemScope('support log retention applies to every tenant', async () => {
+        const settings = await prisma.systemSettings.findUnique({
+          where: { id: 1 },
+          select: { supportLogRetentionDays: true },
+        });
+        return await pruneTasks(prisma, settings?.supportLogRetentionDays ?? 30);
+      })
+        .then((removed) => {
+          if (removed > 0)
+            logger.info({ removed }, 'Removed Proxmox tasks past the support log retention');
+        })
+        .catch((error: unknown) =>
+          logger.error({ err: rootRedactor.value(error) }, 'Applying support log retention failed'),
         ),
       pruneAuditEvents(prisma)
         .then((result) => {

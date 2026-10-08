@@ -62,11 +62,11 @@ in je eigen organisatie.
 
 | Rol | Sleutel | Alleen MSP | Kent toe | Voor |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | ja | 41 van 41 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
-| MSP Administrator | `msp_administrator` | ja | 39 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, en niet de tweede factor van een collega. |
-| MSP Engineer | `msp_engineer` | ja | 33 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
-| MSP Read Only | `msp_read_only` | ja | 20 | Ziet alles over alle tenants, wijzigt niets. |
-| Tenant Administrator | `tenant_administrator` | nee | 36 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
+| MSP Super Administrator | `msp_super_administrator` | ja | 43 van 43 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
+| MSP Administrator | `msp_administrator` | ja | 40 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, niet hoe lang supportlogs bewaard blijven, en niet de tweede factor van een collega. |
+| MSP Engineer | `msp_engineer` | ja | 34 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
+| MSP Read Only | `msp_read_only` | ja | 21 | Ziet alles over alle tenants, wijzigt niets. |
+| Tenant Administrator | `tenant_administrator` | nee | 37 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
 | Tenant Operator | `tenant_operator` | nee | 25 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
 | Tenant Read Only | `tenant_read_only` | nee | 19 | Ziet de resources van één tenant, wijzigt niets. |
 
@@ -128,6 +128,8 @@ Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only
 | `alerts.manage` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `reports.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `audit.read` | ✓ | ✓ | · | ✓ | ✓ | · | · |
+| `support.read` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
+| `support.manage` | ✓ | · | · | · | · | · | · |
 | `system.manage` | ✓ | · | · | · | · | · | · |
 
 Een test vergelijkt deze tabel bij elke run met de catalogus in de broncode. Wijken de twee af, dan
@@ -183,6 +185,8 @@ vandaag toekenbaar en bewaakt nog niets.
 | `alerts.manage` | Meldingen bevestigen en afhandelen | 4 |
 | `reports.read` | Rapporten zien en exporteren | 8 |
 | `audit.read` | Het auditlog lezen | **2** |
+| `support.read` | Supportlogs exporteren: jobs, inventarisatierondes, en de Proxmox-taken van de nodes van een tenant | **5C** |
+| `support.manage` | Instellen hoe lang Proxmox-taken voor support bewaard blijven (hoogstens 30 dagen) | **5C** |
 | `system.manage` | Installatiebrede instellingen wijzigen, waaronder single sign-on | **2** |
 
 **`credentials.read` leest geen geheim materiaal.** Het ziet dát een credential bestaat, waarvoor
@@ -195,7 +199,7 @@ worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
 
 ## Bevoorrechte rechten en meervoudige authenticatie
 
-Deze negentien rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
+Deze twintig rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
 van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige
 authenticatie op uitkomt:
 
@@ -203,7 +207,7 @@ authenticatie op uitkomt:
 `roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
 `autoconfig.manage` · `updates.execute` · `upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
-`jobs.approve` · `system.manage`
+`jobs.approve` · `support.manage` · `system.manage`
 
 Het is een expliciete lijst en niet "alles wat op `.manage` eindigt", want die twee zijn niet
 hetzelfde. **`alerts.manage` ontbreekt bewust:** meldingen bevestigen en afhandelen verandert het

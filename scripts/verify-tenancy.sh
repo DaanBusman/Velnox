@@ -401,6 +401,15 @@ check "nl: reads the sibling sub-tenant's site" 200 "$(status nl GET "/api/v1/si
 check "nl: not the main tenant's site" 404 "$(status nl GET "/api/v1/sites/${SITE_MAIN}")"
 check "nl: not another customer's" 404 "$(status nl GET "/api/v1/sites/${SITE_B}")"
 
+ALPHA_SUPPORT="$(curl --silent --insecure --cookie "${JARS}/alpha.jar" "${BASE}/api/v1/support/export?tenantId=${TENANT_B}")"
+case "$ALPHA_SUPPORT" in
+  *"${RUN} Beta"*) red "support: a customer's export reached another tenant"; FAIL=$((FAIL + 1)) ;;
+  *) green "support: a customer's export stays inside what it may read"; PASS=$((PASS + 1)) ;;
+esac
+check "support: an account without support.read cannot export" 403 \
+  "$(status nl GET /api/v1/support/export)"
+check "support: a customer cannot change how long tasks are kept" 403 \
+  "$(status holding PUT /api/v1/support/settings '{"retentionDays":1}')"
 check "alpha: a customer outside the family sees none of it" 404 "$(status alpha GET "/api/v1/sites/${SITE_SUB1}")"
 
 check "hierarchy: a main tenant with active sub-tenants is not archived" 409 \

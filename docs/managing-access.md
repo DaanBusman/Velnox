@@ -310,6 +310,42 @@ survive, because that protection has silently regressed before.
 
 ---
 
+## Export the support logs
+
+For a support case, the audit log says who did what in Velnox; the support logs say what Velnox
+itself did, and what happened on the nodes. Open **Audit log** as above: the **Support logs** card
+sits under the filters and uses the same tenant and period. *Download support logs* gives one file,
+JSON Lines, one record per line with a `kind`:
+
+- `job` — each job queued in the period, with its status, who started it and how it ended, followed
+  by its `job_step` records and its output as `job_log` records;
+- `discovery_run` — each discovery of the tenant's clusters, with what it found and its problems;
+- `proxmox_task` — the task history of the tenant's nodes, read with each discovery: type, node,
+  object, user, start, end and how it ended.
+
+A Proxmox task is marked `"origin": "VELNOX"` when it was started by the credential Velnox uses for
+that cluster, and `"OUTSIDE_VELNOX"` with `"startedOutsideVelnox": true` for anything else — someone
+on the Proxmox interface, a script, a backup schedule — with the Proxmox user that started it. Give
+Velnox its own API token: with a password credential, Velnox and a person signing in to Proxmox with
+the same account cannot be told apart, and both read as Velnox.
+
+Without a period, the file goes as far back as Proxmox tasks are kept. The download is itself
+written to the audit log, as `support.exported`, with its tenant and period. Job output was redacted
+when it was written; the file holds no password, token or secret.
+
+**Who may.** Exporting needs `support.read`: MSP Super Administrator, MSP Administrator, MSP
+Engineer, MSP Read Only and Tenant Administrator. MSP staff export any tenant, or all of them; a
+customer exports the tenants where they hold it — a main tenant's administrator its sub-tenants too —
+and nothing else, whatever they ask for.
+
+**How long Proxmox tasks are kept** is thirty days at most. Whoever holds `support.manage` — only
+the MSP Super Administrator, unless they give it to a role of your own — can shorten it on the same
+card, to one, three, seven or fourteen days, and lengthen it again up to thirty. The change is
+recorded as `support.retention_changed`. Tasks older than that are removed by the worker. Jobs and
+discovery runs are not affected: they are kept as long as the job history is.
+
+---
+
 ## What is enforced where
 
 Worth knowing when something is refused and you are trying to work out why.

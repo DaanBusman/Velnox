@@ -327,6 +327,44 @@ die vastlegt welke namen overleven, omdat die bescherming eerder stilletjes is t
 
 ---
 
+## De supportlogs exporteren
+
+Voor een supportzaak zegt het auditlog wie wat deed in Velnox; de supportlogs zeggen wat Velnox zelf
+deed, en wat er op de nodes gebeurde. Open **Auditlog** zoals hierboven: de kaart **Supportlogs**
+staat onder de filters en gebruikt dezelfde tenant en periode. *Supportlogs downloaden* geeft één
+bestand, JSON Lines, één record per regel met een `kind`:
+
+- `job` — elke job die in de periode in de wachtrij kwam, met zijn status, wie hem startte en hoe hij
+  eindigde, gevolgd door zijn `job_step`-records en zijn uitvoer als `job_log`-records;
+- `discovery_run` — elke inventarisatieronde van de clusters van de tenant, met wat die vond en zijn
+  problemen;
+- `proxmox_task` — de takengeschiedenis van de nodes van de tenant, uitgelezen bij elke
+  inventarisatie: type, node, object, gebruiker, start, einde en hoe de taak eindigde.
+
+Een Proxmox-taak krijgt `"origin": "VELNOX"` wanneer hij gestart is door de credential die Velnox
+voor dat cluster gebruikt, en `"OUTSIDE_VELNOX"` met `"startedOutsideVelnox": true` voor al het
+andere — iemand in de Proxmox-interface, een script, een back-upschema — met de Proxmox-gebruiker die
+hem startte. Geef Velnox een eigen API-token: met een wachtwoord als credential zijn Velnox en iemand
+die met hetzelfde account op Proxmox inlogt niet van elkaar te onderscheiden, en lezen beide als
+Velnox.
+
+Zonder periode gaat het bestand zo ver terug als Proxmox-taken bewaard blijven. De download wordt
+zelf in het auditlog vastgelegd, als `support.exported`, met de tenant en periode. Jobuitvoer werd
+bij het wegschrijven al geredigeerd; het bestand bevat geen wachtwoord, token of secret.
+
+**Wie het mag.** Exporteren vereist `support.read`: MSP Super Administrator, MSP Administrator, MSP
+Engineer, MSP Read Only en Tenant Administrator. MSP-medewerkers exporteren elke tenant, of alle
+tenants; een klant exporteert de tenants waarin hij het recht heeft — de beheerder van een
+hoofd-tenant ook diens sub-tenants — en verder niets, wat hij ook vraagt.
+
+**Hoe lang Proxmox-taken bewaard blijven** is hoogstens dertig dagen. Wie `support.manage` heeft —
+alleen de MSP Super Administrator, tenzij die het aan een eigen rol geeft — kan dat op dezelfde kaart
+verkorten, naar één, drie, zeven of veertien dagen, en weer verlengen tot dertig. De wijziging wordt
+vastgelegd als `support.retention_changed`. Oudere taken worden door de worker verwijderd. Jobs en
+inventarisatierondes vallen daar niet onder: die blijven bewaard zolang de jobgeschiedenis.
+
+---
+
 ## Wat waar wordt afgedwongen
 
 Nuttig om te weten wanneer iets wordt geweigerd en je probeert te achterhalen waarom.

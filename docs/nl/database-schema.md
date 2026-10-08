@@ -560,6 +560,17 @@ opruimtaak van de worker is de enige aanroeper en legt elke verwijdering vast al
 ADR-040. Een hashketen (`prev_hash`/`hash`) en een aparte databaserol voor het opschonen waren
 ontworpen en zijn **niet gebouwd**: de applicatie en de opschoonfunctie delen één databaserol.
 
+### `proxmox_tasks`
+`id, tenant_id, cluster_id, node, upid, type, object_id, user, origin (VELNOX|OUTSIDE_VELNOX),
+status, started_at, ended_at, created_at, updated_at`
+
+De takengeschiedenis van de nodes, voor de supportlogs (migratie `20261006100000_support_logs`,
+ADR-043). Uniek op `(cluster_id, upid)`; bij elke inventarisatie opnieuw uitgelezen, zodat
+`ended_at` en `status` van een lopende taak later worden ingevuld. De trigger
+`proxmox_tasks_tenant_follows_cluster` zet `tenant_id` vanuit het cluster, wat er ook wordt
+geschreven. De worker verwijdert taken ouder dan `system_settings.support_log_retention_days` (1–30,
+standaard 30, afgedwongen door `system_settings_support_retention_range`).
+
 ### `alerts`
 `id, tenant_id, severity, kind, resource_type, resource_id, title, detail, status (OPEN|ACKNOWLEDGED|
 RESOLVED|SUPPRESSED), first_seen_at, last_seen_at, count, acknowledged_by, resolved_at, dedup_key`
@@ -572,6 +583,9 @@ Notificatie: afleverpogingen, status, laatste fout.
 Tabel met één rij: `initialized (bool), initialized_at, instance_id, product_name, base_url, key_version,
 mfa_policy (OPTIONAL|REQUIRED_FOR_PRIVILEGED|REQUIRED), default_locale, default_timezone, source_url,
 build_commit, feature_flags jsonb, retention jsonb, schema_version`
+
+`support_log_retention_days` (1–30, standaard 30) is hoe lang `proxmox_tasks` bewaard blijven;
+alleen `support.manage` wijzigt het.
 
 `product_name` staat hier en wordt door de frontend gelezen, zodat hernoemen vanaf "Velnox" een
 instellingswijziging plus assetwissel is — geen codewijziging. `source_url` en `build_commit`

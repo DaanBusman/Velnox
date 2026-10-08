@@ -164,6 +164,8 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   Workload: (ids) => ({ tenantId: { in: ids } }),
   CephDaemon: (ids) => ({ tenantId: { in: ids } }),
   DiscoveryRun: (ids) => ({ tenantId: { in: ids } }),
+  // Phase 5C. A node's task history belongs to the cluster's tenant.
+  ProxmoxTask: (ids) => ({ tenantId: { in: ids } }),
   // Phase 5A: the ISOs and disk images on a cluster's storage. The library
   // itself (LibraryItem) is installation-wide and deliberately absent.
   StorageContent: (ids) => ({ tenantId: { in: ids } }),
@@ -213,6 +215,7 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   CephDaemon: 'required',
   StorageContent: 'required',
   DiscoveryRun: 'required',
+  ProxmoxTask: 'required',
   Job: 'required',
   Approval: 'required',
   AutoconfigTemplate: 'required',

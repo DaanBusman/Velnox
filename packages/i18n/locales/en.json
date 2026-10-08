@@ -1446,5 +1446,15 @@
     "allJobs": "All jobs",
     "uploadDone": "Uploaded",
     "uploadFailed": "Failed"
+  },
+  "support": {
+    "title": "Support logs",
+    "description": "For a support case: what Velnox did for the tenants in view — jobs with their steps and output, discovery runs — and the Proxmox tasks of their nodes, each marked with whether Velnox or someone outside Velnox started it.",
+    "export": "Download support logs",
+    "exportHint": "JSON Lines, for the tenant and period chosen above; without a period, as far back as Proxmox tasks are kept. The download is recorded in the audit log.",
+    "retention": "Keep Proxmox tasks for",
+    "days": "{days, plural, one {# day} other {# days}}",
+    "retentionHint": "At most {max} days.",
+    "retentionReadOnly": "Proxmox tasks are kept for {days, plural, one {# day} other {# days}}."
   }
 }

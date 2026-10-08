@@ -1278,6 +1278,33 @@ sibling's Users. Both are in the known gaps.
 
 ---
 
+## ADR-043 — Support logs: Proxmox tasks read with discovery, marked by credential
+
+**Decision:** Beside the audit log, `support.read` exports a tenant's support logs — its jobs with
+their steps and output, its discovery runs, and the task history of its nodes — as one JSON Lines
+file, in the audit log's scope rule, the download itself audited. The task history is read with each
+discovery (`GET /nodes/{node}/tasks?source=all&since=…`, from two hours before the newest task kept)
+and stored in `proxmox_tasks`, unique per cluster and UPID, so reading again updates rather than
+duplicates. A task whose Proxmox user is the cluster's own credential is `VELNOX`; anything else is
+`OUTSIDE_VELNOX`. Tasks are kept thirty days at most — a check on `system_settings` — and
+`support.manage`, held only by the MSP Super Administrator, shortens it. It is a permission of its
+own, not the Super Administrator's role, so it can be given to another role later.
+
+**Why read with discovery.** Discovery already holds a client for the cluster at the interval the
+MSP chose; a second poller would double the connections for history that changes slowly. A node
+whose history cannot be read adds a problem to the run and fails nothing.
+
+**Why by credential, not by matching jobs.** A job knows which Proxmox tasks it started only for
+the steps that wait on one; a task's user is on every task. The cost: with a password credential,
+Velnox and a person signing in to Proxmox with the same account look the same. A dedicated API
+token, which the documentation already asks for, removes it.
+
+**Why thirty days, and why only tasks.** The owner's limit, for a history that is Proxmox's own and
+can be read again on the node. Jobs and discovery runs are Velnox's record and follow their own
+retention, which does not exist yet (see the known gaps).
+
+---
+
 ## Version targets
 
 | Component | Version |

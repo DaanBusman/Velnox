@@ -41,6 +41,10 @@ export const AUDIT_ACTIONS = {
 
   /** Someone downloaded part of the audit trail. The filters are in the metadata. */
   auditExported: 'audit.exported',
+  /** Someone downloaded support logs. Tenants and period in the metadata. */
+  supportExported: 'support.exported',
+  /** How long Proxmox tasks are kept for support was changed. */
+  supportRetentionChanged: 'support.retention_changed',
 
   userCreated: 'user.created',
   userUpdated: 'user.updated',

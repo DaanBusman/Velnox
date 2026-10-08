@@ -1447,5 +1447,15 @@
     "allJobs": "Alle jobs",
     "uploadDone": "Geüpload",
     "uploadFailed": "Mislukt"
+  },
+  "support": {
+    "title": "Supportlogs",
+    "description": "Voor een supportzaak: wat Velnox deed voor de tenants in beeld — jobs met hun stappen en uitvoer, inventarisatierondes — en de Proxmox-taken van hun nodes, elk gemarkeerd met of Velnox of iemand buiten Velnox die startte.",
+    "export": "Supportlogs downloaden",
+    "exportHint": "JSON Lines, voor de tenant en periode hierboven; zonder periode zo ver terug als Proxmox-taken bewaard blijven. De download wordt vastgelegd in het auditlog.",
+    "retention": "Proxmox-taken bewaren",
+    "days": "{days, plural, one {# dag} other {# dagen}}",
+    "retentionHint": "Hoogstens {max} dagen.",
+    "retentionReadOnly": "Proxmox-taken blijven {days, plural, one {# dag} other {# dagen}} bewaard."
   }
 }

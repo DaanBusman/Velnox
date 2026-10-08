@@ -294,7 +294,18 @@ CREATED_TENANT="$(printf '%s' "$OTHER" | json id)"
 make_user "$CREATED_TENANT" tenant_administrator other >/dev/null
 check "a customer administrator signs in" 200 "$(login "$TENANT_JAR" other)"
 
-CLUSTER="$(call POST /api/v1/clusters "$(T="$TENANT_ID" R="$RUN" H="$FIXTURE_HOST" F="$TLS_FINGERPRINT" I="$TOKEN_ID" S="$TOKEN_SECRET" body '{ tenantId: e.T, name: e.R, host: e.H, port: 8006, fingerprint: e.F, auth: { kind: "API_TOKEN", tokenId: e.I, secret: e.S } }')")"
+register_cluster() {
+  call POST /api/v1/clusters "$(T="$TENANT_ID" R="$RUN" H="$FIXTURE_HOST" F="$TLS_FINGERPRINT" I="$TOKEN_ID" S="$TOKEN_SECRET" body '{ tenantId: e.T, name: e.R, host: e.H, port: 8006, fingerprint: e.F, auth: { kind: "API_TOKEN", tokenId: e.I, secret: e.S } }')"
+}
+CLUSTER="$(register_cluster)"
+# A run that was killed before its cleanup leaves its cluster on the fixture's
+# address behind; remove it if it is one of ours (named vp<time>) and try again.
+LEFTOVER="$(printf '%s' "$CLUSTER" | json error.params.name)"
+if [[ "$(printf '%s' "$CLUSTER" | json error.code)" == cluster.duplicate && "$LEFTOVER" =~ ^vp[0-9]+$ ]]; then
+  info "Removing ${LEFTOVER}, left behind by an interrupted run."
+  call DELETE "/api/v1/clusters/$(printf '%s' "$CLUSTER" | json error.params.clusterId)" >/dev/null
+  CLUSTER="$(register_cluster)"
+fi
 CLUSTER_ID="$(printf '%s' "$CLUSTER" | json id)"
 [[ -n "$CLUSTER_ID" ]] || { red "no cluster to test against: $(printf '%s' "$CLUSTER" | head -c 300)"; exit 1; }
 for _ in $(seq 1 60); do
@@ -326,7 +337,9 @@ check "the cloud image is ready" READY "$(call GET "/api/v1/library/${CLOUD_ITEM
 
 info "Pointing outgoing mail at the fixture."
 MAIL_BEFORE="$(call GET /api/v1/system/mail)"
-call PUT /api/v1/system/mail "$(H="$FIXTURE_HOST" P="$SMTP_PORT" body '{ host: e.H, port: Number(e.P), security: "NONE", username: null, from: "velnox@example.invalid" }')" >/dev/null
+# A sender of its own each run, so saving is a change even after a run that was
+# killed with the same settings tested and switched on.
+call PUT /api/v1/system/mail "$(H="$FIXTURE_HOST" P="$SMTP_PORT" R="$RUN" body '{ host: e.H, port: Number(e.P), security: "NONE", username: null, from: `velnox-${e.R}@example.invalid` }')" >/dev/null
 check "mail: settings saved" 200 "$(last_status)"
 call PUT /api/v1/system/mail '{"enabled":true}' >/dev/null
 check "mail: cannot be switched on before a test" 409 "$(last_status)"
@@ -532,6 +545,19 @@ PDF="$(printf '%s' "$L_MAIL" | node -e '
 contains "linux: the attached record is encrypted" "/Encrypt" "$PDF"
 contains "linux: as AES-256 revision 6" "/R 6" "$PDF"
 lacks "linux: and the password is not readable in it" "$OPS_PW" "$PDF"
+
+# Support logs carry Velnox's own work for the tenant: the build job, its steps
+# and its output, in the tenant's export (Phase 5C).
+SUPPORT_JOBS="$(curl --silent --insecure --cookie "$JAR" "${BASE}/api/v1/support/export?tenantId=${TENANT_ID}" | node -e '
+  let r = ""; process.stdin.on("data", (c) => (r += c)).on("end", () => {
+    const rows = r.trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    const job = rows.find((x) => x.kind === "job" && x.id === process.argv[1]);
+    const steps = rows.filter((x) => x.kind === "job_step" && x.jobId === process.argv[1]).map((x) => x.step);
+    const logs = rows.filter((x) => x.kind === "job_log" && x.jobId === process.argv[1]);
+    console.log([job ? job.status : "none", steps.includes("install") ? "steps" : "no-steps", logs.length > 0 ? "logs" : "no-logs"].join("|"));
+  });' "$L_JOB")"
+check "support: the tenant's export carries the build job, its steps and its output" "SUCCEEDED|steps|logs" "$SUPPORT_JOBS"
+lacks "support: and no password from it" "$OPS_PW" "$(curl --silent --insecure --cookie "$JAR" "${BASE}/api/v1/support/export?tenantId=${TENANT_ID}")"
 
 info "Building with a password per customer."
 PT_HOST="pt${SHORT}"

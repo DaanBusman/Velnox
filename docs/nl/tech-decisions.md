@@ -1350,6 +1350,36 @@ thuistenant staat niet in de Gebruikers van die zuster. Beide staan bij de beken
 
 ---
 
+## ADR-043 — Supportlogs: Proxmox-taken uitgelezen met de inventarisatie, gemarkeerd op credential
+
+**Besluit:** Naast het auditlog exporteert `support.read` de supportlogs van een tenant — zijn jobs
+met hun stappen en uitvoer, zijn inventarisatierondes, en de takengeschiedenis van zijn nodes — als
+één JSON Lines-bestand, volgens de bereikregel van het auditlog, waarbij de download zelf wordt
+vastgelegd. De takengeschiedenis wordt bij elke inventarisatie uitgelezen
+(`GET /nodes/{node}/tasks?source=all&since=…`, vanaf twee uur vóór de nieuwste bewaarde taak) en
+opgeslagen in `proxmox_tasks`, uniek per cluster en UPID, zodat opnieuw uitlezen bijwerkt in plaats
+van verdubbelt. Een taak waarvan de Proxmox-gebruiker de eigen credential van het cluster is, is
+`VELNOX`; al het andere is `OUTSIDE_VELNOX`. Taken blijven hoogstens dertig dagen bewaard — een check
+op `system_settings` — en `support.manage`, alleen in handen van de MSP Super Administrator, verkort
+dat. Het is een eigen recht, niet de rol van de Super Administrator, zodat het later aan een andere
+rol kan worden gegeven.
+
+**Waarom met de inventarisatie.** De inventarisatie heeft al een client voor het cluster, op de
+interval die de MSP koos; een tweede poller zou de verbindingen verdubbelen voor geschiedenis die
+langzaam verandert. Een node waarvan de geschiedenis niet te lezen is, voegt een probleem aan de
+ronde toe en laat niets mislukken.
+
+**Waarom op credential, niet door jobs te koppelen.** Een job weet alleen welke Proxmox-taken hij
+startte voor de stappen die op een taak wachten; de gebruiker staat op elke taak. De prijs: met een
+wachtwoord als credential zien Velnox en iemand die met hetzelfde account op Proxmox inlogt er
+hetzelfde uit. Een eigen API-token, waar de documentatie al om vraagt, neemt dat weg.
+
+**Waarom dertig dagen, en waarom alleen taken.** De grens van de eigenaar, voor geschiedenis die van
+Proxmox zelf is en op de node opnieuw te lezen valt. Jobs en inventarisatierondes zijn het verslag
+van Velnox en volgen hun eigen bewaartermijn, die er nog niet is (zie de bekende hiaten).
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

@@ -397,6 +397,46 @@ AFTER="$(call GET "/api/v1/nodes?clusterId=${CLUSTER_ID}" | json nodes.0.id)"
 
 check "a second run keeps the same row ids" "$BEFORE" "$AFTER"
 
+# Support logs (Phase 5C): the nodes' task history is read with discovery, each
+# task marked with whether Velnox's own credential started it.
+SUPPORT_TENANT="$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json tenantId)"
+curl --silent --insecure --cookie "$JAR" --output "${WORK:-/tmp}/support-${RUN:-x}.jsonl" \
+  "${BASE}/api/v1/support/export?tenantId=${SUPPORT_TENANT}"
+SUPPORT_EXPORT="$(cat "${WORK:-/tmp}/support-${RUN:-x}.jsonl")"
+rm -f "${WORK:-/tmp}/support-${RUN:-x}.jsonl"
+SUPPORT_SUMMARY="$(printf '%s' "$SUPPORT_EXPORT" | node -e '
+  let r = ""; process.stdin.on("data", (c) => (r += c)).on("end", () => {
+    const rows = r.trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    const task = (type) => rows.find((x) => x.kind === "proxmox_task" && x.type === type) ?? {};
+    console.log([
+      rows.some((x) => x.kind === "discovery_run") ? "runs" : "no-runs",
+      task("qmstart").origin, task("vzdump").origin, task("vzdump").user,
+      String(task("vzdump").startedOutsideVelnox), task("qmshutdown").status,
+    ].join("|"));
+  });')"
+check "support: the export carries discovery runs" runs "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f1)"
+check "support: a task Velnox's token started is marked as Velnox's" VELNOX "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f2)"
+check "support: a task someone started on Proxmox is marked as outside Velnox" OUTSIDE_VELNOX "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f3)"
+check "support: with who started it" "root@pam|true" "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f4-5)"
+check "support: and how a failed one ended" "VM quit/powerdown failed" "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f6)"
+SUPPORT_BEFORE="$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastDiscoveryAt)"
+call POST "/api/v1/clusters/${CLUSTER_ID}/discover" >/dev/null
+for _ in $(seq 1 30); do
+  [[ "$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastDiscoveryAt)" != "$SUPPORT_BEFORE" ]] && break
+  sleep 1
+done
+check "support: reading the history again adds no duplicates" 1 \
+  "$(curl --silent --insecure --cookie "$JAR" "${BASE}/api/v1/support/export?tenantId=${SUPPORT_TENANT}" | grep -c '"node":"pve1","type":"vzdump"')"
+check "support: the download is recorded in the audit log" support.exported \
+  "$(call GET "/api/v1/audit-events?action=support.exported&limit=1" | json events.0.action)"
+check "support: tasks are kept 30 days by default" 30 "$(call GET /api/v1/support/settings | json retentionDays)"
+call PUT /api/v1/support/settings '{"retentionDays":31}' >/dev/null
+check "support: more than 30 days is refused" 400 "$(last_status)"
+check "support: a Super Administrator shortens it" 7 "$(call PUT /api/v1/support/settings '{"retentionDays":7}' | json retentionDays)"
+check "support: and the change is recorded" support.retention_changed \
+  "$(call GET "/api/v1/audit-events?action=support.retention_changed&limit=1" | json events.0.action)"
+call PUT /api/v1/support/settings '{"retentionDays":30}' >/dev/null
+
 # Live status: a screen being watched keeps its cluster current between
 # discovery runs. The web server sends the viewer's refresh interval; reading
 # the cluster with it is what a page refreshing every two seconds does.

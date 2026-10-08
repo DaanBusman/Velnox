@@ -114,6 +114,15 @@ export const PERMISSIONS = {
 
   // Governance
   auditRead: 'audit.read',
+  /**
+   * Support logs (Phase 5C): what Velnox did for a tenant — jobs, their steps
+   * and output, discovery runs — and the Proxmox tasks of its nodes, including
+   * those started outside Velnox. `read` exports them for the tenants it
+   * covers; `manage` sets how long Proxmox tasks are kept (at most 30 days), and
+   * belongs to the MSP Super Administrator unless given to another role.
+   */
+  supportRead: 'support.read',
+  supportManage: 'support.manage',
   systemManage: 'system.manage',
 } as const;
 
@@ -163,6 +172,8 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = Object.freeze([
   PERMISSIONS.credentialsRotate,
   PERMISSIONS.migrationsExecute,
   PERMISSIONS.jobsApprove,
+  // Shortening how long support logs are kept removes evidence sooner.
+  PERMISSIONS.supportManage,
   PERMISSIONS.systemManage,
 ]);
 
@@ -350,7 +361,9 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
     // Not `users.reset_mfa_msp`: an administrator can put a customer back into
     // their account, but removing the second factor from an MSP colleague — an
     // account that reaches every customer — stays with the Super Administrator.
-    permissions: ALL_PERMISSIONS.filter((p) => p !== P.systemManage && p !== P.usersResetMfaMsp),
+    permissions: ALL_PERMISSIONS.filter(
+      (p) => p !== P.systemManage && p !== P.usersResetMfaMsp && p !== P.supportManage,
+    ),
   },
   {
     key: 'msp_engineer',
@@ -399,7 +412,7 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
     description: 'Runs day-to-day work on one tenant’s resources. No identity administration.',
     mspOnly: false,
     permissions: [
-      ...READ_PERMISSIONS.filter((p) => p !== P.auditRead),
+      ...READ_PERMISSIONS.filter((p) => p !== P.auditRead && p !== P.supportRead),
       P.clustersManage,
       P.nodesManage,
       P.workloadsProvision,
@@ -413,7 +426,7 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
     name: 'Tenant Read Only',
     description: 'Sees one tenant’s resources and changes nothing.',
     mspOnly: false,
-    permissions: READ_PERMISSIONS.filter((p) => p !== P.auditRead),
+    permissions: READ_PERMISSIONS.filter((p) => p !== P.auditRead && p !== P.supportRead),
   },
 ]);
 

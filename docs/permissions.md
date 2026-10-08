@@ -58,11 +58,11 @@ organisation.
 
 | Role | Key | MSP only | Grants | For |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | yes | 41 of 41 | The first administrator. The only role with installation-wide settings. |
-| MSP Administrator | `msp_administrator` | yes | 39 | Runs the MSP day to day, including people. Not installation settings, and not a colleague’s second factor. |
-| MSP Engineer | `msp_engineer` | yes | 33 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
-| MSP Read Only | `msp_read_only` | yes | 20 | Sees everything across all tenants, changes nothing. |
-| Tenant Administrator | `tenant_administrator` | no | 36 | Full control within one tenant, including that tenant's own people. |
+| MSP Super Administrator | `msp_super_administrator` | yes | 43 of 43 | The first administrator. The only role with installation-wide settings. |
+| MSP Administrator | `msp_administrator` | yes | 40 | Runs the MSP day to day, including people. Not installation settings, not how long support logs are kept, and not a colleague’s second factor. |
+| MSP Engineer | `msp_engineer` | yes | 34 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
+| MSP Read Only | `msp_read_only` | yes | 21 | Sees everything across all tenants, changes nothing. |
+| Tenant Administrator | `tenant_administrator` | no | 37 | Full control within one tenant, including that tenant's own people. |
 | Tenant Operator | `tenant_operator` | no | 25 | Day-to-day work on one tenant's resources. No identity administration. |
 | Tenant Read Only | `tenant_read_only` | no | 19 | Sees one tenant's resources, changes nothing. |
 
@@ -123,6 +123,8 @@ Administrator, MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operato
 | `alerts.manage` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `reports.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `audit.read` | ✓ | ✓ | · | ✓ | ✓ | · | · |
+| `support.read` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
+| `support.manage` | ✓ | · | · | · | · | · | · |
 | `system.manage` | ✓ | · | · | · | · | · | · |
 
 A test compares this table against the catalogue in the source on every run. If the two disagree,
@@ -178,6 +180,8 @@ granted today and guards nothing yet.
 | `alerts.manage` | Acknowledge and resolve alerts | 4 |
 | `reports.read` | See and export reports | 8 |
 | `audit.read` | Read the audit log | **2** |
+| `support.read` | Export support logs: jobs, discovery runs, and the Proxmox tasks of a tenant's nodes | **5C** |
+| `support.manage` | Set how long Proxmox tasks are kept for support (at most 30 days) | **5C** |
 | `system.manage` | Change installation-wide settings, including single sign-on | **2** |
 
 **`credentials.read` does not read secret material.** It sees that a credential exists, what it is
@@ -189,14 +193,14 @@ they are used. See [Technical decisions](tech-decisions.md), ADR-009 and ADR-023
 
 ## Privileged permissions and two-factor authentication
 
-These nineteen permissions let a principal change customer infrastructure or the security posture of
+These twenty permissions let a principal change customer infrastructure or the security posture of
 the installation. They are what the `REQUIRED_FOR_PRIVILEGED` two-factor policy resolves to:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
 `roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
 `autoconfig.manage` · `updates.execute` · `upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
-`jobs.approve` · `system.manage`
+`jobs.approve` · `support.manage` · `system.manage`
 
 It is an explicit list rather than "everything ending in `.manage`", because the two are not the
 same. **`alerts.manage` is deliberately absent:** acknowledging and resolving alerts changes

@@ -433,6 +433,17 @@ export class ProxmoxClient {
     );
   }
 
+  /**
+   * A node's task history: finished and running tasks since `since` (epoch
+   * seconds), newest first, at most `limit`. Every user's, given Sys.Audit on
+   * the node (PVEAuditor has it); only the token's own otherwise.
+   */
+  nodeTasks(node: string, options: { since?: number; limit?: number } = {}): Promise<NodeTask[]> {
+    const query = new URLSearchParams({ source: 'all', limit: String(options.limit ?? 500) });
+    if (options.since) query.set('since', String(Math.floor(options.since)));
+    return this.get<NodeTask[]>(`/nodes/${encodeURIComponent(node)}/tasks?${query.toString()}`);
+  }
+
   /** Stop a running task. Used when a job that started it is cancelled. */
   stopTask(node: string, upid: string): Promise<null> {
     return this.del<null>(`/nodes/${encodeURIComponent(node)}/tasks/${encodeURIComponent(upid)}`);
@@ -889,6 +900,21 @@ export interface AgentInterface {
   name: string;
   'hardware-address'?: string;
   'ip-addresses'?: { 'ip-address': string; 'ip-address-type': 'ipv4' | 'ipv6'; prefix: number }[];
+}
+
+/** One entry of a node's task history. */
+export interface NodeTask {
+  upid: string;
+  node: string;
+  type: string;
+  /** What the task acted on, often a VMID. */
+  id?: string;
+  /** `root@pam`, or `user@realm!token` for an API token. */
+  user: string;
+  starttime: number;
+  endtime?: number;
+  /** `OK`, an error text; absent while running. */
+  status?: string;
 }
 
 export interface TaskStatus {

@@ -247,6 +247,14 @@ tenants aangeboden: een hoofd-tenant aanvinken biedt het niet aan zijn sub-tenan
 via een rol lid is van een sub-tenant, met zijn account thuis in een zuster, staat niet in de lijst
 Gebruikers van die sub-tenant — zijn rol staat op zijn account, onder de zuster. Zie ADR-042.
 
+### Supportlogs: wat ze niet kunnen zien, en wat ze weglaten
+Een Proxmox-taak die met een wachtwoord als credential is gestart, leest als die van Velnox, ook
+wanneer iemand met dat account op Proxmox inlogde: geef Velnox een eigen API-token. Alleen de
+takenlijst wordt bewaard — type, gebruiker, tijden en hoe de taak eindigde — niet de logtekst van
+elke taak, die op de node blijft. Een node met meer dan 500 taken tussen twee inventarisaties
+verliest de oudste daarvan. En de jobs in de supportlogs volgen de jobgeschiedenis, die voor altijd
+wordt bewaard (hierboven). Zie ADR-043.
+
 ### Het auditlog wordt beschermd door een trigger, niet door een aparte databaserol
 Oude gebeurtenissen kunnen alleen via de bewaartermijnfunctie worden verwijderd, en een gewone `DELETE`
 of `UPDATE` wordt geweigerd. Maar de applicatie en die functie delen één databaserol, die eigenaar is

@@ -11,6 +11,7 @@ import {
 import { ERROR_CODES, rootRedactor } from '@velnox/shared';
 import type { CredentialReader } from './credentials';
 import { persistDiscovery } from './persist';
+import { collectTasks } from './tasks';
 
 /**
  * The three jobs that talk to a hypervisor.
@@ -67,7 +68,10 @@ export async function processProbe(job: Job<ProbeJobData>) {
 export async function clientFor(
   context: InventoryContext,
   clusterId: string,
-): Promise<{ cluster: { id: string; tenantId: string; name: string }; client: ProxmoxClient }> {
+): Promise<{
+  cluster: { id: string; tenantId: string; name: string; authPrincipal: string | null };
+  client: ProxmoxClient;
+}> {
   const cluster = await context.prisma.cluster.findUnique({ where: { id: clusterId } });
   if (!cluster) throw new Error(`No cluster ${clusterId}`);
   if (!cluster.credentialId) throw new Error(`Cluster ${clusterId} has no stored credential`);
@@ -93,7 +97,15 @@ export async function clientFor(
       ),
   });
 
-  return { cluster: { id: cluster.id, tenantId: cluster.tenantId, name: cluster.name }, client };
+  return {
+    cluster: {
+      id: cluster.id,
+      tenantId: cluster.tenantId,
+      name: cluster.name,
+      authPrincipal: cluster.authPrincipal,
+    },
+    client,
+  };
 }
 
 /**
@@ -144,7 +156,7 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
     });
 
     try {
-      const discovered = await discoverCluster(client).finally(() => client.close());
+      const discovered = await discoverCluster(client);
 
       /*
        * A run that learned nothing is a failure, not an empty cluster.
@@ -166,8 +178,26 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
 
       const counts = await persistDiscovery(context.prisma, cluster, discovered);
 
+      // The task history for the support logs. Its problems join the run's;
+      // they never fail it.
+      const settings = await context.prisma.systemSettings.findUnique({
+        where: { id: 1 },
+        select: { supportLogRetentionDays: true },
+      });
+      const tasks = await collectTasks(
+        context.prisma,
+        client,
+        cluster,
+        discovered.nodes.filter((node) => node.state === 'online').map((node) => node.name),
+        settings?.supportLogRetentionDays ?? 30,
+      ).catch((error: unknown) => ({
+        stored: 0,
+        problems: [`tasks: ${error instanceof Error ? error.message : String(error)}`],
+      }));
+
       const problems = [
         ...discovered.problems,
+        ...tasks.problems,
         ...discovered.nodes.flatMap((node) =>
           node.problems.map((problem) => `${node.name}: ${problem}`),
         ),
@@ -231,6 +261,9 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
       });
 
       throw error;
+    } finally {
+      // Closed after the task history is read too, and on every path out.
+      client.close();
     }
   });
 }

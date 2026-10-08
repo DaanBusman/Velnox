@@ -547,6 +547,17 @@ the worker's retention sweep is its only caller and records each removal as `aud
 ADR-040. A hash chain (`prev_hash`/`hash`) and a separate database role for pruning were designed
 and are **not built**: the application and the prune function share one database role.
 
+### `proxmox_tasks`
+`id, tenant_id, cluster_id, node, upid, type, object_id, user, origin (VELNOX|OUTSIDE_VELNOX),
+status, started_at, ended_at, created_at, updated_at`
+
+The nodes' task history, for the support logs (migration `20261006100000_support_logs`, ADR-043).
+Unique on `(cluster_id, upid)`; read again with every discovery, so a running task's `ended_at` and
+`status` fill in later. The trigger `proxmox_tasks_tenant_follows_cluster` sets `tenant_id` from the
+cluster, whatever is written. The worker removes tasks older than
+`system_settings.support_log_retention_days` (1–30, default 30, enforced by
+`system_settings_support_retention_range`).
+
 ### `alerts`
 `id, tenant_id, severity, kind, resource_type, resource_id, title, detail, status
 (OPEN|ACKNOWLEDGED|RESOLVED|SUPPRESSED), first_seen_at, last_seen_at, count, acknowledged_by,
@@ -560,6 +571,9 @@ Notification: delivery attempts, status, last error.
 Single-row table: `initialized (bool), initialized_at, instance_id, product_name, base_url,
 key_version, mfa_policy (OPTIONAL|REQUIRED_FOR_PRIVILEGED|REQUIRED), default_locale, default_timezone,
 source_url, build_commit, feature_flags jsonb, retention jsonb, schema_version`
+
+`support_log_retention_days` (1–30, default 30) is how long `proxmox_tasks` are kept; only
+`support.manage` changes it.
 
 `product_name` lives here and is read by the frontend, so rebranding from "Velnox" is a settings
 change plus asset swap — not a code change. `source_url` and `build_commit` back the AGPL §13

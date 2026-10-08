@@ -230,6 +230,13 @@ a main tenant does not offer it to its sub-tenants. And someone who is a member 
 through a role, with their account at home in a sibling, does not appear in that sub-tenant's Users
 list — their role is on their account, under the sibling. See ADR-042.
 
+### Support logs: what they cannot tell, and what they leave out
+A Proxmox task started with a password credential reads as Velnox's, even when a person signed in to
+Proxmox with that account: give Velnox its own API token. Only the task list is kept — type, user,
+times and how it ended — not each task's log text, which stays on the node. A node with more than
+500 tasks between two discoveries loses the oldest of them. And the support logs' jobs follow the job
+history, which is kept for ever (above). See ADR-043.
+
 ### The audit log is protected by a trigger, not by a separate database role
 Old events can only be removed through the retention function, and an ordinary `DELETE` or `UPDATE`
 is refused. But the application and that function share one database role, which owns the table and

@@ -271,7 +271,38 @@ const ROUTES = {
 };
 
 /** Per-node endpoints, keyed by the path after the node name. */
+/*
+ * A node's task history (Phase 5C): one task started with Velnox's token, and
+ * two started by people on Proxmox itself, one of which failed. Fixed times, so
+ * every read returns the same tasks and Velnox can tell it has seen them.
+ */
+const TASKS_AT = Math.floor(Date.now() / 1000);
+const taskUpid = (node, type, user, at) =>
+  `UPID:${node}:0000AA${type.length}0:00000BBB:${at.toString(16).toUpperCase()}:${type}:100:${user}:`;
+const nodeTasks = (node) => [
+  { type: 'qmstart', id: '100', user: TOKEN_ID, at: TASKS_AT - 600, end: 5, status: 'OK' },
+  { type: 'vzdump', id: '101', user: 'root@pam', at: TASKS_AT - 3600, end: 300, status: 'OK' },
+  {
+    type: 'qmshutdown',
+    id: '102',
+    user: 'admin@pve',
+    at: TASKS_AT - 7200,
+    end: 10,
+    status: 'VM quit/powerdown failed',
+  },
+].map((task) => ({
+  upid: taskUpid(node, task.type, task.user, task.at),
+  node,
+  type: task.type,
+  id: task.id,
+  user: task.user,
+  starttime: task.at,
+  endtime: task.at + task.end,
+  status: task.status,
+}));
+
 const NODE_ROUTES = {
+  tasks: (node) => nodeTasks(node),
   status: (node) => nodeStatus(node),
 
   subscription: (node) =>
