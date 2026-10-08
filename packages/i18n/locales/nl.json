@@ -407,6 +407,15 @@
     "tenant": {
       "parent_invalid": "Een sub-tenant hoort bij een actieve hoofd-tenant van een klant — niet bij de MSP-organisatie en niet bij een andere sub-tenant.",
       "has_sub_tenants": "{count, plural, one {Deze hoofd-tenant heeft nog # actieve sub-tenant.} other {Deze hoofd-tenant heeft nog # actieve sub-tenants.}} Archiveer die eerst."
+    },
+    "tls": {
+      "certificate_invalid": "Dat is geen PEM-certificaat dat Velnox kan lezen.",
+      "key_invalid": "Dat is geen leesbare privésleutel. Een versleutelde sleutel moet eerst worden ontsleuteld.",
+      "key_mismatch": "Die sleutel hoort niet bij dat certificaat.",
+      "certificate_expired": "Dat certificaat is al verlopen ({notAfter}).",
+      "acme_needs_hostname": "Deze installatie wordt bereikt op {address}. Let’s Encrypt geeft geen certificaten uit voor IP-adressen: stel eerst een hostnaam in.",
+      "apply_failed": "De proxy weigerde de nieuwe configuratie, en serveert nog het vorige certificaat: {detail}",
+      "proxy_unreachable": "De admin-socket van de proxy antwoordde niet, dus er is niets gewijzigd: {detail}"
     }
   },
   "inventory": {
@@ -1015,7 +1024,7 @@
   "tls": {
     "acmeAccount": "ACME-account",
     "address": "Adres",
-    "changeBody": "Certificaten wijzig je vanaf een shell op de host, niet vanaf deze pagina. Voer een van deze uit als gebruiker met sudo.",
+    "changeBody": "De weg terug als deze pagina niet bereikbaar is — na een certificaat dat browsers weigeren, bijvoorbeeld. Voer een van deze uit op de host als gebruiker met sudo; het geeft de keuze terug aan die van de installatie.",
     "changeTitle": "Het certificaat wijzigen",
     "commandLetsencrypt": "Een Let's Encrypt-certificaat aanvragen",
     "commandSelfSigned": "Terug naar een zelfondertekend certificaat",
@@ -1054,7 +1063,50 @@
     "subtitle": "Het certificaat dat deze installatie serveert, en hoe je het wijzigt.",
     "unreachableBody": "Geen TLS-handshake met de proxy ({detail}). Velnox zelf draait — je leest dit immers — dus waarschijnlijk is de proxy aan het herstarten.",
     "unreachableTitle": "De proxy was niet bereikbaar",
-    "whyNotHere": "Een certificaat installeren betekent een privésleutel naar schijf schrijven en de proxy herstarten. Velnox doet geen van beide vanuit een HTTP-eindpunt, en dat is opzet: de API bewaart geen sleutelmateriaal en voert geen shellcommando's uit. Dat hoort op de host."
+    "whyNotHere": "scripts/tls.sh schrijft de certificaatbestanden van de installatie en herstart de proxy. Een certificaat dat hierboven is gekozen, wordt daaraan teruggegeven als het script draait.",
+    "changeInterfaceBody": "Toegepast via de admin-socket van de proxy. Een configuratie die de proxy niet kan serveren wordt geweigerd, en het huidige certificaat blijft staan. Het certificaat dat daarna geserveerd wordt, wordt teruggelezen ter controle.",
+    "choice": {
+      "installer": "Zoals geïnstalleerd",
+      "internal": "Zelfondertekend (eigen autoriteit van Caddy)",
+      "acme": "Let’s Encrypt, automatisch vernieuwd",
+      "certificate": "Mijn eigen certificaat"
+    },
+    "choiceHint": {
+      "installer": "Wat de installatie instelde, uit VELNOX_TLS, en wat scripts/tls.sh wijzigt.",
+      "internal": "Browsers waarschuwen één keer. Geschikt voor een appliance die op IP-adres in een beheernetwerk bereikt wordt.",
+      "acme": "Publiek vertrouwd. Het adres moet publiek resolven en poort 80 en 443 moeten deze host bereiken. Een andere ACME-autoriteit kan in plaats daarvan worden opgegeven.",
+      "certificate": "Upload een certificaat met zijn keten en zijn privésleutel. Niets vernieuwt het: vervang het voordat het verloopt."
+    },
+    "acmeNeedsHostname": "Niet voor een IP-adres: Let’s Encrypt geeft alleen uit voor hostnamen.",
+    "acmeEmail": "E-mailadres van het account",
+    "acmeEmailHint": "Waar de ACME-autoriteit schrijft over verlopende certificaten en problemen.",
+    "otherAcme": "Een andere ACME-autoriteit gebruiken (een eigen CA, of een testserver)",
+    "acmeDirectory": "ACME-directory",
+    "acmeDirectoryHint": "De directory-URL van de autoriteit, alleen https.",
+    "acmeRoot": "Rootcertificaat van die autoriteit (optioneel)",
+    "acmeRootHint": "PEM. Nodig als de HTTPS van de autoriteit zelf niet door een publiek vertrouwde root is ondertekend.",
+    "certificateField": "Certificaat en keten (PEM)",
+    "certificateFieldHint": "Eerst het certificaat, dan de tussencertificaten — het fullchain-bestand van je leverancier.",
+    "keyField": "Privésleutel (PEM, onversleuteld)",
+    "keyFieldHint": "Versleuteld opgeslagen. Hij wordt nooit meer getoond, en verlaat de installatie nooit via deze pagina.",
+    "breakGlass": "Maakt een certificaat deze pagina onbereikbaar, voer dan sudo bash /opt/velnox/scripts/tls.sh --self-signed uit op de host: dat geeft de keuze terug aan die van de installatie.",
+    "apply": "Toepassen",
+    "appliedVerified": "Toegepast, en geserveerd",
+    "appliedNotYet": "Toegepast, nog niet geserveerd",
+    "appliedVerifiedBody": "Het certificaat dat de proxy nu serveert, is het gekozen certificaat.",
+    "appliedAcmePending": "De proxy haalt het certificaat op; dat kan een minuut duren. Open deze pagina zo opnieuw.",
+    "appliedNotVerifiedBody": "De proxy heeft de configuratie geaccepteerd, maar serveert nog een ander certificaat. Open deze pagina zo opnieuw.",
+    "warning": {
+      "not_covering": "Het certificaat dekt het adres van deze installatie niet. Browsers weigeren het tot het adres of het certificaat verandert.",
+      "no_chain": "Er is maar één certificaat geüpload. De meeste browsers hebben ook de keten van de uitgever nodig; upload het fullchain-bestand."
+    },
+    "managedBy": "Gekozen",
+    "managedByValue": {
+      "interface": "in Serverbeheer",
+      "installer": "door de installatie"
+    },
+    "changedBy": "door {who}",
+    "hostTitle": "Op de host"
   },
   "users": {
     "chooseRole": "Kies een rol…",

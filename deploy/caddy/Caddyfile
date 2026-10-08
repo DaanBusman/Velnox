@@ -13,9 +13,18 @@
 	# default makes a no-SNI connection resolve to this site.
 	default_sni {$VELNOX_SITE_ADDRESS:localhost}
 
-	# The admin API is not needed and would be a second, unauthenticated control
-	# surface inside the container.
-	admin off
+	# The admin API, on a Unix socket only (ADR-045). The API reloads Caddy
+	# through it after writing a certificate chosen in Server management. The
+	# socket lives in a volume that only Caddy and the API mount — there is no
+	# admin port, on any network, so it is not a second control surface for
+	# anything else on the host or in the stack. 0666 inside that directory,
+	# because the API runs as an unprivileged user and Caddy as root.
+	admin unix//run/caddy-admin/admin.sock|0666
+
+	# Configuration changed through the admin API is not written to disk. What
+	# Caddy serves after a restart is decided by the files below, which the API
+	# writes before it reloads, never by a snapshot of the last API call.
+	persist_config off
 }
 
 # Internal liveness endpoint on an unpublished port.
@@ -34,9 +43,14 @@
 }
 
 {$VELNOX_SITE_ADDRESS:localhost} {
-	# One generated line: `tls internal`, `tls <acme-email>`, or
-	# `tls <cert> <key>`. scripts/lib/tls-config.sh writes it from VELNOX_TLS,
-	# and scripts/tls.sh changes it after an installation is running.
+	# The certificate. /etc/caddy/managed/tls.caddy is written by the API: the
+	# mode chosen in Server management, or — when none is chosen — one line that
+	# imports the installer's /etc/caddy/tls/tls.caddy (ADR-045).
+	#
+	# The installer's file is one generated line: `tls internal`,
+	# `tls <acme-email>`, or `tls <cert> <key>`. scripts/lib/tls-config.sh writes
+	# it from VELNOX_TLS, and scripts/tls.sh changes it after an installation is
+	# running — handing the choice back from the interface as it does.
 	#
 	# A file rather than `tls {$VELNOX_TLS}` because an operator-supplied
 	# certificate needs two arguments, and how a `{$VAR}` expansion splits into
@@ -47,7 +61,7 @@
 	# alternative is no `tls` directive at all, and Caddy then decides for
 	# itself, which for a public hostname means an unexpected attempt at a real
 	# certificate.
-	import /etc/caddy/tls/tls.caddy
+	import /etc/caddy/managed/tls.caddy
 
 	encode zstd gzip
 

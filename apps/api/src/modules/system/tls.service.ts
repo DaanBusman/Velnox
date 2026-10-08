@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ApiConfig } from '@velnox/config';
 import type { TlsMode, TlsStatusResponse } from '@velnox/shared';
 import { API_CONFIG } from '../../config/config.module';
+import { PrismaService } from '../infrastructure/prisma.service';
 
 /**
  * What certificate is Velnox actually serving?
@@ -14,9 +15,8 @@ import { API_CONFIG } from '../../config/config.module';
  * and a screen sourced from the configuration reports success for exactly that
  * case.
  *
- * The API holds no TLS material and cannot change any of this. `scripts/tls.sh`
- * on the host does, which keeps writing private keys and restarting the proxy
- * out of an HTTP endpoint.
+ * The mode is the one chosen in Server management when there is one (ADR-045),
+ * and the installer's — VELNOX_TLS — otherwise. Changing it is TlsConfigService.
  */
 
 /** Long enough for a handshake on a loopback network; short enough not to hang a page. */
@@ -26,26 +26,57 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class TlsService {
-  constructor(@Inject(API_CONFIG) private readonly config: ApiConfig) {}
+  constructor(
+    @Inject(API_CONFIG) private readonly config: ApiConfig,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  /** `internal`, `certificate`, or an ACME account address meaning Let's Encrypt. */
-  private mode(): TlsMode {
+  /** The installer's: `internal`, `certificate`, or an ACME account address meaning Let's Encrypt. */
+  private installerMode(): TlsMode {
     const value = this.config.VELNOX_TLS.trim();
     if (value === '' || value === 'internal') return 'internal';
     if (value === 'certificate') return 'certificate';
     return 'acme';
   }
 
-  async status(): Promise<TlsStatusResponse> {
-    const mode = this.mode();
-    const siteAddress = hostOf(this.config.APP_URL);
+  /** The address browsers use, which is what SNI carries and a certificate must cover. */
+  siteAddress(): string {
+    return hostOf(this.config.APP_URL);
+  }
 
-    const base = {
-      mode,
-      siteAddress,
-      /** Only for ACME, and only to whoever can already change it. */
-      acmeAccount: mode === 'acme' ? this.config.VELNOX_TLS.trim() : null,
-    };
+  async status(): Promise<TlsStatusResponse> {
+    const siteAddress = this.siteAddress();
+    const chosen = await this.prisma.client.systemSettings.findUnique({
+      where: { id: 1 },
+      select: {
+        tlsMode: true,
+        tlsAcmeEmail: true,
+        tlsAcmeDirectory: true,
+        tlsChangedAt: true,
+        tlsChangedBy: true,
+      },
+    });
+
+    const base = chosen?.tlsMode
+      ? {
+          mode: chosen.tlsMode.toLowerCase() as TlsMode,
+          managedBy: 'interface' as const,
+          siteAddress,
+          acmeAccount: chosen.tlsMode === 'ACME' ? chosen.tlsAcmeEmail : null,
+          acmeDirectory: chosen.tlsMode === 'ACME' ? chosen.tlsAcmeDirectory : null,
+          changedAt: chosen.tlsChangedAt?.toISOString() ?? null,
+          changedBy: chosen.tlsChangedBy,
+        }
+      : {
+          mode: this.installerMode(),
+          managedBy: 'installer' as const,
+          siteAddress,
+          /** Only for ACME, and only to whoever can already change it. */
+          acmeAccount: this.installerMode() === 'acme' ? this.config.VELNOX_TLS.trim() : null,
+          acmeDirectory: null,
+          changedAt: null,
+          changedBy: null,
+        };
 
     let certificate: PeerCertificate | null;
     try {

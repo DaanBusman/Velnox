@@ -124,6 +124,20 @@ export const ERROR_CODES = {
   /** Removing a package a template still runs. */
   autoconfigPackageInUse: 'autoconfig.package_in_use',
 
+  /** Not a PEM certificate, or not one Velnox can read. */
+  tlsCertificateInvalid: 'tls.certificate_invalid',
+  /** Not a readable, unencrypted PEM private key. */
+  tlsKeyInvalid: 'tls.key_invalid',
+  /** The key does not belong to the certificate. */
+  tlsKeyMismatch: 'tls.key_mismatch',
+  tlsCertificateExpired: 'tls.certificate_expired',
+  /** Let's Encrypt does not issue for an IP address. */
+  tlsAcmeNeedsHostname: 'tls.acme_needs_hostname',
+  /** Caddy refused the new configuration; the previous one is still served. */
+  tlsApplyFailed: 'tls.apply_failed',
+  /** Caddy's admin socket did not answer. */
+  tlsProxyUnreachable: 'tls.proxy_unreachable',
+
   /** A sub-tenant's main tenant must be an active customer main tenant. */
   tenantParentInvalid: 'tenant.parent_invalid',
   /** A main tenant with active sub-tenants cannot be archived or suspended first. */

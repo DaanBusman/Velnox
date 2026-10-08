@@ -206,9 +206,9 @@ cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env
 ## Certificaten
 
 Velnox serveert HTTPS via Caddy in een van drie modi. Je wijzigt dat op elk moment, op een draaiende
-installatie, met `scripts/tls.sh`. Er wordt niets weggeschreven voordat het materiaal is
-gevalideerd, dus een certificaat dat niet gewerkt zou hebben wordt geweigerd terwijl het werkende
-nog steeds serveert.
+installatie: in het product onder **Serverbeheer → Certificaat**, of op de host met
+`scripts/tls.sh`. Hoe dan ook wordt er niets geserveerd voordat het is gevalideerd, dus een
+certificaat dat niet gewerkt zou hebben wordt geweigerd terwijl het werkende nog steeds serveert.
 
 ```bash
 cd /opt/velnox && sudo bash scripts/tls.sh --status
@@ -220,10 +220,37 @@ cd /opt/velnox && sudo bash scripts/tls.sh --status
 | Let's Encrypt | Een publiek vertrouwd certificaat, verkregen via ACME. | Automatisch |
 | Je eigen | Een certificaat dat je al hebt, van je eigen CA of een commerciële uitgever. | **Van jou** |
 
-Dezelfde informatie staat in het product onder **Serverbeheer → Certificaat**, dat daarnaast toont
-welk certificaat de proxy *daadwerkelijk* aanbiedt — gelezen uit een echte handshake en niet uit de
-configuratie, zodat een wijziging die is weggeschreven maar nooit is opgepakt zichtbaar is in plaats
-van als succes gemeld.
+**Serverbeheer → Certificaat** toont ook welk certificaat de proxy *daadwerkelijk* aanbiedt —
+gelezen uit een echte handshake en niet uit de configuratie, zodat een wijziging die is
+weggeschreven maar nooit is opgepakt zichtbaar is in plaats van als succes gemeld.
+
+### Wijzigen in de interface
+
+**Serverbeheer → Certificaat → Het certificaat wijzigen**, met `system.manage`:
+
+- **Zoals geïnstalleerd** — wat de installatie instelde uit `VELNOX_TLS`, en wat `scripts/tls.sh`
+  wijzigt.
+- **Zelfondertekend** — de eigen certificaatautoriteit van Caddy.
+- **Let's Encrypt** — met een accountadres; vernieuwd door Caddy. **Een andere ACME-autoriteit
+  gebruiken** noemt een andere directory — een eigen CA zoals step-ca, of een testserver — met de
+  root die haar HTTPS ondertekent als die niet publiek vertrouwd is.
+- **Mijn eigen certificaat** — plak of laad het certificaat met zijn keten, en de onversleutelde
+  privésleutel. Dezelfde controles als het script: de sleutel moet bij het certificaat horen, en het
+  mag niet verlopen zijn; namen die het adres niet dekken, of een ontbrekende keten, zijn
+  waarschuwingen. De sleutel wordt versleuteld in de geheimenopslag van Velnox bewaard en wordt
+  nooit meer getoond.
+
+**Toepassen** schrijft de configuratie en vraagt Caddy via zijn admin-socket die te laden. Caddy
+weigert een configuratie die hij niet kan serveren en houdt het huidige certificaat; anders leest
+het paneel het nu geserveerde certificaat terug en zegt of het het gekozen certificaat is. Let's
+Encrypt kan een minuut duren: *nog niet geserveerd* betekent dan precies dat. De keuze overleeft
+herstarts en upgrades: ze staat in de database, en de API schrijft de bestanden van Caddy bij elke
+start opnieuw. Elke wijziging staat in het auditlog als `system.tls_changed`, nooit met de sleutel.
+
+**Als de interface niet bereikbaar is** — na een certificaat dat browsers weigeren, bijvoorbeeld —
+geeft elk `scripts/tls.sh`-commando op de host de keuze terug aan die van de installatie: het wist de
+keuze in de database, verwijdert de opgeslagen sleutel, legt dat vast in het auditlog, en herstart de
+API en Caddy. `scripts/tls.sh --status` zegt het als er een keuze uit de interface wordt geserveerd.
 
 ### Overstappen op Let's Encrypt
 
@@ -265,16 +292,18 @@ het is verlopen.
 cd /opt/velnox && sudo bash scripts/tls.sh --self-signed
 ```
 
-### Waarom dit geen knop in de interface is
+### Wat wijzigen in de interface kost
 
-Een certificaat installeren betekent een privésleutel naar schijf schrijven en de proxy herstarten.
-Velnox doet geen van beide vanuit een HTTP-eindpunt: de API bewaart geen TLS-materiaal, voert geen
-shellcommando's uit, en kan geen container herstarten. Dat in een webformulier stoppen zou betekenen
-dat de API-container de proxy mag herconfigureren, en dat is een veel groter ding om te hebben dan
-het gemak waard is. Op de host hoort het thuis, onder hetzelfde vertrouwensmodel als het
-installatieprogramma.
+Tot fase 5C was dit bewust alleen een taak op de host: de API bewaarde geen TLS-materiaal en kon de
+proxy niet herconfigureren. De eigenaar koos ervoor het in de interface te hebben, en ADR-045 legt
+de prijs vast. De API-container schrijft nu een privésleutel voor Caddy en kan Caddy herladen via zijn
+admin-API. Die API luistert op een Unix-socket in een volume dat alleen Caddy en de API koppelen —
+geen poort, op geen enkel netwerk — en de API voert nog steeds geen shellcommando's uit en kan geen
+container herstarten. Wie code kan uitvoeren in de API-container, kan het certificaat wijzigen; dat
+was al genoeg om de database te lezen.
 
-Elke wijziging herstart Caddy, wat ongeveer een seconde downtime op de console kost. Verder wordt er
+Een wijziging vanuit de interface herlaadt Caddy zonder herstart. Een wijziging met
+`scripts/tls.sh` herstart de API en Caddy, wat een paar seconden op de console kost. Verder wordt er
 niets onderbroken: de worker houdt geen verbinding via Caddy.
 
 ---

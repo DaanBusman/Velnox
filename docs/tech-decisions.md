@@ -1342,6 +1342,40 @@ are not offered to its sub-tenants' templates. See the known gaps.
 
 ---
 
+## ADR-045 — Certificates from the interface, through Caddy's admin socket
+
+**Decision:** Reverses the host-only certificate changes of Phase 2 at the owner's request. The
+mode — Caddy's own CA, ACME (Let's Encrypt, or another directory with its root), an uploaded
+certificate, or the installer's — is chosen in Server management and stored in `system_settings`,
+an uploaded key in the secret store (`TLS_PRIVATE_KEY`, readable by the API only). The API writes
+Caddy's files into a volume only it and Caddy mount — `tls.caddy` with one directive, and the
+certificate, key or ACME root it names — and asks Caddy to load the Caddyfile again through the
+admin API on a Unix socket in a second such volume. Caddy refuses a configuration it cannot serve
+and keeps the current one; the API then puts the previous files back, so a restart cannot pick up
+what Caddy refused. Only an accepted change is stored and audited, and the certificate served
+afterwards is read back over a handshake. With no choice stored, `tls.caddy` imports the
+installer's file, so `VELNOX_TLS` and `scripts/tls.sh` keep working; every `tls.sh` change hands
+the choice back — the way back when the interface cannot be reached. `persist_config off`: what
+Caddy serves after a restart is the files, which the API writes again at start-up from the database.
+
+**Why the admin API, and why a socket.** A reload through the admin API needs no shell and no
+container restart, which the API must still never do. The admin API has no authentication of its
+own; on a port, anything on the network could reconfigure the proxy. A Unix socket in a volume that
+only Caddy and the API mount is reachable by nothing else in the stack or on the host network.
+
+**What it costs.** The API container now holds a private key in the clear (on the volume, mode
+0600, and briefly in memory) and can reconfigure the proxy. Code execution in the API container was
+already enough to read the database and decrypt what the API may decrypt; this adds the certificate
+to that list. The key is stored encrypted so the volume can be lost without losing it; the copy
+Caddy reads cannot be, because Caddy cannot prompt for a passphrase.
+
+**Proven:** every mode switched and read back over a real handshake, refusals leaving the old
+certificate served, the choice surviving a Caddy restart and an API restart with its files gone,
+ACME against Pebble (Let's Encrypt's test server) on the stack's network, and the hand-back by
+`scripts/tls.sh` (`scripts/verify-tls.sh`). Not yet: Let's Encrypt itself, on a public host.
+
+---
+
 ## Version targets
 
 | Component | Version |

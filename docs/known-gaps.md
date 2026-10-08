@@ -230,6 +230,13 @@ a main tenant does not offer it to its sub-tenants. And someone who is a member 
 through a role, with their account at home in a sibling, does not appear in that sub-tenant's Users
 list — their role is on their account, under the sibling. See ADR-042.
 
+### Certificates from the interface: what it proves, and what it costs
+Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
+Let's Encrypt's test server — not yet against Let's Encrypt on a public host. HTTP-01 only, as Caddy
+does by default: no DNS-01, so a host that is not reachable on port 80 cannot use Let's Encrypt. An
+uploaded certificate is not renewed, and its expiry is shown, not alerted. The API container now
+holds the key Caddy reads and can reload Caddy through its socket. See ADR-045.
+
 ### Installer packages: proven against the fixture, and four edges
 The packages CD, its script and the results are proven against the fixture, which reads the CD and
 "runs" each package by an exit code written into it; whether Windows runs `VELNOXPK.CMD` as expected

@@ -110,6 +110,12 @@ COPY --from=build --chown=node:node /app /app
 # write to it without a root init step.
 RUN mkdir -p /var/lib/velnox/library && chown node:node /var/lib/velnox/library /var/lib/velnox
 
+# The certificate Velnox manages (Phase 5C, ADR-045) and the directory Caddy puts
+# its admin socket in. Both are named volumes the API shares with Caddy alone;
+# owned by `node` for the same reason as the library.
+RUN mkdir -p /var/lib/velnox/tls /run/caddy-admin && \
+    chown node:node /var/lib/velnox/tls /run/caddy-admin && chmod 700 /var/lib/velnox/tls
+
 USER node
 
 EXPOSE 4000

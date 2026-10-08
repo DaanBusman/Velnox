@@ -30,6 +30,12 @@ const API_READABLE_KINDS: ReadonlySet<CredentialKind> = new Set<CredentialKind>(
    * which audits it first.
    */
   'GUEST_CREDENTIALS',
+  /*
+   * The key of a certificate uploaded in Server management (ADR-045): Velnox's
+   * own identity to browsers, not a credential for anything it manages. Read
+   * only by TlsConfigService, to write it for Caddy at start-up.
+   */
+  'TLS_PRIVATE_KEY',
 ]);
 
 export class ForbiddenCredentialKindError extends Error {

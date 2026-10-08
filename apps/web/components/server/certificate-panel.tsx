@@ -1,28 +1,27 @@
 'use client';
 
+import { useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import type { TlsStatusResponse } from '@velnox/shared';
 import { CopyField } from '@/components/copy-field';
 import { Card, KeyValue, Mono, Notice, StatusBadge } from '@/components/ui/primitives';
 import { useApiResource } from './use-api-resource';
 import { PanelError, PanelLoading } from './panel-state';
+import { CertificateChange } from './certificate-change';
 
 /** Below this, a certificate is close enough to expiry to say so loudly. */
 const EXPIRY_WARNING_DAYS = 30;
 
 /**
- * The certificate this installation serves.
+ * The certificate this installation serves, and changing it.
  *
- * Read-only, on purpose. Changing a certificate means writing a private key to
- * disk and restarting the proxy, and an HTTP endpoint that does either is a
- * larger thing to have than the convenience is worth — the whole product is
- * built on the API never running shell commands or holding infrastructure key
- * material. `scripts/tls.sh` on the host does it, under the same trust model as
- * the installer, and this panel shows the exact command.
+ * Changed here since Phase 5C (ADR-045, reversing the read-only panel at the
+ * owner's request): the API writes Caddy's files and reloads it through its
+ * admin socket, without a shell command. `scripts/tls.sh` on the host stays as
+ * the way back when this page cannot be reached, and this panel shows it.
  *
- * What it *does* answer is the question configuration cannot: the certificate
- * shown here is the one the proxy actually presented on a real handshake a
- * moment ago. The usual failure after changing a certificate is that the file
+ * What it answers that configuration cannot: the certificate shown here is the
+ * one the proxy actually presented on a real handshake a moment ago. The usual failure after changing a certificate is that the file
  * was written and the proxy never picked it up, and a screen sourced from
  * configuration reports success for exactly that case.
  */
@@ -30,11 +29,13 @@ export function CertificatePanel() {
   const t = useTranslations();
   const format = useFormatter();
   const tls = useApiResource<TlsStatusResponse>('/system/tls');
+  // What the last change read back; newer than the page's first load.
+  const [latest, setLatest] = useState<TlsStatusResponse | null>(null);
 
   if (tls.state === 'loading') return <PanelLoading />;
   if (tls.state === 'failed') return <PanelError error={tls.error} />;
 
-  const status = tls.data;
+  const status = latest ?? tls.data;
   const cert = status.certificate;
   const days = cert?.daysRemaining ?? null;
   const expired = days !== null && days < 0;
@@ -85,8 +86,26 @@ export function CertificatePanel() {
           <KeyValue label={t('tls.address')}>
             <Mono>{status.siteAddress}</Mono>
           </KeyValue>
+          <KeyValue label={t('tls.managedBy')}>
+            {t(`tls.managedByValue.${status.managedBy}`)}
+            {status.changedAt && status.changedBy && (
+              <span className="text-ink-muted">
+                {' '}
+                — {t('tls.changedBy', { who: status.changedBy })},{' '}
+                {format.dateTime(new Date(status.changedAt), {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
+              </span>
+            )}
+          </KeyValue>
           {status.acmeAccount && (
             <KeyValue label={t('tls.acmeAccount')}>{status.acmeAccount}</KeyValue>
+          )}
+          {status.acmeDirectory && (
+            <KeyValue label={t('tls.acmeDirectory')}>
+              <Mono>{status.acmeDirectory}</Mono>
+            </KeyValue>
           )}
         </dl>
         <p className="mt-3 text-sm text-ink-muted">{t(`tls.modeExplained.${status.mode}`)}</p>
@@ -155,7 +174,9 @@ export function CertificatePanel() {
         </Card>
       )}
 
-      <Card title={t('tls.changeTitle')} description={t('tls.changeBody')}>
+      <CertificateChange status={status} onChanged={setLatest} />
+
+      <Card title={t('tls.hostTitle')} description={t('tls.changeBody')}>
         <div className="space-y-4">
           <CopyField
             label={t('tls.commandStatus')}

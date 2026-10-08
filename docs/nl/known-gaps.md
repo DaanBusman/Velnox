@@ -247,6 +247,14 @@ tenants aangeboden: een hoofd-tenant aanvinken biedt het niet aan zijn sub-tenan
 via een rol lid is van een sub-tenant, met zijn account thuis in een zuster, staat niet in de lijst
 Gebruikers van die sub-tenant — zijn rol staat op zijn account, onder de zuster. Zie ADR-042.
 
+### Certificaten vanuit de interface: wat het bewijst, en wat het kost
+Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,
+de testserver van Let's Encrypt — nog niet tegen Let's Encrypt op een publieke host. Alleen HTTP-01,
+zoals Caddy standaard doet: geen DNS-01, dus een host die op poort 80 niet bereikbaar is, kan Let's
+Encrypt niet gebruiken. Een geüpload certificaat wordt niet vernieuwd, en het verlopen wordt getoond,
+niet gealarmeerd. De API-container bevat nu de sleutel die Caddy leest en kan Caddy herladen via zijn
+socket. Zie ADR-045.
+
 ### Installatiepakketten: bewezen tegen de fixture, en vier randen
 De pakket-cd, het script en de resultaten zijn bewezen tegen de fixture, die de cd leest en elk
 pakket "uitvoert" met een exitcode die erin staat; of Windows `VELNOXPK.CMD` uitvoert zoals bedoeld —

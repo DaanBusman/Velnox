@@ -406,6 +406,15 @@
     "tenant": {
       "parent_invalid": "A sub-tenant belongs to an active customer main tenant — not the MSP organisation and not another sub-tenant.",
       "has_sub_tenants": "{count, plural, one {This main tenant still has # active sub-tenant.} other {This main tenant still has # active sub-tenants.}} Archive those first."
+    },
+    "tls": {
+      "certificate_invalid": "That is not a PEM certificate Velnox can read.",
+      "key_invalid": "That is not a readable private key. An encrypted key must be decrypted first.",
+      "key_mismatch": "That key does not belong to that certificate.",
+      "certificate_expired": "That certificate has already expired ({notAfter}).",
+      "acme_needs_hostname": "This installation is reached on {address}. Let’s Encrypt does not issue certificates for IP addresses: set a host name first.",
+      "apply_failed": "The proxy refused the new configuration, and still serves the previous certificate: {detail}",
+      "proxy_unreachable": "The proxy’s admin socket did not answer, so nothing was changed: {detail}"
     }
   },
   "inventory": {
@@ -1014,7 +1023,7 @@
   "tls": {
     "acmeAccount": "ACME account",
     "address": "Address",
-    "changeBody": "Certificates are changed from a shell on the host, not from this page. Run one of these as a user with sudo.",
+    "changeBody": "The way back when this page cannot be reached — after a certificate browsers refuse, for instance. Run one of these on the host as a user with sudo; it hands the choice back to the installer’s.",
     "changeTitle": "Change the certificate",
     "commandLetsencrypt": "Obtain a Let's Encrypt certificate",
     "commandSelfSigned": "Go back to a self-signed certificate",
@@ -1053,7 +1062,50 @@
     "subtitle": "The certificate this installation serves, and how to change it.",
     "unreachableBody": "No TLS handshake with the proxy ({detail}). Velnox itself is running — you are reading this — so the proxy is probably restarting.",
     "unreachableTitle": "Could not reach the proxy",
-    "whyNotHere": "Installing a certificate means writing a private key to disk and restarting the proxy. Velnox does neither from an HTTP endpoint, on purpose: the API holds no key material and runs no shell commands. The host is where that belongs."
+    "whyNotHere": "scripts/tls.sh writes the installer’s certificate files and restarts the proxy. A certificate chosen above is handed back to it when the script runs.",
+    "changeInterfaceBody": "Applied through the proxy’s admin socket. A configuration the proxy cannot serve is refused, and the current certificate stays in place. The certificate served afterwards is read back to check it.",
+    "choice": {
+      "installer": "As installed",
+      "internal": "Self-signed (Caddy’s own authority)",
+      "acme": "Let’s Encrypt, renewed automatically",
+      "certificate": "My own certificate"
+    },
+    "choiceHint": {
+      "installer": "What the installer set up, from VELNOX_TLS, and what scripts/tls.sh changes.",
+      "internal": "Browsers warn once. Right for an appliance reached by IP address on a management network.",
+      "acme": "Publicly trusted. The address must resolve publicly and ports 80 and 443 must reach this host. Another ACME authority can be named instead.",
+      "certificate": "Upload a certificate with its chain and its private key. Nothing renews it: replace it before it expires."
+    },
+    "acmeNeedsHostname": "Not for an IP address: Let’s Encrypt issues for host names only.",
+    "acmeEmail": "Account email address",
+    "acmeEmailHint": "Where the ACME authority writes about expiring certificates and problems.",
+    "otherAcme": "Use another ACME authority (a private CA, or a staging server)",
+    "acmeDirectory": "ACME directory",
+    "acmeDirectoryHint": "The authority’s directory URL, https only.",
+    "acmeRoot": "Root certificate of that authority (optional)",
+    "acmeRootHint": "PEM. Needed when the authority’s own HTTPS is not signed by a publicly trusted root.",
+    "certificateField": "Certificate and chain (PEM)",
+    "certificateFieldHint": "The certificate first, then the intermediates — your provider’s fullchain file.",
+    "keyField": "Private key (PEM, unencrypted)",
+    "keyFieldHint": "Stored encrypted. It is never shown again, and never leaves the installation through this page.",
+    "breakGlass": "If a certificate makes this page unreachable, run sudo bash /opt/velnox/scripts/tls.sh --self-signed on the host: it hands the choice back to the installer’s.",
+    "apply": "Apply",
+    "appliedVerified": "Applied, and served",
+    "appliedNotYet": "Applied, not yet served",
+    "appliedVerifiedBody": "The certificate the proxy serves now is the one chosen.",
+    "appliedAcmePending": "The proxy is obtaining the certificate; that can take a minute. Open this page again shortly.",
+    "appliedNotVerifiedBody": "The proxy accepted the configuration, but still serves another certificate. Open this page again in a moment.",
+    "warning": {
+      "not_covering": "The certificate does not cover this installation’s address. Browsers will refuse it until the address or the certificate changes.",
+      "no_chain": "Only one certificate was uploaded. Most browsers also need the issuer’s chain; upload the fullchain file."
+    },
+    "managedBy": "Chosen",
+    "managedByValue": {
+      "interface": "in Server management",
+      "installer": "by the installer"
+    },
+    "changedBy": "by {who}",
+    "hostTitle": "On the host"
   },
   "users": {
     "chooseRole": "Choose a role…",

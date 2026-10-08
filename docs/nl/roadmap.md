@@ -301,7 +301,14 @@ een login met wachtwoord, tenzij de template dat toestond. Een
 mislukte installatie laat geen half aangemaakte VM achter. De verklaring noemt de hostname, het adres,
 de duur en de template, en het bericht komt één keer aan.
 
-## Phase 5C — Tenant-hiërarchie, platformbeheer en support · **L**
+## Phase 5C — Tenant-hiërarchie, platformbeheer en support · **L** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (0.5.20–0.5.23): hoofd-tenants en sub-tenants met rechten die bij het aanmelden
+worden verbreed (ADR-042); supportlogs per tenant met Proxmox-taken gemarkeerd op herkomst (ADR-043);
+installatiepakketten per tenant op een eigen cd (ADR-044); certificaten vanuit de interface via de
+admin-socket van Caddy (ADR-045). Elk heeft zijn harnas. **Nog niet bewezen:** installatiepakketten
+op een echte Windows-VM, en Let's Encrypt op een publieke host — de fixture en Pebble staan voor
+beide in.
 
 Gevraagd door de eigenaar op 5 oktober 2026, vóór fase 6–9B, omdat de eerste twee de grens tussen
 tenants en het vertrouwen in de installatie zelf veranderen — allebei pijnlijk om achteraf in te

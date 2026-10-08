@@ -600,6 +600,13 @@ build_commit, feature_flags jsonb, retention jsonb, schema_version`
 `support_log_retention_days` (1–30, standaard 30) is hoe lang `proxmox_tasks` bewaard blijven;
 alleen `support.manage` wijzigt het.
 
+`tls_mode` (INTERNAL|ACME|CERTIFICATE, null voor die van de installatie), `tls_acme_email`,
+`tls_acme_directory`, `tls_acme_ca_root`, `tls_certificate_pem`, `tls_key_credential_id`,
+`tls_changed_at`, `tls_changed_by`: het certificaat dat in Serverbeheer is gekozen (migratie
+`20261008100000_tls_management`, ADR-045). De sleutel is een `TLS_PRIVATE_KEY`-credential;
+`system_settings_tls_complete` eist wat elke modus nodig heeft en weigert een privésleutel in de
+certificaatkolom.
+
 `product_name` staat hier en wordt door de frontend gelezen, zodat hernoemen vanaf "Velnox" een
 instellingswijziging plus assetwissel is — geen codewijziging. `source_url` en `build_commit`
 ondersteunen de verplichting uit AGPL artikel 13: ze zijn wat `GET /api/v1/system/source` en

@@ -130,14 +130,55 @@ export interface TlsCertificateView {
  */
 export interface TlsStatusResponse {
   mode: TlsMode;
+  /**
+   * Who chose the mode: Server management (Phase 5C, ADR-045), or the
+   * installer — VELNOX_TLS, and scripts/tls.sh, which hands it back.
+   */
+  managedBy: 'interface' | 'installer';
   siteAddress: string;
   /** The ACME account address, in `acme` mode only. */
   acmeAccount: string | null;
+  /** An ACME directory other than Let's Encrypt's; null for Let's Encrypt. */
+  acmeDirectory: string | null;
+  /** When and by whom the interface last changed it; null when the installer's is served. */
+  changedAt: string | null;
+  changedBy: string | null;
   /** Whether the proxy completed a TLS handshake at all. */
   reachable: boolean;
   certificate: TlsCertificateView | null;
   /** Translatable detail when there is nothing to report. */
   problem: { code: string; params?: Record<string, string | number> } | null;
+}
+
+/** A change of certificate from Server management (ADR-045). */
+export type TlsChangeRequest =
+  | { mode: 'installer' }
+  | { mode: 'internal' }
+  | {
+      mode: 'acme';
+      email: string;
+      /** Another ACME CA's directory, for a private CA or a staging server. */
+      directory?: string | null;
+      /** The root that signs that directory's HTTPS, as PEM, when it is not publicly trusted. */
+      caRoot?: string | null;
+    }
+  | {
+      mode: 'certificate';
+      /** The certificate, followed by its chain. */
+      certificate: string;
+      /** Its private key, unencrypted PEM. Stored encrypted, never returned. */
+      key: string;
+    };
+
+export interface TlsChangeResponse {
+  status: TlsStatusResponse;
+  /**
+   * Whether the certificate Caddy serves after the change is the one asked
+   * for. For ACME, issuance can take a minute: false then means "not yet".
+   */
+  verified: boolean;
+  /** Warnings that did not stop the change: names that do not cover the address, a missing chain. */
+  warnings: string[];
 }
 
 export interface SystemInfoResponse {

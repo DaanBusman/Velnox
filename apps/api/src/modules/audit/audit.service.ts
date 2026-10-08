@@ -72,6 +72,9 @@ export const AUDIT_ACTIONS = {
   /** An upload was abandoned by the person who started it. */
   libraryUploadAbandoned: 'library.upload_abandoned',
 
+  /** The certificate was changed in Server management (ADR-045). Never the key. */
+  systemTlsChanged: 'system.tls_changed',
+
   autoconfigTemplateCreated: 'autoconfig.template_created',
   /** Metadata names which secrets changed, never their values. */
   autoconfigTemplateChanged: 'autoconfig.template_changed',

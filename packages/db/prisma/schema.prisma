@@ -27,6 +27,17 @@ enum MfaPolicy {
   @@map("mfa_policy")
 }
 
+enum TlsMode {
+  /// Caddy's own certificate authority.
+  INTERNAL
+  /// A certificate from an ACME CA, Let's Encrypt unless another is named; renewed by Caddy.
+  ACME
+  /// An uploaded certificate and key.
+  CERTIFICATE
+
+  @@map("tls_mode")
+}
+
 enum SmtpSecurity {
   /// Plain SMTP upgraded with STARTTLS, refused if the server does not offer it.
   STARTTLS
@@ -84,6 +95,22 @@ model SystemSettings {
   /// How long Proxmox tasks are kept for the support logs, in days: 1 to 30
   /// (`system_settings_support_retention_range`). Shortened with support.manage.
   supportLogRetentionDays Int @default(30) @map("support_log_retention_days")
+
+  /// The certificate chosen in Server management (Phase 5C, ADR-045). Null
+  /// serves the installer's choice (VELNOX_TLS); scripts/tls.sh sets it back to
+  /// null. The API writes Caddy's files from these at start-up and on a change.
+  tlsMode          TlsMode?  @map("tls_mode")
+  /// ACME: the account address, and a directory other than Let's Encrypt's with
+  /// the root that signs its HTTPS — for a private ACME CA, or a staging one.
+  tlsAcmeEmail     String?   @map("tls_acme_email")
+  tlsAcmeDirectory String?   @map("tls_acme_directory")
+  tlsAcmeCaRoot    String?   @map("tls_acme_ca_root")
+  /// An uploaded certificate with its chain, as PEM. Public.
+  tlsCertificatePem String?  @map("tls_certificate_pem")
+  /// Its private key, in the secret store (kind TLS_PRIVATE_KEY).
+  tlsKeyCredentialId String? @map("tls_key_credential_id") @db.Uuid
+  tlsChangedAt     DateTime? @map("tls_changed_at") @db.Timestamptz(3)
+  tlsChangedBy     String?   @map("tls_changed_by")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -1267,6 +1294,9 @@ enum CredentialKind {
   DOCUMENT_PASSWORD
   /// The outgoing mail server's password. Worker-only.
   SMTP_PASSWORD
+  /// The private key of a certificate uploaded in Server management. Read by the
+  /// API, which writes it for Caddy; Velnox's own identity, not infrastructure's.
+  TLS_PRIVATE_KEY
 
   @@map("credential_kind")
 }

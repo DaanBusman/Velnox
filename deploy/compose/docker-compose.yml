@@ -12,7 +12,7 @@
 name: velnox
 
 x-build-args: &build-args
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.22}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.23}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_BUILD_TIME: ${VELNOX_BUILD_TIME:-}
 
@@ -39,7 +39,7 @@ x-backend-env: &backend-env
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD}
   MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
-  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.22}
+  VELNOX_VERSION: ${VELNOX_VERSION:-0.5.23}
   VELNOX_BUILD_COMMIT: ${VELNOX_BUILD_COMMIT:-unknown}
   VELNOX_SOURCE_URL: ${VELNOX_SOURCE_URL:-https://github.com/DaanBusman/Velnox}
   VELNOX_DEFAULT_LOCALE: ${VELNOX_DEFAULT_LOCALE:-en}
@@ -120,9 +120,8 @@ services:
       <<: *backend-env
       API_PORT: 4000
       APP_URL: ${APP_URL:-https://localhost}
-      # Reported by the certificate screen. The API never reads TLS material;
-      # it inspects the certificate Caddy actually presents and says whether
-      # that matches what is configured here.
+      # The installer's TLS mode. Served until a certificate is chosen in
+      # Server management (ADR-045), and again after scripts/tls.sh.
       VELNOX_TLS: ${VELNOX_TLS:-internal}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — run ./scripts/gen-env.sh}
       METRICS_ENABLED: ${METRICS_ENABLED:-false}
@@ -130,6 +129,12 @@ services:
     # The API writes uploaded chunks here; the worker checks and moves them.
     volumes:
       - library:/var/lib/velnox/library
+      # The certificate chosen in Server management, and Caddy's admin socket:
+      # shared with Caddy and no other container (ADR-045). The Caddyfile is
+      # what the API asks Caddy to load again after writing a certificate.
+      - tls:/var/lib/velnox/tls
+      - caddyadmin:/run/caddy-admin
+      - ../caddy/Caddyfile:/etc/velnox/Caddyfile:ro
     networks: [app, data]
     depends_on:
       migrate:
@@ -197,6 +202,11 @@ services:
       # Caddy has no reason to write here, and the private key is 0600 on the
       # host. Written by scripts/tls.sh, never by a container.
       - ../caddy/tls:/etc/caddy/tls:ro
+      # What the API writes when a certificate is chosen in the interface, and
+      # the admin socket it reloads Caddy through. Read-only here; the socket
+      # directory is the one thing Caddy writes to (ADR-045).
+      - tls:/etc/caddy/managed:ro
+      - caddyadmin:/run/caddy-admin
       - caddydata:/data
       - caddyconfig:/config
     networks: [app]
@@ -239,6 +249,15 @@ volumes:
     name: velnox_caddydata
   caddyconfig:
     name: velnox_caddyconfig
+  # The certificate chosen in Server management (ADR-045): the API writes it,
+  # Caddy reads it. Its source of truth is the database; the API writes it again
+  # at start-up, so losing this volume loses nothing.
+  tls:
+    name: velnox_tls
+  # Caddy's admin socket. A Unix socket in a volume only Caddy and the API mount:
+  # no port, on no network.
+  caddyadmin:
+    name: velnox_caddyadmin
   # The ISO library. Its size is limited by VELNOX_LIBRARY_MAX_GB and by the
   # free-disk floor, not by Docker: a named volume has no quota of its own.
   library:

@@ -10,6 +10,10 @@
 # The address Velnox is reached on is not changed here; it comes from
 # VELNOX_SITE_ADDRESS in .env and a certificate has to match it.
 #
+# A certificate can also be chosen in Server management (ADR-045). Changing it
+# here hands that choice back to this script's: it is the way back when the
+# interface cannot be reached.
+#
 # Everything is validated before anything is written, so a certificate that
 # would not have worked is refused while the working one is still in place.
 
@@ -114,13 +118,27 @@ covers_address() {
 # Status
 # ---------------------------------------------------------------------------
 
+# The mode chosen in Server management, or nothing when the installer's is served.
+interface_mode() {
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T postgres \
+    psql -U velnox -d velnox -Atc "SELECT coalesce(tls_mode::text, '') FROM system_settings WHERE id = 1;" 2>/dev/null |
+    tr -d '[:space:]'
+}
+
 show_status() {
-  local configured mode dir
+  local configured mode dir chosen
   configured="$(get_env_var "$ENV_FILE" VELNOX_TLS)"
   mode="$(tls_mode_of "$configured")"
   dir="$(tls_dir "$ROOT")"
 
   printf '\n  %sTLS%s  %s%s%s\n\n' "$C_BOLD" "$C_RESET" "$C_DIM" "https://${SITE_ADDRESS}" "$C_RESET"
+
+  chosen="$(interface_mode)"
+  if [[ -n "$chosen" ]]; then
+    warn "A certificate is chosen in Server management (${chosen}); it is served instead of the"
+    warn "mode below. Any change made with this script hands the choice back to the mode below."
+    printf '\n'
+  fi
 
   case "$mode" in
     internal)
@@ -171,12 +189,39 @@ confirm() {
   [[ "$answer" =~ ^[Yy]$ ]]
 }
 
+# A certificate chosen in Server management is served instead of the files this
+# script writes. Changing it here is the way back when the interface cannot be
+# reached, so the choice is handed back: the database forgets it — and the key
+# it stored — and the event is recorded in the audit log. The API, restarted
+# below, then writes the one line that imports this script's file again.
+hand_back_from_interface() {
+  [[ -n "$(interface_mode)" ]] || return 0
+  info "Handing the certificate chosen in Server management back to this script's."
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T postgres psql -U velnox -d velnox -v ON_ERROR_STOP=1 -q <<'SQL' >/dev/null
+BEGIN;
+INSERT INTO audit_events (id, actor_type, actor_label, action, resource_type, result, metadata)
+SELECT gen_random_uuid(), 'SYSTEM', 'scripts/tls.sh', 'system.tls_changed', 'tls', 'SUCCESS',
+       jsonb_build_object('from', lower(tls_mode::text), 'to', 'installer', 'by', 'scripts/tls.sh')
+FROM system_settings WHERE id = 1 AND tls_mode IS NOT NULL;
+DELETE FROM credentials WHERE id = (SELECT tls_key_credential_id FROM system_settings WHERE id = 1);
+UPDATE system_settings SET tls_mode = NULL, tls_acme_email = NULL, tls_acme_directory = NULL,
+  tls_acme_ca_root = NULL, tls_certificate_pem = NULL, tls_key_credential_id = NULL,
+  tls_changed_at = NULL, tls_changed_by = NULL WHERE id = 1;
+COMMIT;
+SQL
+  ok "Handed back."
+}
+
 reload_caddy() {
-  info "Restarting Caddy…"
-  # Restart, not `caddy reload`: the admin API is deliberately off, so there is
-  # nothing to reload through. It costs about a second of downtime on the
-  # console and nothing on a managed node — the worker holds no connection
-  # through Caddy.
+  hand_back_from_interface
+  info "Restarting the API and Caddy…"
+  # The API first: at start-up it writes the file Caddy imports from what the
+  # database says, which after a hand-back is this script's. Then Caddy, which
+  # reads it. A restart rather than a reload through the admin socket keeps
+  # this script working when the API is the thing that is broken. It costs
+  # seconds of downtime on the console and nothing on a managed node — the
+  # worker holds no connection through Caddy.
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" restart api >/dev/null
   docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" restart caddy >/dev/null
 }
 

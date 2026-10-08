@@ -1421,6 +1421,45 @@ bekende hiaten.
 
 ---
 
+## ADR-045 — Certificaten vanuit de interface, via de admin-socket van Caddy
+
+**Besluit:** Draait op verzoek van de eigenaar de certificaatwijzigingen terug die sinds fase 2
+alleen op de host konden. De modus — de eigen CA van Caddy, ACME (Let's Encrypt, of een andere
+directory met haar root), een geüpload certificaat, of die van de installatie — wordt gekozen in
+Serverbeheer en opgeslagen in `system_settings`, een geüploade sleutel in de geheimenopslag
+(`TLS_PRIVATE_KEY`, alleen leesbaar voor de API). De API schrijft de bestanden van Caddy in een volume
+dat alleen hij en Caddy koppelen — `tls.caddy` met één directive, en het certificaat, de sleutel of
+de ACME-root die die noemt — en vraagt Caddy de Caddyfile opnieuw te laden via de admin-API op een
+Unix-socket in een tweede zo'n volume. Caddy weigert een configuratie die hij niet kan serveren en
+houdt de huidige; de API zet dan de vorige bestanden terug, zodat een herstart niet oppakt wat Caddy
+weigerde. Alleen een geaccepteerde wijziging wordt opgeslagen en vastgelegd, en het certificaat dat
+daarna geserveerd wordt, wordt teruggelezen via een handshake. Zonder opgeslagen keuze importeert
+`tls.caddy` het bestand van de installatie, zodat `VELNOX_TLS` en `scripts/tls.sh` blijven werken;
+elke wijziging met `tls.sh` geeft de keuze terug — de weg terug als de interface niet bereikbaar is.
+`persist_config off`: wat Caddy na een herstart serveert, zijn de bestanden, die de API bij het
+starten opnieuw uit de database schrijft.
+
+**Waarom de admin-API, en waarom een socket.** Herladen via de admin-API vraagt geen shell en geen
+herstart van een container, wat de API nog steeds nooit mag doen. De admin-API heeft zelf geen
+authenticatie; op een poort zou alles op het netwerk de proxy kunnen herconfigureren. Een Unix-socket
+in een volume dat alleen Caddy en de API koppelen, is voor niets anders in de stack of op het
+hostnetwerk bereikbaar.
+
+**Wat het kost.** De API-container bevat nu een privésleutel in leesbare vorm (op het volume, modus
+0600, en kort in het geheugen) en kan de proxy herconfigureren. Code-uitvoering in de API-container
+was al genoeg om de database te lezen en te ontsleutelen wat de API mag ontsleutelen; dit voegt het
+certificaat aan dat lijstje toe. De sleutel wordt versleuteld bewaard zodat het volume verloren kan
+gaan zonder hem te verliezen; de kopie die Caddy leest kan dat niet zijn, omdat Caddy niet om een
+wachtwoordzin kan vragen.
+
+**Bewezen:** elke modus gewisseld en teruggelezen via een echte handshake, weigeringen die het oude
+certificaat laten serveren, de keuze die een herstart van Caddy en van de API zonder zijn bestanden
+overleeft, ACME tegen Pebble (de testserver van Let's Encrypt) op het netwerk van de stack, en het
+teruggeven door `scripts/tls.sh` (`scripts/verify-tls.sh`). Nog niet: Let's Encrypt zelf, op een
+publieke host.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

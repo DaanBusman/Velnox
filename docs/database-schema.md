@@ -588,6 +588,13 @@ source_url, build_commit, feature_flags jsonb, retention jsonb, schema_version`
 `support_log_retention_days` (1–30, default 30) is how long `proxmox_tasks` are kept; only
 `support.manage` changes it.
 
+`tls_mode` (INTERNAL|ACME|CERTIFICATE, null for the installer's), `tls_acme_email`,
+`tls_acme_directory`, `tls_acme_ca_root`, `tls_certificate_pem`, `tls_key_credential_id`,
+`tls_changed_at`, `tls_changed_by`: the certificate chosen in Server management (migration
+`20261008100000_tls_management`, ADR-045). The key is a `TLS_PRIVATE_KEY` credential;
+`system_settings_tls_complete` requires what each mode needs and refuses a private key in the
+certificate column.
+
 `product_name` lives here and is read by the frontend, so rebranding from "Velnox" is a settings
 change plus asset swap — not a code change. `source_url` and `build_commit` back the AGPL §13
 obligation: they are what `GET /api/v1/system/source` and **Settings → About** serve, and an operator

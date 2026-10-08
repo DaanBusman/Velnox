@@ -279,7 +279,13 @@ mail that carries the PDF. A Linux VM with the SSH switch on accepts a key login
 refuses a password login unless the template allowed it. A failed install leaves no half-created VM. The installation record
 names the hostname, the address, the duration and the template, and the notification arrives once.
 
-## Phase 5C — Tenant hierarchy, platform administration and support · **L**
+## Phase 5C — Tenant hierarchy, platform administration and support · **L** · built, not yet complete
+
+**As built** (0.5.20–0.5.23): main tenants and sub-tenants with grants widened at sign-in (ADR-042);
+support logs per tenant with Proxmox tasks marked by origin (ADR-043); installer packages per
+tenant on a CD of their own (ADR-044); certificates from the interface through Caddy's admin socket
+(ADR-045). Each has its harness. **Not yet proven:** installer packages on a real Windows VM, and
+Let's Encrypt on a public host — the fixture and Pebble stand in for both.
 
 Asked for by the owner on 5 October 2026, before Phases 6–9B, because the first two change the
 tenancy boundary and the installation's own trust — both painful to retrofit once updates and

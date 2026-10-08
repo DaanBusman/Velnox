@@ -119,12 +119,22 @@ const apiSchema = baseSchema
      * disagree — which is what a configuration change that never reached Caddy
      * looks like.
      *
-     * Not a secret, and not used for anything: the API neither reads nor writes
-     * TLS material. Changing it is `scripts/tls.sh` on the host.
+     * Not a secret. Served until a certificate is chosen in Server management
+     * (ADR-045); changing it is `scripts/tls.sh` on the host.
      */
     VELNOX_TLS: z.string().min(1).default('internal'),
     /** Where to reach Caddy from inside the app network, to inspect its certificate. */
     VELNOX_PROXY_HOST: z.string().min(1).default('caddy'),
+    /** Where the certificate chosen in Server management is written for Caddy (ADR-045). */
+    VELNOX_TLS_MANAGED_DIR: z.string().min(1).startsWith('/').default('/var/lib/velnox/tls'),
+    /** Caddy's admin socket, shared with Caddy alone. */
+    VELNOX_CADDY_ADMIN_SOCKET: z
+      .string()
+      .min(1)
+      .startsWith('/')
+      .default('/run/caddy-admin/admin.sock'),
+    /** The Caddyfile, read-only, which the API asks Caddy to load again after a change. */
+    VELNOX_CADDYFILE: z.string().min(1).startsWith('/').default('/etc/velnox/Caddyfile'),
     JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
     MASTER_ENCRYPTION_KEY: base64Key32,
   });
