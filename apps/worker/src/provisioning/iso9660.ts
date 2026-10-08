@@ -1,3 +1,5 @@
+import { createReadStream } from 'node:fs';
+
 /**
  * A small ISO 9660 writer, with Joliet names, for answer media.
  *
@@ -10,8 +12,10 @@
  * already has. (Proxmox's own cloud-init drive needs a `snippets` storage and a
  * file written to it, which its API cannot do.)
  *
- * Deliberately small: one directory, a handful of files, a few kilobytes each.
- * Two directory trees are written — the ISO 9660 one, whose names are 8.3 and
+ * Deliberately small: one directory and a handful of files. Answer files are a
+ * few kilobytes and built in memory; installer packages (Phase 5C) can be
+ * gigabytes, so a file can instead name a path on disk, and `isoLayout` with
+ * `isoStream` writes the image without holding it. Two directory trees are written — the ISO 9660 one, whose names are 8.3 and
  * upper case, and a Joliet one carrying the real names, which is what Windows
  * and Linux both read when it is there.
  *
@@ -25,11 +29,15 @@
  *   …     primary root directory, Joliet root directory, then each file
  */
 
-export interface IsoFile {
+export type IsoFile = {
   /** The name as the guest should see it: `Autounattend.xml`, `user-data`. */
   name: string;
-  content: Buffer;
-}
+} & ({ content: Buffer } | { path: string; size: number });
+
+/** ISO 9660 records a file's size in 32 bits; one extent is all this writer does. */
+const MAX_FILE_BYTES = 0xffff_f800;
+
+const fileSize = (file: IsoFile): number => ('content' in file ? file.content.length : file.size);
 
 export interface IsoOptions {
   /** The volume label. NoCloud looks for `cidata`. */
@@ -238,7 +246,17 @@ function volumeDescriptor(input: {
   return d;
 }
 
-export function buildIso(options: IsoOptions): Buffer {
+/**
+ * An image as a list of parts, in order: bytes Velnox wrote, and files read
+ * from disk as they are. `size` is the whole image, every part padded to a
+ * sector.
+ */
+export interface IsoLayout {
+  size: number;
+  parts: (Buffer | { path: string; size: number; padding: number })[];
+}
+
+export function isoLayout(options: IsoOptions): IsoLayout {
   const date = options.date ?? new Date();
   if (options.files.length === 0) throw new Error('An answer ISO needs at least one file');
   if (options.files.length > 30) throw new Error('An answer ISO holds at most 30 files');
@@ -246,6 +264,7 @@ export function buildIso(options: IsoOptions): Buffer {
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(file.name)) {
       throw new Error(`"${file.name}" is not a name an answer ISO carries`);
     }
+    if (fileSize(file) > MAX_FILE_BYTES) throw new Error(`"${file.name}" is too large for a CD`);
   }
   const lowered = options.files.map((f) => f.name.toLowerCase());
   if (new Set(lowered).size !== lowered.length) throw new Error('File names repeat');
@@ -275,7 +294,7 @@ export function buildIso(options: IsoOptions): Buffer {
   let next = JOLIET_ROOT + jolietRootSize / SECTOR;
   const extents = files.map((file) => {
     const extent = next;
-    next += sectors(file.content.length);
+    next += sectors(fileSize(file));
     return extent;
   });
   const totalSectors = next;
@@ -288,7 +307,7 @@ export function buildIso(options: IsoOptions): Buffer {
     files.map((file, i) => ({
       name: Buffer.from(primary[i]!, 'ascii'),
       extent: extents[i]!,
-      size: file.content.length,
+      size: fileSize(file),
       directory: false,
     })),
     (e) => e.name,
@@ -297,7 +316,7 @@ export function buildIso(options: IsoOptions): Buffer {
     files.map((file, i) => ({
       name: ucs2Name(file.name),
       extent: extents[i]!,
-      size: file.content.length,
+      size: fileSize(file),
       directory: false,
     })),
     (e) => e.name,
@@ -361,7 +380,7 @@ export function buildIso(options: IsoOptions): Buffer {
     return out;
   };
 
-  return Buffer.concat([
+  const head = Buffer.concat([
     Buffer.alloc(16 * SECTOR),
     primaryDescriptor,
     jolietDescriptor,
@@ -372,6 +391,50 @@ export function buildIso(options: IsoOptions): Buffer {
     sector(pathTable(JOLIET_ROOT, true)),
     primaryRoot,
     jolietRoot,
-    ...files.map((file) => sector(file.content)),
   ]);
+  return {
+    size: totalSectors * SECTOR,
+    parts: [
+      head,
+      ...files.map((file) =>
+        'content' in file
+          ? sector(file.content)
+          : {
+              path: file.path,
+              size: file.size,
+              padding: sectors(file.size) * SECTOR - file.size,
+            },
+      ),
+    ],
+  };
+}
+
+/** The image in memory: for answer files, which are small. */
+export function buildIso(options: IsoOptions): Buffer {
+  const layout = isoLayout(options);
+  if (layout.parts.some((part) => !Buffer.isBuffer(part))) {
+    throw new Error('An ISO with files on disk is written with isoStream');
+  }
+  return Buffer.concat(layout.parts as Buffer[]);
+}
+
+/**
+ * The image as a stream, reading files from disk as it goes. A file that is
+ * not the size it was laid out with is an error, not a corrupt CD.
+ */
+export async function* isoStream(layout: IsoLayout): AsyncGenerator<Buffer> {
+  for (const part of layout.parts) {
+    if (Buffer.isBuffer(part)) {
+      yield part;
+      continue;
+    }
+    let seen = 0;
+    for await (const chunk of createReadStream(part.path)) {
+      seen += (chunk as Buffer).length;
+      if (seen > part.size) throw new Error(`${part.path} grew while it was written to a CD`);
+      yield chunk as Buffer;
+    }
+    if (seen !== part.size) throw new Error(`${part.path} shrank while it was written to a CD`);
+    if (part.padding > 0) yield Buffer.alloc(part.padding);
+  }
 }

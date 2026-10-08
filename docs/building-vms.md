@@ -90,7 +90,45 @@ missing until they are set, and cannot build until then.
 - **System.** Workgroup, Remote Desktop with its firewall rule, the power plan, hibernation, and
   whether Windows Update runs during Setup (an hour) or afterwards (minutes).
 
+### Installer packages (Windows)
+
+A Windows template can run MSIs and EXEs after Windows is installed — a monitoring agent, an
+antivirus, a line-of-business application.
+
+**Upload them first**: **Autoconfig → Installer packages**, choose the tenant, **Upload MSI or EXE**.
+Packages belong to one tenant, and nobody else sees them: not another customer, and not a customer
+looking at an MSP template that runs the MSP's. The upload runs in the background like the library's,
+shown in the activity bar; a check job then reads every byte, makes sure an MSI is an MSI and an EXE
+an EXE, and marks it **Ready**. At most 2 GB per package, counted against the library's space.
+
+**Then add them to a template**, under **Installer packages** in the Windows form. A template runs
+only packages of the tenant that owns it — an MSP template the MSP's, a customer's template the
+customer's — so changing a new template's owner empties the list, and a customer's copy of an MSP
+template starts without packages. For each one:
+
+- **Arguments**, put on the installer's command line as written: quotes work, and so does
+  `%ProgramFiles%`. An MSI starts with `/qn /norestart` (quiet, no restart of its own); an EXE with
+  nothing, because every installer has its own switch for quiet — look it up.
+- **Run as** — **SYSTEM**, the machine itself, as deployment tools install (recommended); or
+  **Administrator**, inside the built-in Administrator's first logon, for an installer that wants a
+  user session.
+- **Required** — on by default: if the package fails, the build fails and the VM is removed. Off,
+  a failure is reported and the build goes on.
+- **Order** — they run top to bottom; a required one that fails stops the ones after it.
+
+They need the guest agent, which is how Velnox reads how each ended. They reach the VM on a CD of
+their own, beside the answer CD; a script on it runs them at first logon, before the done marker,
+and the CD is ejected and deleted when the build finishes. The build's job shows each package's
+outcome by exit code: `0` installed, `3010` installed and wanting a restart (Velnox does not restart
+the VM — do it when it suits), anything else failed. An MSI leaves a verbose log in
+`C:\Windows\Temp\velnox-packages\NN.log` inside the VM.
+
+A package a template still runs cannot be removed; take it out of the templates first. VMs that
+already installed it keep it.
+
 ### Linux
+
+- **Cloud image** and **distribution**.### Linux
 
 - **Cloud image** and **distribution**.
 - **Package mirror.** Recommended is Debian's CDN (`deb.debian.org`) or Ubuntu's geo-selecting list —
@@ -195,3 +233,6 @@ The password is never shown again.
 | *The installation did not report back within … minutes* | The guest agent never answered: the VirtIO ISO or the agent switch was off, or Setup stopped. The VM was removed. |
 | *… could not be removed* | Remove the VM in Proxmox by the VM ID on the record. |
 | *The passwords of this VM are no longer kept* | Thirty days have passed, or the build failed. |
+| *… is not an MSI* (or EXE) on a package | The file is not what its name says. Upload the real installer. |
+| *The template runs a package that is not ready, or not its owner's* | A package was removed or failed, or the template's owner changed. Open the template and check its packages. |
+| *Required package … did not install (exit code …)* | The job lists every package's outcome. Run the installer by hand in a test VM with the same arguments; for an MSI, its log is in `C:\Windows\Temp\velnox-packages\`. A package that restarts the VM itself, ignoring `/norestart`, stops the rest of the first logon. |

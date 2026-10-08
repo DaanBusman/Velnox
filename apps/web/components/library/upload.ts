@@ -1,4 +1,4 @@
-import type { JobDetail, LibraryItemSummary } from '@velnox/shared';
+import type { JobDetail, LibraryItemSummary, PackageSummary } from '@velnox/shared';
 import { apiGet, apiPost, apiPutBinary, type ApiFailure } from '@/lib/client-api';
 
 /**
@@ -9,23 +9,37 @@ import { apiGet, apiPost, apiPutBinary, type ApiFailure } from '@/lib/client-api
  * written at the position the API says the upload is at; a slice that fails for
  * a network reason is sent again, and an upload whose tab was closed is picked
  * up later by choosing the same file again — the API knows how far it got.
+ *
+ * Installer packages for Autoconfig (Phase 5C) go up the same way, to their own
+ * endpoint and with the tenant they are for.
  */
 
 const RETRIES = 5;
 
+/** Where an upload goes: the library, or a tenant's installer packages. */
+export type UploadTarget = { kind: 'library' } | { kind: 'package'; tenantId: string };
+
+type Uploaded = LibraryItemSummary | PackageSummary;
+
 export type UploadOutcome =
-  { ok: true; item: LibraryItemSummary; job: JobDetail | null } | { ok: false; error: ApiFailure };
+  { ok: true; item: Uploaded; job: JobDetail | null } | { ok: false; error: ApiFailure };
+
+const baseFor = (target: UploadTarget) =>
+  target.kind === 'library' ? '/library/uploads' : '/autoconfig/packages/uploads';
 
 export async function uploadToLibrary(input: {
   file: File;
   /** Continue this upload rather than starting a new one. */
-  resume?: LibraryItemSummary;
+  resume?: Uploaded;
+  target?: UploadTarget;
   onProgress: (sent: number, total: number) => void;
   signal: AbortSignal;
 }): Promise<UploadOutcome> {
   const { file, signal } = input;
+  const target = input.target ?? { kind: 'library' };
+  const base = baseFor(target);
 
-  let item: LibraryItemSummary;
+  let item: Uploaded;
   let chunkBytes = 32 * 1024 * 1024;
 
   if (input.resume) {
@@ -34,17 +48,15 @@ export async function uploadToLibrary(input: {
     if (input.resume.filename !== file.name || input.resume.sizeBytes !== file.size) {
       return { ok: false, error: { code: 'library.resume_mismatch', status: 0 } };
     }
-    const current = await apiGet<LibraryItemSummary>(`/library/uploads/${input.resume.id}`);
+    const current = await apiGet<Uploaded>(`${base}/${input.resume.id}`);
     if (!current.ok) return current;
     item = current.data;
   } else {
-    const started = await apiPost<{ item: LibraryItemSummary; chunkBytes: number }>(
-      '/library/uploads',
-      {
-        filename: file.name,
-        sizeBytes: file.size,
-      },
-    );
+    const started = await apiPost<{ item: Uploaded; chunkBytes: number }>(base, {
+      filename: file.name,
+      sizeBytes: file.size,
+      ...(target.kind === 'package' ? { tenantId: target.tenantId } : {}),
+    });
     if (!started.ok) return started;
     item = started.data.item;
     chunkBytes = started.data.chunkBytes;
@@ -59,8 +71,8 @@ export async function uploadToLibrary(input: {
     let attempt = 0;
     for (;;) {
       if (signal.aborted) return { ok: false, error: { code: 'library.upload_paused', status: 0 } };
-      const sent = await apiPutBinary<{ item: LibraryItemSummary; job: JobDetail | null }>(
-        `/library/uploads/${item.id}/chunks?offset=${offset}`,
+      const sent = await apiPutBinary<{ item: Uploaded; job: JobDetail | null }>(
+        `${base}/${item.id}/chunks?offset=${offset}`,
         file.slice(offset, end),
         signal,
       );

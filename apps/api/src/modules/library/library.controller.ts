@@ -35,7 +35,7 @@ const DRAIN_TIMEOUT_MS = 30_000;
  * the body, up to one chunk's worth and thirty seconds; past either, the
  * connection is dropped, which is no worse than not waiting.
  */
-function discardBody(request: Request): Promise<void> {
+export function discardBody(request: Request): Promise<void> {
   if (request.readableEnded || request.destroyed) return Promise.resolve();
   return new Promise((resolve) => {
     let seen = 0;

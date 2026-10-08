@@ -77,6 +77,9 @@ export const AUDIT_ACTIONS = {
   autoconfigTemplateChanged: 'autoconfig.template_changed',
   autoconfigTemplateCloned: 'autoconfig.template_cloned',
   autoconfigTemplateDeleted: 'autoconfig.template_deleted',
+  /** An installer package upload was started (Phase 5C). Its check is a job. */
+  autoconfigPackageAdded: 'autoconfig.package_added',
+  autoconfigPackageRemoved: 'autoconfig.package_removed',
   provisioningRequested: 'provisioning.requested',
   /** The break-glass: somebody was shown a VM's passwords. Refusals are recorded too. */
   provisioningCredentialsRevealed: 'provisioning.credentials_revealed',

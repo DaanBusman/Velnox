@@ -1380,6 +1380,47 @@ van Velnox en volgen hun eigen bewaartermijn, die er nog niet is (zie de bekende
 
 ---
 
+## ADR-044 — Installatiepakketten: per tenant, op een eigen cd, gerapporteerd op exitcode
+
+**Besluit:** De MSI's en EXE's van een tenant zijn `autoconfig_packages`, afgebakend door het
+tenantfilter zoals elke tenantrij en door niemand anders te zien — anders dan de ISO-bibliotheek, die
+installatiebreed is. Ze worden geüpload met het chunkprotocol van de bibliotheek, gecontroleerd door
+een job (`autoconfig.package_verify`: elke byte gehasht, de OLE-header van een MSI of de `MZ` van een
+EXE gelezen) en naast de bibliotheek opgeslagen, meegeteld in haar plafond. Een Windows-template noemt
+pakketten op id, met argumenten, een uitvoeren-als (`SYSTEM` of `ADMINISTRATOR`) en of het verplicht
+is; het mag alleen pakketten noemen van de tenant die het bezit, gecontroleerd bij opslaan en opnieuw
+bij de aanvraag. Bij de bouw schrijft de worker een tweede cd — de pakketten onder 8.3-namen, één
+klein script per pakket, en `VELNOXPK.CMD` — hangt die naast de antwoord-cd, en één opdracht bij de
+eerste aanmelding voert het script uit vóór de klaar-markering. De exitcode van elk pakket komt in
+een resultaatbestand dat de worker via de guest agent leest; een verplicht pakket dat geen 0, 3010 of
+1641 teruggaf, laat de bouw mislukken, en de VM wordt verwijderd zoals bij elke mislukte bouw. De cd
+wordt aan het eind uitgeworpen en verwijderd, hoe de bouw ook eindigt.
+
+**Waarom een eigen cd.** De antwoord-cd bevat de unattend-wachtwoorden en bestaat niet langer dan
+nodig; pakketten kunnen gigabytes zijn, en horen niet in dat bestand. Een cd vraagt niets op de node
+buiten wat Velnox al gebruikt, en het image wordt gestreamd vanaf de pakketten op schijf, nooit in
+het geheugen gehouden.
+
+**Waarom `SYSTEM` via een geplande taak.** Opdrachten bij de eerste aanmelding draaien als de
+aangemelde Administrator. De meeste uitrolsoftware installeert als Local System; een eenmalige
+geplande taak is de manier die Windows biedt om vanuit een aanmelding iets als SYSTEM uit te voeren
+zonder eigen hulpmiddel, en het script wacht op de exitcode. Administrator blijft de keuze voor
+installatieprogramma's die een profiel nodig hebben.
+
+**Waarom per tenant, en gecontroleerd tegen de eigenaar.** De software van een tenant is vaak aan
+hem gelicentieerd. Anders zou een template het pakket van de ene klant naar de VM van een andere
+kunnen brengen; pakketten aan de eigenaar van het template binden maakt dat onmogelijk, en laat een
+MSP-template de pakketten van de MSP naar elke klant brengen zonder dat een klant ze kan opvragen of
+downloaden.
+
+**Wat het niet doet.** Velnox herstart geen VM waarvan een pakket daarom vroeg (3010); een
+installatieprogramma dat de VM zelf herstart, stopt de rest van de eerste aanmelding, en de bouw
+loopt in een time-out. Linux-templates hebben geen pakketten — die hebben al extra APT-pakketten. De
+pakketten van een hoofd-tenant worden niet aangeboden aan de templates van zijn sub-tenants. Zie de
+bekende hiaten.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

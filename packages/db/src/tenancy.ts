@@ -198,6 +198,9 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   }),
   // One VM's record, including where its credentials are. The cluster's tenant.
   Provisioning: (ids) => ({ tenantId: { in: ids } }),
+  // Phase 5C. A tenant's installer packages are its own, and nobody else's —
+  // not offered upward or sideways the way an MSP template is.
+  AutoconfigPackage: (ids) => ({ tenantId: { in: ids } }),
 };
 
 /** Models whose `tenantId` on a create must be inside the scope. */
@@ -219,6 +222,7 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   Job: 'required',
   Approval: 'required',
   AutoconfigTemplate: 'required',
+  AutoconfigPackage: 'required',
   Provisioning: 'required',
 };
 

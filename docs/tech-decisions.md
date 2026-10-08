@@ -1305,6 +1305,43 @@ retention, which does not exist yet (see the known gaps).
 
 ---
 
+## ADR-044 — Installer packages: per tenant, on a CD of their own, reported by exit code
+
+**Decision:** A tenant's MSIs and EXEs are `autoconfig_packages`, scoped by the tenancy filter like
+any tenant row and seen by nobody else — unlike the ISO library, which is installation-wide. They
+are uploaded with the library's chunked protocol, checked by a job (`autoconfig.package_verify`:
+every byte hashed, an MSI's OLE header or an EXE's `MZ` read) and stored beside the library, counted
+against its ceiling. A Windows template lists packages by id, with arguments, a run-as (`SYSTEM` or
+`ADMINISTRATOR`) and whether it is required; it may list only packages of the tenant that owns it,
+checked on save and again on request. At build time the worker writes a second CD — the packages
+under 8.3 names, one small script per package, and `VELNOXPK.CMD` — attaches it beside the answer
+CD, and one first-logon command runs the script before the done marker. Each package's exit code is
+written to a results file the worker reads through the guest agent; a required package that did not
+return 0, 3010 or 1641 fails the build, and the VM is removed like any failed build. The CD is
+ejected and deleted at the end, however the build ends.
+
+**Why a CD of its own.** The answer CD holds the unattend passwords and lives only as long as it
+must; packages can be gigabytes, and do not belong in that file. A CD needs nothing on the node
+beyond what Velnox already uses, and the image is streamed from the packages on disk, never held in
+memory.
+
+**Why `SYSTEM` through a scheduled task.** First-logon commands run as the logged-on Administrator.
+Most deployment tools install as Local System; a one-off scheduled task is the way Windows offers
+to run something as SYSTEM from a logon without a tool of our own, and the script waits for its exit
+code. Administrator stays as the choice for installers that need a profile.
+
+**Why per tenant, and checked against the owner.** A tenant's software is often licensed to it. A
+template could otherwise carry one customer's package to another's VM; tying packages to the
+template's owner keeps that impossible, and lets an MSP template carry the MSP's packages to every
+customer without any customer being able to list or download them.
+
+**What it does not do.** Velnox does not restart a VM whose package asked for it (3010); an
+installer that restarts the VM itself stops the rest of the first logon, and the build times out.
+Linux templates have no packages — they have extra APT packages already. A main tenant's packages
+are not offered to its sub-tenants' templates. See the known gaps.
+
+---
+
 ## Version targets
 
 | Component | Version |

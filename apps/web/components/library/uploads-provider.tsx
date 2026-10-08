@@ -2,9 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { LibraryItemSummary } from '@velnox/shared';
+import type { LibraryItemSummary, PackageSummary } from '@velnox/shared';
 import type { ApiFailure } from '@/lib/client-api';
-import { uploadToLibrary } from './upload';
+import { uploadToLibrary, type UploadTarget } from './upload';
 
 /**
  * Uploads to the ISO library, owned by the shell rather than the library page.
@@ -20,6 +20,9 @@ import { uploadToLibrary } from './upload';
  * selection across that, so while an upload runs the browser is asked to warn
  * first. A paused or broken upload can be resumed from the library with the
  * same file; the server keeps what it received.
+ *
+ * A tenant's installer packages (Autoconfig, Phase 5C) are uploads too, and
+ * run here the same way.
  */
 
 export interface ActiveUpload {
@@ -40,7 +43,7 @@ export interface FinishedUpload {
 interface UploadsContextValue {
   active: ActiveUpload[];
   finished: FinishedUpload[];
-  start: (file: File, resume?: LibraryItemSummary) => void;
+  start: (file: File, resume?: LibraryItemSummary | PackageSummary, target?: UploadTarget) => void;
   pause: (key: string) => void;
   dismiss: (key: string) => void;
 }
@@ -60,7 +63,7 @@ export function UploadsProvider({ children }: { children: React.ReactNode }) {
   const controllers = useRef(new Map<string, AbortController>());
 
   const start = useCallback(
-    (file: File, resume?: LibraryItemSummary) => {
+    (file: File, resume?: LibraryItemSummary | PackageSummary, target?: UploadTarget) => {
       const key = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const controller = new AbortController();
       controllers.current.set(key, controller);
@@ -69,6 +72,7 @@ export function UploadsProvider({ children }: { children: React.ReactNode }) {
       void uploadToLibrary({
         file,
         resume,
+        target,
         signal: controller.signal,
         onProgress: (sent, total) =>
           setActive((list) =>

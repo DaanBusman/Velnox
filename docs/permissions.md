@@ -160,8 +160,8 @@ granted today and guards nothing yet.
 | `networks.read` | See bridges, VLANs and network configuration | 4 |
 | `library.read` | See the ISO library, and choose from it when provisioning | 5A |
 | `library.manage` | Add files to the ISO library from a URL, an upload or a cluster, rename them, and remove them. Moving a file onto or off a cluster also needs `clusters.manage` on that cluster | 5A |
-| `autoconfig.read` | See the Autoconfig templates this tenant may build from: its own and the MSP's shared ones | 5B |
-| `autoconfig.manage` | Create, change, clone and delete templates — MSP templates with a grant on the MSP, a tenant's own with a grant on the tenant. A template's passwords are never readable | 5B |
+| `autoconfig.read` | See the Autoconfig templates this tenant may build from: its own and the MSP's shared ones; and this tenant's installer packages (5C) | 5B |
+| `autoconfig.manage` | Create, change, clone and delete templates — MSP templates with a grant on the MSP, a tenant's own with a grant on the tenant. A template's passwords are never readable. Upload and remove the tenant's installer packages (5C) | 5B |
 | `updates.read` | See available package updates | 6 |
 | `updates.execute` | Apply updates to real nodes | 6 |
 | `upgrades.read` | See major-upgrade plans and readiness | 8 |

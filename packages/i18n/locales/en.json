@@ -381,7 +381,13 @@
       "media_wrong_kind": "{filename} is the wrong kind of file for this template: an installer must be an ISO, a Linux template needs a disk image.",
       "msp_only": "Only an MSP template can be offered to chosen customers or take a password per customer.",
       "offer_empty": "Choose at least one customer to offer this template to.",
-      "unknown_tenant": "One of the chosen customers does not exist or is archived."
+      "unknown_tenant": "One of the chosen customers does not exist or is archived.",
+      "package_invalid_name": "{filename} cannot be a package name: a plain .msi or .exe filename of letters, digits, spaces, dots, dashes, underscores, brackets and plus signs.",
+      "package_name_taken": "This tenant already has a package called {filename}.",
+      "package_not_installer": "{filename} is not an {kind}, whatever its name says.",
+      "package_too_large": "A package can be at most 2 GB.",
+      "package_unavailable": "The template runs a package that is not ready, or not its owner’s. Open the template and check its packages.",
+      "package_in_use": "This package is still run by: {templates}. Remove it from those templates first."
     },
     "provisioning": {
       "hostname_invalid": "That hostname cannot be used: letters, digits and dashes, not only digits, at most {max} characters, without a domain.",
@@ -390,7 +396,8 @@
       "hostname_taken": "A VM on this cluster is already called {hostname} (VMID {vmid}).",
       "install_timeout": "The installation did not report back within {minutes} minutes. The VM was removed.",
       "cleanup_failed": "The installation failed and VM {vmid} could not be removed. Remove it in Proxmox.",
-      "credentials_gone": "The passwords of this VM are no longer kept in Velnox."
+      "credentials_gone": "The passwords of this VM are no longer kept in Velnox.",
+      "package_failed": "Required package {filename} did not install (exit code {exitCode}). The VM was removed; the job shows each package’s outcome."
     },
     "mail": {
       "not_configured": "Outgoing mail is not set up, so nobody can be notified. An administrator sets it up under Notifications → Outgoing mail.",
@@ -573,7 +580,8 @@
       "push": "Copy to cluster",
       "pull": "Copy from cluster",
       "cluster_delete": "Delete from cluster",
-      "provision": "Build VM"
+      "provision": "Build VM",
+      "package_verify": "Check package"
     }
   },
   "layout": {
@@ -1311,7 +1319,49 @@
     "noCustomers": "There are no customers yet.",
     "passwordPerTenant": "Fixed per customer",
     "perTenantTitle": "Password per customer",
-    "perTenantHint": "A customer left empty gets a password generated for each VM. Only the MSP sets these, and customers never see them."
+    "perTenantHint": "A customer left empty gets a password generated for each VM. Only the MSP sets these, and customers never see them.",
+    "installerPackages": "Installer packages",
+    "installerPackagesHint": "MSIs and EXEs of this template’s owner, run in this order after Windows is installed, from a CD of their own. Velnox reads how each one ended and shows it in the build’s job.",
+    "packagesNeedAgent": "Packages need the QEMU guest agent: it is how Velnox learns how they ended. Switch it on under Installer.",
+    "packagesNone": "No packages: nothing extra is installed.",
+    "packageNotReady": "not ready",
+    "packageGone": "This package no longer exists. Remove it from the template.",
+    "packageHidden": "A package of the template’s owner",
+    "moveUp": "Up",
+    "moveDown": "Down",
+    "removePackage": "Remove",
+    "packageArguments": "Arguments",
+    "packageArgumentsHint": "Put on the installer’s command line as written. For an MSI, /qn /norestart installs quietly without restarting; %ProgramFiles% and quotes work.",
+    "packageRunAs": "Run as",
+    "runAsSystem": "SYSTEM (machine-wide, recommended)",
+    "runAsAdministrator": "Administrator (in the first logon)",
+    "packageRequired": "Required: if it fails, the build fails and the VM is removed",
+    "addPackage": "Add a package",
+    "choosePackage": "Choose a package",
+    "noPackages": "No ready packages for this owner",
+    "add": "Add",
+    "managePackages": "Manage packages",
+    "packagesTitle": "Installer packages",
+    "packagesSubtitle": "MSIs and EXEs per tenant, for Windows templates to run after installation. A tenant’s packages are visible to that tenant only.",
+    "packagesTenant": "Tenant",
+    "packagesTenantHint": "Packages belong to one tenant. Choose whose packages to see or add.",
+    "packagesListHint": "Uploads continue in the background, shown in the activity bar. A package can be used once it is Ready.",
+    "uploadPackage": "Upload MSI or EXE",
+    "packageResumeChoose": "Choose {filename} again to resume",
+    "packagesEmpty": "This tenant has no packages yet.",
+    "packageFile": "File",
+    "packageSize": "Size",
+    "packageUsedBy": "Used by",
+    "packageAddedBy": "Added by",
+    "packageState": {
+      "RECEIVING": "Uploading",
+      "VERIFYING": "Checking",
+      "READY": "Ready",
+      "FAILED": "Failed"
+    },
+    "packageResume": "Resume",
+    "removePackageTitle": "Remove package",
+    "removePackageBody": "{filename} is removed from Velnox. VMs that already installed it keep it."
   },
   "provisioning": {
     "subtitle": "Every VM built from an Autoconfig template, with its installation record. VMs still being built also show under Virtual Machines.",
@@ -1396,6 +1446,7 @@
       "answers": "Writing the answers",
       "start": "Starting",
       "install": "Installing",
+      "packages": "Checking the packages",
       "finish": "Finishing",
       "notify": "Mailing the requester"
     }

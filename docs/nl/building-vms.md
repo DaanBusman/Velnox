@@ -97,6 +97,47 @@ klant te komen. De kloon noemt ze als ontbrekend tot ze zijn ingesteld, en kan t
 - **Systeem.** Werkgroep, Extern bureaublad met zijn firewallregel, energiebeheer, sluimerstand, en of
   Windows Update tijdens Setup draait (een uur) of achteraf (minuten).
 
+### Installatiepakketten (Windows)
+
+Een Windows-template kan na de installatie van Windows MSI's en EXE's uitvoeren — een
+monitoringagent, een virusscanner, een bedrijfsapplicatie.
+
+**Upload ze eerst**: **Autoconfig → Installatiepakketten**, kies de tenant, **MSI of EXE uploaden**.
+Pakketten horen bij één tenant, en niemand anders ziet ze: geen andere klant, en ook geen klant die
+een MSP-template bekijkt dat die van de MSP uitvoert. De upload loopt op de achtergrond zoals bij de
+bibliotheek, zichtbaar in de activiteitenbalk; een controlejob leest daarna elke byte, controleert
+dat een MSI een MSI is en een EXE een EXE, en zet hem op **Gereed**. Hoogstens 2 GB per pakket, en
+het telt mee in de ruimte van de bibliotheek.
+
+**Voeg ze dan toe aan een template**, onder **Installatiepakketten** in het Windows-formulier. Een
+template voert alleen pakketten uit van de tenant die het bezit — een MSP-template die van de MSP,
+een template van een klant die van de klant — dus wie de eigenaar van een nieuw template wijzigt,
+maakt de lijst leeg, en de kopie van een klant van een MSP-template begint zonder pakketten. Per
+pakket:
+
+- **Argumenten**, zoals geschreven op de opdrachtregel van het installatieprogramma:
+  aanhalingstekens werken, en `%ProgramFiles%` ook. Een MSI begint met `/qn /norestart` (stil, geen
+  eigen herstart); een EXE met niets, want elk installatieprogramma heeft een eigen schakelaar voor
+  stil — zoek die op.
+- **Uitvoeren als** — **SYSTEM**, de machine zelf, zoals uitrolsoftware installeert (aanbevolen); of
+  **Administrator**, binnen de eerste aanmelding van de ingebouwde Administrator, voor een
+  installatieprogramma dat een gebruikerssessie wil.
+- **Verplicht** — standaard aan: mislukt het pakket, dan mislukt de bouw en wordt de VM verwijderd.
+  Uit, dan wordt een mislukking gemeld en gaat de bouw door.
+- **Volgorde** — ze draaien van boven naar beneden; een verplicht pakket dat mislukt, stopt de
+  pakketten erna.
+
+Ze hebben de guest agent nodig: zo leest Velnox uit hoe elk pakket eindigde. Ze bereiken de VM op
+een eigen cd, naast de antwoord-cd; een script daarop voert ze uit bij de eerste aanmelding, vóór de
+klaar-markering, en de cd wordt uitgeworpen en verwijderd als de bouw klaar is. De job van de bouw
+toont per pakket de uitkomst op exitcode: `0` geïnstalleerd, `3010` geïnstalleerd en wil een
+herstart (Velnox herstart de VM niet — doe dat wanneer het uitkomt), al het andere mislukt. Een MSI
+laat een uitgebreid log achter in `C:\Windows\Temp\velnox-packages\NN.log` in de VM.
+
+Een pakket dat een template nog uitvoert, kan niet worden verwijderd; haal het eerst uit de
+templates. VM's die het al installeerden houden het.
+
+### Linux
 ### Linux
 
 - **Cloud image** en **distributie**.
@@ -208,3 +249,6 @@ Het wachtwoord wordt nooit meer getoond.
 | *De installatie meldde zich niet binnen … minuten* | De guest agent antwoordde nooit: de VirtIO-ISO of de agent-schakelaar stond uit, of Setup stond stil. De VM is verwijderd. |
 | *… kon niet worden verwijderd* | Verwijder de VM in Proxmox met het VM-ID op de registratie. |
 | *De wachtwoorden van deze VM worden niet meer in Velnox bewaard* | Er zijn dertig dagen verstreken, of de bouw is mislukt. |
+| *… is geen MSI* (of EXE) bij een pakket | Het bestand is niet wat de naam zegt. Upload het echte installatieprogramma. |
+| *Het template voert een pakket uit dat niet gereed is, of niet van de eigenaar* | Een pakket is verwijderd of mislukt, of de eigenaar van het template is gewijzigd. Open het template en controleer de pakketten. |
+| *Verplicht pakket … is niet geïnstalleerd (exitcode …)* | De job toont de uitkomst van elk pakket. Voer het installatieprogramma met dezelfde argumenten met de hand uit in een test-VM; voor een MSI staat het log in `C:\Windows\Temp\velnox-packages\`. Een pakket dat de VM zelf herstart, ondanks `/norestart`, stopt de rest van de eerste aanmelding. |

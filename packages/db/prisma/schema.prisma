@@ -149,6 +149,7 @@ model Tenant {
   jobs                Job[]
   approvals           Approval[]
   autoconfigTemplates AutoconfigTemplate[]
+  autoconfigPackages  AutoconfigPackage[]
   provisionings       Provisioning[]
 
   @@index([kind])
@@ -1118,6 +1119,59 @@ model AutoconfigTemplate {
   @@index([tenantId])
   @@index([offeredTenantIds], type: Gin)
   @@map("autoconfig_templates")
+}
+
+enum AutoconfigPackageKind {
+  MSI
+  EXE
+
+  @@map("autoconfig_package_kind")
+}
+
+enum AutoconfigPackageState {
+  RECEIVING
+  VERIFYING
+  READY
+  FAILED
+
+  @@map("autoconfig_package_state")
+}
+
+/// An MSI or EXE a tenant uploaded, run in its Windows VMs after Setup (Phase 5C).
+///
+/// **Tenant-scoped, unlike the library.** A tenant's packages are its own
+/// software, often licensed to it; nobody else sees them. The bytes live beside
+/// the library's, at `<library>/packages/<id>`, named by id.
+model AutoconfigPackage {
+  id       String                 @id @default(uuid()) @db.Uuid
+  tenantId String                 @map("tenant_id") @db.Uuid
+  filename String
+  kind     AutoconfigPackageKind
+  state    AutoconfigPackageState @default(RECEIVING)
+
+  sizeBytes     BigInt  @map("size_bytes")
+  receivedBytes BigInt  @default(0) @map("received_bytes")
+  /// Lowercase hex, computed by Velnox over the bytes it holds.
+  sha256        String?
+
+  /// The check job, while there is one.
+  jobId String? @map("job_id") @db.Uuid
+
+  createdById    String? @map("created_by_id") @db.Uuid
+  createdByLabel String? @map("created_by_label")
+
+  errorCode   String? @map("error_code")
+  errorDetail String? @map("error_detail")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  readyAt   DateTime? @map("ready_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([state])
+  @@map("autoconfig_packages")
 }
 
 enum ProvisioningState {

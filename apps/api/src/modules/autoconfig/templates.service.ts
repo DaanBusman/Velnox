@@ -22,6 +22,7 @@ import { PrismaService } from '../infrastructure/prisma.service';
 import { SecretStoreService } from '../auth/secret-store.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
+import { PackagesService } from './packages.service';
 
 /**
  * Autoconfig templates: who sees them, who changes them, and their secrets.
@@ -68,6 +69,7 @@ export class TemplatesService {
     private readonly prisma: PrismaService,
     private readonly secrets: SecretStoreService,
     private readonly audit: AuditService,
+    private readonly packages: PackagesService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -197,6 +199,7 @@ export class TemplatesService {
   ): Promise<TemplateSummary> {
     assertAllowedAt(actor, PERMISSIONS.autoconfigManage, { tenantId: input.tenantId });
     const settings = this.parseSettings(input.settings);
+    await this.packages.assertTemplatePackages(input.tenantId, settings);
     const offeredTenantIds = await this.checkOffer(
       input.tenantId,
       input.visibility,
@@ -258,6 +261,9 @@ export class TemplatesService {
         status: 400,
         message: 'A template stays Windows or Linux; create a new one instead',
       });
+    }
+    if (input.settings !== undefined) {
+      await this.packages.assertTemplatePackages(row.tenantId, settings);
     }
     const delivery = {
       credentialDelivery: input.credentialDelivery ?? row.credentialDelivery,
@@ -335,6 +341,11 @@ export class TemplatesService {
       if (settings.family === 'LINUX' && settings.root.password === 'PER_TENANT') {
         settings.root.password = 'FIXED';
       }
+    }
+    // Packages are their tenant's own: a copy into another tenant runs none of
+    // the source's, and its new owner adds their own.
+    if (settings.family === 'WINDOWS' && input.tenantId !== source.tenantId) {
+      settings.packages = [];
     }
 
     const copy = await this.insert({

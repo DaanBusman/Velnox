@@ -24,6 +24,7 @@ import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { JobsService } from '../jobs/jobs.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
 import { TemplatesService } from './templates.service';
+import { PackagesService } from './packages.service';
 
 /** Where a build's job has got to; read for builds still under way. */
 interface JobProgress {
@@ -58,6 +59,7 @@ export class ProvisioningService {
     private readonly audit: AuditService,
     private readonly jobs: JobsService,
     private readonly templates: TemplatesService,
+    private readonly packages: PackagesService,
   ) {}
 
   async request(
@@ -148,6 +150,7 @@ export class ProvisioningService {
 
     // --- the media, from the library -------------------------------------------
     await this.assertMedia(settings);
+    await this.packages.assertTemplatePackages(template.tenantId, settings);
 
     // --- mail --------------------------------------------------------------------
     if (input.notify) {

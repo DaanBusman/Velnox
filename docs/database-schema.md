@@ -421,7 +421,20 @@ schema and returned by the API; `autoconfig_templates_family_matches` keeps it i
 a tenant's own Administrator or root password is the key `tenant:<tenant id>:administrator` (or
 `:root`). Unique on `(tenant_id, lower(name))`.
 
+### `autoconfig_packages`
+`id, tenant_id, filename, kind (MSI|EXE), state (RECEIVING|VERIFYING|READY|FAILED), size_bytes,
+received_bytes, sha256, job_id, created_by_id, created_by_label, error_code, error_detail,
+created_at, updated_at, ready_at`
+
+A tenant's installer packages (migration `20261008090000_autoconfig_packages`, ADR-044), scoped by
+the tenancy filter and seen by no other tenant. The bytes are at `<library>/packages/<id>`, and at
+`<library>/packages-partial/<id>` while they arrive; they count against the library's ceiling.
+`autoconfig_packages_size` caps a package at 2 GiB. Unique on `(tenant_id, lower(filename))` among
+packages that are not FAILED. A Windows template's `settings.packages` lists them by id; nothing in
+the schema ties the two, so the API checks it.
+
 ### `provisionings`
+`id, tenant_id, template_id### `provisionings`
 `id, tenant_id, template_id, template_name, family, template_snapshot jsonb, cluster_id,
 cluster_name, node, disk_storage, media_storage, bridge, vlan, hostname, network jsonb, vmid, state
 (QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED), job_id, addresses text[], requested_by_id,

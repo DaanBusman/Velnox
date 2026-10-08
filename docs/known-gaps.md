@@ -230,6 +230,15 @@ a main tenant does not offer it to its sub-tenants. And someone who is a member 
 through a role, with their account at home in a sibling, does not appear in that sub-tenant's Users
 list — their role is on their account, under the sibling. See ADR-042.
 
+### Installer packages: proven against the fixture, and four edges
+The packages CD, its script and the results are proven against the fixture, which reads the CD and
+"runs" each package by an exit code written into it; whether Windows runs `VELNOXPK.CMD` as expected
+— the scheduled task as SYSTEM, the wait for its exit code — is to be proven on a real Windows VM.
+Velnox does not restart a VM whose package asked for a restart (3010). An installer that restarts the
+VM itself, ignoring `/norestart`, stops the rest of the first logon and the build times out. A main
+tenant's packages are not offered to its sub-tenants' templates: upload them to the sub-tenant too.
+And Linux templates have no MSI/EXE equivalent beyond their extra APT packages. See ADR-044.
+
 ### Support logs: what they cannot tell, and what they leave out
 A Proxmox task started with a password credential reads as Velnox's, even when a person signed in to
 Proxmox with that account: give Velnox its own API token. Only the task list is kept — type, user,

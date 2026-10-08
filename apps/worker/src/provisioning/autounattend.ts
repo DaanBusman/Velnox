@@ -1,4 +1,5 @@
 import type { ProvisionNetwork, WindowsTemplate } from '@velnox/shared';
+import { packagesFirstLogonCommand } from './packages';
 
 /**
  * A Windows template turned into Autounattend.xml.
@@ -15,7 +16,8 @@ import type { ProvisionNetwork, WindowsTemplate } from '@velnox/shared';
  * is deleted from the storage when provisioning ends, however it ends (ADR-039).
  *
  * The first logon, which one auto-logon provides, installs the VirtIO drivers
- * and the guest agent from the VirtIO ISO, applies the power settings, removes
+ * and the guest agent from the VirtIO ISO, applies the power settings, runs the
+ * template's installer packages from their own CD (packages.ts), removes
  * the auto-logon — including the `DefaultPassword` value Windows otherwise
  * leaves in the registry in the clear — and writes a marker file last. Velnox
  * reads that marker through the guest agent to know the install has finished.
@@ -278,6 +280,9 @@ function firstLogonCommands(settings: WindowsTemplate): string[] {
   }
   commands.push(`powercfg /setactive ${settings.powerPlan === 'HIGH_PERFORMANCE' ? HIGH_PERFORMANCE : BALANCED}`);
   if (!settings.hibernation) commands.push('powercfg /hibernate off');
+  // While the Administrator's logon is still there for the packages that need
+  // it, and after the drivers and the agent that report on them.
+  if (settings.packages.length > 0) commands.push(packagesFirstLogonCommand(DRIVE_LETTERS));
   // Auto-logon ends here, and so does the password Windows keeps for it in the
   // registry in the clear.
   commands.push(

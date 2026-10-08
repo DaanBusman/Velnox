@@ -23,6 +23,10 @@ export interface LibraryPaths {
   item(id: string): string;
   /** Where an item's bytes arrive. Renamed to `item(id)` only once checked. */
   partial(id: string): string;
+  /** A tenant's installer package (Phase 5C), beside the library and counted with it. */
+  package(id: string): string;
+  /** Where a package's bytes arrive. */
+  packagePartial(id: string): string;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -41,12 +45,16 @@ export function libraryPaths(root: string): LibraryPaths {
     root,
     item: (id) => join(root, 'items', safe(id)),
     partial: (id) => join(root, 'partial', safe(id)),
+    package: (id) => join(root, 'packages', safe(id)),
+    packagePartial: (id) => join(root, 'packages-partial', safe(id)),
   };
 }
 
 export async function ensureLibraryDirs(root: string): Promise<void> {
   await mkdir(join(root, 'items'), { recursive: true });
   await mkdir(join(root, 'partial'), { recursive: true });
+  await mkdir(join(root, 'packages'), { recursive: true });
+  await mkdir(join(root, 'packages-partial'), { recursive: true });
 }
 
 /**
@@ -73,9 +81,15 @@ export async function readLibraryCapacity(
     select: { state: true, sizeBytes: true, receivedBytes: true },
   });
 
+  // Tenants' installer packages share the disk, so they share the ceiling.
+  const packages = await prisma.autoconfigPackage.findMany({
+    where: { state: { not: 'FAILED' }, ...(excludeItemId ? { id: { not: excludeItemId } } : {}) },
+    select: { state: true, sizeBytes: true, receivedBytes: true },
+  });
+
   let usedBytes = 0;
   let outstandingBytes = 0;
-  for (const item of items) {
+  for (const item of [...items, ...packages]) {
     const size = item.sizeBytes === null ? Number(item.receivedBytes) : Number(item.sizeBytes);
     usedBytes += size;
     if (item.state === 'RECEIVING' && item.sizeBytes !== null) {

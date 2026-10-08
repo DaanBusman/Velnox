@@ -18,7 +18,20 @@ import type { LibraryServices } from '../library/services';
 import { StepError, type Playbook, type StepContext } from '../jobs/steps';
 import { buildAutounattend, isServerEdition, WINDOWS_DONE_MARKER } from './autounattend';
 import { buildCloudInit, LINUX_DONE_MARKER } from './cloud-init';
-import { buildIso } from './iso9660';
+import { buildIso, isoLayout, isoStream, type IsoFile } from './iso9660';
+import {
+  PACKAGES_LABEL,
+  PACKAGES_RESULT,
+  PACKAGES_SCRIPT,
+  describeExitCode,
+  packageCdName,
+  packageNumber,
+  packageScript,
+  packageSucceeded,
+  packagesScript,
+  parsePackageResults,
+  type PackageToRun,
+} from './packages';
 
 /**
  * vm.provision — one VM, from a template, to a finished install.
@@ -30,9 +43,13 @@ import { buildIso } from './iso9660';
  *             it is a copy of a library file, and the next VM uses it
  *   create    a VM, which cleanup destroys with its disks
  *   answers   the answer ISO on the storage, which cleanup deletes — it holds
- *             the unattend passwords in their reversible form
+ *             the unattend passwords in their reversible form — and, when the
+ *             template runs installer packages, the packages ISO beside it,
+ *             which cleanup deletes too
  *   start     a running VM
  *   install   waits for the guest to say it is done
+ *   packages  reads how each installer package ended; a required one that
+ *             failed fails the build, and the VM goes
  *   finish    reads the addresses, ejects every CD, deletes the answer ISO
  *   notify    mails the person who asked, when they asked for it
  *
@@ -182,6 +199,8 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
   let settings: TemplateSettings | null = null;
   let vmid: number | null = null;
   let answerVolid: string | null = null;
+  let packagesVolid: string | null = null;
+  let packagesRun: PackageToRun[] = [];
   let incompleteUpload: string | null = null;
   let guestCredentialId: string | null = null;
   let finished = false;
@@ -309,6 +328,57 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
     incompleteUpload = null;
     await services.library.refreshContents(r.clusterId!).catch(() => undefined);
     return name;
+  };
+
+  /**
+   * The template's installer packages, from the copy on this record: each one
+   * ready, and its owner's — the template's tenant while the template exists,
+   * which is what the API checked when the VM was requested.
+   */
+  const loadPackages = async (): Promise<
+    (PackageToRun & { id: string; path: string; size: number })[]
+  > => {
+    const { row: r, settings: s } = await load();
+    if (s.family !== 'WINDOWS' || s.packages.length === 0) return [];
+    const template = r.templateId
+      ? await prisma.autoconfigTemplate.findUnique({
+          where: { id: r.templateId },
+          select: { tenantId: true },
+        })
+      : null;
+    const owners = template ? [template.tenantId] : [r.tenantId];
+    if (!template) {
+      const root = await prisma.tenant.findFirst({
+        where: { kind: 'MSP_ROOT' },
+        select: { id: true },
+      });
+      if (root) owners.push(root.id);
+    }
+    const ids = s.packages.map((p) => p.packageId);
+    const rows = await prisma.autoconfigPackage.findMany({
+      where: { id: { in: ids }, state: 'READY', tenantId: { in: owners } },
+      select: { id: true, filename: true, kind: true, sizeBytes: true },
+    });
+    return s.packages.map((want) => {
+      const found = rows.find((row) => row.id === want.packageId);
+      if (!found) {
+        throw new StepError(
+          ERROR_CODES.autoconfigPackageUnavailable,
+          `Package ${want.packageId} is not ready, or not the template owner's`,
+          { packageId: want.packageId },
+        );
+      }
+      return {
+        id: found.id,
+        filename: found.filename,
+        kind: found.kind,
+        arguments: want.arguments,
+        runAs: want.runAs,
+        required: want.required,
+        path: services.library.paths.package(found.id),
+        size: Number(found.sizeBytes),
+      };
+    });
   };
 
   /**
@@ -621,7 +691,62 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
               'STDOUT',
               `Attached ${answerVolid} (${files.map((f) => f.name).join(', ')})`,
             );
-            return { answers: answerVolid };
+
+            // The installer packages, on a CD of their own.
+            const packages = await loadPackages();
+            if (packages.length > 0) {
+              const cd: IsoFile[] = [{ name: PACKAGES_SCRIPT, content: packagesScript(packages) }];
+              packages.forEach((item, index) => {
+                cd.push({
+                  name: `P${packageNumber(index)}.CMD`,
+                  content: packageScript(index, item),
+                });
+                cd.push({
+                  name: packageCdName(index, item.kind),
+                  path: item.path,
+                  size: item.size,
+                });
+              });
+              const layout = isoLayout({ label: PACKAGES_LABEL, files: cd });
+              const hash = createHash('sha256');
+              for await (const chunk of isoStream(layout)) hash.update(chunk);
+              const packagesName = `velnox-packages-${r.id}.iso`;
+              packagesVolid = `${r.mediaStorage}:iso/${packagesName}`;
+              let lastReport = 0;
+              const sent = await pve.uploadToStorage(r.node, r.mediaStorage, {
+                content: 'iso',
+                filename: packagesName,
+                size: layout.size,
+                open: () => Readable.from(isoStream(layout)),
+                sha256: hash.digest('hex'),
+                signal: context.signal,
+                onProgress: (bytes) => {
+                  const now = Date.now();
+                  if (now - lastReport > 1000) {
+                    lastReport = now;
+                    void context
+                      .progress(Math.round((bytes / layout.size) * 100))
+                      .catch(() => undefined);
+                  }
+                },
+              });
+              await waitTask(pve, sent, 'Sending the installer packages', context);
+              const attach = await pve.setVmConfig(r.node, vmid!, {
+                ide1: `${packagesVolid},media=cdrom`,
+              });
+              await waitTask(pve, attach, 'Attaching the installer packages', context);
+              packagesRun = packages;
+              await context.log(
+                'STDOUT',
+                `Attached ${packagesVolid} with ${packages.length} installer package${packages.length === 1 ? '' : 's'}: ${packages
+                  .map(
+                    (item, index) =>
+                      `${packageNumber(index)} ${item.filename} (${item.runAs === 'SYSTEM' ? 'as SYSTEM' : 'as Administrator'}${item.required ? ', required' : ''})`,
+                  )
+                  .join('; ')}`,
+              );
+            }
+            return { answers: answerVolid, packages: packages.length };
           }),
       },
       {
@@ -699,6 +824,71 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
       },
       {
         kind: 'task',
+        key: 'packages',
+        phase: 'verify',
+        run: (context) =>
+          remember(async () => {
+            const { row: r } = await load();
+            if (packagesRun.length === 0) return { packages: 0, failed: 0 };
+            const pve = await connect();
+            const text = await pve
+              .agentFileRead(r.node, vmid!, PACKAGES_RESULT)
+              .then((file) => file.content)
+              .catch(() => null);
+            const results = parsePackageResults(text ?? '');
+            let failedRequired: { filename: string; exitCode: number } | null = null;
+            let restart = false;
+            for (const [index, item] of packagesRun.entries()) {
+              const outcome = results.outcomes.find((o) => o.index === index);
+              const label = `Package ${packageNumber(index)}, ${item.filename}`;
+              if (!outcome) {
+                await context.log(
+                  'STDERR',
+                  `${label}: did not run${results.stopped ? ', because a required package before it failed' : ''}`,
+                );
+                if (item.required && !failedRequired)
+                  failedRequired = { filename: item.filename, exitCode: -1 };
+                continue;
+              }
+              const ok = packageSucceeded(outcome.exitCode);
+              if (outcome.exitCode === 3010) restart = true;
+              await context.log(
+                ok ? 'STDOUT' : 'STDERR',
+                `${label}: ${describeExitCode(outcome.exitCode)}${!ok && !item.required ? ' (not required; the build goes on)' : ''}`,
+              );
+              if (!ok && item.required && !failedRequired) {
+                failedRequired = { filename: item.filename, exitCode: outcome.exitCode };
+              }
+            }
+            if (text === null || !results.finished) {
+              await context.log(
+                'STDERR',
+                text === null
+                  ? `${PACKAGES_RESULT} could not be read from the guest`
+                  : 'The packages script did not get to its end',
+              );
+            }
+            if (failedRequired) {
+              throw new StepError(
+                ERROR_CODES.provisioningPackageFailed,
+                `Required package ${failedRequired.filename} did not install (${describeExitCode(failedRequired.exitCode)})`,
+                { filename: failedRequired.filename, exitCode: failedRequired.exitCode },
+              );
+            }
+            if (restart) {
+              await context.log(
+                'STDOUT',
+                'A package asked for a restart; Velnox does not restart the VM — restart it when it suits',
+              );
+            }
+            return {
+              packages: packagesRun.length,
+              failed: results.outcomes.filter((o) => !packageSucceeded(o.exitCode)).length,
+            };
+          }),
+      },
+      {
+        kind: 'task',
         key: 'finish',
         phase: 'verify',
         run: (context) =>
@@ -715,7 +905,7 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
                 ? {
                     ide2: 'none,media=cdrom',
                     ...(s.virtioIsoFilename ? { ide0: 'none,media=cdrom' } : {}),
-                    delete: 'ide3',
+                    delete: packagesVolid ? 'ide3,ide1' : 'ide3',
                     boot: `order=${s.virtio ? 'scsi0' : 'sata0'}`,
                   }
                 : { delete: 'ide2' };
@@ -728,6 +918,10 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
                 throw new StepError(ERROR_CODES.generic, `${answerVolid} is still on the storage`);
               }
               answerVolid = null;
+            }
+            if (packagesVolid) {
+              await pve.deleteVolume(r.node, r.mediaStorage, packagesVolid);
+              packagesVolid = null;
             }
 
             finished = true;
@@ -786,7 +980,7 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
       const problems: string[] = [];
       try {
         const r = row as Provisioning | null;
-        if (r && (vmid !== null || answerVolid || incompleteUpload)) {
+        if (r && (vmid !== null || answerVolid || packagesVolid || incompleteUpload)) {
           const pve = await connect();
           if (vmid !== null) {
             await pve
@@ -816,7 +1010,7 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
                 .catch(() => undefined);
             }
           }
-          for (const volid of [answerVolid, incompleteUpload]) {
+          for (const volid of [answerVolid, packagesVolid, incompleteUpload]) {
             if (!volid) continue;
             const content = volid.includes(':import/') ? 'import' : 'iso';
             const present = await pve

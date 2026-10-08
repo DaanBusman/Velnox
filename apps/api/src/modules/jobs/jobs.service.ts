@@ -67,6 +67,7 @@ const CREATE_PERMISSION: Record<string, Permission> = {
   [JOB_TYPES.libraryPull]: PERMISSIONS.clustersManage,
   [JOB_TYPES.libraryClusterDelete]: PERMISSIONS.clustersManage,
   [JOB_TYPES.vmProvision]: PERMISSIONS.workloadsProvision,
+  [JOB_TYPES.packageVerify]: PERMISSIONS.autoconfigManage,
 };
 
 /**
@@ -78,6 +79,7 @@ const NOT_RETRYABLE_TYPES = new Set<string>([
   JOB_TYPES.libraryFetch,
   JOB_TYPES.libraryVerify,
   JOB_TYPES.libraryPull,
+  JOB_TYPES.packageVerify,
 ]);
 
 /** How long a cancellation flag outlives the request, in seconds. */

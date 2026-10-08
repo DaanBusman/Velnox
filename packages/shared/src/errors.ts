@@ -111,6 +111,18 @@ export const ERROR_CODES = {
   autoconfigOfferEmpty: 'autoconfig.offer_empty',
   /** A tenant named on a template that does not exist, or is archived. */
   autoconfigUnknownTenant: 'autoconfig.unknown_tenant',
+  /** A package name that is not a plain `.msi` or `.exe` filename. */
+  autoconfigPackageInvalidName: 'autoconfig.package_invalid_name',
+  /** The tenant already has a package by that name. */
+  autoconfigPackageNameTaken: 'autoconfig.package_name_taken',
+  /** The bytes are not an MSI or an EXE, whatever the name says. */
+  autoconfigPackageNotInstaller: 'autoconfig.package_not_installer',
+  /** Larger than a package may be. */
+  autoconfigPackageTooLarge: 'autoconfig.package_too_large',
+  /** A template names a package that is not its owner's, or not ready. */
+  autoconfigPackageUnavailable: 'autoconfig.package_unavailable',
+  /** Removing a package a template still runs. */
+  autoconfigPackageInUse: 'autoconfig.package_in_use',
 
   /** A sub-tenant's main tenant must be an active customer main tenant. */
   tenantParentInvalid: 'tenant.parent_invalid',
@@ -129,6 +141,8 @@ export const ERROR_CODES = {
   provisioningCleanupFailed: 'provisioning.cleanup_failed',
   /** Revealing credentials that have been dropped, or were never kept. */
   provisioningCredentialsGone: 'provisioning.credentials_gone',
+  /** A required package ended with an exit code that is not success. The VM was removed. */
+  provisioningPackageFailed: 'provisioning.package_failed',
   /** Asking to be notified when outgoing mail is not set up. */
   mailNotConfigured: 'mail.not_configured',
   mailSendFailed: 'mail.send_failed',

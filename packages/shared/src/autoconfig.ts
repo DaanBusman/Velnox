@@ -242,6 +242,106 @@ const hardware = z.object({
 export type TemplateHardware = z.infer<typeof hardware>;
 
 // ---------------------------------------------------------------------------
+// Installer packages (Phase 5C)
+// ---------------------------------------------------------------------------
+
+/**
+ * An MSI or EXE a tenant uploads, to be run in its Windows VMs after Setup.
+ *
+ * Packages belong to one tenant and are seen by nobody else: a template uses
+ * only packages of the tenant that owns it, so an MSP template carries the
+ * MSP's and a customer's template the customer's. They reach the VM on a CD of
+ * their own, beside the answer CD, and a script on it runs them at first logon.
+ */
+export const PACKAGE_KINDS = ['MSI', 'EXE'] as const;
+export type PackageKind = (typeof PACKAGE_KINDS)[number];
+
+export const PACKAGE_STATES = ['RECEIVING', 'VERIFYING', 'READY', 'FAILED'] as const;
+export type PackageState = (typeof PACKAGE_STATES)[number];
+
+/** 2 GiB: past any agent or application installer, and well inside what a CD file can be. */
+export const PACKAGE_MAX_BYTES = 2 * 1024 ** 3;
+/** Packages one template runs. */
+export const PACKAGES_PER_TEMPLATE_MAX = 10;
+
+/**
+ * How a package runs. `SYSTEM` is the machine itself, as software deployment
+ * tools install: no profile, no desktop. `ADMINISTRATOR` is the built-in
+ * Administrator's first logon, for an installer that wants a user session.
+ */
+export const PACKAGE_RUN_AS = ['SYSTEM', 'ADMINISTRATOR'] as const;
+export type PackageRunAs = (typeof PACKAGE_RUN_AS)[number];
+
+/** What the form fills in for a new package: quiet, and no restart of its own. */
+export const PACKAGE_DEFAULT_ARGUMENTS: Record<PackageKind, string> = {
+  MSI: '/qn /norestart',
+  EXE: '',
+};
+
+/** Exit codes that mean installed: done, and done but wants a restart (3010, 1641). */
+export const PACKAGE_SUCCESS_CODES = [0, 3010, 1641] as const;
+
+/** A name Windows, a CD and a log line all take as it is: no paths, no quotes. */
+export function isValidPackageFilename(name: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,95}\.(msi|exe)$/i.test(name) && !name.includes('..');
+}
+
+export function packageKindForFilename(name: string): PackageKind | null {
+  const ext = /\.([A-Za-z]+)$/.exec(name)?.[1]?.toLowerCase();
+  return ext === 'msi' ? 'MSI' : ext === 'exe' ? 'EXE' : null;
+}
+
+/**
+ * Whether the first bytes are what the name says: an MSI is an OLE compound
+ * file, an EXE starts with `MZ`. A renamed document is refused before any VM
+ * tries to run it.
+ */
+export function packageMagicMatches(kind: PackageKind, head: Uint8Array): boolean {
+  if (kind === 'EXE') return head.length >= 2 && head[0] === 0x4d && head[1] === 0x5a;
+  const ole = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+  return head.length >= ole.length && ole.every((byte, i) => head[i] === byte);
+}
+
+const templatePackage = z.object({
+  packageId: z.string().uuid(),
+  /**
+   * Put on the installer's command line as written, in a .cmd file: quotes
+   * work, and so do `%ProgramFiles%` and the like. One line.
+   */
+  arguments: z
+    .string()
+    .max(1000)
+    .refine(
+      (value) => ![...value].some((char) => char.charCodeAt(0) < 0x20),
+      'One line, without control characters',
+    )
+    .default(''),
+  runAs: z.enum(PACKAGE_RUN_AS).default('SYSTEM'),
+  /** A required package that fails fails the build, and the VM is removed. */
+  required: z.boolean().default(true),
+});
+export type TemplatePackage = z.infer<typeof templatePackage>;
+
+export interface PackageSummary {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  filename: string;
+  kind: PackageKind;
+  state: PackageState;
+  sizeBytes: number;
+  receivedBytes: number;
+  sha256: string | null;
+  jobId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  readyAt: string | null;
+  errorCode: string | null;
+  /** Templates of the same tenant that run it; a package in use cannot be removed. */
+  usedBy: { id: string; name: string }[];
+}
+
+// ---------------------------------------------------------------------------
 // Windows
 // ---------------------------------------------------------------------------
 
@@ -306,8 +406,18 @@ export const windowsTemplateSchema = z
      */
     windowsUpdate: z.enum(['DEFERRED', 'DURING_SETUP']).default('DEFERRED'),
     hardware: hardware.default({}),
+    /** Run in this order after Setup, from a CD of their own (Phase 5C). */
+    packages: z.array(templatePackage).max(PACKAGES_PER_TEMPLATE_MAX).default([]),
   })
   .superRefine((value, ctx) => {
+    // Velnox reads how each package ended through the guest agent.
+    if (value.packages.length > 0 && !value.guestAgent) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['packages'],
+        message: 'Packages need the guest agent: it is how Velnox learns how they ended',
+      });
+    }
     if ((value.virtio || value.guestAgent) && !value.virtioIsoFilename) {
       ctx.addIssue({
         code: 'custom',

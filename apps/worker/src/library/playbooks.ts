@@ -111,7 +111,7 @@ async function headroom(services: LibraryServices, itemId: string): Promise<numb
   );
 }
 
-async function hashFile(
+export async function hashFile(
   path: string,
   context: StepContext,
   total: number | null,

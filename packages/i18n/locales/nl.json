@@ -382,7 +382,13 @@
       "media_wrong_kind": "{filename} is het verkeerde soort bestand voor dit template: een installer moet een ISO zijn, een Linux-template heeft een disk-image nodig.",
       "msp_only": "Alleen een MSP-template kan aan gekozen klanten worden aangeboden of een wachtwoord per klant hebben.",
       "offer_empty": "Kies minstens één klant aan wie dit template wordt aangeboden.",
-      "unknown_tenant": "Een van de gekozen klanten bestaat niet of is gearchiveerd."
+      "unknown_tenant": "Een van de gekozen klanten bestaat niet of is gearchiveerd.",
+      "package_invalid_name": "{filename} kan geen pakketnaam zijn: een gewone .msi- of .exe-bestandsnaam van letters, cijfers, spaties, punten, streepjes, liggende streepjes, haakjes en plustekens.",
+      "package_name_taken": "Deze tenant heeft al een pakket met de naam {filename}.",
+      "package_not_installer": "{filename} is geen {kind}, wat de naam ook zegt.",
+      "package_too_large": "Een pakket is hoogstens 2 GB.",
+      "package_unavailable": "Het template voert een pakket uit dat niet gereed is, of niet van de eigenaar. Open het template en controleer de pakketten.",
+      "package_in_use": "Dit pakket wordt nog uitgevoerd door: {templates}. Haal het eerst uit die templates."
     },
     "provisioning": {
       "hostname_invalid": "Die hostnaam kan niet: letters, cijfers en streepjes, niet alleen cijfers, hoogstens {max} tekens, zonder domein.",
@@ -391,7 +397,8 @@
       "hostname_taken": "Een VM op dit cluster heet al {hostname} (VMID {vmid}).",
       "install_timeout": "De installatie meldde zich niet binnen {minutes} minuten. De VM is verwijderd.",
       "cleanup_failed": "De installatie is mislukt en VM {vmid} kon niet worden verwijderd. Verwijder hem in Proxmox.",
-      "credentials_gone": "De wachtwoorden van deze VM worden niet meer in Velnox bewaard."
+      "credentials_gone": "De wachtwoorden van deze VM worden niet meer in Velnox bewaard.",
+      "package_failed": "Verplicht pakket {filename} is niet geïnstalleerd (exitcode {exitCode}). De VM is verwijderd; de job toont de uitkomst per pakket."
     },
     "mail": {
       "not_configured": "Uitgaande mail is niet ingesteld, dus er kan niemand worden gewaarschuwd. Een beheerder stelt het in onder Notificatiebeheer → Uitgaande mail.",
@@ -574,7 +581,8 @@
       "push": "Kopiëren naar cluster",
       "pull": "Kopiëren van cluster",
       "cluster_delete": "Verwijderen van cluster",
-      "provision": "VM bouwen"
+      "provision": "VM bouwen",
+      "package_verify": "Pakket controleren"
     }
   },
   "layout": {
@@ -1312,7 +1320,49 @@
     "noCustomers": "Er zijn nog geen klanten.",
     "passwordPerTenant": "Vast per klant",
     "perTenantTitle": "Wachtwoord per klant",
-    "perTenantHint": "Een klant zonder eigen wachtwoord krijgt per VM een gegenereerd wachtwoord. Alleen de MSP stelt deze in, en klanten zien ze nooit."
+    "perTenantHint": "Een klant zonder eigen wachtwoord krijgt per VM een gegenereerd wachtwoord. Alleen de MSP stelt deze in, en klanten zien ze nooit.",
+    "installerPackages": "Installatiepakketten",
+    "installerPackagesHint": "MSI’s en EXE’s van de eigenaar van dit template, in deze volgorde uitgevoerd nadat Windows is geïnstalleerd, vanaf een eigen cd. Velnox leest uit hoe elk pakket eindigde en toont dat in de job van de bouw.",
+    "packagesNeedAgent": "Pakketten hebben de QEMU guest agent nodig: zo leest Velnox uit hoe ze eindigden. Zet hem aan onder Installatie.",
+    "packagesNone": "Geen pakketten: er wordt niets extra geïnstalleerd.",
+    "packageNotReady": "niet gereed",
+    "packageGone": "Dit pakket bestaat niet meer. Verwijder het uit het template.",
+    "packageHidden": "Een pakket van de eigenaar van het template",
+    "moveUp": "Omhoog",
+    "moveDown": "Omlaag",
+    "removePackage": "Verwijderen",
+    "packageArguments": "Argumenten",
+    "packageArgumentsHint": "Komen zoals geschreven op de opdrachtregel van het installatieprogramma. Voor een MSI installeert /qn /norestart stil en zonder herstart; %ProgramFiles% en aanhalingstekens werken.",
+    "packageRunAs": "Uitvoeren als",
+    "runAsSystem": "SYSTEM (machinebreed, aanbevolen)",
+    "runAsAdministrator": "Administrator (in de eerste aanmelding)",
+    "packageRequired": "Verplicht: mislukt het, dan mislukt de bouw en wordt de VM verwijderd",
+    "addPackage": "Pakket toevoegen",
+    "choosePackage": "Kies een pakket",
+    "noPackages": "Geen gereede pakketten voor deze eigenaar",
+    "add": "Toevoegen",
+    "managePackages": "Pakketten beheren",
+    "packagesTitle": "Installatiepakketten",
+    "packagesSubtitle": "MSI’s en EXE’s per tenant, voor Windows-templates om na de installatie uit te voeren. De pakketten van een tenant zijn alleen voor die tenant zichtbaar.",
+    "packagesTenant": "Tenant",
+    "packagesTenantHint": "Pakketten horen bij één tenant. Kies van wie je de pakketten wilt zien of aanvullen.",
+    "packagesListHint": "Uploads lopen op de achtergrond door, zichtbaar in de activiteitenbalk. Een pakket is bruikbaar zodra het Gereed is.",
+    "uploadPackage": "MSI of EXE uploaden",
+    "packageResumeChoose": "Kies {filename} opnieuw om verder te gaan",
+    "packagesEmpty": "Deze tenant heeft nog geen pakketten.",
+    "packageFile": "Bestand",
+    "packageSize": "Grootte",
+    "packageUsedBy": "Gebruikt door",
+    "packageAddedBy": "Toegevoegd door",
+    "packageState": {
+      "RECEIVING": "Uploaden",
+      "VERIFYING": "Controleren",
+      "READY": "Gereed",
+      "FAILED": "Mislukt"
+    },
+    "packageResume": "Hervatten",
+    "removePackageTitle": "Pakket verwijderen",
+    "removePackageBody": "{filename} wordt uit Velnox verwijderd. VM’s die het al installeerden houden het."
   },
   "provisioning": {
     "subtitle": "Elke VM die vanuit een Autoconfig-template is gebouwd, met de installatieregistratie. VM’s die nog worden uitgerold staan ook bij Virtuele machines.",
@@ -1397,6 +1447,7 @@
       "answers": "Antwoorden schrijven",
       "start": "Starten",
       "install": "Installeren",
+      "packages": "Pakketten controleren",
       "finish": "Afronden",
       "notify": "Aanvrager mailen"
     }

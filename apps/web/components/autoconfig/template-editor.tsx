@@ -23,6 +23,7 @@ import { useApiError } from '@/lib/use-api-error';
 import type { TenantSummary } from '@/lib/session-types';
 import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { Card, Notice } from '@/components/ui/primitives';
+import { TemplatePackages } from './template-packages';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- the settings object is
    validated by the API against templateSettingsSchema; here it is a form. */
@@ -227,6 +228,7 @@ const defaults = (family: TemplateOsFamily): any =>
         powerPlan: 'HIGH_PERFORMANCE',
         hibernation: false,
         windowsUpdate: 'DEFERRED',
+        packages: [],
         hardware: {
           cores: 2,
           memoryMb: 4096,
@@ -414,6 +416,8 @@ export function TemplateEditor({
                 }))}
               onChange={(id) => {
                 setTenantId(id);
+                // Packages are the owner's own: another owner's are not offered.
+                if (settings.family === 'WINDOWS' && settings.packages?.length) set('packages', []);
                 // A customer's template is offered to nobody else and has no
                 // passwords per tenant: what only an MSP template can do goes.
                 if (id === mspTenant?.id) return;
@@ -808,6 +812,16 @@ export function TemplateEditor({
               </div>
             </div>
           </Card>
+
+          {tenantId && (
+            <TemplatePackages
+              tenantId={tenantId}
+              packages={settings.packages ?? []}
+              editable={editable}
+              guestAgent={settings.guestAgent}
+              onChange={(next) => set('packages', next)}
+            />
+          )}
         </>
       ) : (
         <>

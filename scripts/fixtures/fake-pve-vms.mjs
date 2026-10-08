@@ -12,6 +12,12 @@
  *   would — and keeps a copy of what was in it, so the harness can check what a
  *   guest was handed. Then it "installs": after `--install-seconds`, the guest
  *   agent answers and the done marker exists.
+ * - **Installer packages** (Phase 5C): a `velnox-packages-` CD attached at start
+ *   is read as well, and its script "run": each package in the order the script
+ *   calls it, ending with the exit code written in the package's bytes as
+ *   `VELNOX-EXIT=<n>` (0 when there is none), stopping at a required one that
+ *   failed — as `VELNOXPK.CMD` would. The results are what the guest agent then
+ *   reads back from `C:\Windows\Temp\velnox-packages.txt`.
  * - A VM whose name starts with `fail-` stops a few seconds after starting,
  *   which is what a crashed install looks like from outside.
  * - A VM configured without the agent never answers, and so never finishes.
@@ -32,6 +38,33 @@ const MARKERS = new Set([
   'C:\\Windows\\Temp\\velnox-provisioned.txt',
   '/var/lib/velnox/provisioned',
 ]);
+const PACKAGES_RESULT = 'C:\\Windows\\Temp\\velnox-packages.txt';
+const SUCCESS = new Set([0, 3010, 1641]);
+
+/** What VELNOXPK.CMD would write, from the CD's files. */
+function runPackages(files) {
+  const script = (files['VELNOXPK.CMD'] ?? Buffer.alloc(0)).toString('utf8');
+  const lines = [];
+  const ran = [];
+  let stopped = false;
+  for (const m of script.matchAll(/call :(system|admin) (\d{2})\r\ncall :record \d{2} ([01])/g)) {
+    const [, how, n, required] = m;
+    const payload = Object.entries(files).find(
+      ([name]) => name.startsWith(`P${n}.`) && !name.endsWith('.CMD'),
+    );
+    const code = Number(
+      /VELNOX-EXIT=(-?\d+)/.exec(payload?.[1]?.toString('latin1') ?? '')?.[1] ?? 0,
+    );
+    lines.push(`${n} ${code}`);
+    ran.push({ n, how, required: required === '1', code, name: payload?.[0] ?? null });
+    if (required === '1' && !SUCCESS.has(code)) {
+      stopped = true;
+      break;
+    }
+  }
+  lines.push(stopped ? 'stopped' : 'done');
+  return { text: `${lines.join('\r\n')}\r\n`, ran };
+}
 
 /** Read the Joliet root of an ISO: the names a guest sees, and their bytes. */
 function readJoliet(iso) {
@@ -206,17 +239,25 @@ export function installVms({ dir, storage, nodes, installSeconds, log, existingV
       vm.readyAt = Date.now() + installSeconds * 1000;
       vm.failAt = /^fail-/i.test(vm.config.name ?? '') ? Date.now() + 3000 : null;
       // What the guest was handed.
+      vm.packages = null;
       for (const [key, value] of Object.entries(vm.config)) {
         if (!/^ide\d$/.test(key)) continue;
         for (const volid of volumesIn(value)) {
-          if (!/velnox-answers-/.test(volid)) continue;
+          const packages = /velnox-packages-/.test(volid);
+          if (!/velnox-answers-/.test(volid) && !packages) continue;
           const [, name, , file] = /^([^:]+):(iso)\/(.+)$/.exec(volid);
           const files = readJoliet(readFileSync(join(storage.root(node, name), 'iso', file)));
-          const out = join(answersDir, String(vmid));
+          const out = join(answersDir, String(vmid), ...(packages ? ['packages'] : []));
           mkdirSync(out, { recursive: true });
           for (const [fname, bytes] of Object.entries(files ?? {}))
             writeFileSync(join(out, fname), bytes);
-          log(`vm ${vmid} answer media ${volid}: ${Object.keys(files ?? {}).join(', ')}`);
+          log(
+            `vm ${vmid} ${packages ? 'packages' : 'answer media'} ${volid} on ${key}: ${Object.keys(files ?? {}).join(', ')}`,
+          );
+          if (packages) {
+            vm.packages = runPackages(files ?? {});
+            writeFileSync(join(out, 'ran.json'), JSON.stringify(vm.packages.ran));
+          }
         }
       }
       log(`vm ${vmid} started`);
@@ -251,6 +292,8 @@ export function installVms({ dir, storage, nodes, installSeconds, log, existingV
     if (action === 'agent/file-read') {
       const file = query.get('file');
       if (!agentReady(vm)) return (reply(500, null, 'QEMU guest agent is not running'), true);
+      if (file === PACKAGES_RESULT && vm.packages)
+        return (reply(200, { content: vm.packages.text, truncated: false }), true);
       if (!MARKERS.has(file))
         return (reply(500, null, `open ${file}: No such file or directory`), true);
       return (reply(200, { content: 'velnox\n', truncated: false }), true);

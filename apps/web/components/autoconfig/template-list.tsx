@@ -75,16 +75,21 @@ export function TemplateList({
     <div className="space-y-4">
       {failure && <FormError>{describeError(failure)}</FormError>}
 
-      {canManage && (
-        <div className="flex flex-wrap gap-2">
-          <Link href="/autoconfig/new?family=WINDOWS">
-            <Button>{t('autoconfig.newWindows')}</Button>
-          </Link>
-          <Link href="/autoconfig/new?family=LINUX">
-            <Button variant="secondary">{t('autoconfig.newLinux')}</Button>
-          </Link>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {canManage && (
+          <>
+            <Link href="/autoconfig/new?family=WINDOWS">
+              <Button>{t('autoconfig.newWindows')}</Button>
+            </Link>
+            <Link href="/autoconfig/new?family=LINUX">
+              <Button variant="secondary">{t('autoconfig.newLinux')}</Button>
+            </Link>
+          </>
+        )}
+        <Link href="/autoconfig/packages">
+          <Button variant="secondary">{t('autoconfig.packagesTitle')}</Button>
+        </Link>
+      </div>
 
       {cloning && (
         <Card

@@ -247,6 +247,16 @@ tenants aangeboden: een hoofd-tenant aanvinken biedt het niet aan zijn sub-tenan
 via een rol lid is van een sub-tenant, met zijn account thuis in een zuster, staat niet in de lijst
 Gebruikers van die sub-tenant — zijn rol staat op zijn account, onder de zuster. Zie ADR-042.
 
+### Installatiepakketten: bewezen tegen de fixture, en vier randen
+De pakket-cd, het script en de resultaten zijn bewezen tegen de fixture, die de cd leest en elk
+pakket "uitvoert" met een exitcode die erin staat; of Windows `VELNOXPK.CMD` uitvoert zoals bedoeld —
+de geplande taak als SYSTEM, het wachten op de exitcode — moet nog op een echte Windows-VM blijken.
+Velnox herstart geen VM waarvan een pakket om een herstart vroeg (3010). Een installatieprogramma dat
+de VM zelf herstart, ondanks `/norestart`, stopt de rest van de eerste aanmelding en de bouw loopt in
+een time-out. De pakketten van een hoofd-tenant worden niet aangeboden aan de templates van zijn
+sub-tenants: upload ze ook bij de sub-tenant. En Linux-templates hebben geen MSI/EXE-tegenhanger naast
+hun extra APT-pakketten. Zie ADR-044.
+
 ### Supportlogs: wat ze niet kunnen zien, en wat ze weglaten
 Een Proxmox-taak die met een wachtwoord als credential is gestart, leest als die van Velnox, ook
 wanneer iemand met dat account op Proxmox inlogde: geef Velnox een eigen API-token. Alleen de

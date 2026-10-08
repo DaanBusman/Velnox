@@ -234,6 +234,8 @@ export const JOB_TYPES = {
 
   /** Build a VM from an Autoconfig template, and see its install through. */
   vmProvision: 'vm.provision',
+  /** Check an uploaded installer package — size, type, checksum — and make it available. */
+  packageVerify: 'autoconfig.package_verify',
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

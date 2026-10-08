@@ -25,6 +25,7 @@ import { TemplatesController } from '../modules/autoconfig/autoconfig.controller
 import { ProvisioningController } from '../modules/autoconfig/provisioning.controller';
 import { MailController } from '../modules/mail/mail.controller';
 import { SupportController } from '../modules/support/support.controller';
+import { PackagesController } from '../modules/autoconfig/packages.controller';
 import { SitesController } from '../modules/tenancy/sites.controller';
 import { TenantsController } from '../modules/tenancy/tenants.controller';
 import { UsersController } from '../modules/users/users.controller';
@@ -110,6 +111,7 @@ const CONTROLLERS = [
   ProvisioningController,
   MailController,
   SupportController,
+  PackagesController,
 ];
 
 function collectRoutes(): Route[] {

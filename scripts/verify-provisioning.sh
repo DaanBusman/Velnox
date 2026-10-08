@@ -92,6 +92,7 @@ CREATED_TENANT=""
 CLUSTER_ID=""
 ITEMS=()
 TEMPLATES=()
+PACKAGES=()
 MAIL_BEFORE=""
 
 # `call` uses $JAR; `as_tenant call …` uses the customer's session instead.
@@ -130,6 +131,27 @@ upload() {
 }
 
 job_field() { call GET "/api/v1/jobs/$1" | json "$2"; }
+
+# An installer package for a tenant, through the chunked upload; prints its id
+# once it is READY or FAILED. Run in a subshell, so the caller records the id
+# for the cleanup.
+upload_package() {
+  local tenant="$1" file="$2" name="$3" size start id csrf state
+  size=$(wc -c <"$file" | tr -d ' ')
+  start="$(call POST /api/v1/autoconfig/packages/uploads "$(T="$tenant" N="$name" S="$size" body '{ tenantId: e.T, filename: e.N, sizeBytes: Number(e.S) }')")"
+  id="$(printf '%s' "$start" | json item.id)"
+  [[ -n "$id" ]] || { printf ''; return; }
+  csrf="$(awk '$6 == "velnox_csrf" { print $7 }' "$JAR" | tail -1)"
+  curl --silent --insecure --max-time 300 --cookie "$JAR" --cookie-jar "$JAR" --request PUT \
+    --header "x-velnox-csrf: ${csrf}" --header 'content-type: application/octet-stream' \
+    --data-binary "@${file}" --output /dev/null "${BASE}/api/v1/autoconfig/packages/uploads/${id}/chunks?offset=0"
+  for _ in $(seq 1 60); do
+    state="$(call GET "/api/v1/autoconfig/packages/${id}" | json state)"
+    [[ "$state" == READY || "$state" == FAILED ]] && break
+    sleep 1
+  done
+  printf '%s' "$id"
+}
 
 # A page as the web renders it for the admin, as text, in a locale.
 page_text() {
@@ -176,6 +198,7 @@ cleanup() {
     docker logs "$FIXTURE_NAME" 2>&1 | tail -30
   fi
   for id in "${TEMPLATES[@]}"; do call DELETE "/api/v1/autoconfig/templates/${id}" >/dev/null 2>&1; done
+  for id in "${PACKAGES[@]}"; do call DELETE "/api/v1/autoconfig/packages/${id}" >/dev/null 2>&1; done
   for id in "${ITEMS[@]}"; do call DELETE "/api/v1/library/${id}" >/dev/null 2>&1; done
   [[ -n "$CLUSTER_ID" ]] && call DELETE "/api/v1/clusters/${CLUSTER_ID}" >/dev/null 2>&1
   if [[ -n "$MAIL_BEFORE" ]]; then
@@ -586,6 +609,106 @@ Q_ROOT="$(call POST "/api/v1/provisionings/${Q_ID}/reveal" | node -e 'let r="";p
 contains "per customer: the job says one was generated" "one was generated" "$(call GET "/api/v1/jobs/${Q_JOB}/logs")"
 Q_VMID="$(call GET "/api/v1/provisionings/${Q_ID}" | json vmid)"
 contains "per customer: cloud-init sets root's password, hashed" '"name": "root"' "$(in_fixture "cat /fixture/store/answers-seen/${Q_VMID}/user-data")"
+
+# ---------------------------------------------------------------------------
+# Installer packages (Phase 5C)
+# ---------------------------------------------------------------------------
+
+info "Installer packages: a tenant's own MSIs and EXEs, run after Setup from a CD of their own."
+mkdir -p "$WORK/packages"
+# The fixture "runs" a package by the exit code written in it.
+{ printf '\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'; printf 'agent payload VELNOX-EXIT=3010 '; head -c 70000 /dev/urandom; } >"$WORK/packages/agent.msi"
+{ printf 'MZ'; printf 'tool payload VELNOX-EXIT=1603 '; head -c 3000 /dev/urandom; } >"$WORK/packages/tool.exe"
+printf 'just a document, renamed\n' >"$WORK/packages/notes.msi"
+
+AGENT_ID="$(upload_package "$MSP" "$WORK/packages/agent.msi" "RMM Agent ${SHORT}.msi")"
+PACKAGES+=("$AGENT_ID")
+AGENT="$(call GET "/api/v1/autoconfig/packages/${AGENT_ID}")"
+check "packages: an MSI uploaded for the MSP is checked and ready" READY "$(printf '%s' "$AGENT" | json state)"
+check "packages: with the checksum of its bytes" "$(sha256sum "$WORK/packages/agent.msi" | cut -d' ' -f1)" "$(printf '%s' "$AGENT" | json sha256)"
+check "packages: checked by a job in the tenant's name" autoconfig.package_verify \
+  "$(psql_at "SELECT type FROM jobs WHERE target_ids @> ARRAY['${AGENT_ID}']::uuid[] ORDER BY queued_at DESC LIMIT 1;")"
+TOOL_ID="$(upload_package "$MSP" "$WORK/packages/tool.exe" "tool-${SHORT}.exe")"
+PACKAGES+=("$TOOL_ID")
+check "packages: an EXE too" READY "$(call GET "/api/v1/autoconfig/packages/${TOOL_ID}" | json state)"
+NOTES_ID="$(upload_package "$MSP" "$WORK/packages/notes.msi" "notes-${SHORT}.msi")"
+PACKAGES+=("$NOTES_ID")
+NOTES="$(call GET "/api/v1/autoconfig/packages/${NOTES_ID}")"
+check "packages: a renamed document is refused by its bytes" FAILED "$(printf '%s' "$NOTES" | json state)"
+check "packages: and says why" autoconfig.package_not_installer "$(printf '%s' "$NOTES" | json errorCode)"
+call POST /api/v1/autoconfig/packages/uploads "$(T="$MSP" body '{ tenantId: e.T, filename: "../evil.msi", sizeBytes: 10 }')" >/dev/null
+check "packages: a path for a name is refused" 400 "$(last_status)"
+call POST /api/v1/autoconfig/packages/uploads "$(T="$MSP" body '{ tenantId: e.T, filename: "run.bat", sizeBytes: 10 }')" >/dev/null
+check "packages: only MSI and EXE are taken" 400 "$(last_status)"
+call POST /api/v1/autoconfig/packages/uploads "$(T="$MSP" N="RMM Agent ${SHORT}.msi" body '{ tenantId: e.T, filename: e.N, sizeBytes: 10 }')" >/dev/null
+check "packages: a name the tenant already has is refused" 409 "$(last_status)"
+call POST /api/v1/autoconfig/packages/uploads "$(T="$MSP" body '{ tenantId: e.T, filename: "huge.exe", sizeBytes: 3221225472 }')" >/dev/null
+check "packages: more than 2 GB is refused" 400 "$(last_status)"
+
+lacks "packages: a customer does not see the MSP's packages" "$AGENT_ID" "$(as_tenant call GET /api/v1/autoconfig/packages)"
+as_tenant call GET "/api/v1/autoconfig/packages?tenantId=${MSP}" >/dev/null
+check "packages: nor list them by asking for the MSP" 403 "$(last_status)"
+as_tenant call GET "/api/v1/autoconfig/packages/${AGENT_ID}" >/dev/null
+check "packages: nor read one by its id" 404 "$(last_status)"
+as_tenant call POST /api/v1/autoconfig/packages/uploads "$(T="$MSP" body '{ tenantId: e.T, filename: "mine.msi", sizeBytes: 10 }')" >/dev/null
+check "packages: nor upload one for the MSP" 403 "$(last_status)"
+OWN_ID="$(as_tenant upload_package "$CREATED_TENANT" "$WORK/packages/agent.msi" "own-${SHORT}.msi")"
+PACKAGES+=("$OWN_ID")
+check "packages: a customer uploads its own" READY "$(as_tenant call GET "/api/v1/autoconfig/packages/${OWN_ID}" | json state)"
+call GET "/api/v1/autoconfig/packages/${OWN_ID}" >/dev/null
+check "packages: which the MSP sees too" 200 "$(last_status)"
+BORROWED="$(as_tenant call POST /api/v1/autoconfig/templates "$(T="$CREATED_TENANT" P="$AGENT_ID" body "{ tenantId: e.T, name: 'Borrowed ' + e.RUN, visibility: 'PRIVATE', settings: Object.assign(${WIN_SETTINGS}, { administratorPassword: 'GENERATE', packages: [{ packageId: e.P }] }) }")")"
+check "packages: a customer's template cannot run the MSP's" 400 "$(last_status)"
+check "packages: and is told so" autoconfig.package_unavailable "$(printf '%s' "$BORROWED" | json error.code)"
+
+call POST /api/v1/autoconfig/templates "$(P="$AGENT_ID" body "{ tenantId: e.MSP, name: 'No agent ' + e.RUN, settings: Object.assign(${WIN_SETTINGS}, { virtio: false, guestAgent: false, imageName: 'Windows Server 2025 Standard', accounts: [], packages: [{ packageId: e.P }] }), secrets: { administrator: e.ADMIN_PW } }")" >/dev/null
+check "packages: refused without the guest agent that reports on them" 400 "$(last_status)"
+call POST /api/v1/autoconfig/templates "$(P="$NOTES_ID" body "{ tenantId: e.MSP, name: 'Failed pkg ' + e.RUN, settings: Object.assign(${WIN_SETTINGS}, { packages: [{ packageId: e.P }] }), secrets: { administrator: e.ADMIN_PW } }")" >/dev/null
+check "packages: a package that is not ready is refused" 400 "$(last_status)"
+
+PKG_T="$(call POST /api/v1/autoconfig/templates "$(A="$AGENT_ID" B="$TOOL_ID" body "{ tenantId: e.MSP, name: 'With packages ' + e.RUN, visibility: 'SHARED', settings: Object.assign(${WIN_SETTINGS}, { packages: [{ packageId: e.A, arguments: 'SERVER=\"https://rmm.example\" /qn /norestart', runAs: 'SYSTEM', required: true }, { packageId: e.B, arguments: '/S', runAs: 'ADMINISTRATOR', required: false }] }), secrets: { administrator: e.ADMIN_PW } }")")"
+check "packages: an MSP template runs two" 201 "$(last_status)"
+PKG_TID="$(printf '%s' "$PKG_T" | json id)"; TEMPLATES+=("$PKG_TID")
+call DELETE "/api/v1/autoconfig/packages/${AGENT_ID}" >/dev/null
+check "packages: one a template runs cannot be removed" 409 "$(last_status)"
+contains "packages: and the list says which template" "With packages ${RUN}" "$(call GET "/api/v1/autoconfig/packages?tenantId=${MSP}")"
+PKG_CLONE="$(as_tenant call POST "/api/v1/autoconfig/templates/${PKG_TID}/clone" "$(T="$CREATED_TENANT" body '{ tenantId: e.T, name: "My packages copy " + e.RUN }')")"
+check "packages: a customer's copy of it" 201 "$(last_status)"
+TEMPLATES+=("$(printf '%s' "$PKG_CLONE" | json id)")
+check "packages: runs none of the MSP's" "[]" "$(printf '%s' "$PKG_CLONE" | json settings.packages)"
+
+PK_HOST="pk${SHORT}"
+PK="$(call POST /api/v1/provisionings "$(TID="$PKG_TID" HOST="$PK_HOST" NOTIFY=no body "$PROV")")"
+check "packages: a customer's VM from it is accepted" 201 "$(last_status)"
+PK_ID="$(printf '%s' "$PK" | json provisioning.id)"
+PK_JOB="$(printf '%s' "$PK" | json job.id)"
+check "packages: the build succeeds" SUCCEEDED "$(wait_for "$PK_JOB" 240 SUCCEEDED FAILED CANCELLED)"
+PK_VMID="$(call GET "/api/v1/provisionings/${PK_ID}" | json vmid)"
+PK_SEEN="/fixture/store/answers-seen/${PK_VMID}/packages"
+contains "packages: the guest got a CD with the script and both packages" "P01.CMD P01.MSI P02.CMD P02.EXE VELNOXPK.CMD" "$(in_fixture "ls ${PK_SEEN} | grep -v ran.json | tr '\n' ' '")"
+check "packages: the MSI on it is the one uploaded" "$(sha256sum "$WORK/packages/agent.msi" | cut -d' ' -f1)" "$(in_fixture "sha256sum ${PK_SEEN}/P01.MSI | cut -d' ' -f1")"
+PK_SCRIPT="$(in_fixture "cat ${PK_SEEN}/VELNOXPK.CMD ${PK_SEEN}/P01.CMD")"
+contains "packages: the first runs as SYSTEM" "call :system 01" "$PK_SCRIPT"
+contains "packages: the second as Administrator" "call :admin 02" "$PK_SCRIPT"
+contains "packages: with the arguments as written" 'SERVER="https://rmm.example" /qn /norestart' "$PK_SCRIPT"
+contains "packages: the script runs at first logon" "VELNOXPK.CMD" "$(in_fixture "cat /fixture/store/answers-seen/${PK_VMID}/Autounattend.xml")"
+PK_LOGS="$(call GET "/api/v1/jobs/${PK_JOB}/logs")"
+contains "packages: the job reports the first installed and wanting a restart" "Package 01, RMM Agent ${SHORT}.msi: installed; wants a restart (3010)" "$PK_LOGS"
+contains "packages: and the second failing, without failing the build" "Package 02, tool-${SHORT}.exe: failed: fatal error during installation (1603) (not required; the build goes on)" "$PK_LOGS"
+lacks "packages: the packages CD is gone from the storage" "velnox-packages-${PK_ID}" "$(in_fixture 'ls /fixture/store/node-pve1/local/iso')"
+
+PKR_T="$(call POST /api/v1/autoconfig/templates "$(B="$TOOL_ID" A="$AGENT_ID" body "{ tenantId: e.MSP, name: 'Required fails ' + e.RUN, visibility: 'SHARED', settings: Object.assign(${WIN_SETTINGS}, { packages: [{ packageId: e.B, arguments: '/S', required: true }, { packageId: e.A }] }), secrets: { administrator: e.ADMIN_PW } }")")"
+PKR_TID="$(printf '%s' "$PKR_T" | json id)"; TEMPLATES+=("$PKR_TID")
+PKR="$(call POST /api/v1/provisionings "$(TID="$PKR_TID" HOST="pf${SHORT}" NOTIFY=no body "$PROV")")"
+PKR_ID="$(printf '%s' "$PKR" | json provisioning.id)"
+PKR_JOB="$(printf '%s' "$PKR" | json job.id)"
+check "packages: a required package that fails fails the build" FAILED "$(wait_for "$PKR_JOB" 240 SUCCEEDED FAILED CANCELLED)"
+PKR_REC="$(call GET "/api/v1/provisionings/${PKR_ID}")"
+check "packages: with the reason" provisioning.package_failed "$(printf '%s' "$PKR_REC" | json errorCode)"
+check "packages: naming the package and its exit code" "tool-${SHORT}.exe|1603" "$(printf '%s' "$PKR_REC" | json errorParams.filename)|$(printf '%s' "$PKR_REC" | json errorParams.exitCode)"
+contains "packages: the next one was not run" "Package 02, RMM Agent ${SHORT}.msi: did not run, because a required package before it failed" "$(call GET "/api/v1/jobs/${PKR_JOB}/logs")"
+contains "packages: the VM is removed, disks and all" "vm $(printf '%s' "$PKR_REC" | json vmid) destroyed (purge=1)" "$(FIXLOG)"
+lacks "packages: and so is its packages CD" "velnox-packages-${PKR_ID}" "$(in_fixture 'ls /fixture/store/node-pve1/local/iso')"
 
 # ---------------------------------------------------------------------------
 # A failure, and a cancellation

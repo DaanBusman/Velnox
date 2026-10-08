@@ -165,8 +165,8 @@ vandaag toekenbaar en bewaakt nog niets.
 | `networks.read` | Bridges, VLAN's en netwerkconfiguratie zien | 4 |
 | `library.read` | De ISO-bibliotheek zien, en eruit kiezen bij het uitrollen | 5A |
 | `library.manage` | Bestanden aan de ISO-bibliotheek toevoegen vanaf een URL, een upload of een cluster, ze hernoemen en ze verwijderen. Een bestand naar of van een cluster verplaatsen vereist daarnaast `clusters.manage` op dat cluster | 5A |
-| `autoconfig.read` | De Autoconfig-templates zien waaruit deze tenant mag bouwen: de eigen en de gedeelde van de MSP | 5B |
-| `autoconfig.manage` | Templates maken, wijzigen, klonen en verwijderen — MSP-templates met een recht op de MSP, de eigen templates van een tenant met een recht op die tenant. De wachtwoorden van een template zijn nooit te lezen | 5B |
+| `autoconfig.read` | De Autoconfig-templates zien waaruit deze tenant mag bouwen: de eigen en de gedeelde van de MSP; en de installatiepakketten van deze tenant (5C) | 5B |
+| `autoconfig.manage` | Templates maken, wijzigen, klonen en verwijderen — MSP-templates met een recht op de MSP, de eigen templates van een tenant met een recht op die tenant. De wachtwoorden van een template zijn nooit te lezen. De installatiepakketten van de tenant uploaden en verwijderen (5C) | 5B |
 | `updates.read` | Beschikbare pakketupdates zien | 6 |
 | `updates.execute` | Updates toepassen op echte nodes | 6 |
 | `upgrades.read` | Plannen en gereedheid voor major upgrades zien | 8 |
