@@ -790,7 +790,11 @@
     "subtitle": "Preferences for this browser.",
     "title": "Settings",
     "motionLabel": "Moving background",
-    "motionHint": "Slow, soft shapes behind the screens, in the colours of the light or dark theme. Still if your system asks for reduced motion."
+    "motionHint": "Slow, soft shapes behind the screens, in the colours of the light or dark theme. Still if your system asks for reduced motion.",
+    "timeZoneLabel": "Time zone",
+    "timeZoneHint": "Every date and time on the screens is shown in this zone — \"Last read\", job times, the audit log. Now: {now}.",
+    "timeZoneDefault": "The installation’s ({zone})",
+    "timeZoneBrowser": "This browser’s ({zone})"
   },
   "sites": {
     "add": "Add site",

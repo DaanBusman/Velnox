@@ -139,7 +139,7 @@ Working today:
 | **Audit log** | Every authentication and authorisation event, newest first |
 | **Security** | Two-factor authentication for your own account and, for administrators, single sign-on — the Microsoft Entra ID wizard |
 | **Server management** | The installation itself: service status, audit log, certificate, upgrade procedure, and About this server |
-| **Settings** | Language, how often screens refresh, the moving background, and the source offer — per browser, open to everyone |
+| **Settings** | Language, how often screens refresh, your time zone, the moving background, and the source offer — per browser, open to everyone |
 | **Documentation** | This documentation, offline, stamped with the running version |
 
 **Server management** opens as a window over whatever you were doing, from the bottom of the
@@ -164,6 +164,11 @@ are no English sentences hiding in the code waiting to appear in the middle of a
 the API returns error *codes* rather than sentences, so a message is rendered in the reader's
 language rather than the server's. [Localization architecture](i18n.md) explains how that is
 enforced.
+
+**Your own time zone.** Under **Settings → Time zone**, every date and time on the screens —
+*Last read*, job times, the audit log — is shown in the zone you choose: the installation's, your
+browser's, or any other. Like the language, it is kept in this browser and changes nothing for
+anyone else.
 
 The installation-wide defaults for new accounts are `VELNOX_DEFAULT_LOCALE` and
 `VELNOX_DEFAULT_TIMEZONE` in `.env`.

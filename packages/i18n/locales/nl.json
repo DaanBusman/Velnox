@@ -791,7 +791,11 @@
     "subtitle": "Voorkeuren voor deze browser.",
     "title": "Instellingen",
     "motionLabel": "Dynamische achtergrond",
-    "motionHint": "Langzaam bewegende, zachte vormen achter de schermen, in de kleuren van het lichte of donkere thema. Staat stil als je systeem om minder beweging vraagt."
+    "motionHint": "Langzaam bewegende, zachte vormen achter de schermen, in de kleuren van het lichte of donkere thema. Staat stil als je systeem om minder beweging vraagt.",
+    "timeZoneLabel": "Tijdzone",
+    "timeZoneHint": "Elke datum en tijd op de schermen wordt in deze zone getoond — \"Laatst uitgelezen\", tijden van jobs, het auditlog. Nu: {now}.",
+    "timeZoneDefault": "Die van de installatie ({zone})",
+    "timeZoneBrowser": "Die van deze browser ({zone})"
   },
   "sites": {
     "add": "Locatie toevoegen",

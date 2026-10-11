@@ -8,8 +8,9 @@
  */
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, getTimeZone } from 'next-intl/server';
 import { Providers } from '@/components/providers';
+import { FORMATS } from '@/i18n/formats';
 import { tryGetSystemInfo } from '@/lib/api';
 import './globals.css';
 
@@ -31,12 +32,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
+  const [locale, messages, timeZone] = await Promise.all([
+    getLocale(),
+    getMessages(),
+    getTimeZone(),
+  ]);
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body>
-        <NextIntlClientProvider messages={messages}>
+        {/* The zone passed on explicitly: client components format times in it too. */}
+        <NextIntlClientProvider messages={messages} timeZone={timeZone} formats={FORMATS}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
       </body>

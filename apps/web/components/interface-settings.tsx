@@ -1,14 +1,15 @@
 'use client';
 
-import { useTransition } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState, useTransition } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import { LOCALES, LOCALE_LABELS, type Locale } from '@velnox/i18n';
-import { setLocale, setMotionBackground, setRefreshInterval } from '@/app/actions';
+import { setLocale, setMotionBackground, setRefreshInterval, setTimeZone } from '@/app/actions';
 import { Card } from '@/components/ui/primitives';
 import { Field } from '@/components/ui/form';
 
 /**
- * The interface preferences: language, and how often screens re-read themselves.
+ * The interface preferences: language, how often screens re-read themselves,
+ * the time zone times are shown in, and the moving background.
  *
  * Both are per-viewer cookies rather than rows on the account. That is the
  * honest scope: they change what one person sees in one browser, they carry no
@@ -24,14 +25,33 @@ export function InterfaceSettings({
   refreshSeconds,
   refreshChoices,
   motionBackground,
+  timeZone,
+  installationTimeZone,
 }: {
   locale: string;
   refreshSeconds: number;
   refreshChoices: readonly number[];
   motionBackground: boolean;
+  /** The viewer's own zone, or null for the installation's. */
+  timeZone: string | null;
+  installationTimeZone: string;
 }) {
   const t = useTranslations();
+  const format = useFormatter();
   const [pending, startTransition] = useTransition();
+  // Known only in the browser: its own zone and every zone it can name.
+  const [browserZone, setBrowserZone] = useState<string | null>(null);
+  const [zones, setZones] = useState<string[]>([]);
+  useEffect(() => {
+    setBrowserZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const supported = (
+      Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
+    ).supportedValuesOf?.('timeZone');
+    setZones(supported ?? []);
+  }, []);
+  const shownZones = [...new Set([...(timeZone ? [timeZone] : []), ...zones])].sort((a, b) =>
+    a.localeCompare(b),
+  );
 
   const selectClass =
     'h-9 w-full max-w-xs rounded border border-line bg-surface px-2.5 text-sm text-ink disabled:opacity-60';
@@ -81,6 +101,42 @@ export function InterfaceSettings({
                   {seconds === 0
                     ? t('settings.refreshOff')
                     : t('settings.refreshEvery', { seconds })}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+
+        <Field
+          label={t('settings.timeZoneLabel')}
+          hint={t('settings.timeZoneHint', {
+            now: format.dateTime(new Date(), { dateStyle: 'medium', timeStyle: 'short' }),
+          })}
+        >
+          {(props) => (
+            <select
+              {...props}
+              value={timeZone ?? ''}
+              disabled={pending}
+              className={selectClass}
+              onChange={(event) => {
+                const next = event.target.value || null;
+                startTransition(async () => {
+                  await setTimeZone(next);
+                });
+              }}
+            >
+              <option value="">
+                {t('settings.timeZoneDefault', { zone: installationTimeZone })}
+              </option>
+              {browserZone && browserZone !== timeZone && (
+                <option value={browserZone}>
+                  {t('settings.timeZoneBrowser', { zone: browserZone })}
+                </option>
+              )}
+              {shownZones.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone.replace(/_/g, ' ')}
                 </option>
               ))}
             </select>

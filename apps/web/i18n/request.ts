@@ -2,6 +2,8 @@ import { getRequestConfig } from 'next-intl/server';
 import type { AbstractIntlMessages } from 'next-intl';
 import { cookies, headers } from 'next/headers';
 import { LOCALE_COOKIE, resolveLocale, type Locale } from '@velnox/i18n';
+import { installationTimeZone, isTimeZone, TIMEZONE_COOKIE } from '@/lib/preferences';
+import { FORMATS } from './formats';
 import en from '@velnox/i18n/locales/en.json';
 import nl from '@velnox/i18n/locales/nl.json';
 
@@ -36,9 +38,13 @@ export default getRequestConfig(async () => {
     installationDefault: process.env.VELNOX_DEFAULT_LOCALE,
   });
 
+  // The viewer's own zone when they chose one in Settings, the installation's otherwise.
+  const chosen = cookieStore.get(TIMEZONE_COOKIE)?.value;
+
   return {
     locale,
     messages: CATALOGUES[locale],
-    timeZone: process.env.VELNOX_DEFAULT_TIMEZONE || 'Europe/Amsterdam',
+    timeZone: isTimeZone(chosen) ? chosen : installationTimeZone(),
+    formats: FORMATS,
   };
 });

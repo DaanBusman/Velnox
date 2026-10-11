@@ -3,7 +3,13 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { isLocale, LOCALE_COOKIE } from '@velnox/i18n';
-import { isRefreshSeconds, MOTION_BACKGROUND_COOKIE, REFRESH_COOKIE } from '@/lib/preferences';
+import {
+  isRefreshSeconds,
+  isTimeZone,
+  MOTION_BACKGROUND_COOKIE,
+  REFRESH_COOKIE,
+  TIMEZONE_COOKIE,
+} from '@/lib/preferences';
 import { SELECTED_TENANT_COOKIE } from '@/lib/tenant-selection';
 
 /**
@@ -45,6 +51,26 @@ export async function setRefreshInterval(seconds: number): Promise<void> {
     httpOnly: false, // a display preference; it carries no authority
   });
 
+  revalidatePath('/', 'layout');
+}
+
+/**
+ * The time zone this viewer reads times in. Null goes back to the
+ * installation's default; an unknown zone is ignored rather than stored.
+ */
+export async function setTimeZone(zone: string | null): Promise<void> {
+  const store = await cookies();
+  if (zone === null) {
+    store.delete(TIMEZONE_COOKIE);
+  } else {
+    if (!isTimeZone(zone)) return;
+    store.set(TIMEZONE_COOKIE, zone, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+      httpOnly: false, // a display preference; it carries no authority
+    });
+  }
   revalidatePath('/', 'layout');
 }
 

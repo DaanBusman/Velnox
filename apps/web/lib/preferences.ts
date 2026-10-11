@@ -32,6 +32,37 @@ export type RefreshSeconds = (typeof REFRESH_CHOICES)[number];
 /** The cadence shipped before this was a setting, kept as the default. */
 export const DEFAULT_REFRESH_SECONDS: RefreshSeconds = 2;
 
+/**
+ * The time zone dates and times are shown in, for this viewer: an IANA name
+ * such as `Europe/Amsterdam`. Absent means the installation's default
+ * (VELNOX_DEFAULT_TIMEZONE). A display preference like the others — it changes
+ * how a time is written, never which time it is.
+ */
+export const TIMEZONE_COOKIE = 'velnox_timezone';
+
+/** A time zone this runtime knows. Anything else is ignored, never an error. */
+export function isTimeZone(value: string | undefined | null): value is string {
+  if (!value || value.length > 64 || !/^[A-Za-z0-9_+\-/]+$/.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The installation's default zone, which a viewer without a choice sees. */
+export const installationTimeZone = (): string =>
+  isTimeZone(process.env.VELNOX_DEFAULT_TIMEZONE)
+    ? process.env.VELNOX_DEFAULT_TIMEZONE
+    : 'Europe/Amsterdam';
+
+/** The viewer's chosen zone, or null for the installation's default. */
+export async function viewerTimeZone(): Promise<string | null> {
+  const raw = (await cookies()).get(TIMEZONE_COOKIE)?.value;
+  return isTimeZone(raw) ? raw : null;
+}
+
 /** Whether the signed-in screens move behind their content. Off by default. */
 export const MOTION_BACKGROUND_COOKIE = 'velnox_motion_bg';
 

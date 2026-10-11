@@ -144,7 +144,7 @@ Werkt vandaag:
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
 | **Beveiliging** | Meervoudige authenticatie voor je eigen account en, voor beheerders, single sign-on — de wizard voor Microsoft Entra ID |
 | **Serverbeheer** | De installatie zelf: servicestatus, auditlog, certificaat, upgradeprocedure, en Over deze server |
-| **Instellingen** | Taal, hoe vaak schermen verversen, de dynamische achtergrond, en het bronaanbod — per browser, voor iedereen toegankelijk |
+| **Instellingen** | Taal, hoe vaak schermen verversen, je tijdzone, de dynamische achtergrond, en het bronaanbod — per browser, voor iedereen toegankelijk |
 | **Documentatie** | Deze documentatie, offline, gestempeld met de draaiende versie |
 
 **Serverbeheer** opent als een venster over waar je mee bezig was, vanaf de onderkant van de
@@ -168,6 +168,11 @@ vertaalcatalogus — er zitten geen Engelse zinnen in de code verstopt die opeen
 Nederlandse pagina opduiken — en de API geeft foutcodes terug in plaats van zinnen, zodat een
 melding in de taal van de lezer wordt weergegeven en niet in die van de server.
 [Lokalisatiearchitectuur](i18n.md) legt uit hoe dat wordt afgedwongen.
+
+**Je eigen tijdzone.** Onder **Instellingen → Tijdzone** wordt elke datum en tijd op de schermen —
+*Laatst uitgelezen*, tijden van jobs, het auditlog — getoond in de zone die je kiest: die van de
+installatie, die van je browser, of een andere. Net als de taal wordt die in deze browser bewaard en
+verandert die voor niemand anders iets.
 
 De installatiebrede standaarden voor nieuwe accounts zijn `VELNOX_DEFAULT_LOCALE` en
 `VELNOX_DEFAULT_TIMEZONE` in `.env`.
