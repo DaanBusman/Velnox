@@ -423,7 +423,13 @@
       "window_closed": "Het onderhoudsvenster sloot voordat de update iets ging wijzigen; er is niets gewijzigd.",
       "not_quorate": "Het cluster zou geen quorum houden ({online} van {total} nodes online); er is niets gedaan dat quorum kon kosten.",
       "command_failed": "{command} eindigde met exitcode {exitCode}. De uitvoer van de job laat zien waarom.",
-      "reboot_timeout": "{node} kwam niet binnen {minutes} minuten na de herstart terug."
+      "reboot_timeout": "{node} kwam niet binnen {minutes} minuten na de herstart terug.",
+      "cluster_degraded": "Het cluster is gedegradeerd ({reason}); een rolling update begint er niet aan.",
+      "plan_refused": "Het plan zou het cluster quorum kosten: {reason}",
+      "not_migratable": "Deze draaiende gasten kunnen niet live verhuizen: {guests}. Verplaats of stop ze, of kies ervoor ze af te sluiten voor de herstart.",
+      "capacity_short": "Terwijl {node} down is, hebben zijn gasten {neededGb} GB nodig; de andere nodes hebben {freeGb} GB vrij.",
+      "migration_failed": "Gast {vmid} verplaatsen van {from} naar {to} is mislukt. De uitvoer van de job laat zien waarom.",
+      "validation_failed": "{node} kwam na de update niet heel terug ({reason}); de run is daar gestopt."
     },
     "maintenance": {
       "window_in_use": "Dit venster wordt gebruikt door {policies, plural, one {een beleid} other {# beleidsregels}}. Wijzig die eerst."
@@ -562,7 +568,8 @@
       "step_skipped": "Stap {step} overgeslagen",
       "step_started": "Stap {step} gestart",
       "step_succeeded": "Stap {step} geslaagd",
-      "job_cleanup_failed": "Niet alles wat de job had gestart kon worden opgeruimd. Controleer wat er is achtergebleven."
+      "job_cleanup_failed": "Niet alles wat de job had gestart kon worden opgeruimd. Controleer wat er is achtergebleven.",
+      "job_partially_succeeded": "Gedeeltelijk geslaagd"
     },
     "events": "Gebeurtenissen",
     "finishedAt": "Afgerond",
@@ -603,7 +610,8 @@
       "cluster_delete": "Verwijderen van cluster",
       "provision": "VM bouwen",
       "package_verify": "Pakket controleren",
-      "update": "Node bijwerken"
+      "update": "Node bijwerken",
+      "rolling_update": "Rolling update"
     }
   },
   "layout": {
@@ -1686,6 +1694,26 @@
     "historyBody": "Elke node-update, door een persoon of door een beleid. Open er een voor de uitvoer.",
     "noHistory": "Nog geen updates.",
     "byPolicy": "door een beleid",
-    "aNode": "een node"
+    "aNode": "een node",
+    "rollingTitle": "{cluster} node voor node bijwerken",
+    "rollingBody": "Elke node om de beurt: zijn draaiende gasten naar de andere verplaatst, bijgewerkt, zo nodig herstart, gecontroleerd, en de gasten teruggezet. Het cluster verliest nooit quorum, en de run begint niet op een cluster dat al gedegradeerd is.",
+    "rollingStarted": "Rolling update gestart",
+    "rollingRefused": "Een rolling update kan niet beginnen",
+    "capacityShort": "Terwijl {node} down is, hebben zijn gasten {needed} GB nodig en hebben de andere nodes {free} GB vrij.",
+    "guestsToMove": "verplaatst {guests}",
+    "noGuests": "geen draaiende gasten",
+    "concurrency": "Nodes tegelijk",
+    "concurrencyHint": "Hoogstens {max} op dit cluster zonder quorum te verliezen.",
+    "nonMigratable": "Een gast die niet live kan verhuizen",
+    "nonMigratableHint": "Een gast met een schijf op de eigen opslag van een node, of een doorgegeven apparaat, kan niet naar een andere node verhuizen terwijl hij draait.",
+    "nonMigratablePolicy": {
+      "BLOCK": "Niet beginnen",
+      "SHUTDOWN": "Afsluiten voor de herstart van zijn node, daarna starten"
+    },
+    "settle": "Minuten om te stabiliseren",
+    "settleHint": "Hoe lang een node, het cluster en Ceph mogen doen om na een herstart weer heel te zijn voordat de run stopt.",
+    "migrateBack": "Gasten daarna terugzetten",
+    "migrateBackHint": "Elke gast gaat terug naar de node waar hij vandaan kwam zodra die node klaar is.",
+    "rollingStart": "Rolling update starten"
   }
 }

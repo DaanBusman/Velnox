@@ -155,9 +155,11 @@ if [[ -n "${VELNOX_ADMIN_EMAIL:-}" && -n "${VELNOX_ADMIN_PASSWORD:-}" ]]; then
   call POST /api/v1/auth/login "$WORK/login.json" >/dev/null
   rm -f "$WORK/login.json"
   check "admin: signs in" 200 "$(last_status)"
+  ACTOR="$VELNOX_ADMIN_EMAIL"
 else
   make_user "$MSP" msp_super_administrator admin >/dev/null
   check "admin: signs in" 200 "$(login "$JAR" admin)"
+  ACTOR="${RUN}%"
 fi
 unset VELNOX_ADMIN_PASSWORD
 
@@ -217,7 +219,7 @@ check "the database holds no key in the clear" 0 "$(psql_at "SELECT count(*) FRO
 check "the audit log holds no key" 0 "$(psql_at "SELECT count(*) FROM audit_events WHERE metadata::text LIKE '%PRIVATE KEY%';")"
 check "the key is in the secret store, encrypted" 1 "$(psql_at "SELECT count(*) FROM credentials WHERE kind = 'TLS_PRIVATE_KEY';")"
 check "the key file is readable by its owner only" 600 "$(in_api 'stat -c %a /var/lib/velnox/tls/velnox.key')"
-check "the change is audited" 1 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'system.tls_changed' AND actor_label LIKE '${RUN}%' AND metadata->>'to' = 'certificate' AND result = 'SUCCESS';")"
+check "the change is audited" 1 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'system.tls_changed' AND actor_label LIKE '${ACTOR}' AND metadata->>'to' = 'certificate' AND result = 'SUCCESS';")"
 
 info "It survives restarts."
 dc restart caddy >/dev/null 2>&1
@@ -272,7 +274,7 @@ R="$(put_tls '{ mode: "installer" }')"
 check "handing it back is accepted" "200 installer" "$(last_status) $(printf '%s' "$R" | json status.managedBy)"
 check "the installer's certificate is served again" "$INSTALLER_FP" "$(served_fingerprint)"
 check "the managed file imports the installer's again" "import /etc/caddy/tls/tls.caddy" "$(in_api 'tail -1 /var/lib/velnox/tls/tls.caddy')"
-check "every change was audited" 4 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'system.tls_changed' AND actor_label LIKE '${RUN}%' AND result = 'SUCCESS';")"
+check "every change was audited" 4 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'system.tls_changed' AND actor_label LIKE '${ACTOR}' AND result = 'SUCCESS';")"
 check "the admin API has no port: only its socket" "" "$(dc exec -T caddy sh -c 'netstat -ltn 2>/dev/null | grep -E ":2019 " || true')"
 
 printf '\n'

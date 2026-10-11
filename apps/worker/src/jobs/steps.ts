@@ -86,3 +86,16 @@ export class StepError extends Error {
     this.name = 'StepError';
   }
 }
+
+/**
+ * Stop the run and keep what is done (Phase 7): the job ends PARTIALLY_SUCCEEDED
+ * rather than FAILED. For a playbook made of independent units — the nodes of
+ * a rolling update — where a unit that fails must stop the rest, and the units
+ * already finished are finished, not failed.
+ */
+export class PartialStop extends StepError {
+  constructor(code: string, message: string, params?: ErrorParams) {
+    super(code, message, params);
+    this.name = 'PartialStop';
+  }
+}

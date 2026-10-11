@@ -77,7 +77,6 @@ node_row() {
 }
 
 psql_at() { "${COMPOSE[@]}" exec -T postgres psql -U velnox -d velnox -v ON_ERROR_STOP=1 -Atc "$1"; }
-in_fixture() { MSYS_NO_PATHCONV=1 docker exec "$FIXTURE_NAME" sh -c "$1"; }
 
 WORK="$(mktemp -d)"
 JAR="$WORK/cookies"
@@ -141,6 +140,7 @@ login() { # jar label → status
   printf '%s' "$status"
 }
 
+# shellcheck disable=SC2329  # called by the EXIT trap below
 cleanup() {
   if ((FAIL > 0)); then
     info "Last lines from the fixture:"
@@ -354,7 +354,13 @@ for _ in $(seq 1 90); do
   [[ -n "$AUTO" ]] && break
   sleep 1
 done
-[[ -n "$AUTO" ]] && { green "auto: inside the window, the policy started an update"; PASS=$((PASS + 1)); } || { red "auto: no update started inside the window"; FAIL=$((FAIL + 1)); }
+if [[ -n "$AUTO" ]]; then
+  green "auto: inside the window, the policy started an update"
+  PASS=$((PASS + 1))
+else
+  red "auto: no update started inside the window"
+  FAIL=$((FAIL + 1))
+fi
 if [[ -n "$AUTO" ]]; then
   contains "auto: and says which policy started it" 'Queued by update policy "Automatic"' "$(psql_at "SELECT message FROM job_events WHERE job_id = '${AUTO}' AND event_key = 'job.queued';")"
   wait_for "$AUTO" 120 SUCCEEDED FAILED >/dev/null

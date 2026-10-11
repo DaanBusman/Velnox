@@ -124,6 +124,7 @@ const ops = opsModule
   ? opsModule.installOps({
       nodes: NODES,
       storage,
+      dir: STORAGE_DIR,
       log: (line) => console.log(line),
       rebootSeconds: Number(option('reboot-seconds', '8')),
       failUpgrade: (option('fail-upgrade', '') ?? '').split(',').filter(Boolean),

@@ -110,7 +110,11 @@ export async function scheduleUpdates(
           level: 'INFO',
           key: JOB_EVENT_KEYS.queued,
           message: `Queued by update policy "${policy.name}" in window "${policy.window.name}"`,
-          data: { policyId: policy.id, windowId: policy.window.id },
+          data: {
+            by: `update policy "${policy.name}"`,
+            policyId: policy.id,
+            windowId: policy.window.id,
+          },
         });
         await prisma.auditEvent.create({
           data: {

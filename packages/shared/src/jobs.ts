@@ -171,6 +171,8 @@ export const JOB_EVENT_KEYS = {
   cancelRequested: 'job.cancel_requested',
   cancelled: 'job.cancelled',
   succeeded: 'job.succeeded',
+  /** Some units finished and one stopped the run (a rolling update's nodes). */
+  partiallySucceeded: 'job.partially_succeeded',
   failed: 'job.failed',
   workerLost: 'job.worker_lost',
   /** A job that did not finish could not undo what it had started. Someone should look. */
@@ -238,6 +240,8 @@ export const JOB_TYPES = {
   packageVerify: 'autoconfig.package_verify',
   /** Apply a node's pending updates, and reboot it if its policy says so (Phase 6). */
   nodeUpdate: 'node.update',
+  /** Update every node of a cluster, guests moved away first, quorum kept (Phase 7). */
+  rollingUpdate: 'cluster.rolling_update',
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

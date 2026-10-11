@@ -6,7 +6,9 @@ import {
   JOB_TYPES,
   PERMISSIONS,
   VelnoxError,
+  PlanRefused,
   isAllowed,
+  planRollingGroups,
   windowState,
   type JobDetail,
   type MaintenanceWindowInput,
@@ -15,6 +17,9 @@ import {
   type NodeUpdatesSummary,
   type PendingPackage,
   type RebootPolicy,
+  type RollingPlanPreview,
+  type RollingUpdateParams,
+  type RollingUpdateRequest,
   type UpdatePolicyInput,
   type UpdatePolicySummary,
 } from '@velnox/shared';
@@ -189,6 +194,183 @@ export class UpdatesService {
         concurrencyLabel: node.name,
         targetKind: 'node',
         targetIds: [node.id],
+        parentJobId: null,
+      },
+      actor,
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Rolling updates (Phase 7)
+  // -------------------------------------------------------------------------
+
+  private async clusterForRolling(clusterId: string) {
+    const cluster = await this.prisma.client.cluster.findUnique({
+      where: { id: clusterId },
+      include: {
+        nodes: { orderBy: { name: 'asc' } },
+        updatePolicy: { include: { window: true } },
+      },
+    });
+    if (!cluster) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
+    return cluster;
+  }
+
+  /**
+   * What a rolling update would do, from the inventory: the groups, the
+   * running guests to move, and whether the other nodes have room. Whether
+   * each guest can really move live is read from Proxmox when the job starts.
+   */
+  async rollingPlan(clusterId: string, concurrency: number): Promise<RollingPlanPreview> {
+    const cluster = await this.clusterForRolling(clusterId);
+    const down = cluster.nodes.filter((n) => n.state !== 'ONLINE');
+    let groups: string[][] = [];
+    let refused: RollingPlanPreview['refused'] = null;
+    if (down.length) {
+      refused = {
+        code: ERROR_CODES.updateClusterDegraded,
+        params: { reason: `${down.map((n) => n.name).join(', ')} offline` },
+      };
+    } else {
+      try {
+        groups = planRollingGroups({
+          nodes: cluster.nodes.map((n) => n.name),
+          votingNodes: cluster.nodes.length,
+          concurrency,
+          alreadyDown: 0,
+        });
+      } catch (error) {
+        if (!(error instanceof PlanRefused)) throw error;
+        refused = { code: ERROR_CODES.updatePlanRefused, params: { reason: error.message } };
+      }
+    }
+    const workloads = await this.prisma.client.workload.findMany({
+      where: { clusterId, state: 'RUNNING', template: false },
+      include: { node: { select: { name: true } } },
+    });
+    const guests = workloads
+      .filter((w) => w.node)
+      .map((w) => ({
+        vmid: w.vmid,
+        kind: (w.kind === 'LXC' ? 'lxc' : 'qemu') as 'qemu' | 'lxc',
+        name: w.name,
+        node: w.node!.name,
+        memoryBytes: Number(w.memoryMaxBytes ?? w.memoryBytes ?? 0),
+        blocker: null,
+      }));
+    const free = new Map(
+      cluster.nodes
+        .filter((n) => n.state === 'ONLINE')
+        .map((n) => [
+          n.name,
+          Math.max(0, Number(n.memoryTotalBytes ?? 0) - Number(n.memoryUsedBytes ?? 0)),
+        ]),
+    );
+    const capacityShort = groups
+      .map((group) => {
+        const away = new Set(group);
+        const needed = guests
+          .filter((g) => away.has(g.node))
+          .reduce((s, g) => s + g.memoryBytes, 0);
+        const room = [...free].filter(([n]) => !away.has(n)).reduce((s, [, b]) => s + b, 0);
+        return { node: group.join(', '), neededBytes: needed, freeBytes: room };
+      })
+      .filter((c) => c.neededBytes > c.freeBytes);
+    const voting = cluster.nodes.length;
+    return {
+      clusterId: cluster.id,
+      clusterName: cluster.name,
+      groups,
+      refused,
+      guests,
+      nonMigratable: [],
+      capacityShort,
+      maxConcurrency: voting <= 1 ? 1 : Math.max(0, Math.floor((voting - 1) / 2)),
+    };
+  }
+
+  /** Update every node of a cluster, guests moved away first (Phase 7). */
+  async startRolling(
+    clusterId: string,
+    input: RollingUpdateRequest,
+    actor: Actor,
+  ): Promise<JobDetail> {
+    const cluster = await this.clusterForRolling(clusterId);
+    assertAllowedAt(actor, PERMISSIONS.updatesExecute, {
+      tenantId: cluster.tenantId,
+      clusterId: cluster.id,
+    });
+    const down = cluster.nodes.filter((n) => n.state !== 'ONLINE');
+    if (down.length) {
+      throw new VelnoxError(ERROR_CODES.updateClusterDegraded, {
+        status: 409,
+        params: { reason: `${down.map((n) => n.name).join(', ')} offline` },
+      });
+    }
+    const wanted = input.nodes ? new Set(input.nodes) : null;
+    const nodes = cluster.nodes.filter((n) => !wanted || wanted.has(n.name));
+    if (wanted && nodes.length !== wanted.size) {
+      throw new VelnoxError(ERROR_CODES.validation, {
+        status: 400,
+        message: 'A node named is not in this cluster',
+      });
+    }
+    const unready = nodes.filter((n) => !cluster.sshCredentialId || !n.sshHostKeyFingerprint);
+    if (unready.length) {
+      throw new VelnoxError(ERROR_CODES.updateSshRequired, {
+        status: 409,
+        params: { node: unready.map((n) => n.name).join(', ') },
+      });
+    }
+    let groups: string[][];
+    try {
+      groups = planRollingGroups({
+        nodes: nodes.map((n) => n.name),
+        votingNodes: cluster.nodes.length,
+        concurrency: input.concurrency,
+        alreadyDown: 0,
+      });
+    } catch (error) {
+      if (!(error instanceof PlanRefused)) throw error;
+      throw new VelnoxError(ERROR_CODES.updatePlanRefused, {
+        status: 409,
+        params: { reason: error.message },
+      });
+    }
+    const policy = cluster.updatePolicy?.enabled ? cluster.updatePolicy : null;
+    if (policy?.window) {
+      const state = windowState(policy.window, Date.now());
+      if (!state.open) {
+        throw new VelnoxError(ERROR_CODES.updateOutsideWindow, {
+          status: 409,
+          params: {
+            window: policy.window.name,
+            nextOpening: state.nextOpening ? new Date(state.nextOpening).toISOString() : null,
+          },
+        });
+      }
+    }
+    const params: RollingUpdateParams = {
+      clusterId: cluster.id,
+      groups,
+      nodeIds: Object.fromEntries(nodes.map((n) => [n.name, n.id])),
+      rebootPolicy: input.rebootPolicy,
+      nonMigratable: input.nonMigratable,
+      migrateBack: input.migrateBack,
+      requireApproval: policy?.requireApproval ?? false,
+      maintenanceWindowId: policy?.maintenanceWindowId ?? null,
+      policyId: policy?.id ?? null,
+      settleMinutes: input.settleMinutes,
+    };
+    return this.jobs.create(
+      {
+        tenantId: cluster.tenantId,
+        type: JOB_TYPES.rollingUpdate,
+        params: params as unknown as Prisma.InputJsonValue,
+        concurrencyKey: `cluster:${cluster.id}`,
+        concurrencyLabel: cluster.name,
+        targetKind: 'cluster',
+        targetIds: [cluster.id],
         parentJobId: null,
       },
       actor,

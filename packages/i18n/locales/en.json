@@ -422,7 +422,13 @@
       "window_closed": "The maintenance window closed before the update reached the point of changing anything; nothing was changed.",
       "not_quorate": "The cluster would not keep quorum ({online} of {total} nodes online); nothing that could cost it quorum was done.",
       "command_failed": "{command} ended with exit code {exitCode}. The job’s output shows why.",
-      "reboot_timeout": "{node} did not come back within {minutes} minutes after the reboot."
+      "reboot_timeout": "{node} did not come back within {minutes} minutes after the reboot.",
+      "cluster_degraded": "The cluster is degraded ({reason}); a rolling update does not start on it.",
+      "plan_refused": "The plan would cost the cluster quorum: {reason}",
+      "not_migratable": "These running guests cannot be moved live: {guests}. Move or stop them, or choose to shut them down for the reboot.",
+      "capacity_short": "While {node} is down its guests need {neededGb} GB; the other nodes have {freeGb} GB free.",
+      "migration_failed": "Moving guest {vmid} from {from} to {to} failed. The job’s output shows why.",
+      "validation_failed": "{node} did not come back whole after its update ({reason}); the run stopped there."
     },
     "maintenance": {
       "window_in_use": "This window is used by {policies, plural, one {a policy} other {# policies}}. Change those first."
@@ -561,7 +567,8 @@
       "step_skipped": "Step {step} skipped",
       "step_started": "Step {step} started",
       "step_succeeded": "Step {step} succeeded",
-      "job_cleanup_failed": "Could not clean up everything the job had started. Check what it left behind."
+      "job_cleanup_failed": "Could not clean up everything the job had started. Check what it left behind.",
+      "job_partially_succeeded": "Partially succeeded"
     },
     "events": "Events",
     "finishedAt": "Finished",
@@ -602,7 +609,8 @@
       "cluster_delete": "Delete from cluster",
       "provision": "Build VM",
       "package_verify": "Check package",
-      "update": "Update node"
+      "update": "Update node",
+      "rolling_update": "Rolling update"
     }
   },
   "layout": {
@@ -1685,6 +1693,26 @@
     "historyBody": "Every node update, by a person or by a policy. Open one for its output.",
     "noHistory": "No updates yet.",
     "byPolicy": "by a policy",
-    "aNode": "a node"
+    "aNode": "a node",
+    "rollingTitle": "Update {cluster} node by node",
+    "rollingBody": "Each node in turn: its running guests moved to the others, updated, rebooted if needed, checked, and the guests moved back. The cluster never loses quorum, and the run does not start on a cluster that is already degraded.",
+    "rollingStarted": "Rolling update started",
+    "rollingRefused": "A rolling update cannot start",
+    "capacityShort": "While {node} is down, its guests need {needed} GB and the other nodes have {free} GB free.",
+    "guestsToMove": "moves {guests}",
+    "noGuests": "no running guests",
+    "concurrency": "Nodes at a time",
+    "concurrencyHint": "At most {max} on this cluster without losing quorum.",
+    "nonMigratable": "A guest that cannot move live",
+    "nonMigratableHint": "A guest with a disk on a node’s own storage, or a device passed through, cannot move to another node while running.",
+    "nonMigratablePolicy": {
+      "BLOCK": "Do not start",
+      "SHUTDOWN": "Shut it down for its node’s reboot, start it after"
+    },
+    "settle": "Minutes to settle",
+    "settleHint": "How long a node, the cluster and Ceph may take to be whole again after a reboot before the run stops.",
+    "migrateBack": "Move guests back afterwards",
+    "migrateBackHint": "Each guest returns to the node it came from once that node is done.",
+    "rollingStart": "Start rolling update"
   }
 }

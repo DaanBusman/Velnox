@@ -1521,7 +1521,46 @@ De herstart wordt geweigerd als de nodes die al down zijn plus deze ⌊(n−1)/2
 de centrale invariant waarop de rolling updates van fase 7 zijn gebouwd.
 
 **Niet gebouwd:** lijsten met toegestane en uitgesloten pakketten, en notificaties, uit het
-oorspronkelijke ontwerp; gasten van een node verplaatsen vóór zijn herstart, wat fase 7 is.
+oorspronkelijke ontwerp. Gasten van een node verplaatsen vóór zijn herstart is de rolling update van
+ADR-048.
+
+---
+
+## ADR-048 — Rolling updates: gasten weggezet, groep voor groep, gestopt bij de eerste twijfel
+
+**Beslissing:** Een `cluster.rolling_update`-job werkt een cluster bij in groepen nodes. De groepen
+komen van een planner (`packages/shared/src/rolling.ts`) die elke groep weigert die groter is dan
+⌊(n−1)/2⌋ bij *n* stemmende nodes, min wat al down is; één node is de standaard. Een preflight
+weigert een cluster dat al gedegradeerd is (een node offline, geen quorum, Ceph niet `HEALTH_OK`),
+leest de configuratie van elke draaiende gast om te bepalen welke live kunnen verhuizen — een schijf
+op opslag die maar één node ziet, of een doorgegeven apparaat, kan dat niet — en weigert een groep
+waarvan de gasten niet passen in het geheugen dat de andere nodes vrij hebben. Per groep: evacuate
+(live migratie voor VM's, migratie met herstart voor containers, naar de online node buiten de groep
+met het meeste vrije geheugen; een gast die niet kan verhuizen wordt geweigerd of, als daarom
+gevraagd is, afgesloten), bijwerken en herstarten zoals in ADR-047, validate (de groep weer online,
+elke node online, quorum, Ceph `HEALTH_OK`, binnen een stabilisatietijd), en elke gast terug naar
+waar hij vandaan kwam. Een fout na de eerste groep stopt de run als `PARTIALLY_SUCCEEDED`, een
+nieuwe jobstatus die de runner zet bij een `PartialStop`; elke fout noemt de gasten die verplaatst
+en niet teruggezet zijn, en waar ze staan.
+
+**Waarom stoppen bij de eerste twijfel in plaats van doorgaan.** Een node die terugkomt terwijl Ceph
+ongezond is, kan het begin zijn van data in gevaar; dan de volgende node uitzetten is hoe een cluster
+data verliest. De run stopt, zegt precies waar alles staat, en een nieuwe run gaat verder — nodes die
+al bijgewerkt zijn hebben niets wachtend en gaan snel.
+
+**Waarom het plan in de interface uit de inventaris komt, en de job Proxmox opnieuw leest.** Het
+voorbeeld moet snel zijn en is advies; de beslissing om een gast te verplaatsen wordt genomen op wat
+Proxmox zegt als de job draait. Die twee kunnen verschillen — het antwoord van de job telt.
+
+**Waarom de verplaatsingen van een groep in de stapuitvoer staan.** Stappen worden na een goedkeuring
+opnieuw opgebouwd, dus de verplaatsingen van een groep worden als uitvoer van de evacuate-stap
+geschreven en teruggelezen door de return-stap en door de meldingen bij een fout.
+
+**Niet gebouwd:** de HA-onderhoudsmodus van Proxmox (`ha-manager crm-command node-maintenance`) en
+gasten onder HA, waarvan HA de migratie zelf uitvoert; de rolling update verplaatst gasten via de
+gewone migratie-API. Plaatsingsregels (fase 7B) worden gevolgd via een haak in de doelkeuze die fase
+7B invult. Een beleid dat zichzelf bijwerkt doet nog steeds één node tegelijk, zonder gasten te
+verplaatsen.
 
 ---
 

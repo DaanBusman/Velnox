@@ -18,6 +18,7 @@ import {
   PERMISSIONS,
   maintenanceWindowSchema,
   nodeUpdateRequestSchema,
+  rollingUpdateRequestSchema,
   updatePolicySchema,
 } from '@velnox/shared';
 import { RequirePermissionSomewhere } from '../../common/auth.guard';
@@ -27,6 +28,7 @@ import { UpdatesService } from './updates.service';
 
 const uuidParam = new ParseUUIDPipe({ version: '4' });
 const nodesQuery = z.object({ clusterId: z.string().uuid().optional() });
+const planQuery = z.object({ concurrency: z.coerce.number().int().min(1).max(15).default(1) });
 const windowBody = maintenanceWindowSchema.extend({ tenantId: z.string().uuid() });
 
 /**
@@ -71,6 +73,39 @@ export class UpdatesController {
     @Req() request: Request,
   ) {
     return this.updates.run(id, body, actorOf(request));
+  }
+
+  @RequirePermissionSomewhere(PERMISSIONS.updatesRead)
+  @Get('clusters/:id/rolling-plan')
+  @ApiOperation({
+    summary: 'What a rolling update of the cluster would do',
+    description:
+      'The groups of nodes taken down together, the running guests to move and whether the other ' +
+      'nodes have room, from the inventory. Whether each guest can move live is read from Proxmox ' +
+      'when the job starts.',
+  })
+  rollingPlan(
+    @Param('id', uuidParam) id: string,
+    @Query(zodQuery(planQuery)) query: z.infer<typeof planQuery>,
+  ) {
+    return this.updates.rollingPlan(id, query.concurrency);
+  }
+
+  @RequirePermissionSomewhere(PERMISSIONS.updatesExecute)
+  @Post('clusters/:id/rolling')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Update every node of the cluster, one group at a time',
+    description:
+      'Starts a cluster.rolling_update job: guests moved away, the nodes updated and rebooted, ' +
+      'validated, guests moved back. Refused on a degraded cluster and when quorum would be lost.',
+  })
+  startRolling(
+    @Param('id', uuidParam) id: string,
+    @Body(zodBody(rollingUpdateRequestSchema)) body: z.infer<typeof rollingUpdateRequestSchema>,
+    @Req() request: Request,
+  ) {
+    return this.updates.startRolling(id, body, actorOf(request));
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.updatesRead)

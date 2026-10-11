@@ -334,7 +334,16 @@ runs as a job with live output; reboot-required is detected and surfaced; a poli
 maintenance window does not execute outside it; manual-approval policy parks the job in
 `waiting_approval`.
 
-## Phase 7 — Rolling updates · **L**
+## Phase 7 — Rolling updates · **L** · built, not yet complete
+
+**As built** (0.5.27, ADR-048): a `cluster.rolling_update` job in groups no larger than quorum
+allows, one node by default; refused on a degraded cluster (node offline, no quorum, Ceph not
+`HEALTH_OK`), on a guest that cannot move live unless asked to shut it down, and on too little memory
+on the other nodes; guests moved live, nodes updated and rebooted, validated within a settle time,
+guests moved back; a failure after the first group ends `partially_succeeded` with every guest
+accounted for. The quorum invariant is a property test for 1–15 nodes; `scripts/verify-rolling.sh`
+proves the rest against the fixture. **Not yet:** a real cluster; Proxmox's HA maintenance mode and
+HA-managed guests.
 
 Cluster-aware orchestration: quorum/Ceph/capacity guards, workload migratability assessment, live
 migration where possible, maintenance mode, reboot, wait-for-return, post-checks, then the next node.

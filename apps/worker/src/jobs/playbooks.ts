@@ -9,10 +9,11 @@ import {
 import type { LibraryServices } from '../library/services';
 import { packageVerifyPlaybook } from '../provisioning/package-verify';
 import { nodeUpdatePlaybook } from '../updates/playbook';
+import { rollingUpdatePlaybook } from '../updates/rolling';
 import { provisionPlaybook, type ProvisioningServices } from '../provisioning/playbook';
 import { StepError, type Playbook, type StepDefinition } from './steps';
 
-export { StepError } from './steps';
+export { PartialStop, StepError } from './steps';
 export type { ApprovalStep, Playbook, StepContext, StepDefinition, TaskStep } from './steps';
 
 /**
@@ -126,6 +127,8 @@ export function playbookFor(type: string, params: unknown, context: PlaybookCont
       return packageVerifyPlaybook(params, context.jobId, library());
     case JOB_TYPES.nodeUpdate:
       return nodeUpdatePlaybook(params, library());
+    case JOB_TYPES.rollingUpdate:
+      return rollingUpdatePlaybook(params, context.jobId, library());
     case JOB_TYPES.vmProvision:
       if (!context.provisioning) throw new StepError('generic', 'This worker cannot provision');
       return provisionPlaybook(params, context.provisioning);

@@ -69,6 +69,7 @@ const CREATE_PERMISSION: Record<string, Permission> = {
   [JOB_TYPES.vmProvision]: PERMISSIONS.workloadsProvision,
   [JOB_TYPES.packageVerify]: PERMISSIONS.autoconfigManage,
   [JOB_TYPES.nodeUpdate]: PERMISSIONS.updatesExecute,
+  [JOB_TYPES.rollingUpdate]: PERMISSIONS.updatesExecute,
 };
 
 /**

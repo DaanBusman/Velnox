@@ -361,7 +361,16 @@ node draait als job met live uitvoer; vereiste herstart wordt gedetecteerd en ge
 onderhoudsvenster voert niets uit buiten dat venster; beleid met handmatige goedkeuring parkeert de job in
 `waiting_approval`.
 
-## Phase 7 — Rolling updates · **L**
+## Phase 7 — Rolling updates · **L** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (0.5.27, ADR-048): een `cluster.rolling_update`-job in groepen niet groter dan
+quorum toelaat, standaard één node; geweigerd op een gedegradeerd cluster (node offline, geen quorum,
+Ceph niet `HEALTH_OK`), bij een gast die niet live kan verhuizen tenzij gevraagd is hem af te sluiten,
+en bij te weinig geheugen op de andere nodes; gasten live verplaatst, nodes bijgewerkt en herstart,
+gevalideerd binnen een stabilisatietijd, gasten teruggezet; een fout na de eerste groep eindigt als
+`partially_succeeded` met elke gast verantwoord. De quorum-invariant is een property-test voor 1–15
+nodes; `scripts/verify-rolling.sh` bewijst de rest tegen de fixture. **Nog niet:** een echt cluster;
+de HA-onderhoudsmodus van Proxmox en gasten onder HA.
 
 Clusterbewuste orkestratie: guards voor quorum, Ceph en capaciteit, beoordeling van de migreerbaarheid van
 workloads, live migratie waar mogelijk, onderhoudsmodus, herstart, wachten op terugkeer, nacontroles, en

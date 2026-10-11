@@ -382,6 +382,41 @@ export class ProxmoxClient {
     });
   }
 
+  /** A VM's or a container's configuration (Phase 7: where its disks are). */
+  guestConfig(
+    node: string,
+    kind: 'qemu' | 'lxc',
+    vmid: number,
+  ): Promise<Record<string, string | number>> {
+    return this.get<Record<string, string | number>>(
+      `/nodes/${encodeURIComponent(node)}/${kind}/${vmid}/config`,
+    );
+  }
+
+  /**
+   * Move a running guest to another node: a VM live, a container by restarting
+   * it there (containers cannot move live). Returns the task's UPID.
+   */
+  migrateGuest(node: string, kind: 'qemu' | 'lxc', vmid: number, target: string): Promise<string> {
+    return this.postOnce<string>(
+      `/nodes/${encodeURIComponent(node)}/${kind}/${vmid}/migrate`,
+      kind === 'qemu' ? { target, online: 1 } : { target, restart: 1 },
+    );
+  }
+
+  /** Start a guest, or shut it down cleanly. Returns the task's UPID. */
+  guestCommand(
+    node: string,
+    kind: 'qemu' | 'lxc',
+    vmid: number,
+    command: 'start' | 'shutdown',
+  ): Promise<string> {
+    return this.postOnce<string>(
+      `/nodes/${encodeURIComponent(node)}/${kind}/${vmid}/status/${command}`,
+      {},
+    );
+  }
+
   vmStatus(node: string, vmid: number): Promise<VmStatus> {
     return this.get<VmStatus>(`/nodes/${encodeURIComponent(node)}/qemu/${vmid}/status/current`);
   }

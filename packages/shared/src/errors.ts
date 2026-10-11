@@ -150,6 +150,18 @@ export const ERROR_CODES = {
   updateCommandFailed: 'update.command_failed',
   /** The node did not come back after a reboot within the time allowed. */
   updateRebootTimeout: 'update.reboot_timeout',
+  /** A node is down, quorum is gone or Ceph is not healthy: a rolling update does not start. */
+  updateClusterDegraded: 'update.cluster_degraded',
+  /** The groups asked for would take more nodes down than quorum allows. */
+  updatePlanRefused: 'update.plan_refused',
+  /** A running guest cannot be moved live, and the request says to stop on one. */
+  updateNotMigratable: 'update.not_migratable',
+  /** The other nodes have no room for the guests of the node being emptied. */
+  updateCapacityShort: 'update.capacity_short',
+  /** Moving a guest to another node failed. */
+  updateMigrationFailed: 'update.migration_failed',
+  /** After its reboot a node, the cluster or Ceph did not come back whole in time. */
+  updateValidationFailed: 'update.validation_failed',
   /** A maintenance window still used by a policy. */
   maintenanceWindowInUse: 'maintenance.window_in_use',
 

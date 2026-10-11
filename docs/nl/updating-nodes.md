@@ -6,11 +6,11 @@
 **Wat elke node zou bijwerken, één node bijwerken, en het beleid dat bepaalt wanneer.** Velnox leest
 bij elke inventarisatie de wachtende pakketten van elke node, classificeert ze, merkt op wanneer een
 node een herstart nodig heeft, en past updates node voor node toe als een job die je regel voor regel
-kunt volgen. Een heel cluster node na node bijwerken — met de gasten eerst weggezet — is de rolling
-update van fase 7; deze pagina gaat over één node tegelijk, met de hand of door een beleid.
+kunt volgen. Een **rolling update** doet een heel cluster, node na node, en verplaatst de draaiende
+gasten van elke node vóór zijn herstart en zet ze daarna terug.
 
-Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-046 en
-ADR-047 in [Technische beslissingen](tech-decisions.md).
+Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-046,
+ADR-047 en ADR-048 in [Technische beslissingen](tech-decisions.md).
 
 ---
 
@@ -91,14 +91,68 @@ De job, stap voor stap:
    halverwege te annuleren**: annuleren wacht tot hij klaar is, want een dpkg die halverwege stopt is
    een node die iemand met de hand moet repareren. En niets wat hij installeert is terug te draaien.
 7. **reboot** — als de keuze hierboven dat zegt, en alleen als het cluster quorum houdt terwijl de
-   node weg is. Proxmox sluit de gasten van de node af bij een herstart; ze eerst verplaatsen is
-   fase 7. Velnox wacht tot de node terug is, tot twintig minuten, en meldt op welke kernel hij
+   node weg is. Proxmox sluit de gasten van de node af bij een herstart; om ze eerst te verplaatsen,
+   gebruik je een [rolling update](#een-heel-cluster-bijwerken-rolling-update). Velnox wacht tot de node terug is, tot twintig minuten, en meldt op welke kernel hij
    terugkwam.
 8. **verify** — leest wat er over is. Wat nog wacht — tegengehouden, of nieuw sindsdien — wordt
    gemeld.
 
 Er wijzigt maar één job tegelijk een cluster: een update wacht achter elke andere job op hetzelfde
 cluster.
+
+
+---
+
+## Een heel cluster bijwerken: rolling update
+
+Kies een cluster op het tabblad **Nodes**. De kaart **… node voor node bijwerken** toont het plan:
+welke nodes samen down gaan, in welke volgorde, en de draaiende gasten die elk zou verplaatsen. Ze
+waarschuwt als de andere nodes het geheugen voor de gasten van een node niet hebben, en zegt waarom
+als een run niet kan beginnen.
+
+- **Nodes tegelijk** — standaard één. Het meeste dat een cluster toelaat is ⌊(n−1)/2⌋ bij *n*
+  nodes: één bij drie of vier nodes, twee bij vijf of zes. Meer wordt geweigerd, omdat het cluster
+  met meer nodes weg quorum verliest en elke gast erop stopt.
+- **Herstart** — zoals bij één node.
+- **Een gast die niet live kan verhuizen** — een gast met een schijf op de eigen opslag van een node
+  (`local`, `local-lvm`, een ZFS-pool die alleen die node heeft) of een doorgegeven apparaat
+  (`hostpci`, `usb`) kan niet naar een andere node verhuizen terwijl hij draait. **Niet beginnen**
+  weigert de run en noemt ze; **Afsluiten voor de herstart van zijn node, daarna starten** doet
+  precies dat.
+- **Minuten om te stabiliseren** — hoe lang een node, het cluster en Ceph mogen doen om na een
+  herstart weer heel te zijn voordat de run stopt. Standaard tien.
+- **Gasten daarna terugzetten** — standaard aan. Uit blijven ze waar ze heen verplaatst zijn en
+  zegt de job waar dat is.
+
+De job, stap voor stap:
+
+1. **preflight** — weigert een cluster dat al gedegradeerd is: een node offline, geen quorum, Ceph
+   niet `HEALTH_OK`. Ze leest de configuratie van elke draaiende gast uit Proxmox om te bepalen
+   welke kunnen verhuizen, en controleert dat de gasten van elke groep passen in het geheugen dat
+   de andere nodes vrij hebben. Weigert ze, dan is er nog niets veranderd.
+2. **approve** en **window** — zoals bij één node, onder het beleid van het cluster. Het venster
+   wordt vóór elke groep opnieuw gecontroleerd: een venster dat halverwege sluit, stopt de run na
+   de groep die bezig is.
+3. Dan, voor elke groep om de beurt:
+   - **evacuate** — elke draaiende gast live verplaatst naar de online node buiten de groep met het
+     meeste vrije geheugen; containers verhuizen met een herstart, zoals Proxmox een draaiende
+     container verplaatst. Een gast die niet kan verhuizen wordt afgesloten, als je dat koos.
+   - **update** — refresh, simulate en dist-upgrade op elke node van de groep, zoals bij één node.
+   - **reboot** — volgens de herstartkeuze, en alleen als quorum het toelaat met de groep weg.
+   - **validate** — wacht tot de nodes van de groep weer online zijn, alle nodes van het cluster
+     dat zijn, het cluster quorum heeft en Ceph `HEALTH_OK` is.
+   - **return** — elke gast terug naar de node waar hij vandaan kwam, elke afgesloten gast weer
+     gestart.
+4. **summary** — hoeveel nodes zijn bijgewerkt, hoeveel gasten verplaatst of afgesloten en hoeveel
+   terug waar ze waren; wie dat niet is, met naam, en waar die nu staat.
+
+**Als het misgaat.** Een fout in de eerste groep laat de job mislukken. Een fout nadat een groep klaar
+is — een node die niet op tijd valideert, een gast die niet wil verhuizen — stopt de run als
+**gedeeltelijk geslaagd**: de groepen ervoor zijn klaar, de groepen erna niet begonnen. Hoe dan ook
+zegt de job welke gasten verplaatst en niet teruggezet zijn, en waar ze nu staan. Los op wat ze
+noemt en start een nieuwe rolling update: nodes zonder wachtende updates gaan snel.
+
+De job neemt het cluster: node-updates en andere wijzigingen op hetzelfde cluster wachten erachter.
 
 ---
 
@@ -134,13 +188,15 @@ bijgewerkt, op elk moment.
   update mislukte wordt niet elke minuut opnieuw geprobeerd. Vereist een venster: een beleid dat
   zichzelf op elk uur bijwerkt wordt geweigerd.
 
-Beleid en vensters vereisen `updates.manage`; een node bijwerken vereist `updates.execute`.
+Beleid en vensters vereisen `updates.manage`; een node of een heel cluster bijwerken vereist
+`updates.execute`. Een beleid dat zichzelf bijwerkt doet één node tegelijk, geen rolling update: het
+verplaatst geen gasten.
 
 ---
 
 ## Geschiedenis
 
-Tabblad **Geschiedenis**: elke node-update, door een persoon of door een beleid, nieuwste eerst. Open
+Tabblad **Geschiedenis**: elke node-update en rolling update, door een persoon of door een beleid, nieuwste eerst. Open
 er een voor de uitvoer, stap voor stap.
 
 ---
@@ -159,3 +215,7 @@ er een voor de uitvoer, stap voor stap.
 | *Het cluster zou geen quorum houden* | Een andere node is down. De updates zijn geïnstalleerd; de herstart is niet gedaan. Breng de andere node terug en werk dan opnieuw bij met herstart. |
 | *… kwam niet binnen 20 minuten terug* | Kijk naar de console van de node. |
 | De herstart blijft nodig na een herstart | De node startte een oudere kernel; controleer zijn opstartvolgorde (`proxmox-boot-tool kernel list`). |
+| *Het cluster is gedegradeerd …* | Een node is offline, het cluster heeft geen quorum of Ceph is niet gezond. Een rolling update begint pas als het heel is. |
+| *Deze draaiende gasten kunnen niet live verhuizen …* | Hun schijf staat op de eigen opslag van een node, of er is een apparaat doorgegeven. Verplaats of stop ze, of kies ervoor ze af te sluiten voor de herstart. |
+| *Terwijl … down is, hebben zijn gasten … GB nodig* | De andere nodes hebben dat geheugen niet vrij. Stop gasten die je kunt missen, of voeg geheugen toe. |
+| *… kwam na de update niet heel terug* | De node kwam terug, maar het cluster of Ceph was niet op tijd heel. De job noemt wat er mis was en welke gasten niet teruggezet zijn. |

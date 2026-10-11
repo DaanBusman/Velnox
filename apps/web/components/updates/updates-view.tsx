@@ -22,6 +22,7 @@ import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { useApiResource } from '@/components/server/use-api-resource';
 import { JobStatusBadge } from '@/components/jobs/primitives';
+import { RollingCard } from './rolling-card';
 
 const select =
   'block h-9 w-full rounded border border-line bg-surface-2 px-2.5 text-sm text-ink focus:border-accent focus:outline-none';
@@ -174,6 +175,8 @@ function NodesTab({ clusters, canExecute }: { clusters: ClusterSummary[]; canExe
           </div>
         </Card>
       )}
+
+      {clusterId && <RollingCard clusterId={clusterId} canExecute={canExecute} />}
 
       <Card title={t('nodeUpdates.nodesTitle')} description={t('nodeUpdates.nodesBody')}>
         {nodes.state === 'loading' ? (

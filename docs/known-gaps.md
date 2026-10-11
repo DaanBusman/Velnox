@@ -230,9 +230,18 @@ Classification, applying, the reboot and its wait, windows, approval and the pol
 proven against the fixture's operations mode, whose SSH answers Velnox's three commands the way apt
 would — not yet against a real node, where the sudoers line in [Updating nodes](updating-nodes.md)
 also wants confirming. Discovery's security count comes from what Proxmox's API reports and can miss
-a security update; the update job reads it exactly from `apt-get -s`. A reboot shuts the node's
-guests down: moving them first is Phase 7. Package allow- and deny-lists and notifications from the
-original design are not built. See ADR-046 and ADR-047.
+a security update; the update job reads it exactly from `apt-get -s`. A single-node update's reboot
+shuts the node's guests down; a rolling update moves them first. Package allow- and deny-lists and
+notifications from the original design are not built. See ADR-046 and ADR-047.
+
+### Rolling updates: proven against the fixture, without HA
+Groups, refusals, live migration, shutting down what cannot move, validation and moving guests back
+are proven against the fixture's operations mode — not yet on a real cluster, where a live migration
+takes minutes rather than a second. Velnox does not put a node into Proxmox's HA maintenance mode,
+and moves HA-managed guests through the ordinary migration API, which HA may answer by moving them
+itself: a cluster using HA should be tried with care first. The target for each guest is the node
+with the most memory free, not the least loaded by CPU. The plan in the interface comes from the
+inventory; the job reads Proxmox again and its answer counts. See ADR-048.
 
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,

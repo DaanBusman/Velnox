@@ -18,7 +18,20 @@
  *   node name is how this one server knows which node it is playing.
  *
  * `--fail-upgrade NODE` makes that node's dist-upgrade fail as dpkg would.
+ *
+ * Phase 7 adds guests that move: VMs and a container on Ceph (shared), one VM
+ * with its disk on a node's own `local` storage (which cannot move live), live
+ * migration and container restart-migration, shutdown and start, and a reboot
+ * that stops whatever is still running on the node. Ceph is HEALTH_OK here.
+ *
+ * `<storage-dir>/ops-control.json`, read on every request, lets a harness
+ * break things on purpose: `{"offline": ["pve3"]}` takes nodes away;
+ * `{"cephWarnAfterReboot": "pve2"}` makes Ceph HEALTH_WARN from that node's
+ * next reboot on.
  */
+
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const KERNEL_RUNNING = '6.8.12-4';
 const KERNEL_NEW = '6.8.12-5';
@@ -43,8 +56,28 @@ const initialPending = () => [
   { Package: 'pve-manager', OldVersion: '8.2.4', Version: '8.2.7', Origin: 'Proxmox', archive: 'Proxmox:bookworm/pve-no-subscription' },
 ];
 
-export function installOps({ nodes, storage, log, rebootSeconds = 8, failUpgrade = [] }) {
+const GIB = 1024 ** 3;
+
+export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUpgrade = [] }) {
   const state = {};
+  let cephWarn = false;
+  const control = () => {
+    try {
+      return JSON.parse(readFileSync(join(dir, 'ops-control.json'), 'utf8'));
+    } catch {
+      return {};
+    }
+  };
+
+  const guests = new Map(
+    [
+      { vmid: 100, kind: 'qemu', node: 'pve1', name: 'db-primary', mem: 8, config: { scsi0: 'ceph-vm:vm-100-disk-0,size=64G' } },
+      { vmid: 200, kind: 'lxc', node: 'pve1', name: 'monitoring', mem: 2, config: { rootfs: 'ceph-vm:subvol-200-disk-0,size=8G' } },
+      { vmid: 101, kind: 'qemu', node: 'pve2', name: 'web-01', mem: 4, config: { scsi0: 'ceph-vm:vm-101-disk-0,size=32G' } },
+      { vmid: 102, kind: 'qemu', node: 'pve3', name: 'build-local', mem: 4, config: { scsi0: 'local:102/vm-102-disk-0.qcow2,size=32G' } },
+      { vmid: 9000, kind: 'qemu', node: 'pve1', name: 'debian-12-template', mem: 2, template: true, stopped: true, config: { scsi0: 'ceph-vm:base-9000-disk-0' } },
+    ].map((g) => [g.vmid, { ...g, status: g.stopped ? 'stopped' : 'running', maxmem: g.mem * GIB }]),
+  );
   for (const [name, node] of Object.entries(nodes)) {
     node.online = true;
     state[name] = {
@@ -62,6 +95,8 @@ export function installOps({ nodes, storage, log, rebootSeconds = 8, failUpgrade
   /** A node coming back from a reboot when its time is up. */
   const tick = (name) => {
     const s = state[name];
+    const forcedOffline = (control().offline ?? []).includes(name);
+    if (!s.backAt) nodes[name].online = !forcedOffline;
     if (s.backAt && Date.now() >= s.backAt) {
       s.backAt = 0;
       s.bootedAt = Date.now();
@@ -125,6 +160,17 @@ export function installOps({ nodes, storage, log, rebootSeconds = 8, failUpgrade
         setTimeout(() => {
           nodes[node].online = false;
           s.backAt = Date.now() + rebootSeconds * 1000;
+          // Whatever still runs there stops with it.
+          for (const g of guests.values()) {
+            if (g.node === node && g.status === 'running') {
+              g.status = 'stopped';
+              log(`ops: ${g.kind} ${g.vmid} stopped by ${node}'s reboot`);
+            }
+          }
+          if (control().cephWarnAfterReboot === node) {
+            cephWarn = true;
+            log('ops: Ceph is HEALTH_WARN from now on');
+          }
         }, 500);
       });
       return true;
@@ -145,11 +191,127 @@ export function installOps({ nodes, storage, log, rebootSeconds = 8, failUpgrade
       send(response, 200, { data: versionsOf(node) });
       return true;
     }
+
+    // Guests: configuration, migration, shutdown and start.
+    const guestMatch = /^(qemu|lxc)\/(\d+)\/(config|migrate|status\/(?:shutdown|start|current))$/.exec(rest);
+    if (guestMatch) {
+      const [, kind, id, action] = guestMatch;
+      const g = guests.get(Number(id));
+      if (!g || g.kind !== kind || g.node !== node) {
+        send(response, 500, { data: null, message: `Configuration file 'nodes/${node}/${kind === 'qemu' ? 'qemu-server' : 'lxc'}/${id}.conf' does not exist` });
+        return true;
+      }
+      if (action === 'config') return (send(response, 200, { data: { name: g.name, memory: g.mem * 1024, ...g.config } }), true);
+      if (action === 'status/current') return (send(response, 200, { data: { vmid: g.vmid, status: g.status, name: g.name } }), true);
+      readForm(request).then((form) => {
+        const task = (type, error) =>
+          send(response, 200, { data: storage.newTask(node, type, error ? `command failed: ${error}` : 'OK', error ? [error] : ['TASK OK']) });
+        if (action === 'status/shutdown') {
+          g.status = 'stopped';
+          log(`ops: ${kind} ${g.vmid} shut down on ${node}`);
+          return task(kind === 'qemu' ? 'qmshutdown' : 'vzshutdown');
+        }
+        if (action === 'status/start') {
+          g.status = 'running';
+          log(`ops: ${kind} ${g.vmid} started on ${node}`);
+          return task(kind === 'qemu' ? 'qmstart' : 'vzstart');
+        }
+        const target = form.target;
+        if (!nodes[target] || !nodes[target].online || target === node) return task('qmigrate', `target node '${target}' is not online`);
+        const local = Object.values(g.config).some((v) => /^local:/.test(String(v)));
+        if (local) return task('qmigrate', `can't migrate local disk '${Object.values(g.config).find((v) => /^local:/.test(String(v)))}': can't live migrate attached local disks without with-local-disks option`);
+        if (kind === 'qemu' && g.status === 'running' && form.online !== '1') return task('qmigrate', 'running VM needs online migration');
+        if (kind === 'lxc' && g.status === 'running' && form.restart !== '1') return task('vzmigrate', 'running container needs restart mode');
+        g.node = target;
+        log(`ops: ${kind} ${g.vmid} migrated ${node} -> ${target}`);
+        return task(kind === 'qemu' ? 'qmigrate' : 'vzmigrate');
+      });
+      return true;
+    }
     return false;
   }
 
+  const nodeMemory = (name) =>
+    16 * GIB + [...guests.values()].filter((g) => g.node === name && g.status === 'running').reduce((sum, g) => sum + g.maxmem, 0);
+
   /** Cluster-wide routes that follow the state. */
   const routes = {
+    '/api2/json/nodes': () => {
+      tickAll();
+      return Object.entries(nodes).map(([name, n]) => ({
+        node: name,
+        status: n.online ? 'online' : 'offline',
+        cpu: n.online ? 0.05 : 0,
+        maxcpu: 32,
+        mem: n.online ? nodeMemory(name) : 0,
+        maxmem: 128 * GIB,
+        disk: 21_474_836_480,
+        maxdisk: 107_374_182_400,
+        uptime: n.online ? Math.floor((Date.now() - state[name].bootedAt) / 1000) : 0,
+        level: '',
+      }));
+    },
+    '/api2/json/cluster/resources': () => {
+      tickAll();
+      return [
+        ...Object.entries(nodes).map(([name, n]) => ({
+          id: `node/${name}`,
+          type: 'node',
+          node: name,
+          status: n.online ? 'online' : 'offline',
+          maxmem: 128 * GIB,
+          mem: n.online ? nodeMemory(name) : 0,
+          cpu: n.online ? 0.05 : 0,
+          maxcpu: 32,
+          uptime: n.online ? Math.floor((Date.now() - state[name].bootedAt) / 1000) : 0,
+        })),
+        ...[...guests.values()].map((g) => ({
+          id: `${g.kind}/${g.vmid}`,
+          type: g.kind,
+          node: g.node,
+          vmid: g.vmid,
+          name: g.name,
+          status: g.status,
+          maxmem: g.maxmem,
+          mem: g.status === 'running' ? g.maxmem / 2 : 0,
+          maxcpu: 4,
+          ...(g.template ? { template: 1 } : {}),
+        })),
+        ...Object.keys(nodes).flatMap((name) =>
+          ['local', 'ceph-vm', 'nfs-iso'].map((st) => ({
+            id: `storage/${name}/${st}`,
+            type: 'storage',
+            node: name,
+            storage: st,
+            status: nodes[name].online ? 'available' : 'unknown',
+            disk: 10 * GIB,
+            maxdisk: 1000 * GIB,
+            shared: st === 'local' ? 0 : 1,
+          })),
+        ),
+      ];
+    },
+    '/api2/json/cluster/ceph/status': () => ({
+      fsid: '9f2b8a54-0a11-4f0c-9d8e-5b1a2c3d4e5f',
+      health: cephWarn
+        ? { status: 'HEALTH_WARN', checks: { OSD_DOWN: { severity: 'HEALTH_WARN', summary: { message: '2 osds down' } } } }
+        : { status: 'HEALTH_OK', checks: {} },
+      monmap: { mons: Object.keys(nodes).map((name) => ({ name })) },
+      quorum_names: Object.keys(nodes).filter((name) => nodes[name].online),
+      osdmap: { osdmap: { num_osds: 6, num_up_osds: cephWarn ? 4 : 6, num_in_osds: 6, flags: '' } },
+      pgmap: { num_pgs: 257, pgs_by_state: [{ state_name: 'active+clean', count: 257 }], bytes_used: 1e12, bytes_total: 1e13 },
+    }),
+    '/api2/json/cluster/ceph/metadata': () => ({
+      mon: Object.fromEntries(Object.keys(nodes).map((n) => [n, { name: n, hostname: n, ceph_version_short: '18.2.4' }])),
+      mgr: { pve1: { name: 'pve1', hostname: 'pve1', ceph_version_short: '18.2.4' } },
+      osd: Object.fromEntries(
+        Object.keys(nodes).flatMap((n, i) => [0, 1].map((k) => [i * 2 + k, { id: i * 2 + k, hostname: n, ceph_version_short: '18.2.4' }])),
+      ),
+    }),
+    '/api2/json/cluster/ceph/flags': () => [
+      { name: 'noout', value: 0, description: 'OSDs will not be marked out automatically' },
+      { name: 'nobackfill', value: 0, description: 'Backfilling of PGs is suspended' },
+    ],
     '/api2/json/cluster/status': () => {
       tickAll();
       return [
@@ -246,7 +408,7 @@ export function installOps({ nodes, storage, log, rebootSeconds = 8, failUpgrade
     return false;
   }
 
-  return { handle, routes, exec, stats: () => state };
+  return { handle, routes, exec, stats: () => ({ state, guests: [...guests.values()] }) };
 }
 
 function compare(a, b) {

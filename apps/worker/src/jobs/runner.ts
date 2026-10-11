@@ -11,7 +11,7 @@ import {
   type JobEventMessage,
   type JobStatus,
 } from '@velnox/shared';
-import { StepError, playbookFor, type Playbook, type StepContext, type StepDefinition } from './playbooks';
+import { PartialStop, StepError, playbookFor, type Playbook, type StepContext, type StepDefinition } from './playbooks';
 import type { LibraryServices } from '../library/services';
 import type { ProvisioningServices } from '../provisioning/playbook';
 
@@ -50,6 +50,7 @@ export interface JobsContext {
 
 export type RunOutcome =
   | 'SUCCEEDED'
+  | 'PARTIALLY_SUCCEEDED'
   | 'FAILED'
   | 'CANCELLED'
   | 'WAITING_APPROVAL'
@@ -427,11 +428,13 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
         });
         await skipRemaining(prisma, jobId, steps, recorded, step.key);
         await cleanUp(playbook, 'failed');
+        // A unit failed and stopped the run; the ones before it stay done.
+        const partial = error instanceof PartialStop;
         await move(
-          'FAILED',
+          partial ? 'PARTIALLY_SUCCEEDED' : 'FAILED',
           {
             level: 'ERROR',
-            key: JOB_EVENT_KEYS.failed,
+            key: partial ? JOB_EVENT_KEYS.partiallySucceeded : JOB_EVENT_KEYS.failed,
             stepKey: step.key,
             message: describe(error),
             data: { code: codeOf(error) },
@@ -444,7 +447,7 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
             leaseUntil: null,
           },
         );
-        return 'FAILED';
+        return partial ? 'PARTIALLY_SUCCEEDED' : 'FAILED';
       }
     }
 

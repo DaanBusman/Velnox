@@ -1432,8 +1432,45 @@ job checks the window after approval and before it changes anything, and stops w
 reboot is refused when the nodes already down plus this one would exceed ⌊(n−1)/2⌋ — the central
 invariant Phase 7's rolling updates are built on.
 
-**Not built:** package allow- and deny-lists, and notifications, from the original design; moving
-guests off a node before its reboot, which is Phase 7.
+**Not built:** package allow- and deny-lists, and notifications, from the original design. Moving
+guests off a node before its reboot is the rolling update of ADR-048.
+
+---
+
+## ADR-048 — Rolling updates: guests moved away, one group at a time, stopped on the first doubt
+
+**Decision:** A `cluster.rolling_update` job updates a cluster in groups of nodes. The groups come
+from a planner (`packages/shared/src/rolling.ts`) that refuses any group larger than ⌊(n−1)/2⌋ for
+*n* voting nodes, less what is already down; one node is the default. A preflight refuses a cluster
+already degraded (a node offline, no quorum, Ceph not `HEALTH_OK`), reads every running guest's
+configuration to tell which can move live — a disk on storage only one node sees, or a passed-through
+device, cannot — and refuses a group whose guests would not fit in the memory the other nodes have
+free. For each group: evacuate (live migration for VMs, restart migration for containers, to the
+online node outside the group with the most memory free; a guest that cannot move is refused or, when
+asked, shut down), update and reboot as in ADR-047, validate (the group back online, every node
+online, quorate, Ceph `HEALTH_OK`, within a settle time), and return every guest to where it came
+from. A failure after the first group stops the run as `PARTIALLY_SUCCEEDED`, a new job status the
+runner sets for a `PartialStop`; every failure lists the guests moved and not returned, and where
+they are.
+
+**Why stop on the first doubt rather than carry on.** A node that comes back while Ceph is unhealthy
+may be the start of data at risk; taking the next node down then is how a cluster loses data. The
+run stops, says exactly where everything is, and a new run continues — nodes already updated have
+nothing pending and pass quickly.
+
+**Why the plan in the interface comes from the inventory, and the job reads Proxmox again.** The
+preview needs to be quick and is advice; the decision to move a guest is made on what Proxmox says
+when the job runs. The two can differ — the job's answer is the one that counts.
+
+**Why the group's moves live in the step output.** Steps are rebuilt after an approval, so the moves
+of a group are written as its evacuate step's output and read back by its return step and by the
+messages of any failure.
+
+**Not built:** Proxmox's HA maintenance mode (`ha-manager crm-command node-maintenance`) and
+HA-managed guests, whose migration HA performs itself; the rolling update moves guests through the
+ordinary migration API. Placement rules (Phase 7B) are honoured by a hook in the target choice that
+Phase 7B fills. A policy that updates by itself still updates one node at a time, without moving
+guests.
 
 ---
 

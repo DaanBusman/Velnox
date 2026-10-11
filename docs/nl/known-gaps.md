@@ -249,9 +249,18 @@ het beleid zijn bewezen tegen de bedrijfsmodus van de fixture, waarvan SSH de dr
 Velnox beantwoordt zoals apt zou doen — nog niet tegen een echte node, waar ook de sudoers-regel in
 [Nodes bijwerken](updating-nodes.md) bevestiging nodig heeft. De beveiligingstelling van de
 inventarisatie komt uit wat de API van Proxmox meldt en kan een beveiligingsupdate missen; de
-updatejob leest het precies uit `apt-get -s`. Een herstart sluit de gasten van de node af: ze eerst
-verplaatsen is fase 7. Lijsten met toegestane en uitgesloten pakketten en notificaties uit het
-oorspronkelijke ontwerp zijn niet gebouwd. Zie ADR-046 en ADR-047.
+updatejob leest het precies uit `apt-get -s`. De herstart van een update op één node sluit de gasten
+van de node af; een rolling update verplaatst ze eerst. Lijsten met toegestane en uitgesloten
+pakketten en notificaties uit het oorspronkelijke ontwerp zijn niet gebouwd. Zie ADR-046 en ADR-047.
+
+### Rolling updates: bewezen tegen de fixture, zonder HA
+Groepen, weigeringen, live migratie, afsluiten wat niet kan verhuizen, validatie en gasten
+terugzetten zijn bewezen tegen de bedrijfsmodus van de fixture — nog niet op een echt cluster, waar
+een live migratie minuten duurt in plaats van een seconde. Velnox zet een node niet in de
+HA-onderhoudsmodus van Proxmox, en verplaatst gasten onder HA via de gewone migratie-API, waarop HA
+kan reageren door ze zelf te verplaatsen: probeer een cluster met HA eerst voorzichtig. Het doel voor
+elke gast is de node met het meeste vrije geheugen, niet de minst belaste qua CPU. Het plan in de
+interface komt uit de inventaris; de job leest Proxmox opnieuw en zijn antwoord telt. Zie ADR-048.
 
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,
