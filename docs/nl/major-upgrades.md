@@ -1,6 +1,6 @@
 # Grote upgrades
 
-> **Vertaling.** Bron: [docs/major-upgrades.md](../major-upgrades.md) @ `2d7c16d`.
+> **Vertaling.** Bron: [docs/major-upgrades.md](../major-upgrades.md) @ `f1de7a0`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Plannen die een cluster doel voor doel upgraden, de controles vooraf, de herstelacties, en het
