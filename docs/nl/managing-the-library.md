@@ -1,6 +1,6 @@
 # De ISO-bibliotheek
 
-> **Vertaling.** Bron: [docs/managing-the-library.md](../managing-the-library.md) @ `ef4d4ef`.
+> **Vertaling.** Bron: [docs/managing-the-library.md](../managing-the-library.md) @ `b435744`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Eén plek voor de installers en disk-images waar je clusters mee worden gebouwd.** De bibliotheek
