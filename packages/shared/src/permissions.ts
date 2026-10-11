@@ -89,6 +89,12 @@ export const PERMISSIONS = {
   // Change management
   updatesRead: 'updates.read',
   updatesExecute: 'updates.execute',
+  /**
+   * Update policies and maintenance windows (Phase 6): what may update itself,
+   * when, with or without approval. Privileged — a policy runs updates on its
+   * own, inside its window, without anyone pressing a button.
+   */
+  updatesManage: 'updates.manage',
   upgradesRead: 'upgrades.read',
   upgradesExecute: 'upgrades.execute',
   automationRead: 'automation.read',
@@ -166,6 +172,7 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = Object.freeze([
   PERMISSIONS.autoconfigManage,
   PERMISSIONS.workloadsProvision,
   PERMISSIONS.updatesExecute,
+  PERMISSIONS.updatesManage,
   PERMISSIONS.upgradesExecute,
   PERMISSIONS.automationManage,
   PERMISSIONS.credentialsManage,
@@ -334,6 +341,7 @@ const ENGINEER_PERMISSIONS: readonly Permission[] = [
   P.libraryManage,
   P.autoconfigManage,
   P.updatesExecute,
+  P.updatesManage,
   P.upgradesExecute,
   P.credentialsManage,
   P.credentialsRotate,
@@ -396,6 +404,7 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
       P.workloadsProvision,
       P.autoconfigManage,
       P.updatesExecute,
+      P.updatesManage,
       P.upgradesExecute,
       P.credentialsManage,
       P.credentialsRotate,

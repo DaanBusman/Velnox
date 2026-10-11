@@ -318,7 +318,13 @@ nodes' Proxmox tasks, those not started by Velnox marked, and nothing of another
 installs an uploaded MSI with arguments, and a package uploaded by one tenant is invisible to and
 unusable by another.
 
-## Phase 6 — Update management · **M**
+## Phase 6 — Update management · **M** · built, not yet complete
+
+**As built** (0.5.26, ADR-046, ADR-047): pending updates per node classified as security, kernel and
+Proxmox; reboot-required from the kernels; a `node.update` job with live output over SSH commands
+from a registry; reboot only when quorum allows; maintenance windows as RFC 5545 rules in their own
+time zone; one policy per cluster with approval, reboot policy, window and updating by itself.
+`scripts/verify-updates.sh` proves it against the fixture. **Not yet proven:** a real node.
 
 Update inventory per node (security / kernel / Proxmox classification), reboot-required detection,
 update policies, maintenance windows (RRULE), single-node update execution, update history.

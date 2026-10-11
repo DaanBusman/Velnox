@@ -138,6 +138,21 @@ export const ERROR_CODES = {
   /** Caddy's admin socket did not answer. */
   tlsProxyUnreachable: 'tls.proxy_unreachable',
 
+  /** Applying updates needs SSH on the cluster, with this node's host key confirmed. */
+  updateSshRequired: 'update.ssh_required',
+  /** The node's policy has a maintenance window, and it is not open. */
+  updateOutsideWindow: 'update.outside_window',
+  /** The window closed before the update reached the point of changing anything. */
+  updateWindowClosed: 'update.window_closed',
+  /** The cluster has lost quorum; nothing is changed on a cluster in that state. */
+  updateNotQuorate: 'update.not_quorate',
+  /** A command on the node ended with an exit code that is not success. */
+  updateCommandFailed: 'update.command_failed',
+  /** The node did not come back after a reboot within the time allowed. */
+  updateRebootTimeout: 'update.reboot_timeout',
+  /** A maintenance window still used by a policy. */
+  maintenanceWindowInUse: 'maintenance.window_in_use',
+
   /** A sub-tenant's main tenant must be an active customer main tenant. */
   tenantParentInvalid: 'tenant.parent_invalid',
   /** A main tenant with active sub-tenants cannot be archived or suspended first. */

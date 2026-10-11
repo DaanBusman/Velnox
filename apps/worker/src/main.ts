@@ -53,6 +53,7 @@ import { sweepProvisionings } from './provisioning/sweep';
 import { pruneAuditEvents } from './audit/retention';
 import { LIVE_TICK_MS, LivePoller } from './inventory/live';
 import { pruneTasks } from './inventory/tasks';
+import { scheduleUpdates, UPDATE_SCHEDULER_INTERVAL_MS } from './updates/scheduler';
 
 /**
  * Velnox worker.
@@ -415,6 +416,25 @@ async function bootstrap(): Promise<void> {
   await sweep();
   const sweepTimer = setInterval(() => void sweep(), LIBRARY_SWEEP_INTERVAL_MS);
 
+  // Update policies that update by themselves, inside their windows (Phase 6).
+  const policyQueue = new Queue(JOB_QUEUE, {
+    connection: { ...redisConnection(config), maxRetriesPerRequest: null },
+    defaultJobOptions: {
+      attempts: 1,
+      removeOnComplete: { age: 3600, count: 500 },
+      removeOnFail: { age: 86_400, count: 500 },
+    },
+  });
+  const scheduleTick = () =>
+    scheduleUpdates(prisma, policyQueue)
+      .then((result) => {
+        if (result.started.length) logger.info(result, 'Update policies started updates');
+      })
+      .catch((error: unknown) =>
+        logger.error({ err: rootRedactor.value(error) }, 'Running update policies failed'),
+      );
+  const updateTimer = setInterval(() => void scheduleTick(), UPDATE_SCHEDULER_INTERVAL_MS);
+
   logger.info(
     {
       queue: QUEUE_NAMES.system,
@@ -438,6 +458,7 @@ async function bootstrap(): Promise<void> {
     // dist-upgrade must never be killed part-way through.
     clearInterval(reconcileTimer);
     clearInterval(sweepTimer);
+    clearInterval(updateTimer);
     clearInterval(liveTimer);
     livePoller.close();
     liveRedis.disconnect();
@@ -446,6 +467,7 @@ async function bootstrap(): Promise<void> {
     await jobsWorker.close();
     jobsRedis.disconnect();
     await inventoryQueue.close();
+    await policyQueue.close();
     await heartbeat.stop();
     heartbeatRedis.disconnect();
     await prisma.$disconnect();

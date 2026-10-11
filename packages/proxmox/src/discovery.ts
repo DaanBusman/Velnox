@@ -10,6 +10,7 @@ import type {
   NodeListEntry,
   NodeStatus,
   NodeStorage,
+  PackageVersion,
   PendingUpdate,
   ProxmoxClient,
   RepositoryInfo,
@@ -96,13 +97,25 @@ export interface DiscoveredNode {
   uptimeSeconds: number | null;
   subscriptionStatus: string | null;
   subscriptionLevel: string | null;
-  /** How many packages apt would install. Classification arrives in phase 6. */
+  /** How many packages apt would install. */
   pendingUpdateCount: number | null;
+  /** What apt would install, as Proxmox lists it; classified by the caller (Phase 6). */
+  pendingUpdates: DiscoveredUpdate[] | null;
+  /** Versions of the kernels installed (`6.8.12-5`), to tell whether a reboot is due. */
+  installedKernels: string[] | null;
   repositories: DiscoveredRepository[];
   storages: DiscoveredStorage[];
   interfaces: DiscoveredInterface[];
   /** Anything that failed for this node alone, so one bad node is not a failed run. */
   problems: string[];
+}
+
+export interface DiscoveredUpdate {
+  package: string;
+  currentVersion: string | null;
+  candidateVersion: string;
+  origin: string | null;
+  changelogUrl: string | null;
 }
 
 export interface DiscoveredWorkload {
@@ -420,10 +433,22 @@ export interface NodeFacts {
   subscription: SubscriptionInfo | null;
   repositories: RepositoryInfo | null;
   updates: PendingUpdate[] | null;
+  /** `/apt/versions`, for the installed kernels. */
+  versions?: PackageVersion[] | null;
   storages: NodeStorage[] | null;
   interfaces: NodeInterface[] | null;
   clusterEntry: ClusterStatusEntry | null;
   problems: string[];
+}
+
+/** The kernels installed, by version, from their package names. */
+export function installedKernelVersions(versions: PackageVersion[]): string[] {
+  const out = new Set<string>();
+  for (const entry of versions) {
+    const match = /^(?:proxmox|pve)-kernel-(\d+\.\d+\.\d+-\d+)/.exec(entry.Package);
+    if (match && (!entry.CurrentState || /installed/i.test(entry.CurrentState))) out.add(match[1]!);
+  }
+  return [...out];
 }
 
 export function mapNode(facts: NodeFacts): DiscoveredNode {
@@ -447,6 +472,18 @@ export function mapNode(facts: NodeFacts): DiscoveredNode {
     subscriptionStatus: text(facts.subscription?.status),
     subscriptionLevel: text(facts.subscription?.level) ?? text(entry.level),
     pendingUpdateCount: facts.updates ? facts.updates.length : null,
+    pendingUpdates: facts.updates
+      ? facts.updates
+          .filter((update) => update.Package && update.Version)
+          .map((update) => ({
+            package: update.Package,
+            currentVersion: text(update.OldVersion),
+            candidateVersion: update.Version!,
+            origin: text(update.Origin),
+            changelogUrl: text(update.ChangeLogUrl),
+          }))
+      : null,
+    installedKernels: facts.versions ? installedKernelVersions(facts.versions) : null,
     repositories: mapRepositories(facts.repositories),
     storages: (facts.storages ?? []).map(mapStorage),
     interfaces: (facts.interfaces ?? []).map(mapInterface),
@@ -585,6 +622,7 @@ export async function discoverCluster(client: ProxmoxClient): Promise<Discovered
         subscription: null,
         repositories: null,
         updates: null,
+        versions: null,
         storages: null,
         interfaces: null,
         clusterEntry:
@@ -594,18 +632,22 @@ export async function discoverCluster(client: ProxmoxClient): Promise<Discovered
       continue;
     }
 
-    const [status, subscription, repositories, updates, storages, interfaces] = await Promise.all([
-      attempt(`${entry.node} status`, nodeProblems, () => client.nodeStatus(entry.node)),
-      attempt(`${entry.node} subscription`, nodeProblems, () =>
-        client.nodeSubscription(entry.node),
-      ),
-      attempt(`${entry.node} repositories`, nodeProblems, () =>
-        client.nodeRepositories(entry.node),
-      ),
-      attempt(`${entry.node} updates`, nodeProblems, () => client.nodeUpdates(entry.node)),
-      attempt(`${entry.node} storage`, nodeProblems, () => client.nodeStorage(entry.node)),
-      attempt(`${entry.node} network`, nodeProblems, () => client.nodeNetwork(entry.node)),
-    ]);
+    const [status, subscription, repositories, updates, versions, storages, interfaces] =
+      await Promise.all([
+        attempt(`${entry.node} status`, nodeProblems, () => client.nodeStatus(entry.node)),
+        attempt(`${entry.node} subscription`, nodeProblems, () =>
+          client.nodeSubscription(entry.node),
+        ),
+        attempt(`${entry.node} repositories`, nodeProblems, () =>
+          client.nodeRepositories(entry.node),
+        ),
+        attempt(`${entry.node} updates`, nodeProblems, () => client.nodeUpdates(entry.node)),
+        attempt(`${entry.node} versions`, nodeProblems, () =>
+          client.nodePackageVersions(entry.node),
+        ),
+        attempt(`${entry.node} storage`, nodeProblems, () => client.nodeStorage(entry.node)),
+        attempt(`${entry.node} network`, nodeProblems, () => client.nodeNetwork(entry.node)),
+      ]);
 
     nodeFacts.push({
       entry,
@@ -613,6 +655,7 @@ export async function discoverCluster(client: ProxmoxClient): Promise<Discovered
       subscription,
       repositories,
       updates,
+      versions,
       storages,
       interfaces,
       clusterEntry:

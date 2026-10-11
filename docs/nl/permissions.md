@@ -62,11 +62,11 @@ in je eigen organisatie.
 
 | Rol | Sleutel | Alleen MSP | Kent toe | Voor |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | ja | 43 van 43 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
-| MSP Administrator | `msp_administrator` | ja | 40 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, niet hoe lang supportlogs bewaard blijven, en niet de tweede factor van een collega. |
-| MSP Engineer | `msp_engineer` | ja | 34 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
+| MSP Super Administrator | `msp_super_administrator` | ja | 44 van 44 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
+| MSP Administrator | `msp_administrator` | ja | 41 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, niet hoe lang supportlogs bewaard blijven, en niet de tweede factor van een collega. |
+| MSP Engineer | `msp_engineer` | ja | 35 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
 | MSP Read Only | `msp_read_only` | ja | 21 | Ziet alles over alle tenants, wijzigt niets. |
-| Tenant Administrator | `tenant_administrator` | nee | 37 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
+| Tenant Administrator | `tenant_administrator` | nee | 38 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
 | Tenant Operator | `tenant_operator` | nee | 25 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
 | Tenant Read Only | `tenant_read_only` | nee | 19 | Ziet de resources van één tenant, wijzigt niets. |
 
@@ -112,6 +112,7 @@ Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only
 | `autoconfig.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `updates.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `updates.execute` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
+| `updates.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `upgrades.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `upgrades.execute` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `automation.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -169,6 +170,7 @@ vandaag toekenbaar en bewaakt nog niets.
 | `autoconfig.manage` | Templates maken, wijzigen, klonen en verwijderen — MSP-templates met een recht op de MSP, de eigen templates van een tenant met een recht op die tenant. De wachtwoorden van een template zijn nooit te lezen. De installatiepakketten van de tenant uploaden en verwijderen (5C) | 5B |
 | `updates.read` | Beschikbare pakketupdates zien | 6 |
 | `updates.execute` | Updates toepassen op echte nodes | 6 |
+| `updates.manage` | Updatebeleid en onderhoudsvensters instellen: wat zichzelf bijwerkt, wanneer, met of zonder goedkeuring | 6 |
 | `upgrades.read` | Plannen en gereedheid voor major upgrades zien | 8 |
 | `upgrades.execute` | Een major upgrade uitvoeren tegen echte infrastructuur | 8 |
 | `automation.read` | Schema's en automatiseringsregels zien | 8 |
@@ -199,13 +201,13 @@ worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
 
 ## Bevoorrechte rechten en meervoudige authenticatie
 
-Deze twintig rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
+Deze eenentwintig rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
 van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige
 authenticatie op uitkomt:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
 `roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
-`autoconfig.manage` · `updates.execute` · `upgrades.execute` ·
+`autoconfig.manage` · `updates.execute` · `updates.manage` · `upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
 `jobs.approve` · `support.manage` · `system.manage`
 

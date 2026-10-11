@@ -1376,6 +1376,67 @@ ACME against Pebble (Let's Encrypt's test server) on the stack's network, and th
 
 ---
 
+## ADR-046 — SSH commands from a registry, never from a request
+
+**Decision:** Amends ADR-038, which allowed SFTP and nothing else. Applying updates needs
+`apt-get dist-upgrade`, which Proxmox's API does not offer, so the worker may now also run
+commands over SSH — only `CommandSpec`s from a registry in the worker (`apps/worker/src/remote`):
+a fixed argv, whether it changes the node, whether it needs root, a timeout, and whether a cancelled
+job may interrupt it. The only value that varies is the node's name, checked against Proxmox's rule
+for one. Every command is sent as `[ "$(hostname -s)" = '<node>' ] || exit 97; [sudo -n] env LC_ALL=C …`:
+the guard refuses to run on a machine with another name, `sudo -n` is added for a privileged command
+when the account is not root and fails instead of prompting. The connection is the SFTP one: the
+confirmed host key or none, key authentication only. Phase 6 registers three commands: a simulated
+dist-upgrade, the dist-upgrade, and the reboot-required check.
+
+**Why a registry.** No endpoint, job parameter or setting can carry a command, so the question "can
+an API caller run something on a node" has the answer no by construction rather than by review.
+Adding a command is a code change with its own test, which is the right amount of friction for the
+thing that changes customers' hypervisors.
+
+**Why the hostname guard.** The host key proves the machine is the one confirmed. The guard proves it
+is the node the job is about: an address reassigned, or an SSH set-up confirmed against the wrong
+node, ends in exit 97 before anything runs. It also lets the test fixture, which plays three nodes on
+one SSH server, know which one it is.
+
+**What it costs.** A cluster's SSH account must now be able to run commands, with sudo for one of
+them, where an SFTP-only account was enough before; [Updating nodes](updating-nodes.md) gives the
+sudoers line. The dist-upgrade is not interruptible: cancelling waits for it.
+
+---
+
+## ADR-047 — Update management: read by discovery, applied one node at a time
+
+**Decision:** Discovery reads each online node's pending updates (`/apt/update`) and installed
+kernels (`/apt/versions`) and stores them in `node_package_updates`, classified as security, kernel
+and Proxmox, with counts and a reboot-required flag on the node: a newer kernel installed than the
+one running. Applying is a `node.update` job: check (quorum, node online, SSH), an approval step when
+the policy asks, a window step when the policy has one, `apt-get update` through Proxmox's API, a
+simulated dist-upgrade over SSH that reads the security archive exactly, the dist-upgrade with its
+output streamed into the job, a reboot when the reboot policy says so and quorum allows it — waiting
+for the node to return on its new kernel — and a verify that reads what is left. Its concurrency key
+is the cluster's, so one job changes a cluster at a time. A policy per cluster sets approval, reboot
+policy, a maintenance window and whether it updates by itself; windows are RFC 5545 rules evaluated
+in their own time zone (`packages/shared/src/rrule.ts`, a supported subset, anything else refused).
+A scheduler in the worker starts, each minute, one update per cluster whose policy updates by itself
+and whose window is open, for a node no policy has started an update for in this opening.
+
+**Why refuse outside a window instead of queueing.** A person pressing *Update* wants to know now
+that it will not happen now; a job sitting queued for six days is a surprise when it runs. The policy
+covers the "do it in the window" case by itself.
+
+**Why the window is checked again in the job.** An approval can take longer than a window lasts. The
+job checks the window after approval and before it changes anything, and stops with nothing changed.
+
+**Why quorum before a reboot.** A reboot that costs the cluster quorum stops every guest on it. The
+reboot is refused when the nodes already down plus this one would exceed ⌊(n−1)/2⌋ — the central
+invariant Phase 7's rolling updates are built on.
+
+**Not built:** package allow- and deny-lists, and notifications, from the original design; moving
+guests off a node before its reboot, which is Phase 7.
+
+---
+
 ## Version targets
 
 | Component | Version |

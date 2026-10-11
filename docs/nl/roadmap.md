@@ -343,7 +343,14 @@ tenant bevat zijn jobs en de Proxmox-taken van zijn nodes, de niet door Velnox g
 en niets van een andere tenant; een template installeert een geüploade MSI met argumenten, en een
 pakket van de ene tenant is voor een andere onzichtbaar en onbruikbaar.
 
-## Phase 6 — Updatebeheer · **M**
+## Phase 6 — Updatebeheer · **M** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (0.5.26, ADR-046, ADR-047): wachtende updates per node geclassificeerd als
+beveiliging, kernel en Proxmox; herstart-nodig uit de kernels; een `node.update`-job met live uitvoer
+via SSH-opdrachten uit een register; herstarten alleen als quorum het toelaat; onderhoudsvensters als
+RFC 5545-regels in hun eigen tijdzone; één beleid per cluster met goedkeuring, herstartbeleid,
+venster en zichzelf bijwerken. `scripts/verify-updates.sh` bewijst het tegen de fixture. **Nog niet
+bewezen:** een echte node.
 
 Update-inventaris per node (classificatie beveiliging / kernel / Proxmox), detectie van vereiste
 herstart, updatebeleid, onderhoudsvensters (RRULE), uitvoering van een update op één node,

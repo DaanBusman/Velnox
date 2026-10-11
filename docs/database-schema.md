@@ -460,23 +460,39 @@ smtp_password_credential_id, smtp_from, smtp_verified_at`. Enabled requires a ho
 
 ## 7. Updates
 
-### `update_policies`
-`id, tenant_id, name, kind (SECURITY_CRITICAL|STANDARD|MANUAL_APPROVAL), enabled, scope_type,
-scope_id, auto_apply, require_approval, reboot_policy (NEVER|IF_REQUIRED|ALWAYS),
-rolling_concurrency int, abort_on_first_failure, package_allowlist text[], package_denylist text[],
-maintenance_window_id, notify_targets jsonb`
+Built in Phase 6 (migration `20261011090000_update_management`). ADR-047 explains the shape.
 
-### `maintenance_windows`
-`id, tenant_id, name, timezone, rrule text, duration_minutes, blackout_dates date[]`
-Recurrence stored as an RFC 5545 RRULE, evaluated server-side in the window's own timezone.
+### `nodes`, update columns
+`updates_available, updates_security, updates_kernel, updates_proxmox, updates_checked_at,
+running_kernel, reboot_required, reboot_required_reason`. Written by discovery, and by an update job
+when it finishes.
 
 ### `node_package_updates`
-`id, tenant_id, node_id, package, current_version, candidate_version, origin, priority,
-is_security, is_kernel, is_proxmox, detected_at, applied_at, job_id`
+`id, tenant_id, cluster_id, node_id, package, current_version, candidate_version, origin,
+is_security, is_kernel, is_proxmox, detected_at`
 
-### `update_runs`
-A view over `jobs` of type `UPDATE_*` joined with per-node step outcomes — update history without a
-duplicate state machine.
+What one node would update, replaced as a whole on every read. Unique on `(node_id, package)`. The
+trigger `node_package_updates_owner_follows_node` sets the tenant and cluster from the node.
+
+### `maintenance_windows`
+`id, tenant_id, name, timezone, rrule, duration_minutes, blackout_dates text[], created_by_label,
+created_at, updated_at`
+
+An RFC 5545 rule for when the window opens — the subset `packages/shared/src/rrule.ts` parses —
+evaluated in its own time zone; `maintenance_windows_duration` keeps it between 15 minutes and a day.
+Unique on `(tenant_id, lower(name))`.
+
+### `update_policies`
+`id, tenant_id, cluster_id (unique), name, enabled, auto_apply, require_approval, reboot_policy
+(NEVER|IF_REQUIRED|ALWAYS), maintenance_window_id, created_by_label, created_at, updated_at`
+
+One per cluster. `update_policies_auto_needs_window` refuses updating by itself without a window;
+the trigger `update_policies_owner_follows_cluster` sets the tenant from the cluster and refuses a
+window of another tenant. The designed `rolling_concurrency`, allow- and deny-lists and notify
+targets are not built.
+
+### Update history
+Jobs of type `node.update`, with their steps, events and output — no table of its own.
 
 ---
 

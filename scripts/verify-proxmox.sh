@@ -407,13 +407,15 @@ rm -f "${WORK:-/tmp}/support-${RUN:-x}.jsonl"
 SUPPORT_SUMMARY="$(printf '%s' "$SUPPORT_EXPORT" | node -e '
   let r = ""; process.stdin.on("data", (c) => (r += c)).on("end", () => {
     const rows = r.trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
-    const task = (type) => rows.find((x) => x.kind === "proxmox_task" && x.type === type) ?? {};
+    // Only the cluster of this run: the tenant may hold real clusters with tasks of their own.
+    const task = (type) =>
+      rows.find((x) => x.kind === "proxmox_task" && x.cluster === process.argv[1] && x.type === type) ?? {};
     console.log([
       rows.some((x) => x.kind === "discovery_run") ? "runs" : "no-runs",
       task("qmstart").origin, task("vzdump").origin, task("vzdump").user,
       String(task("vzdump").startedOutsideVelnox), task("qmshutdown").status,
     ].join("|"));
-  });')"
+  });' "${RUN}-fixture")"
 check "support: the export carries discovery runs" runs "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f1)"
 check "support: a task Velnox's token started is marked as Velnox's" VELNOX "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f2)"
 check "support: a task someone started on Proxmox is marked as outside Velnox" OUTSIDE_VELNOX "$(printf '%s' "$SUPPORT_SUMMARY" | cut -d'|' -f3)"

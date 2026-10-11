@@ -58,11 +58,11 @@ organisation.
 
 | Role | Key | MSP only | Grants | For |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | yes | 43 of 43 | The first administrator. The only role with installation-wide settings. |
-| MSP Administrator | `msp_administrator` | yes | 40 | Runs the MSP day to day, including people. Not installation settings, not how long support logs are kept, and not a colleague’s second factor. |
-| MSP Engineer | `msp_engineer` | yes | 34 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
+| MSP Super Administrator | `msp_super_administrator` | yes | 44 of 44 | The first administrator. The only role with installation-wide settings. |
+| MSP Administrator | `msp_administrator` | yes | 41 | Runs the MSP day to day, including people. Not installation settings, not how long support logs are kept, and not a colleague’s second factor. |
+| MSP Engineer | `msp_engineer` | yes | 35 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
 | MSP Read Only | `msp_read_only` | yes | 21 | Sees everything across all tenants, changes nothing. |
-| Tenant Administrator | `tenant_administrator` | no | 37 | Full control within one tenant, including that tenant's own people. |
+| Tenant Administrator | `tenant_administrator` | no | 38 | Full control within one tenant, including that tenant's own people. |
 | Tenant Operator | `tenant_operator` | no | 25 | Day-to-day work on one tenant's resources. No identity administration. |
 | Tenant Read Only | `tenant_read_only` | no | 19 | Sees one tenant's resources, changes nothing. |
 
@@ -107,6 +107,7 @@ Administrator, MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operato
 | `autoconfig.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `updates.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `updates.execute` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
+| `updates.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `upgrades.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `upgrades.execute` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `automation.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -164,6 +165,7 @@ granted today and guards nothing yet.
 | `autoconfig.manage` | Create, change, clone and delete templates — MSP templates with a grant on the MSP, a tenant's own with a grant on the tenant. A template's passwords are never readable. Upload and remove the tenant's installer packages (5C) | 5B |
 | `updates.read` | See available package updates | 6 |
 | `updates.execute` | Apply updates to real nodes | 6 |
+| `updates.manage` | Set update policies and maintenance windows: what updates itself, when, with or without approval | 6 |
 | `upgrades.read` | See major-upgrade plans and readiness | 8 |
 | `upgrades.execute` | Run a major upgrade against real infrastructure | 8 |
 | `automation.read` | See schedules and automation rules | 8 |
@@ -193,12 +195,12 @@ they are used. See [Technical decisions](tech-decisions.md), ADR-009 and ADR-023
 
 ## Privileged permissions and two-factor authentication
 
-These twenty permissions let a principal change customer infrastructure or the security posture of
+These twenty-one permissions let a principal change customer infrastructure or the security posture of
 the installation. They are what the `REQUIRED_FOR_PRIVILEGED` two-factor policy resolves to:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
 `roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
-`autoconfig.manage` · `updates.execute` · `upgrades.execute` ·
+`autoconfig.manage` · `updates.execute` · `updates.manage` · `upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
 `jobs.approve` · `support.manage` · `system.manage`
 

@@ -222,10 +222,11 @@ cannot be a release apart. If a page ever shows a version differing from the one
 
 Being direct about this is more useful than a feature list.
 
-**Velnox reads your Proxmox infrastructure, and changes it in two ways only: it copies ISOs and disk
-images onto a cluster's storage, and it builds new VMs from templates.** Existing nodes and guests are
-inventoried, but nothing is stopped, migrated, updated or reconfigured. Update management arrives in
-Phase 6.
+**Velnox reads your Proxmox infrastructure, and changes it in three ways: it copies ISOs and disk
+images onto a cluster's storage, it builds new VMs from templates, and it applies updates to a node —
+one node at a time, rebooting it when asked.** Existing guests are inventoried, but nothing is
+stopped, migrated or reconfigured; moving guests off a node before its reboot is Phase 7's rolling
+update.
 
 [Roadmap](roadmap.md) lists what each phase adds; [Known gaps](known-gaps.md) is the honest list of
 what is deliberately missing or unfinished right now.

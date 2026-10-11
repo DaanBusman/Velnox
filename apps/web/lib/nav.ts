@@ -100,7 +100,13 @@ export const NAVIGATION: NavGroup[] = [
       // Updates and major upgrades are one destination, as the owner asked:
       // minor updates (Phase 6) and major upgrades (Phases 8–9B) of the same
       // nodes are read side by side.
-      { key: 'updates', href: '/updates', phase: 6, alsoMatches: ['/major-upgrades'] },
+      {
+        key: 'updates',
+        href: '/updates',
+        phase: null,
+        requiresPermission: 'updates.read',
+        alsoMatches: ['/major-upgrades'],
+      },
       { key: 'migrations', href: '/migrations', phase: 11 },
       { key: 'automation', href: '/automation', phase: 8 },
       {

@@ -364,9 +364,18 @@ export function installStorage({ dir, nodes, uploadBytesPerSec, log }) {
  *
  * Read only. Every session request is logged, and an exec or shell request is
  * refused *and* logged as `EXEC ATTEMPTED`, so a harness can assert Velnox never
- * asks for one.
+ * asks for one — unless `exec` is given (the ops fixture, Phase 6), which
+ * answers the commands Velnox's registry sends and refuses the rest.
  */
-export function startSftp({ port, hostKey, authorizedKey, storage, log, bytesPerSec = 0 }) {
+export function startSftp({
+  port,
+  hostKey,
+  authorizedKey,
+  storage,
+  log,
+  bytesPerSec = 0,
+  exec = null,
+}) {
   let ssh2;
   try {
     ssh2 = createRequire('/app/apps/worker/package.json')('ssh2');
@@ -404,11 +413,21 @@ export function startSftp({ port, hostKey, authorizedKey, storage, log, bytesPer
     connection.on('ready', () => {
       connection.on('session', (accept) => {
         const session = accept();
-        session.on('exec', (reject, _accept, info) => {
+        // ssh2 hands (accept, reject, info).
+        session.on('exec', (acceptExec, reject, info) => {
+          if (exec) {
+            const channel = acceptExec();
+            if (!exec(info.command, channel)) {
+              channel.stderr.write('refused by the fixture\n');
+              channel.exit(126);
+              channel.end();
+            }
+            return;
+          }
           log(`EXEC ATTEMPTED: ${info.command}`);
           reject();
         });
-        session.on('shell', (reject) => {
+        session.on('shell', (_accept, reject) => {
           log('EXEC ATTEMPTED: shell');
           reject();
         });

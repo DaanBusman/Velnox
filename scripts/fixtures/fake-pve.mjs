@@ -40,6 +40,14 @@
  *   --vms                        answer the VM calls provisioning makes; needs --storage-dir
  *   --install-seconds N          how long a VM "installs" before its agent answers
  *   --smtp-port N                accept mail without TLS, keeping it in <storage-dir>/mail
+ *
+ * Phase 6 adds a cluster that changes (fake-pve-ops.mjs), behind options:
+ *
+ *   --ops                        all three nodes online, with pending updates, kernels,
+ *                                reboots and SSH exec of Velnox's registered commands;
+ *                                needs --storage-dir, and --ssh-port for exec
+ *   --reboot-seconds N           how long a rebooting node is away
+ *   --fail-upgrade NODE          that node's dist-upgrade fails as dpkg would
  */
 
 import { createServer } from 'node:https';
@@ -111,8 +119,20 @@ if (vmsModule && option('smtp-port', null)) {
   });
 }
 
+const opsModule = STORAGE_DIR && args.includes('--ops') ? await import('./fake-pve-ops.mjs') : null;
+const ops = opsModule
+  ? opsModule.installOps({
+      nodes: NODES,
+      storage,
+      log: (line) => console.log(line),
+      rebootSeconds: Number(option('reboot-seconds', '8')),
+      failUpgrade: (option('fail-upgrade', '') ?? '').split(',').filter(Boolean),
+    })
+  : null;
+
 if (storageModule && storage && option('ssh-port', null)) {
   storageModule.startSftp({
+    exec: ops ? ops.exec : null,
     port: Number(option('ssh-port', '22')),
     hostKey: readFileSync(option('ssh-host-key', '')),
     authorizedKey: readFileSync(option('ssh-authorized-key', '')),
@@ -223,7 +243,15 @@ const ROUTES = {
       maxcpu: 2,
       maxmem: 2_147_483_648,
     },
-    { id: 'storage/pve1/local', type: 'storage', node: 'pve1', storage: 'local' },
+    {
+      id: 'storage/pve1/local',
+      type: 'storage',
+      node: 'pve1',
+      storage: 'local',
+      status: 'available',
+      disk: 21_474_836_480,
+      maxdisk: 107_374_182_400,
+    },
   ],
 
   '/api2/json/cluster/ceph/status': () => ({
@@ -355,6 +383,11 @@ const NODE_ROUTES = {
     };
   },
 
+  'apt/versions': () => [
+    { Package: 'proxmox-ve', Version: '8.2.0', CurrentState: 'Installed', RunningKernel: '6.8.12-1-pve' },
+    { Package: 'proxmox-kernel-6.8.12-1-pve-signed', Version: '6.8.12-1', CurrentState: 'Installed' },
+  ],
+
   'apt/update': (node) =>
     node === 'pve1'
       ? [
@@ -451,6 +484,10 @@ const server = createServer(
       return unauthorized(response);
     }
 
+    if (ops && ops.routes[path]) {
+      console.log(`200 ${path}`);
+      return send(response, 200, { data: ops.routes[path]() });
+    }
     if (ROUTES[path]) {
       console.log(`200 ${path}`);
       return send(response, 200, { data: ROUTES[path]() });
@@ -462,6 +499,10 @@ const server = createServer(
       if (!NODES[node]) return send(response, 500, { data: null, message: `no such node '${node}'` });
 
       const query = new URLSearchParams((request.url ?? '').split('?')[1] ?? '');
+      if (ops && ops.handle(request, response, node, rest, query, send)) {
+        console.log(`${request.method} ${path}`);
+        return;
+      }
       if (storage && storage.handle(request, response, node, rest, query, send)) {
         console.log(`${request.method} ${path}`);
         return;

@@ -236,6 +236,8 @@ export const JOB_TYPES = {
   vmProvision: 'vm.provision',
   /** Check an uploaded installer package — size, type, checksum — and make it available. */
   packageVerify: 'autoconfig.package_verify',
+  /** Apply a node's pending updates, and reboot it if its policy says so (Phase 6). */
+  nodeUpdate: 'node.update',
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

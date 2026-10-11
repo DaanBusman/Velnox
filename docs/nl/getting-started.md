@@ -228,10 +228,11 @@ laten lezen.
 
 Hier direct over zijn is nuttiger dan een functielijst.
 
-**Velnox leest je Proxmox-infrastructuur, en wijzigt die op twee manieren: het kopieert ISO's en
-disk-images naar de opslag van een cluster, en het bouwt nieuwe VM's vanuit templates.** Bestaande
-nodes en gasten worden geïnventariseerd, maar er wordt niets gestopt, gemigreerd, bijgewerkt of
-geherconfigureerd. Updatebeheer komt in fase 6.
+**Velnox leest je Proxmox-infrastructuur, en wijzigt die op drie manieren: het kopieert ISO's en
+disk-images naar de opslag van een cluster, het bouwt nieuwe VM's vanuit templates, en het past
+updates toe op een node — één node tegelijk, en herstart hem als daarom gevraagd wordt.** Bestaande
+gasten worden geïnventariseerd, maar er wordt niets gestopt, gemigreerd of geherconfigureerd; gasten
+van een node verplaatsen vóór zijn herstart is de rolling update van fase 7.
 
 [Roadmap](roadmap.md) noemt wat elke fase toevoegt; [Bekende hiaten](known-gaps.md) is de eerlijke
 lijst van wat er op dit moment bewust ontbreekt of onaf is.

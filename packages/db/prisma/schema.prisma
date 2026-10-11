@@ -178,6 +178,7 @@ model Tenant {
   autoconfigTemplates AutoconfigTemplate[]
   autoconfigPackages  AutoconfigPackage[]
   provisionings       Provisioning[]
+  maintenanceWindows  MaintenanceWindow[]
 
   @@index([kind])
   @@index([parentTenantId])
@@ -706,6 +707,7 @@ model Cluster {
   storageContents StorageContent[]
   proxmoxTasks    ProxmoxTask[]
   provisionings   Provisioning[]
+  updatePolicy    UpdatePolicy?
 
   @@index([tenantId])
   @@index([siteId])
@@ -740,8 +742,19 @@ model Node {
   rootfsUsedBytes  BigInt? @map("rootfs_used_bytes")
   uptimeSeconds    Int?    @map("uptime_seconds")
 
-  /// How many packages apt would install. Classification arrives in phase 6.
-  updatesAvailable Int? @map("updates_available")
+  /// How many packages apt would install, and of those how many are security
+  /// updates, kernels and Proxmox's own (Phase 6, node_package_updates).
+  updatesAvailable Int?     @map("updates_available")
+  updatesSecurity  Int?     @map("updates_security")
+  updatesKernel    Int?     @map("updates_kernel")
+  updatesProxmox   Int?     @map("updates_proxmox")
+  updatesCheckedAt DateTime? @map("updates_checked_at") @db.Timestamptz(3)
+
+  /// The kernel running, and whether a newer one is installed — a node that
+  /// needs a reboot to be what apt says it is.
+  runningKernel        String? @map("running_kernel")
+  rebootRequired       Boolean @default(false) @map("reboot_required")
+  rebootRequiredReason String? @map("reboot_required_reason")
 
   /// The apt sources, as discovered. Phase 9B reads these to plan a repository
   /// remediation; phase 4 only records them.
@@ -764,6 +777,7 @@ model Node {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   cluster     Cluster         @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  packageUpdates NodePackageUpdate[]
   storages    NodeStorage[]
   interfaces  NodeInterface[]
   workloads   Workload[]
@@ -1734,4 +1748,83 @@ model ProxmoxTask {
   @@index([tenantId, startedAt])
   @@index([clusterId, node, startedAt])
   @@map("proxmox_tasks")
+}
+
+// ---------------------------------------------------------------------------
+// Update management (Phase 6)
+// ---------------------------------------------------------------------------
+
+/// One package a node would update, as the last discovery read it. Replaced as
+/// a whole for a node on every read.
+model NodePackageUpdate {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  clusterId        String   @map("cluster_id") @db.Uuid
+  nodeId           String   @map("node_id") @db.Uuid
+  package          String
+  currentVersion   String?  @map("current_version")
+  candidateVersion String   @map("candidate_version")
+  origin           String?
+  isSecurity       Boolean  @default(false) @map("is_security")
+  isKernel         Boolean  @default(false) @map("is_kernel")
+  isProxmox        Boolean  @default(false) @map("is_proxmox")
+  detectedAt       DateTime @default(now()) @map("detected_at") @db.Timestamptz(3)
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, package])
+  @@index([tenantId])
+  @@map("node_package_updates")
+}
+
+enum RebootPolicy {
+  NEVER
+  IF_REQUIRED
+  ALWAYS
+
+  @@map("reboot_policy")
+}
+
+/// When updates may run: an RFC 5545 rule for when the window opens, how long
+/// it stays open, in its own time zone (packages/shared/src/rrule.ts).
+model MaintenanceWindow {
+  id              String     @id @default(uuid()) @db.Uuid
+  tenantId        String     @map("tenant_id") @db.Uuid
+  name            String
+  timezone        String
+  rrule           String
+  durationMinutes Int        @map("duration_minutes")
+  blackoutDates   String[]   @default([]) @map("blackout_dates")
+  createdByLabel  String?    @map("created_by_label")
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  policies UpdatePolicy[]
+
+  @@index([tenantId])
+  @@map("maintenance_windows")
+}
+
+/// How one cluster's nodes are updated: by themselves or not, with approval or
+/// not, rebooting when, and only inside which window. One per cluster.
+model UpdatePolicy {
+  id                  String       @id @default(uuid()) @db.Uuid
+  tenantId            String       @map("tenant_id") @db.Uuid
+  clusterId           String       @unique @map("cluster_id") @db.Uuid
+  name                String
+  enabled             Boolean      @default(true)
+  autoApply           Boolean      @default(false) @map("auto_apply")
+  requireApproval     Boolean      @default(false) @map("require_approval")
+  rebootPolicy        RebootPolicy @default(IF_REQUIRED) @map("reboot_policy")
+  maintenanceWindowId String?      @map("maintenance_window_id") @db.Uuid
+  createdByLabel      String?      @map("created_by_label")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster Cluster            @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  window  MaintenanceWindow? @relation(fields: [maintenanceWindowId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@map("update_policies")
 }

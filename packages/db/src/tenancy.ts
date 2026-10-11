@@ -201,6 +201,10 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   // Phase 5C. A tenant's installer packages are its own, and nobody else's —
   // not offered upward or sideways the way an MSP template is.
   AutoconfigPackage: (ids) => ({ tenantId: { in: ids } }),
+  // Phase 6. Updates, windows and policies belong to the cluster's tenant.
+  NodePackageUpdate: (ids) => ({ tenantId: { in: ids } }),
+  MaintenanceWindow: (ids) => ({ tenantId: { in: ids } }),
+  UpdatePolicy: (ids) => ({ tenantId: { in: ids } }),
 };
 
 /** Models whose `tenantId` on a create must be inside the scope. */
@@ -224,6 +228,9 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   AutoconfigTemplate: 'required',
   AutoconfigPackage: 'required',
   Provisioning: 'required',
+  NodePackageUpdate: 'required',
+  MaintenanceWindow: 'required',
+  UpdatePolicy: 'required',
 };
 
 export const tenantScopedModels = (): string[] => Object.keys(TENANT_SCOPED).sort();

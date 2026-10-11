@@ -154,8 +154,9 @@ Velnox werkt zonder.
 
 ### Wat Velnox via SSH doet
 
-Het opent SFTP en leest één bestand. Het voert nooit een commando uit en opent nooit een shell. Het
-account kan dus een account zijn dat verder niets mag, en dat hoort ook — op elke node:
+Voor het kopiëren van een bestand opent het SFTP en leest één bestand — geen opdracht, geen shell.
+Gebruik je SSH alleen daarvoor, dan kan het account een account zijn dat verder niets mag — op elke
+node:
 
 ```
 Match User velnox-sftp
@@ -166,6 +167,11 @@ Match User velnox-sftp
 
 in `/etc/ssh/sshd_config`, met leestoegang tot de opslagmappen — `/var/lib/vz/template/iso` en
 `/var/lib/vz/import` voor de opslag `local`.
+
+Dezelfde SSH-instelling gebruikt [updates toepassen](updating-nodes.md), en dat voert drie vaste
+opdrachten uit, één ervan via sudo. Een account dat alleen SFTP mag houdt het kopiëren werkend en
+laat updates mislukken; [Nodes bijwerken](updating-nodes.md#voordat-je-updates-kunt-toepassen-ssh)
+heeft een account dat beide doet.
 
 ### Instellen
 

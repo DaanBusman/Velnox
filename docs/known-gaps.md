@@ -92,7 +92,7 @@ the standalone one.
 
 ### Two dashboard counters are still dashes
 Nodes needing updates (Phase 6) and upgrade blockers (Phase 9) show `—` with the phase that fills
-them. They are not placeholders for hidden data and they are not zeroes pretending to be
+them — the first is counted already, and shows once Phase 6 is marked complete. They are not placeholders for hidden data and they are not zeroes pretending to be
 measurements. The other six count what the signed-in account can see. Service status is not on the
 dashboard: it lives in **Server management**, visible only to an account holding `system.manage`.
 
@@ -181,11 +181,6 @@ Copying a file off a node is the only use. `credentials` still has an `SSH_PASSW
 screen offers — a key is the only way to set SSH up — and credential rotation, which will need more
 than a file read, is Phase 10.
 
-### Update counts are counts, not classifications
-A node reports how many packages apt would install. Which of them are security updates, which need a
-reboot, and which are Proxmox's own is Phase 6's work, and the interface says only the number it
-actually has rather than colouring it in.
-
 ### Discovery is polled, not pushed
 Proxmox has no event stream Velnox can subscribe to, so inventory is as fresh as the last run — 30
 minutes by default. The interface treats that as a fact rather than hiding it: *last read* is a
@@ -201,17 +196,17 @@ fifteen fingerprints one at a time needs designing before it is built.
 Phase 4 said Phase 5 would replace three things about discovery. It replaced one. Adding a cluster
 still waits on a worker job through a request-scoped timeout, and discovery runs are still recorded
 in their own table with no live progress and no cancellation — the job system exists, and discovery
-has not been moved onto it. It will be when it next has to change, and at the latest with Phase 6,
-whose update inventory runs beside it.
+has not been moved onto it. Phase 6 added its update inventory to discovery as it is, rather than
+move it then; it moves when it next has to change shape.
 
 The third is fixed: a worker killed mid-discovery used to leave the run marked `RUNNING` for ever.
 The same reconciler that fails lost jobs now fails a discovery run still running after an hour, with
 the same `job.worker_lost` reason.
 
-### The only jobs are the library's, and a diagnostic one
-The library's five — fetch, check an upload, copy to a cluster, copy from one, delete on one — are the
-first jobs that do real work. `system.selftest` touches nothing and exists to prove the machinery.
-Update management (Phase 6) brings the next.
+### The jobs there are
+The library's five — fetch, check an upload, copy to a cluster, copy from one, delete on one —,
+building a VM (Phase 5B), checking an installer package (Phase 5C) and updating a node (Phase 6).
+`system.selftest` touches nothing and exists to prove the machinery.
 
 ### Job history is kept for ever
 Jobs, their events and their output are never deleted. There is no retention policy and no size cap
@@ -229,6 +224,15 @@ An Autoconfig template offered to chosen customers is offered to exactly the ten
 a main tenant does not offer it to its sub-tenants. And someone who is a member of a sub-tenant
 through a role, with their account at home in a sibling, does not appear in that sub-tenant's Users
 list — their role is on their account, under the sibling. See ADR-042.
+
+### Updates: proven against the fixture, one node at a time
+Classification, applying, the reboot and its wait, windows, approval and the policy scheduler are
+proven against the fixture's operations mode, whose SSH answers Velnox's three commands the way apt
+would — not yet against a real node, where the sudoers line in [Updating nodes](updating-nodes.md)
+also wants confirming. Discovery's security count comes from what Proxmox's API reports and can miss
+a security update; the update job reads it exactly from `apt-get -s`. A reboot shuts the node's
+guests down: moving them first is Phase 7. Package allow- and deny-lists and notifications from the
+original design are not built. See ADR-046 and ADR-047.
 
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,

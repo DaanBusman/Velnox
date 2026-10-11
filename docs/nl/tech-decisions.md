@@ -1460,6 +1460,71 @@ publieke host.
 
 ---
 
+## ADR-046 — SSH-opdrachten uit een register, nooit uit een verzoek
+
+**Besluit:** Wijzigt ADR-038, dat SFTP toestond en verder niets. Updates toepassen vereist
+`apt-get dist-upgrade`, dat de API van Proxmox niet biedt, dus de worker mag nu ook opdrachten via
+SSH uitvoeren — alleen `CommandSpec`s uit een register in de worker (`apps/worker/src/remote`): een
+vaste argv, of hij de node wijzigt, of hij root nodig heeft, een time-out, en of een geannuleerde job
+hem mag onderbreken. De enige waarde die varieert is de naam van de node, gecontroleerd tegen de
+regel van Proxmox daarvoor. Elke opdracht wordt verstuurd als
+`[ "$(hostname -s)" = '<node>' ] || exit 97; [sudo -n] env LC_ALL=C …`: de controle weigert te draaien
+op een machine met een andere naam, `sudo -n` wordt toegevoegd voor een bevoorrechte opdracht als het
+account geen root is en faalt in plaats van te vragen. De verbinding is die van SFTP: de bevestigde
+hostsleutel of geen, alleen sleutelauthenticatie. Fase 6 registreert drie opdrachten: een
+gesimuleerde dist-upgrade, de dist-upgrade, en de controle of een herstart nodig is.
+
+**Waarom een register.** Geen eindpunt, jobparameter of instelling kan een opdracht meedragen, dus
+de vraag "kan iemand via de API iets op een node uitvoeren" heeft het antwoord nee door de bouw, niet
+door een review. Een opdracht toevoegen is een codewijziging met een eigen test, en dat is precies de
+juiste drempel voor wat de hypervisors van klanten wijzigt.
+
+**Waarom de hostnaamcontrole.** De hostsleutel bewijst dat de machine de bevestigde is. De controle
+bewijst dat het de node is waar de job over gaat: een opnieuw uitgegeven adres, of een SSH-instelling
+die tegen de verkeerde node is bevestigd, eindigt in exitcode 97 voordat er iets draait. Hij laat ook
+de testfixture, die drie nodes speelt op één SSH-server, weten welke het is.
+
+**Wat het kost.** Het SSH-account van een cluster moet nu opdrachten kunnen uitvoeren, met sudo voor
+één ervan, waar eerst een account voor alleen SFTP volstond; [Nodes bijwerken](updating-nodes.md)
+geeft de sudoers-regel. De dist-upgrade is niet te onderbreken: annuleren wacht erop.
+
+---
+
+## ADR-047 — Updatebeheer: uitgelezen door de inventarisatie, toegepast node voor node
+
+**Besluit:** De inventarisatie leest per online node de wachtende updates (`/apt/update`) en de
+geïnstalleerde kernels (`/apt/versions`) en bewaart ze in `node_package_updates`, geclassificeerd als
+beveiliging, kernel en Proxmox, met tellingen en een vlag herstart-nodig op de node: een nieuwere
+kernel geïnstalleerd dan de draaiende. Toepassen is een `node.update`-job: controle (quorum, node
+online, SSH), een goedkeuringsstap als het beleid erom vraagt, een vensterstap als het beleid er een
+heeft, `apt-get update` via de API van Proxmox, een gesimuleerde dist-upgrade via SSH die het
+beveiligingsarchief precies leest, de dist-upgrade met zijn uitvoer gestreamd naar de job, een
+herstart als het herstartbeleid dat zegt en quorum het toelaat — wachtend tot de node op zijn nieuwe
+kernel terug is — en een controle die leest wat er over is. De concurrency-sleutel is die van het
+cluster, dus er wijzigt één job tegelijk een cluster. Een beleid per cluster bepaalt goedkeuring,
+herstartbeleid, een onderhoudsvenster en of het zichzelf bijwerkt; vensters zijn RFC 5545-regels,
+geëvalueerd in hun eigen tijdzone (`packages/shared/src/rrule.ts`, een ondersteunde deelverzameling,
+al het andere geweigerd). Een planner in de worker start elke minuut één update per cluster waarvan
+het beleid zichzelf bijwerkt en het venster open is, voor een node waarvoor in deze opening nog geen
+beleid een update startte.
+
+**Waarom buiten een venster weigeren in plaats van in de wachtrij zetten.** Wie op *Bijwerken* drukt,
+wil nu weten dat het nu niet gebeurt; een job die zes dagen in de wachtrij staat, is een verrassing
+als hij draait. Het beleid dekt het geval "doe het in het venster" zelf af.
+
+**Waarom het venster in de job opnieuw wordt gecontroleerd.** Een goedkeuring kan langer duren dan een
+venster. De job controleert het venster na de goedkeuring en voordat hij iets wijzigt, en stopt zonder
+iets te hebben gewijzigd.
+
+**Waarom quorum vóór een herstart.** Een herstart die het cluster quorum kost, stopt elke gast erop.
+De herstart wordt geweigerd als de nodes die al down zijn plus deze ⌊(n−1)/2⌋ zouden overschrijden —
+de centrale invariant waarop de rolling updates van fase 7 zijn gebouwd.
+
+**Niet gebouwd:** lijsten met toegestane en uitgesloten pakketten, en notificaties, uit het
+oorspronkelijke ontwerp; gasten van een node verplaatsen vóór zijn herstart, wat fase 7 is.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

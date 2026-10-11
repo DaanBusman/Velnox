@@ -167,9 +167,27 @@ export class ProxmoxClient {
     return this.get<RepositoryInfo>(`/nodes/${encodeURIComponent(node)}/apt/repositories`);
   }
 
-  /** Pending package updates. Classification into security/kernel is phase 6. */
+  /** Pending package updates, as apt last saw them (classified by Velnox, Phase 6). */
   nodeUpdates(node: string): Promise<PendingUpdate[]> {
     return this.get<PendingUpdate[]>(`/nodes/${encodeURIComponent(node)}/apt/update`);
+  }
+
+  /** `apt-get update` on the node, as a Proxmox task. Returns its UPID. */
+  refreshUpdates(node: string): Promise<string> {
+    return this.postOnce<string>(`/nodes/${encodeURIComponent(node)}/apt/update`, {});
+  }
+
+  /** The versions of the packages Proxmox cares about, kernels among them. */
+  nodePackageVersions(node: string): Promise<PackageVersion[]> {
+    return this.get<PackageVersion[]>(`/nodes/${encodeURIComponent(node)}/apt/versions`);
+  }
+
+  /**
+   * Reboot or shut down a node. Proxmox answers before the node goes down; the
+   * caller watches the node's status to see it leave and come back.
+   */
+  nodeCommand(node: string, command: 'reboot' | 'shutdown'): Promise<null> {
+    return this.postOnce<null>(`/nodes/${encodeURIComponent(node)}/status`, { command });
   }
 
   nodeStorage(node: string): Promise<NodeStorage[]> {
@@ -799,6 +817,17 @@ export interface PendingUpdate {
   Title?: string;
   Description?: string;
   NotifyStatus?: string;
+  ChangeLogUrl?: string;
+}
+
+/** One line of `/nodes/{node}/apt/versions`. */
+export interface PackageVersion {
+  Package: string;
+  Version?: string;
+  OldVersion?: string;
+  CurrentState?: string;
+  /** Set on the entry for the running kernel's meta-package. */
+  RunningKernel?: string;
 }
 
 export interface NodeStorage {

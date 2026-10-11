@@ -101,7 +101,7 @@ image die wordt uitgeleverd is altijd de standalone-versie.
 
 ### Twee tellers op het dashboard zijn nog streepjes
 Nodes met openstaande updates (fase 6) en upgradeblokkades (fase 9) tonen `—` met de fase die ze
-vult. Het zijn geen plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als
+vult — de eerste wordt al geteld, en verschijnt zodra fase 6 als afgerond is gemarkeerd. Het zijn geen plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als
 metingen. De andere zes tellen wat het aangemelde account kan zien. De servicestatus staat niet op
 het dashboard: die staat in **Serverbeheer**, alleen zichtbaar voor een account met `system.manage`.
 
@@ -197,11 +197,6 @@ Een bestand van een node kopiëren is het enige gebruik. `credentials` heeft nog
 `SSH_PASSWORD` die geen scherm aanbiedt — een sleutel is de enige manier om SSH in te stellen — en
 credentialrotatie, die meer nodig heeft dan een bestand lezen, is fase 10.
 
-### Updateaantallen zijn aantallen, geen classificatie
-Een node meldt hoeveel pakketten apt zou installeren. Welke daarvan beveiligingsupdates zijn, welke
-een herstart vereisen en welke van Proxmox zelf zijn, is het werk van fase 6, en de interface toont
-alleen het getal dat het daadwerkelijk heeft in plaats van het in te kleuren.
-
 ### Uitlezen gebeurt periodiek, niet op signaal
 Proxmox heeft geen gebeurtenissenstroom waarop Velnox zich kan abonneren, dus de inventarisatie is zo
 vers als de laatste ronde — standaard 30 minuten. De interface behandelt dat als een feit in plaats
@@ -217,18 +212,19 @@ stroom voor het één voor één bevestigen van vijftien vingerafdrukken moet ee
 Fase 4 zei dat fase 5 drie dingen aan het uitlezen zou vervangen. Er is er één vervangen. Een cluster
 toevoegen wacht nog steeds via een verzoekgebonden time-out op een workerjob, en uitleesrondes worden
 nog steeds in een eigen tabel vastgelegd, zonder live voortgang en zonder annuleren — het jobsysteem
-bestaat, en het uitlezen is er nog niet naartoe verhuisd. Dat gebeurt zodra het weer moet
-veranderen, en uiterlijk met fase 6, waarvan de update-inventarisatie ernaast draait.
+bestaat, en het uitlezen is er nog niet naartoe verhuisd. Fase 6 voegde zijn update-inventarisatie
+toe aan het uitlezen zoals het is, in plaats van het toen te verhuizen; het verhuist zodra het van
+vorm moet veranderen.
 
 De derde is opgelost: een worker die halverwege het uitlezen werd gedood, liet de ronde voor altijd
 als `RUNNING` achter. Dezelfde verzoening die verloren jobs laat mislukken, laat nu een uitleesronde
 mislukken die na een uur nog loopt, met dezelfde reden `job.worker_lost`.
 
-### De enige jobs zijn die van de bibliotheek, en een diagnostische
+### De jobs die er zijn
 De vijf van de bibliotheek — ophalen, een upload controleren, naar een cluster kopiëren, van een
-cluster kopiëren, op een cluster verwijderen — zijn de eerste jobs die echt werk doen.
-`system.selftest` raakt niets aan en bestaat om het mechanisme te bewijzen. Updatebeheer (fase 6)
-brengt de volgende.
+cluster kopiëren, op een cluster verwijderen —, een VM bouwen (fase 5B), een installatiepakket
+controleren (fase 5C) en een node bijwerken (fase 6). `system.selftest` raakt niets aan en bestaat om
+het mechanisme te bewijzen.
 
 ### Jobgeschiedenis wordt voor altijd bewaard
 Jobs, hun gebeurtenissen en hun uitvoer worden nooit verwijderd. Er is geen bewaarbeleid en geen
@@ -246,6 +242,16 @@ Een Autoconfig-template dat aan gekozen klanten wordt aangeboden, wordt aan prec
 tenants aangeboden: een hoofd-tenant aanvinken biedt het niet aan zijn sub-tenants aan. En iemand die
 via een rol lid is van een sub-tenant, met zijn account thuis in een zuster, staat niet in de lijst
 Gebruikers van die sub-tenant — zijn rol staat op zijn account, onder de zuster. Zie ADR-042.
+
+### Updates: bewezen tegen de fixture, één node tegelijk
+Classificatie, toepassen, de herstart en het wachten erop, vensters, goedkeuring en de planner van
+het beleid zijn bewezen tegen de bedrijfsmodus van de fixture, waarvan SSH de drie opdrachten van
+Velnox beantwoordt zoals apt zou doen — nog niet tegen een echte node, waar ook de sudoers-regel in
+[Nodes bijwerken](updating-nodes.md) bevestiging nodig heeft. De beveiligingstelling van de
+inventarisatie komt uit wat de API van Proxmox meldt en kan een beveiligingsupdate missen; de
+updatejob leest het precies uit `apt-get -s`. Een herstart sluit de gasten van de node af: ze eerst
+verplaatsen is fase 7. Lijsten met toegestane en uitgesloten pakketten en notificaties uit het
+oorspronkelijke ontwerp zijn niet gebouwd. Zie ADR-046 en ADR-047.
 
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,

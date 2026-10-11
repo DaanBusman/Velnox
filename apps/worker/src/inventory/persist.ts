@@ -1,5 +1,6 @@
 import type { VelnoxPrismaClient } from '@velnox/db';
 import { mapWorkload } from '@velnox/proxmox';
+import { classifyPackage, newerKernelInstalled } from '@velnox/shared';
 import type {
   ClusterResource,
   DiscoveredCluster,
@@ -148,6 +149,7 @@ export async function persistDiscovery(
       rootfsUsedBytes: big(node.rootfsUsedBytes),
       uptimeSeconds: seconds(node.uptimeSeconds),
       updatesAvailable: node.pendingUpdateCount,
+      ...updateFacts(node),
       repositories: node.repositories,
       problems: node.problems,
       lastSeenAt: now,
@@ -160,6 +162,27 @@ export async function persistDiscovery(
     });
 
     nodeIdByName.set(node.name, row.id);
+
+    // What it would update, replaced as a whole: a package that is no longer
+    // pending is not pending.
+    if (node.pendingUpdates) {
+      await prisma.nodePackageUpdate.deleteMany({ where: { nodeId: row.id } });
+      if (node.pendingUpdates.length > 0) {
+        await prisma.nodePackageUpdate.createMany({
+          data: node.pendingUpdates.map((update) => ({
+            tenantId: cluster.tenantId,
+            clusterId: cluster.id,
+            nodeId: row.id,
+            package: update.package,
+            currentVersion: update.currentVersion,
+            candidateVersion: update.candidateVersion,
+            origin: update.origin,
+            ...classifyPackage(update),
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
 
     /*
      * Storage and interfaces are replaced rather than upserted.
@@ -418,7 +441,11 @@ export async function persistLive(
       const result = await prisma.nodeStorage.updateMany({
         where: { nodeId, name: resource.storage },
         data: {
-          active: resource.status === 'available',
+          // A status Proxmox did not send says nothing about the storage: it
+          // must not mark it inactive, which would refuse a push to it.
+          ...(typeof resource.status === 'string'
+            ? { active: resource.status === 'available' }
+            : {}),
           totalBytes: big(total),
           usedBytes: big(used),
           availableBytes: big(total !== null && used !== null ? Math.max(0, total - used) : null),
@@ -442,4 +469,37 @@ export async function persistLive(
 
   await prisma.cluster.update({ where: { id: cluster.id }, data: { lastSeenAt: now } });
   return { nodes: nodeCount, workloads: workloadCount, storages: storageCount };
+}
+
+/**
+ * A node's update counts by class, and whether it needs a reboot (Phase 6).
+ * Absent when the list could not be read, so a failed read leaves the last
+ * known answer rather than claiming there is nothing to do.
+ */
+function updateFacts(node: DiscoveredNode) {
+  const facts: Record<string, unknown> = {};
+  if (node.pendingUpdates) {
+    const classified = node.pendingUpdates.map((update) => classifyPackage(update));
+    facts.updatesSecurity = classified.filter((c) => c.isSecurity).length;
+    facts.updatesKernel = classified.filter((c) => c.isKernel).length;
+    facts.updatesProxmox = classified.filter((c) => c.isProxmox).length;
+    facts.updatesCheckedAt = new Date();
+  }
+  if (node.state === 'online') facts.runningKernel = node.kernelVersion;
+  if (node.installedKernels && node.kernelVersion) {
+    const newer = newerKernelInstalled(node.kernelVersion, node.installedKernels);
+    facts.rebootRequired = newer !== null;
+    facts.rebootRequiredReason = newer
+      ? `Kernel ${newer} is installed; ${node.kernelVersion} is running`
+      : null;
+  }
+  return facts as {
+    updatesSecurity?: number;
+    updatesKernel?: number;
+    updatesProxmox?: number;
+    updatesCheckedAt?: Date;
+    runningKernel?: string | null;
+    rebootRequired?: boolean;
+    rebootRequiredReason?: string | null;
+  };
 }

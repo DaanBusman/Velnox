@@ -43,6 +43,7 @@ const DOCUMENTS = [
   'managing-infrastructure',
   'managing-the-library',
   'building-vms',
+  'updating-nodes',
   'working-with-jobs',
   'permissions',
   'deployment',

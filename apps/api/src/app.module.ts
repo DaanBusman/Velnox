@@ -19,6 +19,7 @@ import { AutoconfigModule } from './modules/autoconfig/autoconfig.module';
 import { LibraryModule } from './modules/library/library.module';
 import { MailModule } from './modules/mail/mail.module';
 import { SupportModule } from './modules/support/support.module';
+import { UpdatesModule } from './modules/updates/updates.module';
 
 /**
  * Application composition root.
@@ -46,6 +47,7 @@ import { SupportModule } from './modules/support/support.module';
     AutoconfigModule,
     MailModule,
     SupportModule,
+    UpdatesModule,
     UsersModule,
     IdentityModule,
     RolesModule,

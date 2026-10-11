@@ -473,23 +473,40 @@ smtp_password_credential_id, smtp_from, smtp_verified_at`. Aan vereist een host 
 
 ## 7. Updates
 
-### `update_policies`
-`id, tenant_id, name, kind (SECURITY_CRITICAL|STANDARD|MANUAL_APPROVAL), enabled, scope_type, scope_id,
-auto_apply, require_approval, reboot_policy (NEVER|IF_REQUIRED|ALWAYS), rolling_concurrency int,
-abort_on_first_failure, package_allowlist text[], package_denylist text[], maintenance_window_id,
-notify_targets jsonb`
+Gebouwd in fase 6 (migratie `20261011090000_update_management`). ADR-047 legt de vorm uit.
 
-### `maintenance_windows`
-`id, tenant_id, name, timezone, rrule text, duration_minutes, blackout_dates date[]`
-Herhaling opgeslagen als RFC 5545 RRULE, server-side geëvalueerd in de eigen tijdzone van het venster.
+### `nodes`, updatekolommen
+`updates_available, updates_security, updates_kernel, updates_proxmox, updates_checked_at,
+running_kernel, reboot_required, reboot_required_reason`. Geschreven door de inventarisatie, en door
+een updatejob als die klaar is.
 
 ### `node_package_updates`
-`id, tenant_id, node_id, package, current_version, candidate_version, origin, priority, is_security,
-is_kernel, is_proxmox, detected_at, applied_at, job_id`
+`id, tenant_id, cluster_id, node_id, package, current_version, candidate_version, origin,
+is_security, is_kernel, is_proxmox, detected_at`
 
-### `update_runs`
-Een view over `jobs` van type `UPDATE_*`, samengevoegd met de uitkomsten per node — updatehistorie zonder
-een tweede toestandsmachine.
+Wat één node zou bijwerken, bij elke uitlezing als geheel vervangen. Uniek op `(node_id, package)`. De
+trigger `node_package_updates_owner_follows_node` zet tenant en cluster vanuit de node.
+
+### `maintenance_windows`
+`id, tenant_id, name, timezone, rrule, duration_minutes, blackout_dates text[], created_by_label,
+created_at, updated_at`
+
+Een RFC 5545-regel voor wanneer het venster opengaat — de deelverzameling die
+`packages/shared/src/rrule.ts` leest — geëvalueerd in zijn eigen tijdzone;
+`maintenance_windows_duration` houdt het tussen 15 minuten en een dag. Uniek op
+`(tenant_id, lower(name))`.
+
+### `update_policies`
+`id, tenant_id, cluster_id (uniek), name, enabled, auto_apply, require_approval, reboot_policy
+(NEVER|IF_REQUIRED|ALWAYS), maintenance_window_id, created_by_label, created_at, updated_at`
+
+Eén per cluster. `update_policies_auto_needs_window` weigert zichzelf bijwerken zonder venster; de
+trigger `update_policies_owner_follows_cluster` zet de tenant vanuit het cluster en weigert een venster
+van een andere tenant. De ontworpen `rolling_concurrency`, lijsten met toegestane en uitgesloten
+pakketten en notificatiedoelen zijn niet gebouwd.
+
+### Updatehistorie
+Jobs van type `node.update`, met hun stappen, gebeurtenissen en uitvoer — geen eigen tabel.
 
 ---
 

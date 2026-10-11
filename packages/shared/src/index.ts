@@ -13,8 +13,10 @@ export * from './jobs';
 export * from './library';
 export * from './permissions';
 export * from './redaction';
+export * from './rrule';
 export * from './slug';
 export * from './system';
+export * from './updates';
 
 /**
  * Queue and job names shared between the API (producer) and the worker (consumer).

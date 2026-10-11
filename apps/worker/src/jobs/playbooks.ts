@@ -8,6 +8,7 @@ import {
 } from '../library/playbooks';
 import type { LibraryServices } from '../library/services';
 import { packageVerifyPlaybook } from '../provisioning/package-verify';
+import { nodeUpdatePlaybook } from '../updates/playbook';
 import { provisionPlaybook, type ProvisioningServices } from '../provisioning/playbook';
 import { StepError, type Playbook, type StepDefinition } from './steps';
 
@@ -123,6 +124,8 @@ export function playbookFor(type: string, params: unknown, context: PlaybookCont
       return clusterDeletePlaybook(params, library());
     case JOB_TYPES.packageVerify:
       return packageVerifyPlaybook(params, context.jobId, library());
+    case JOB_TYPES.nodeUpdate:
+      return nodeUpdatePlaybook(params, library());
     case JOB_TYPES.vmProvision:
       if (!context.provisioning) throw new StepError('generic', 'This worker cannot provision');
       return provisionPlaybook(params, context.provisioning);

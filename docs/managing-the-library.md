@@ -141,8 +141,8 @@ cluster's **Connection** tab. Everything else in Velnox works without it.
 
 ### What Velnox does over SSH
 
-It opens SFTP and reads one file. It never runs a command and never opens a shell. The account can
-therefore be one that may do nothing else, and should be — on each node:
+For copying a file, it opens SFTP and reads one file — no command, no shell. If that is all you use
+SSH for, the account can be one that may do nothing else — on each node:
 
 ```
 Match User velnox-sftp
@@ -153,6 +153,11 @@ Match User velnox-sftp
 
 in `/etc/ssh/sshd_config`, with read access to the storage directories — `/var/lib/vz/template/iso`
 and `/var/lib/vz/import` for the `local` storage.
+
+The same SSH set-up is what [applying updates](updating-nodes.md) uses, and that runs three fixed
+commands, one of them through sudo. An SFTP-only account keeps copying working and makes updates
+fail; [Updating nodes](updating-nodes.md#before-you-can-apply-updates-ssh) has an account that does
+both.
 
 ### Setting it up
 

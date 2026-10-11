@@ -20,7 +20,7 @@ const TILES = [
   { key: 'tenants', phase: 3, href: '/tenants' },
   { key: 'clusters', phase: 4, href: '/clusters' },
   { key: 'nodes', phase: 4, href: '/nodes' },
-  { key: 'nodesNeedingUpdates', phase: 6, href: null },
+  { key: 'nodesNeedingUpdates', phase: 6, href: '/updates' },
   { key: 'upgradeBlockers', phase: 9, href: null },
   { key: 'unhealthyClusters', phase: 4, href: '/clusters' },
   { key: 'runningJobs', phase: 5, href: '/jobs' },
@@ -79,6 +79,9 @@ export default async function DashboardPage() {
     tenants: tenants.ok ? tenants.data.tenants.length : null,
     clusters: clusters.ok ? clusters.data.clusters.length : null,
     nodes: nodes.ok ? nodes.data.nodes.length : null,
+    nodesNeedingUpdates: nodes.ok
+      ? nodes.data.nodes.filter((node) => (node.updatesAvailable ?? 0) > 0).length
+      : null,
     unhealthyClusters: clusters.ok
       ? clusters.data.clusters.filter((cluster) => cluster.health !== 'OK').length
       : null,
