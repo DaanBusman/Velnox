@@ -309,7 +309,7 @@ check "concurrency: the second is refused" 409 "$(last_status)"
 check "concurrency: as job.concurrent_run" job.concurrent_run "$(json error.code <"$WORK/body")"
 check "concurrency: naming the job in the way" "$C_ID" "$(json error.params.jobId <"$WORK/body")"
 
-OTHER="$(start_selftest lane "${RUN}-c2" steps 1 secondsPerStep 1)"
+start_selftest lane "${RUN}-c2" steps 1 secondsPerStep 1 >/dev/null
 check "concurrency: a different key is not affected" 201 "$(last_status)"
 
 call POST "/api/v1/jobs/${C_ID}/cancel" >/dev/null

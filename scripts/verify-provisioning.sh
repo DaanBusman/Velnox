@@ -362,6 +362,7 @@ info "Pointing outgoing mail at the fixture."
 MAIL_BEFORE="$(call GET /api/v1/system/mail)"
 # A sender of its own each run, so saving is a change even after a run that was
 # killed with the same settings tested and switched on.
+# shellcheck disable=SC2016  # a JavaScript template literal, expanded by node, not by the shell
 call PUT /api/v1/system/mail "$(H="$FIXTURE_HOST" P="$SMTP_PORT" R="$RUN" body '{ host: e.H, port: Number(e.P), security: "NONE", username: null, from: `velnox-${e.R}@example.invalid` }')" >/dev/null
 check "mail: settings saved" 200 "$(last_status)"
 call PUT /api/v1/system/mail '{"enabled":true}' >/dev/null

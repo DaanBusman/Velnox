@@ -226,8 +226,8 @@ reload_caddy() {
 }
 
 verify_served() {
-  local expect_self_signed="$1" attempt
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  local expect_self_signed="$1"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
     sleep 2
     if echo | openssl s_client -connect "${SITE_ADDRESS}:443" -servername "${SITE_ADDRESS}" 2>/dev/null |
       openssl x509 -noout -subject >/dev/null 2>&1; then

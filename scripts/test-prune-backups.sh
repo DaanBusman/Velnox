@@ -101,6 +101,7 @@ check "exit 0" "[ $rc = 0 ]"
 check "says there is nothing to do" "grep -q 'Nothing to do' <<<\"\$out\""
 
 echo "== --help"
+# shellcheck disable=SC2034  # read by the check expressions below, which are eval'd
 out="$(bash "$S" --help 2>&1)"; rc=$?
 check "exit 0" "[ $rc = 0 ]"
 check "shows the usage, not the code" "grep -q -- '--older-than=N' <<<\"\$out\" && ! grep -q 'set -euo' <<<\"\$out\""

@@ -132,6 +132,7 @@ served_issuer() {
 }
 fingerprint_of() { openssl x509 -in "$1" -noout -fingerprint -sha256 | sed 's/^[^=]*=//'; }
 
+# shellcheck disable=SC2329  # called by the EXIT trap below
 cleanup() {
   # Whatever happened, the installation serves the installer's certificate again.
   put_tls '{ mode: "installer" }' >/dev/null 2>&1
@@ -172,7 +173,7 @@ SITE="$(printf '%s' "$STATUS" | json siteAddress)"
 info "The site is ${SITE}."
 check "at first the installer's certificate is served" installer "$(printf '%s' "$STATUS" | json managedBy)"
 INSTALLER_FP="$(served_fingerprint)"
-[[ -n "$INSTALLER_FP" ]] && { green "and a browser gets one"; PASS=$((PASS + 1)); } || { red "no certificate served at all"; FAIL=$((FAIL + 1)); }
+if [[ -n "$INSTALLER_FP" ]]; then green "and a browser gets one"; PASS=$((PASS + 1)); else red "no certificate served at all"; FAIL=$((FAIL + 1)); fi
 check "the managed file hands over to the installer's" "import /etc/caddy/tls/tls.caddy" "$(in_api 'tail -1 /var/lib/velnox/tls/tls.caddy')"
 
 info "Refusals."
@@ -186,7 +187,11 @@ MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout "$WORK_NATI
 MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout "$WORK_NATIVE/b.key" -out "$WORK_NATIVE/b.crt" -days 30 \
   -subj "/CN=${SITE}" -addext "subjectAltName=DNS:${SITE}" >/dev/null 2>&1
 openssl pkey -in "$WORK_NATIVE/a.key" -aes256 -passout pass:harness -out "$WORK_NATIVE/a-encrypted.key" >/dev/null 2>&1
-export CERT_A="$(cat "$WORK/a.crt")" KEY_A="$(cat "$WORK/a.key")" KEY_B="$(cat "$WORK/b.key")" KEY_ENC="$(cat "$WORK/a-encrypted.key")"
+CERT_A="$(cat "$WORK/a.crt")"
+KEY_A="$(cat "$WORK/a.key")"
+KEY_B="$(cat "$WORK/b.key")"
+KEY_ENC="$(cat "$WORK/a-encrypted.key")"
+export CERT_A KEY_A KEY_B KEY_ENC
 
 R="$(put_tls '{ mode: "certificate", certificate: e.CERT_A, key: e.KEY_B }')"
 check "a key that is not the certificate's is refused" "400 tls.key_mismatch" "$(last_status) $(printf '%s' "$R" | json error.code)"
@@ -240,7 +245,8 @@ MSYS_NO_PATHCONV=1 docker run -d --rm --name "$PEBBLE" --network "$NETWORK" --ne
 sleep 2
 MSYS_NO_PATHCONV=1 docker cp "$PEBBLE:/test/certs/pebble.minica.pem" "$WORK_NATIVE/pebble-root.pem" >/dev/null 2>&1
 if [[ -s "$WORK/pebble-root.pem" ]]; then
-  export PEBBLE_ROOT="$(cat "$WORK/pebble-root.pem")"
+  PEBBLE_ROOT="$(cat "$WORK/pebble-root.pem")"
+  export PEBBLE_ROOT
   R="$(put_tls '{ mode: "acme", email: "ops@example.com", directory: "https://pebble:14000/dir", caRoot: e.PEBBLE_ROOT }')"
   check "ACME with another directory and its root is accepted by Caddy" 200 "$(last_status)"
   contains "the directive names the directory and its root" "ca https://pebble:14000/dir" "$(in_api 'cat /var/lib/velnox/tls/tls.caddy')"
