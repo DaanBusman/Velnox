@@ -1,6 +1,6 @@
 # Plaatsing
 
-> **Vertaling.** Bron: [docs/placement.md](../placement.md) @ `1e88691`.
+> **Vertaling.** Bron: [docs/placement.md](../placement.md) @ `c313310`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Welke gasten van een cluster uit elkaar of bij elkaar worden gehouden, op welke nodes een gast
