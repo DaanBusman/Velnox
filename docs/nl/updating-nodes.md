@@ -134,8 +134,9 @@ De job, stap voor stap:
    wordt vóór elke groep opnieuw gecontroleerd: een venster dat halverwege sluit, stopt de run na
    de groep die bezig is.
 3. Dan, voor elke groep om de beurt:
-   - **evacuate** — elke draaiende gast live verplaatst naar de online node buiten de groep met het
-     meeste vrije geheugen; containers verhuizen met een herstart, zoals Proxmox een draaiende
+   - **evacuate** — elke draaiende gast live verplaatst naar de online node buiten de groep die de
+     [plaatsingsregels](placement.md) toestaan, een voorkeursnode eerst, daarna die met het meeste
+     vrije geheugen; containers verhuizen met een herstart, zoals Proxmox een draaiende
      container verplaatst. Een gast die niet kan verhuizen wordt afgesloten, als je dat koos.
    - **update** — refresh, simulate en dist-upgrade op elke node van de groep, zoals bij één node.
    - **reboot** — volgens de herstartkeuze, en alleen als quorum het toelaat met de groep weg.

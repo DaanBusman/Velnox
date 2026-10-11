@@ -28,6 +28,10 @@
  * break things on purpose: `{"offline": ["pve3"]}` takes nodes away;
  * `{"cephWarnAfterReboot": "pve2"}` makes Ceph HEALTH_WARN from that node's
  * next reboot on.
+ *
+ * Phase 7B: `{"pve": "9.0.6"}` makes every node report that version, and
+ * Proxmox 9's HA rules (`/cluster/ha/rules`) answer; on 8 they answer 501 as
+ * PVE 8 does. The rules live in the fixture, so they outlast Velnox.
  */
 
 import { readFileSync } from 'node:fs';
@@ -69,9 +73,54 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     }
   };
 
+  /** The version every node reports: PVE 8 unless the control file says otherwise. */
+  const version = () => String(control().pve ?? '8.2.4');
+  const major = () => Number(version().split('.')[0]);
+  const haRules = new Map();
+
+  /** Cluster-wide routes that change something: Proxmox 9's HA rules. */
+  function handleCluster(request, response, path, send) {
+    const match = /^\/api2\/json\/cluster\/ha\/rules(?:\/([^/]+))?$/.exec(path);
+    if (!match) return false;
+    const method = request.method ?? 'GET';
+    if (major() < 9) {
+      send(response, 501, { data: null, message: `Method '${method} /cluster/ha/rules' not implemented` });
+      return true;
+    }
+    const id = match[1] ? decodeURIComponent(match[1]) : null;
+    if (method === 'GET' && !id) {
+      send(response, 200, { data: [...haRules.values()] });
+      return true;
+    }
+    if (method === 'DELETE' && id) {
+      if (!haRules.delete(id)) send(response, 500, { data: null, message: `HA rule '${id}' does not exist` });
+      else {
+        log(`ops: HA rule ${id} removed`);
+        send(response, 200, { data: null });
+      }
+      return true;
+    }
+    readForm(request).then((form) => {
+      const rule = id ?? form.rule;
+      const fail = (message) => send(response, 400, { data: null, message, errors: { rule: message } });
+      if (method === 'POST' && haRules.has(rule)) return fail(`HA rule '${rule}' already exists`);
+      if (method === 'PUT' && !haRules.has(rule)) return fail(`HA rule '${rule}' does not exist`);
+      if (!['node-affinity', 'resource-affinity'].includes(form.type)) return fail(`invalid type '${form.type}'`);
+      const resources = String(form.resources ?? '').split(',').filter(Boolean);
+      if (!resources.length || resources.some((r) => !/^(vm|ct):\d+$/.test(r))) return fail('invalid resources');
+      if (form.type === 'resource-affinity' && !['positive', 'negative'].includes(form.affinity)) return fail('invalid affinity');
+      if (form.type === 'node-affinity' && !form.nodes) return fail('nodes missing');
+      const { rule: _ignored, ...rest } = form;
+      haRules.set(rule, { rule, ...rest, disable: Number(form.disable ?? 0), ...(form.strict !== undefined ? { strict: Number(form.strict) } : {}) });
+      log(`ops: HA rule ${rule} ${method === 'POST' ? 'created' : 'updated'}: ${form.type} ${form.affinity ?? form.nodes} ${resources.join(',')}`);
+      send(response, 200, { data: null });
+    });
+    return true;
+  }
+
   const guests = new Map(
     [
-      { vmid: 100, kind: 'qemu', node: 'pve1', name: 'db-primary', mem: 8, config: { scsi0: 'ceph-vm:vm-100-disk-0,size=64G' } },
+      { vmid: 100, kind: 'qemu', node: 'pve1', name: 'db-primary', mem: 24, config: { scsi0: 'ceph-vm:vm-100-disk-0,size=64G' } },
       { vmid: 200, kind: 'lxc', node: 'pve1', name: 'monitoring', mem: 2, config: { rootfs: 'ceph-vm:subvol-200-disk-0,size=8G' } },
       { vmid: 101, kind: 'qemu', node: 'pve2', name: 'web-01', mem: 4, config: { scsi0: 'ceph-vm:vm-101-disk-0,size=32G' } },
       { vmid: 102, kind: 'qemu', node: 'pve3', name: 'build-local', mem: 4, config: { scsi0: 'local:102/vm-102-disk-0.qcow2,size=32G' } },
@@ -140,9 +189,9 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       send(response, 200, {
         data: {
           uptime: Math.floor((Date.now() - s.bootedAt) / 1000),
-          pveversion: 'pve-manager/8.2.4/faa83925c9641325',
+          pveversion: `pve-manager/${version()}/faa83925c9641325`,
           cpuinfo: { cpus: 32, sockets: 1, model: 'AMD EPYC 7313P 16-Core Processor' },
-          memory: { total: 137_438_953_472, used: 68_719_476_736, free: 68_719_476_736 },
+          memory: { total: 128 * GIB, used: nodeMemory(node), free: 128 * GIB - nodeMemory(node) },
           rootfs: { total: 107_374_182_400, used: 21_474_836_480, avail: 85_899_345_920 },
           'current-kernel': { sysname: 'Linux', release: `${s.running}-pve`, machine: 'x86_64' },
         },
@@ -408,7 +457,16 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     return false;
   }
 
-  return { handle, routes, exec, stats: () => ({ state, guests: [...guests.values()] }) };
+  return {
+    handle,
+    handleCluster,
+    routes,
+    exec,
+    version,
+    /** Memory in use on a node: 16 GiB for itself, plus its running guests. */
+    memoryOf: (name) => ({ total: 128 * GIB, used: nodeMemory(name) }),
+    stats: () => ({ state, guests: [...guests.values()], haRules: [...haRules.values()] }),
+  };
 }
 
 function compare(a, b) {

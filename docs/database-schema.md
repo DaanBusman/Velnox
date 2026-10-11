@@ -494,6 +494,23 @@ targets are not built.
 ### Update history
 Jobs of type `node.update`, with their steps, events and output — no table of its own.
 
+### `placement_rules` (Phase 7B)
+`id, tenant_id, cluster_id, name, kind (KEEP_APART|KEEP_TOGETHER|PREFER_NODES), vmids int[], nodes
+text[], strict, enabled, ha_rule_id, ha_synced_at, ha_sync_error, deleted_at, created_by_label,
+created_at, updated_at`
+
+Migration `20261011150000_placement`; ADR-049. `placement_rules_members` wants two guests or more for
+a rule between guests, `placement_rules_nodes` nodes for a preference and none otherwise. A name is
+unique among a cluster's rules not removed. `deleted_at` keeps a removed rule until its HA rule is
+gone from Proxmox (PVE 9). `updated_at` is the last change a person made; the worker's sync leaves it.
+
+### `placement_settings` (Phase 7B)
+`cluster_id (key), tenant_id, auto_correct, balance, balance_threshold_percent (5–80), quiet_minutes
+(5–1440), updated_at`
+
+Both tables take their tenant from the cluster (trigger `velnox_placement_owner`). Corrections and
+balancing are jobs of type `cluster.placement`.
+
 ---
 
 ## 8. Major upgrades

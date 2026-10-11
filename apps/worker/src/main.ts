@@ -54,6 +54,7 @@ import { pruneAuditEvents } from './audit/retention';
 import { LIVE_TICK_MS, LivePoller } from './inventory/live';
 import { pruneTasks } from './inventory/tasks';
 import { scheduleUpdates, UPDATE_SCHEDULER_INTERVAL_MS } from './updates/scheduler';
+import { keepPlacement, PLACEMENT_INTERVAL_MS } from './placement/scheduler';
 
 /**
  * Velnox worker.
@@ -435,6 +436,19 @@ async function bootstrap(): Promise<void> {
       );
   const updateTimer = setInterval(() => void scheduleTick(), UPDATE_SCHEDULER_INTERVAL_MS);
 
+  // Placement rules into Proxmox's HA rules, and corrections and balancing
+  // the clusters' settings allow (Phase 7B).
+  const placementTick = () =>
+    keepPlacement(prisma, policyQueue, library)
+      .then((result) => {
+        if (result.synced.length || result.started.length || result.failed.length)
+          logger.info(result, 'Placement kept');
+      })
+      .catch((error: unknown) =>
+        logger.error({ err: rootRedactor.value(error) }, 'Keeping placement failed'),
+      );
+  const placementTimer = setInterval(() => void placementTick(), PLACEMENT_INTERVAL_MS);
+
   logger.info(
     {
       queue: QUEUE_NAMES.system,
@@ -459,6 +473,7 @@ async function bootstrap(): Promise<void> {
     clearInterval(reconcileTimer);
     clearInterval(sweepTimer);
     clearInterval(updateTimer);
+    clearInterval(placementTimer);
     clearInterval(liveTimer);
     livePoller.close();
     liveRedis.disconnect();

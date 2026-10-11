@@ -44,6 +44,7 @@ const DOCUMENTS = [
   'managing-the-library',
   'building-vms',
   'updating-nodes',
+  'placement',
   'working-with-jobs',
   'permissions',
   'deployment',

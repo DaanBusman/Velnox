@@ -508,6 +508,24 @@ pakketten en notificatiedoelen zijn niet gebouwd.
 ### Updatehistorie
 Jobs van type `node.update`, met hun stappen, gebeurtenissen en uitvoer — geen eigen tabel.
 
+### `placement_rules` (fase 7B)
+`id, tenant_id, cluster_id, name, kind (KEEP_APART|KEEP_TOGETHER|PREFER_NODES), vmids int[], nodes
+text[], strict, enabled, ha_rule_id, ha_synced_at, ha_sync_error, deleted_at, created_by_label,
+created_at, updated_at`
+
+Migratie `20261011150000_placement`; ADR-049. `placement_rules_members` wil twee gasten of meer voor
+een regel tussen gasten, `placement_rules_nodes` nodes voor een voorkeur en anders geen. Een naam is
+uniek onder de niet-verwijderde regels van een cluster. `deleted_at` houdt een verwijderde regel vast
+tot zijn HA-regel uit Proxmox weg is (PVE 9). `updated_at` is de laatste wijziging door een persoon;
+de synchronisatie van de worker laat hem staan.
+
+### `placement_settings` (fase 7B)
+`cluster_id (sleutel), tenant_id, auto_correct, balance, balance_threshold_percent (5–80),
+quiet_minutes (5–1440), updated_at`
+
+Beide tabellen nemen hun tenant over van het cluster (trigger `velnox_placement_owner`). Correcties en
+balanceren zijn jobs van type `cluster.placement`.
+
 ---
 
 ## 8. Major upgrades

@@ -1,6 +1,7 @@
-import type { ClusterResource, ProxmoxClient } from '@velnox/proxmox';
+import { waitForTask, type ClusterResource, type ProxmoxClient } from '@velnox/proxmox';
 import type { VelnoxPrismaClient } from '@velnox/db';
-import type { PlannedGuest } from '@velnox/shared';
+import type { PlacementRuleLike, PlannedGuest, Positions } from '@velnox/shared';
+import { StepError } from '../jobs/steps';
 
 /**
  * The guests a node's reboot affects, and whether each can be moved away live
@@ -114,12 +115,95 @@ export function chooseTarget(
   free: Map<string, number>,
   away: Set<string>,
   allowed: (node: string) => boolean = () => true,
+  rank: (node: string) => number = () => 0,
 ): string | null {
   let best: string | null = null;
   for (const [node, bytes] of free) {
     if (away.has(node) || !allowed(node) || bytes < guest.memoryBytes) continue;
-    if (best === null || bytes > free.get(best)!) best = node;
+    if (
+      best === null ||
+      rank(node) < rank(best) ||
+      (rank(node) === rank(best) && bytes > free.get(best)!)
+    )
+      best = node;
   }
   if (best) free.set(best, free.get(best)! - guest.memoryBytes);
   return best;
+}
+
+/** Where every running guest of the cluster is (placement, Phase 7B). */
+export function positionsOf(resources: ClusterResource[]): Positions {
+  return new Map(
+    resources
+      .filter(
+        (r) =>
+          (r.type === 'qemu' || r.type === 'lxc') &&
+          r.status === 'running' &&
+          r.node &&
+          typeof r.vmid === 'number',
+      )
+      .map((r) => [r.vmid!, r.node!]),
+  );
+}
+
+/** A cluster's placement rules in force: enabled and not removed. */
+export async function placementRulesOf(
+  prisma: VelnoxPrismaClient,
+  clusterId: string,
+): Promise<PlacementRuleLike[]> {
+  const rows = await prisma.placementRule.findMany({
+    where: { clusterId, enabled: true, deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    kind: r.kind,
+    vmids: r.vmids,
+    nodes: r.nodes,
+    strict: r.strict,
+    enabled: r.enabled,
+  }));
+}
+
+export interface GuestMove {
+  vmid: number;
+  kind: 'qemu' | 'lxc';
+  from: string;
+  to: string;
+}
+
+/**
+ * Move a running guest and confirm it arrived: a VM live, a container by
+ * restart. Fails with `code` when Proxmox's task fails or the guest is
+ * anywhere but the target afterwards.
+ */
+export async function moveGuest(
+  pve: ProxmoxClient,
+  signal: AbortSignal,
+  move: GuestMove,
+  code: string,
+): Promise<void> {
+  const label = `${move.kind === 'lxc' ? 'CT' : 'VM'} ${move.vmid}`;
+  const params = { vmid: move.vmid, from: move.from, to: move.to };
+  const upid = await pve.migrateGuest(move.from, move.kind, move.vmid, move.to);
+  const outcome = await waitForTask(pve, upid, { signal, timeoutMs: 30 * 60_000 });
+  if (!outcome.succeeded) {
+    throw new StepError(
+      code,
+      `Moving ${label} from ${move.from} to ${move.to} failed: ${outcome.exitStatus}`,
+      params,
+    );
+  }
+  const after = await pve.clusterResources();
+  const where = after.find(
+    (r) => r.vmid === move.vmid && (r.type === 'qemu' || r.type === 'lxc'),
+  )?.node;
+  if (where !== move.to) {
+    throw new StepError(
+      code,
+      `${label} is on ${where ?? 'no node'} after moving it to ${move.to}`,
+      params,
+    );
+  }
 }

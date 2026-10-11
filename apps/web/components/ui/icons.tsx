@@ -115,6 +115,16 @@ export const IconUpdates = (p: IconProps) => (
   </Icon>
 );
 
+/** Placement: guests on separate nodes. */
+export const IconPlacement = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="1.75" y="4" width="5.5" height="8" rx="1" />
+    <rect x="8.75" y="4" width="5.5" height="8" rx="1" />
+    <circle cx="4.5" cy="8" r="1" />
+    <circle cx="11.5" cy="8" r="1" />
+  </Icon>
+);
+
 export const IconUpgrades = (p: IconProps) => (
   <Icon {...p}>
     <path d="M8 13.5v-7" />
@@ -258,6 +268,7 @@ export const NAV_ICONS: Record<string, (props: IconProps) => ReactElement> = {
   autoconfig: IconAutomation,
   mail: IconSettings,
   updates: IconUpdates,
+  placement: IconPlacement,
   migrations: IconMigrations,
   automation: IconAutomation,
   jobs: IconJobs,

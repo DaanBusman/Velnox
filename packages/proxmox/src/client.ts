@@ -404,6 +404,29 @@ export class ProxmoxClient {
     );
   }
 
+  // --- HA rules (PVE 9) -------------------------------------------------------
+
+  /**
+   * Proxmox's HA rules: node affinity (which nodes a guest belongs on) and
+   * resource affinity (guests kept together or apart). PVE 9 and later; PVE 8
+   * answers 501 here.
+   */
+  haRules(): Promise<HaRule[]> {
+    return this.get<HaRule[]>('/cluster/ha/rules');
+  }
+
+  createHaRule(rule: string, params: Record<string, string | number>): Promise<null> {
+    return this.postOnce<null>('/cluster/ha/rules', { rule, ...params });
+  }
+
+  updateHaRule(rule: string, params: Record<string, string | number>): Promise<null> {
+    return this.put<null>(`/cluster/ha/rules/${encodeURIComponent(rule)}`, params);
+  }
+
+  deleteHaRule(rule: string): Promise<null> {
+    return this.del<null>(`/cluster/ha/rules/${encodeURIComponent(rule)}`);
+  }
+
   /** Start a guest, or shut it down cleanly. Returns the task's UPID. */
   guestCommand(
     node: string,
@@ -760,6 +783,19 @@ export interface ClusterStatusEntry {
   nodeid?: number;
   ip?: string;
   level?: string;
+}
+
+/** One of Proxmox's HA rules, as `/cluster/ha/rules` lists it. */
+export interface HaRule {
+  rule: string;
+  type: 'node-affinity' | 'resource-affinity' | string;
+  resources: string;
+  nodes?: string;
+  strict?: number;
+  affinity?: 'positive' | 'negative';
+  disable?: number;
+  comment?: string;
+  digest?: string;
 }
 
 export interface ClusterResource {

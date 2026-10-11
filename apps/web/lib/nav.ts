@@ -107,6 +107,14 @@ export const NAVIGATION: NavGroup[] = [
         requiresPermission: 'updates.read',
         alsoMatches: ['/major-upgrades'],
       },
+      // Placement is an ongoing property of a cluster, set once and kept true —
+      // not a one-off move, which is why it is not under Migrations (Phase 7B).
+      {
+        key: 'placement',
+        href: '/placement',
+        phase: null,
+        requiresPermission: 'placement.read',
+      },
       { key: 'migrations', href: '/migrations', phase: 11 },
       { key: 'automation', href: '/automation', phase: 8 },
       {

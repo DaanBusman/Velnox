@@ -242,6 +242,8 @@ export const JOB_TYPES = {
   nodeUpdate: 'node.update',
   /** Update every node of a cluster, guests moved away first, quorum kept (Phase 7). */
   rollingUpdate: 'cluster.rolling_update',
+  /** Move guests to meet placement rules, or one to even out memory (Phase 7B). */
+  placement: 'cluster.placement',
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

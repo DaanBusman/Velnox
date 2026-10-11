@@ -120,8 +120,9 @@ The job, step by step:
 2. **approve** and **window** — as for one node, under the cluster's policy. The window is checked
    again before every group: a window that closes mid-run stops the run after the group in progress.
 3. Then, for each group in turn:
-   - **evacuate** — each running guest moved live to the online node outside the group with the
-     most memory free; containers move by restart, which is how Proxmox moves a running container.
+   - **evacuate** — each running guest moved live to the online node outside the group that the
+     [placement rules](placement.md) allow, a preferred node first, then the one with the most
+     memory free; containers move by restart, which is how Proxmox moves a running container.
      A guest that cannot move is shut down, if you chose that.
    - **update** — refresh, simulate and dist-upgrade on each node of the group, as for one node.
    - **reboot** — per the reboot choice, and only if quorum allows it with the group away.

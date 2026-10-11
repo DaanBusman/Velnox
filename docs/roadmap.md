@@ -354,7 +354,15 @@ the run refuses to start on an already-degraded cluster; the quorum invariant ho
 tests for cluster sizes 1–15; a node failing post-validation stops the run and reports
 `partially_succeeded`; workloads are migrated back or accounted for explicitly.
 
-## Phase 7B — Cluster resource scheduling (placement rules and balancing) · **L**
+## Phase 7B — Cluster resource scheduling (placement rules and balancing) · **L** · built, not yet complete
+
+**As built** (0.5.28, ADR-049): **Operations → Placement**; rules per cluster — keep apart, keep
+together, prefer nodes (strict or soft) — whether each holds, from the inventory; on PVE 9 written
+into Proxmox's HA rules, read back, and written again when changed there; corrections and one-move
+memory balancing as `cluster.placement` jobs, by hand or by the cluster's settings, never while the
+cluster is not whole; the rolling update honours the rules and refuses when it cannot.
+`scripts/verify-placement.sh` proves it against the fixture. **Not yet:** a real cluster, and real
+PVE 9 HA rules — in particular whether Proxmox accepts a rule naming guests not under HA.
 
 Asked for by the owner on 5 October 2026: keeping chosen VMs apart, so that they never run on the
 same node, matters most. Its own sidebar heading, **Placement**, under Operations — not under
@@ -413,6 +421,14 @@ from multiple point releases. Repository remediations (bookworm → trixie, depr
 handling, enterprise/no-subscription), package remediations, storage and network blocker detection.
 Canary-first node ordering with an explicit continue. Post-upgrade validation against PVE 9
 expectations. Composition with 9A for Ceph-backed clusters.
+
+**Added by the owner on 11 October 2026:** a CPU microcode check, installing the matching package
+(`intel-microcode` or `amd64-microcode`, with Debian's `non-free-firmware` component enabled) when it
+is missing; and the other common `pve8to9` warnings and failures detected and remedied where it is
+safe — PVE 8.4.1 or later first, the `systemd-boot` meta-package (only after checking how the node
+boots), LVM autoactivation (Proxmox's migration script), `/etc/sysctl.conf` settings moved to
+`/etc/sysctl.d/`, free space on `/`, `linux-image-amd64`, GRUB on UEFI with root on LVM — and the ones
+that cannot be remedied, such as containers that need cgroup v1, reported as blockers.
 
 **Acceptance:** preflight produces structured PASS/WARNING/BLOCKER/UNKNOWN with raw output retained;
 unknown lines are treated as blockers and shown verbatim; a safe repository remediation applies,

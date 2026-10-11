@@ -428,10 +428,19 @@
       "not_migratable": "These running guests cannot be moved live: {guests}. Move or stop them, or choose to shut them down for the reboot.",
       "capacity_short": "While {node} is down its guests need {neededGb} GB; the other nodes have {freeGb} GB free.",
       "migration_failed": "Moving guest {vmid} from {from} to {to} failed. The job’s output shows why.",
-      "validation_failed": "{node} did not come back whole after its update ({reason}); the run stopped there."
+      "validation_failed": "{node} did not come back whole after its update ({reason}); the run stopped there.",
+      "placement_blocked": "No node may take {guest} while its own is emptied, under placement rules {rules}. Change the rules, or stop the guest."
     },
     "maintenance": {
       "window_in_use": "This window is used by {policies, plural, one {a policy} other {# policies}}. Change those first."
+    },
+    "placement": {
+      "unknown_member": "The cluster has no guest or node {members}.",
+      "contradiction": "The same guests are kept the other way by rule “{rule}”; both cannot hold.",
+      "impossible": "{guests} guests cannot be kept apart on {nodes} nodes.",
+      "cluster_degraded": "The cluster is not whole ({reason}); placement moves nothing until it is.",
+      "unresolved": "Some placement rules are still not met: {rules}. The job’s output says why.",
+      "migration_failed": "Moving guest {vmid} from {from} to {to} failed. The job’s output shows why."
     }
   },
   "inventory": {
@@ -610,7 +619,8 @@
       "provision": "Build VM",
       "package_verify": "Check package",
       "update": "Update node",
-      "rolling_update": "Rolling update"
+      "rolling_update": "Rolling update",
+      "placement": "Placement"
     }
   },
   "layout": {
@@ -703,7 +713,8 @@
     "library": "ISO library",
     "autoconfig": "Autoconfig",
     "provisioning": "VM builds",
-    "mail": "Outgoing mail"
+    "mail": "Outgoing mail",
+    "placement": "Placement"
   },
   "placeholder": {
     "backToDashboard": "Back to dashboard",
@@ -1714,5 +1725,86 @@
     "migrateBack": "Move guests back afterwards",
     "migrateBackHint": "Each guest returns to the node it came from once that node is done.",
     "rollingStart": "Start rolling update"
+  },
+  "placement": {
+    "subtitle": "Which guests of a cluster are kept apart or together, which nodes a guest belongs on, and whether that holds now.",
+    "cluster": "Cluster",
+    "chooseCluster": "Choose a cluster",
+    "chooseClusterBody": "Choose a cluster to see its placement rules.",
+    "haRulesOn": "Every node runs Proxmox VE 9: each rule is also one of Proxmox’s own HA rules, so it holds while Velnox is not running.",
+    "haRulesOff": "Proxmox VE 8 has no rules of its own for this: Velnox keeps them, by moving guests.",
+    "notWhole": "The cluster is not whole — a node is offline or quorum is lost. Placement moves nothing until it is.",
+    "rulesTitle": "Rules on {cluster}",
+    "rulesBody": "Whether a rule holds is read from the inventory. Only running guests count: a stopped guest is nowhere.",
+    "newRule": "New rule",
+    "noRules": "No placement rules yet.",
+    "kind": {
+      "KEEP_APART": "Keep apart",
+      "KEEP_TOGETHER": "Keep together",
+      "PREFER_NODES": "Prefer nodes"
+    },
+    "kindLabel": "Kind",
+    "kindHint": {
+      "KEEP_APART": "These guests never run on the same node — for the two halves of a cluster, or a primary and its replica.",
+      "KEEP_TOGETHER": "These guests always run on the same node — for guests that talk to each other constantly.",
+      "PREFER_NODES": "These guests run on the nodes chosen — for licensing, hardware or a quiet node."
+    },
+    "describe": {
+      "KEEP_APART": "{guests} never share a node.",
+      "KEEP_TOGETHER": "{guests} always share a node."
+    },
+    "preferStrict": "{guests} run only on {nodes}.",
+    "preferSoft": "{guests} run on {nodes} when one of them can.",
+    "holds": "Holds",
+    "notMet": "Not met",
+    "disabled": "Off",
+    "ha": {
+      "synced": "In Proxmox’s HA rules",
+      "pending": "Being written to Proxmox",
+      "error": "Not in Proxmox",
+      "velnox": "Kept by Velnox"
+    },
+    "haError": "Proxmox: {error}",
+    "violation": {
+      "apart": "{guests} are both on {node}.",
+      "elsewhere": "Now: {where}."
+    },
+    "onNode": "{guest} on {node}",
+    "edit": "Edit",
+    "remove": "Remove",
+    "name": "Name",
+    "guests": "Guests",
+    "runningOn": "running on {node}",
+    "stopped": "stopped",
+    "nodes": "Nodes",
+    "strict": "Only these nodes",
+    "strictHint": "Off, a guest may run elsewhere when none of these nodes can take it.",
+    "enabled": "In force",
+    "nowTitle": "Act now",
+    "nowBody": "Correcting moves running guests live until every rule holds, without breaking another. Balancing moves one guest, within the rules, when memory use differs by more than the threshold below.",
+    "correctNow": "Correct now",
+    "balanceNow": "Balance now",
+    "nodeMemory": "{node}: {percent}% of memory in use",
+    "nodeOffline": "{node}: offline",
+    "started": "Started",
+    "followJob": "Follow the job",
+    "settingsTitle": "Keeping it so",
+    "settingsBody": "Both off until you turn them on. Never while the cluster is not whole, never while another job changes it, and at most once per quiet period.",
+    "settingsSaved": "Saved.",
+    "autoCorrect": "Correct by itself",
+    "autoCorrectHint": "When a rule is not met, Velnox moves guests to meet it.",
+    "balance": "Balance memory by itself",
+    "balanceHint": "When the busiest node uses more of its memory than the quietest by more than the threshold, Velnox moves one guest.",
+    "threshold": "Threshold (percentage points)",
+    "thresholdHint": "Between 5 and 80.",
+    "quiet": "Quiet period (minutes)",
+    "quietHint": "At least this long between two runs Velnox starts by itself.",
+    "historyTitle": "Runs",
+    "noJobs": "Nothing has been moved for placement yet.",
+    "reason": {
+      "correct": "Correction",
+      "balance": "Balancing"
+    },
+    "bySettings": "by the settings"
   }
 }

@@ -708,6 +708,8 @@ model Cluster {
   proxmoxTasks    ProxmoxTask[]
   provisionings   Provisioning[]
   updatePolicy    UpdatePolicy?
+  placementRules    PlacementRule[]
+  placementSettings PlacementSettings?
 
   @@index([tenantId])
   @@index([siteId])
@@ -1827,4 +1829,68 @@ model UpdatePolicy {
 
   @@index([tenantId])
   @@map("update_policies")
+}
+
+// ---------------------------------------------------------------------------
+// Placement (Phase 7B)
+// ---------------------------------------------------------------------------
+
+enum PlacementKind {
+  KEEP_APART
+  KEEP_TOGETHER
+  PREFER_NODES
+
+  @@map("placement_kind")
+}
+
+/// Which guests of a cluster are kept apart or together, and which nodes a
+/// guest belongs on. Guests by VMID. On PVE 9 each rule is also one of
+/// Proxmox's HA rules, so it holds when Velnox is not running.
+model PlacementRule {
+  id        String        @id @default(uuid()) @db.Uuid
+  tenantId  String        @map("tenant_id") @db.Uuid
+  clusterId String        @map("cluster_id") @db.Uuid
+  name      String
+  kind      PlacementKind
+  vmids     Int[]
+  /// PREFER_NODES only.
+  nodes     String[]      @default([])
+  /// PREFER_NODES only: these nodes and no other.
+  strict    Boolean       @default(true)
+  enabled   Boolean       @default(true)
+
+  /// The rule's id among Proxmox's HA rules (PVE 9), once written there.
+  haRuleId    String?   @map("ha_rule_id")
+  /// When Proxmox last held the rule as Velnox has it. Behind `updatedAt`: to be written.
+  haSyncedAt  DateTime? @map("ha_synced_at") @db.Timestamptz(3)
+  haSyncError String?   @map("ha_sync_error")
+  /// Removed in Velnox; kept until its HA rule is gone from Proxmox too.
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  createdByLabel String?  @map("created_by_label")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clusterId])
+  @@map("placement_rules")
+}
+
+/// How Velnox keeps a cluster's placement: correcting violations by itself,
+/// and evening out memory. Both off until someone turns them on.
+model PlacementSettings {
+  clusterId               String    @id @map("cluster_id") @db.Uuid
+  tenantId                String    @map("tenant_id") @db.Uuid
+  autoCorrect             Boolean   @default(false) @map("auto_correct")
+  balance                 Boolean   @default(false)
+  balanceThresholdPercent Int       @default(20) @map("balance_threshold_percent")
+  quietMinutes            Int       @default(30) @map("quiet_minutes")
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("placement_settings")
 }

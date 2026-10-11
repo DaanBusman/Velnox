@@ -429,10 +429,19 @@
       "not_migratable": "Deze draaiende gasten kunnen niet live verhuizen: {guests}. Verplaats of stop ze, of kies ervoor ze af te sluiten voor de herstart.",
       "capacity_short": "Terwijl {node} down is, hebben zijn gasten {neededGb} GB nodig; de andere nodes hebben {freeGb} GB vrij.",
       "migration_failed": "Gast {vmid} verplaatsen van {from} naar {to} is mislukt. De uitvoer van de job laat zien waarom.",
-      "validation_failed": "{node} kwam na de update niet heel terug ({reason}); de run is daar gestopt."
+      "validation_failed": "{node} kwam na de update niet heel terug ({reason}); de run is daar gestopt.",
+      "placement_blocked": "Geen node mag {guest} hebben terwijl zijn eigen node wordt leeggemaakt, onder plaatsingsregels {rules}. Wijzig de regels, of stop de gast."
     },
     "maintenance": {
       "window_in_use": "Dit venster wordt gebruikt door {policies, plural, one {een beleid} other {# beleidsregels}}. Wijzig die eerst."
+    },
+    "placement": {
+      "unknown_member": "Het cluster heeft geen gast of node {members}.",
+      "contradiction": "Dezelfde gasten worden andersom gehouden door regel “{rule}”; beide kunnen niet kloppen.",
+      "impossible": "{guests} gasten kunnen niet uit elkaar worden gehouden op {nodes} nodes.",
+      "cluster_degraded": "Het cluster is niet heel ({reason}); plaatsing verplaatst niets tot het weer heel is.",
+      "unresolved": "Sommige plaatsingsregels kloppen nog niet: {rules}. De uitvoer van de job zegt waarom.",
+      "migration_failed": "Gast {vmid} verplaatsen van {from} naar {to} is mislukt. De uitvoer van de job laat zien waarom."
     }
   },
   "inventory": {
@@ -611,7 +620,8 @@
       "provision": "VM bouwen",
       "package_verify": "Pakket controleren",
       "update": "Node bijwerken",
-      "rolling_update": "Rolling update"
+      "rolling_update": "Rolling update",
+      "placement": "Plaatsing"
     }
   },
   "layout": {
@@ -704,7 +714,8 @@
     "library": "ISO-bibliotheek",
     "autoconfig": "Autoconfig",
     "provisioning": "VM-uitrollen",
-    "mail": "Uitgaande mail"
+    "mail": "Uitgaande mail",
+    "placement": "Plaatsing"
   },
   "placeholder": {
     "backToDashboard": "Terug naar dashboard",
@@ -1715,5 +1726,86 @@
     "migrateBack": "Gasten daarna terugzetten",
     "migrateBackHint": "Elke gast gaat terug naar de node waar hij vandaan kwam zodra die node klaar is.",
     "rollingStart": "Rolling update starten"
+  },
+  "placement": {
+    "subtitle": "Welke gasten van een cluster uit elkaar of bij elkaar worden gehouden, op welke nodes een gast hoort, en of dat nu klopt.",
+    "cluster": "Cluster",
+    "chooseCluster": "Kies een cluster",
+    "chooseClusterBody": "Kies een cluster om zijn plaatsingsregels te zien.",
+    "haRulesOn": "Elke node draait Proxmox VE 9: elke regel is ook een van de eigen HA-regels van Proxmox, dus hij blijft gelden terwijl Velnox niet draait.",
+    "haRulesOff": "Proxmox VE 8 heeft hiervoor geen eigen regels: Velnox bewaakt ze, door gasten te verplaatsen.",
+    "notWhole": "Het cluster is niet heel — een node is offline of het quorum is weg. Plaatsing verplaatst niets tot het weer heel is.",
+    "rulesTitle": "Regels op {cluster}",
+    "rulesBody": "Of een regel klopt, wordt uit de inventaris gelezen. Alleen draaiende gasten tellen: een gestopte gast staat nergens.",
+    "newRule": "Nieuwe regel",
+    "noRules": "Nog geen plaatsingsregels.",
+    "kind": {
+      "KEEP_APART": "Uit elkaar houden",
+      "KEEP_TOGETHER": "Bij elkaar houden",
+      "PREFER_NODES": "Voorkeur voor nodes"
+    },
+    "kindLabel": "Soort",
+    "kindHint": {
+      "KEEP_APART": "Deze gasten draaien nooit op dezelfde node — voor de twee helften van een cluster, of een primaire en zijn replica.",
+      "KEEP_TOGETHER": "Deze gasten draaien altijd op dezelfde node — voor gasten die voortdurend met elkaar praten.",
+      "PREFER_NODES": "Deze gasten draaien op de gekozen nodes — voor licenties, hardware of een rustige node."
+    },
+    "describe": {
+      "KEEP_APART": "{guests} delen nooit een node.",
+      "KEEP_TOGETHER": "{guests} delen altijd een node."
+    },
+    "preferStrict": "{guests} draaien alleen op {nodes}.",
+    "preferSoft": "{guests} draaien op {nodes} als een daarvan kan.",
+    "holds": "Klopt",
+    "notMet": "Klopt niet",
+    "disabled": "Uit",
+    "ha": {
+      "synced": "In de HA-regels van Proxmox",
+      "pending": "Wordt naar Proxmox geschreven",
+      "error": "Niet in Proxmox",
+      "velnox": "Bewaakt door Velnox"
+    },
+    "haError": "Proxmox: {error}",
+    "violation": {
+      "apart": "{guests} staan allebei op {node}.",
+      "elsewhere": "Nu: {where}."
+    },
+    "onNode": "{guest} op {node}",
+    "edit": "Bewerken",
+    "remove": "Verwijderen",
+    "name": "Naam",
+    "guests": "Gasten",
+    "runningOn": "draait op {node}",
+    "stopped": "gestopt",
+    "nodes": "Nodes",
+    "strict": "Alleen deze nodes",
+    "strictHint": "Uit mag een gast elders draaien als geen van deze nodes hem kan hebben.",
+    "enabled": "Van kracht",
+    "nowTitle": "Nu ingrijpen",
+    "nowBody": "Corrigeren verplaatst draaiende gasten live tot elke regel klopt, zonder een andere te breken. Balanceren verplaatst één gast, binnen de regels, als het geheugengebruik meer verschilt dan de drempel hieronder.",
+    "correctNow": "Nu corrigeren",
+    "balanceNow": "Nu balanceren",
+    "nodeMemory": "{node}: {percent}% van het geheugen in gebruik",
+    "nodeOffline": "{node}: offline",
+    "started": "Gestart",
+    "followJob": "De job volgen",
+    "settingsTitle": "Zo houden",
+    "settingsBody": "Allebei uit tot je ze aanzet. Nooit terwijl het cluster niet heel is, nooit terwijl een andere job het wijzigt, en hoogstens één keer per rustperiode.",
+    "settingsSaved": "Opgeslagen.",
+    "autoCorrect": "Zelf corrigeren",
+    "autoCorrectHint": "Als een regel niet klopt, verplaatst Velnox gasten om hem na te leven.",
+    "balance": "Zelf het geheugen balanceren",
+    "balanceHint": "Als de drukste node meer van zijn geheugen gebruikt dan de rustigste, met meer dan de drempel, verplaatst Velnox één gast.",
+    "threshold": "Drempel (procentpunten)",
+    "thresholdHint": "Tussen 5 en 80.",
+    "quiet": "Rustperiode (minuten)",
+    "quietHint": "Minstens zo lang tussen twee runs die Velnox zelf start.",
+    "historyTitle": "Runs",
+    "noJobs": "Er is nog niets verplaatst voor plaatsing.",
+    "reason": {
+      "correct": "Correctie",
+      "balance": "Balanceren"
+    },
+    "bySettings": "door de instellingen"
   }
 }

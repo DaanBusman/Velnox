@@ -145,15 +145,20 @@ if (storageModule && storage && option('ssh-port', null)) {
 
 const nodeStatus = (node) => ({
   uptime: node === 'pve1' ? 1_209_600 : 864_000,
-  pveversion: 'pve-manager/8.2.4/faa83925c9641325',
+  pveversion: `pve-manager/${ops ? ops.version() : '8.2.4'}/faa83925c9641325`,
   cpuinfo: { cpus: 32, sockets: 1, model: 'AMD EPYC 7313P 16-Core Processor' },
-  memory: { total: 137_438_953_472, used: 68_719_476_736, free: 68_719_476_736 },
+  memory: ops
+    ? { ...ops.memoryOf(node), free: ops.memoryOf(node).total - ops.memoryOf(node).used }
+    : { total: 137_438_953_472, used: 68_719_476_736, free: 68_719_476_736 },
   rootfs: { total: 107_374_182_400, used: 21_474_836_480, avail: 85_899_345_920 },
   'current-kernel': { sysname: 'Linux', release: '6.8.12-1-pve', machine: 'x86_64' },
 });
 
 const ROUTES = {
-  '/api2/json/version': () => ({ version: '8.2.4', release: '8.2', repoid: 'faa83925c9641325' }),
+  '/api2/json/version': () => {
+    const version = ops ? ops.version() : '8.2.4';
+    return { version, release: version.split('.').slice(0, 2).join('.'), repoid: 'faa83925c9641325' };
+  },
 
   '/api2/json/cluster/status': () => [
     { type: 'cluster', id: 'cluster', name: 'fixture', nodes: 3, quorate: 1, version: 7 },
@@ -485,6 +490,10 @@ const server = createServer(
       return unauthorized(response);
     }
 
+    if (ops && ops.handleCluster(request, response, path, send)) {
+      console.log(`${request.method} ${path}`);
+      return;
+    }
     if (ops && ops.routes[path]) {
       console.log(`200 ${path}`);
       return send(response, 200, { data: ops.routes[path]() });

@@ -1564,6 +1564,46 @@ verplaatsen.
 
 ---
 
+## ADR-049 — Plaatsing: regels die Velnox bewaakt, in Proxmox geschreven waar Proxmox ze kan bewaken
+
+**Beslissing:** De plaatsingsregels van een cluster — uit elkaar houden, bij elkaar houden, voorkeur
+voor nodes (strikt of zacht) — staan in Velnox (`placement_rules`), noemen gasten bij hun VMID, en
+tellen alleen draaiende gasten. Eén pure module (`packages/shared/src/placement.ts`) beslist, voor de
+API, de worker en de tests gelijk: welke regels niet kloppen, of een gast naar een node mag, de
+verplaatsingen die de regels naleven zonder een andere te breken (harde regels eerst), en de ene
+verplaatsing die de spreiding van het geheugengebruik kleiner maakt. Op een cluster waarvan alle nodes
+PVE 9 draaien, schrijft de worker elke regel als een van de HA-regels van Proxmox (`velnox-<id>`:
+resource affinity, negatief of positief; node affinity, strikt of niet), leest hem terug, en schrijft
+hem opnieuw als hij in Proxmox gewijzigd of verwijderd is; een verwijderde regel wordt daar verwijderd
+voordat zijn rij verdwijnt. Correcties en balanceren zijn `cluster.placement`-jobs — controleren dat
+het cluster heel is, plannen vanuit Proxmox' eigen beeld, één gast tegelijk verplaatsen met de regels
+vlak voor elke verplaatsing opnieuw getoetst, verifiëren — op de concurrency-sleutel van het cluster.
+Een instelling per cluster laat de worker ze zelf starten, nooit op een cluster dat niet heel is, nooit
+binnen een rustperiode na de vorige. De rolling update (ADR-048) kiest elk doel via dezelfde regels en
+weigert voordat hij begint als een gast nergens heen zou mogen.
+
+**Waarom Velnox de regels heeft, en Proxmox een kopie.** PVE 8 heeft zulke regels niet, en op PVE 9
+binden ze alleen gasten onder HA. Eén opslag, één beoordelaar en één set verplaatsingen werken op
+beide; de kopie in Proxmox is wat een regel waar houdt terwijl Velnox niet draait.
+
+**Waarom Velnox geen gasten onder HA zet.** HA start een gast elders als zijn node uitvalt — een
+gedragsverandering die een beheerder hoort te kiezen, geen bijwerking van een plaatsingsregel.
+
+**Waarom balanceren op geheugen gaat en één verplaatsing tegelijk.** Geheugen bepaalt of een gast past
+en verandert langzaam; CPU-gebruik verandert per minuut, en daarop balanceren verplaatst gasten heen
+en weer. Eén verplaatsing per run, een drempel en een rustperiode voorkomen dat balanceren zelf de
+belasting wordt.
+
+**Waarom de synchronisatiestatus `updated_at` laat staan.** "In Proxmox" betekent: zo sinds de laatste
+wijziging die een persoon deed. De eigen schrijfacties van de worker laten `updated_at` met rust, dus
+een regel die na het schrijven gewijzigd is, staat weer als "wordt geschreven" tot Proxmox hem heeft.
+
+**Niet gebouwd:** balanceren op CPU; gasten aan HA toevoegen; regels over pools of tags in plaats van
+VMID's; `velnox-`-regels uit Proxmox verwijderen die Velnox niet meer kent (een cluster dat uit Velnox
+verwijderd is, laat zijn regels in Proxmox achter).
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

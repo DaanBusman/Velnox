@@ -162,6 +162,20 @@ export const ERROR_CODES = {
   updateMigrationFailed: 'update.migration_failed',
   /** After its reboot a node, the cluster or Ceph did not come back whole in time. */
   updateValidationFailed: 'update.validation_failed',
+  /** Placement rules leave a guest no node to go to while its own is emptied (Phase 7B). */
+  updatePlacementBlocked: 'update.placement_blocked',
+  /** A placement rule names a guest or node the cluster does not have. */
+  placementUnknownMember: 'placement.unknown_member',
+  /** Two rules that cannot both hold: the same guests kept apart and together. */
+  placementContradiction: 'placement.contradiction',
+  /** More guests kept apart than the cluster has nodes. */
+  placementImpossible: 'placement.impossible',
+  /** Placement moves nothing on a cluster that is not whole. */
+  placementClusterDegraded: 'placement.cluster_degraded',
+  /** Some rules could not be met: no room, or a guest that cannot move live. */
+  placementUnresolved: 'placement.unresolved',
+  /** Moving a guest to correct or balance placement failed. */
+  placementMigrationFailed: 'placement.migration_failed',
   /** A maintenance window still used by a policy. */
   maintenanceWindowInUse: 'maintenance.window_in_use',
 

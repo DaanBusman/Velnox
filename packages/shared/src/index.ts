@@ -14,6 +14,7 @@ export * from './library';
 export * from './permissions';
 export * from './redaction';
 export * from './rolling';
+export * from './placement';
 export * from './rrule';
 export * from './slug';
 export * from './system';

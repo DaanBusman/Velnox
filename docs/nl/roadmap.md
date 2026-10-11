@@ -382,7 +382,16 @@ onder property-tests voor clustergroottes 1–15; een node die de validatie niet
 uitvoering en rapporteert `partially_succeeded`; workloads worden teruggemigreerd of expliciet
 verantwoord.
 
-## Phase 7B — Cluster resource scheduling (plaatsingsregels en balanceren) · **L**
+## Phase 7B — Cluster resource scheduling (plaatsingsregels en balanceren) · **L** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (0.5.28, ADR-049): **Beheer → Plaatsing**; regels per cluster — uit elkaar houden,
+bij elkaar houden, voorkeur voor nodes (strikt of zacht) — en of elke regel klopt, uit de inventaris;
+op PVE 9 geschreven in de HA-regels van Proxmox, teruggelezen, en opnieuw geschreven als ze daar
+gewijzigd zijn; correcties en balanceren op geheugen met één verplaatsing als
+`cluster.placement`-jobs, met de hand of door de instellingen van het cluster, nooit terwijl het
+cluster niet heel is; de rolling update houdt zich aan de regels en weigert als dat niet kan.
+`scripts/verify-placement.sh` bewijst het tegen de fixture. **Nog niet:** een echt cluster, en echte
+HA-regels op PVE 9 — vooral of Proxmox een regel accepteert die gasten buiten HA noemt.
 
 Gevraagd door de eigenaar op 5 oktober 2026: gekozen VM's uit elkaar houden, zodat ze nooit op
 dezelfde node draaien, is het belangrijkst. Een eigen kopje in de zijbalk, **Plaatsing**, onder
@@ -445,6 +454,15 @@ echte uitvoer van meerdere point releases. Repository-herstelacties (bookworm �
 verouderde repositories, enterprise/no-subscription), pakket-herstelacties, detectie van blokkades in
 opslag en netwerk. Canary-eerste nodevolgorde met expliciete bevestiging. Validatie na de upgrade tegen de
 verwachtingen van PVE 9. Samenstelling met 9A voor Ceph-clusters.
+
+**Toegevoegd door de eigenaar op 11 oktober 2026:** een controle op CPU-microcode, die het passende
+pakket installeert (`intel-microcode` of `amd64-microcode`, met het onderdeel `non-free-firmware` van
+Debian aangezet) als het ontbreekt; en de andere gangbare waarschuwingen en fouten van `pve8to9`
+herkend en verholpen waar dat veilig kan — eerst PVE 8.4.1 of later, het meta-pakket `systemd-boot`
+(pas na controle hoe de node opstart), LVM-autoactivatie (het migratiescript van Proxmox),
+instellingen uit `/etc/sysctl.conf` naar `/etc/sysctl.d/`, vrije ruimte op `/`, `linux-image-amd64`,
+GRUB op UEFI met root op LVM — en wat niet te verhelpen is, zoals containers die cgroup v1 nodig
+hebben, gemeld als blokkade.
 
 **Acceptatie:** preflight levert gestructureerde PASS/WARNING/BLOCKER/UNKNOWN met behoud van de ruwe
 uitvoer; onbekende regels gelden als blokkade en worden letterlijk getoond; een veilige

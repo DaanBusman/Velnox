@@ -20,6 +20,7 @@ import { LibraryModule } from './modules/library/library.module';
 import { MailModule } from './modules/mail/mail.module';
 import { SupportModule } from './modules/support/support.module';
 import { UpdatesModule } from './modules/updates/updates.module';
+import { PlacementModule } from './modules/placement/placement.module';
 
 /**
  * Application composition root.
@@ -48,6 +49,7 @@ import { UpdatesModule } from './modules/updates/updates.module';
     MailModule,
     SupportModule,
     UpdatesModule,
+    PlacementModule,
     UsersModule,
     IdentityModule,
     RolesModule,

@@ -58,13 +58,13 @@ organisation.
 
 | Role | Key | MSP only | Grants | For |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | yes | 44 of 44 | The first administrator. The only role with installation-wide settings. |
-| MSP Administrator | `msp_administrator` | yes | 41 | Runs the MSP day to day, including people. Not installation settings, not how long support logs are kept, and not a colleague’s second factor. |
-| MSP Engineer | `msp_engineer` | yes | 35 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
-| MSP Read Only | `msp_read_only` | yes | 21 | Sees everything across all tenants, changes nothing. |
-| Tenant Administrator | `tenant_administrator` | no | 38 | Full control within one tenant, including that tenant's own people. |
-| Tenant Operator | `tenant_operator` | no | 25 | Day-to-day work on one tenant's resources. No identity administration. |
-| Tenant Read Only | `tenant_read_only` | no | 19 | Sees one tenant's resources, changes nothing. |
+| MSP Super Administrator | `msp_super_administrator` | yes | 46 of 46 | The first administrator. The only role with installation-wide settings. |
+| MSP Administrator | `msp_administrator` | yes | 43 | Runs the MSP day to day, including people. Not installation settings, not how long support logs are kept, and not a colleague’s second factor. |
+| MSP Engineer | `msp_engineer` | yes | 37 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
+| MSP Read Only | `msp_read_only` | yes | 22 | Sees everything across all tenants, changes nothing. |
+| Tenant Administrator | `tenant_administrator` | no | 40 | Full control within one tenant, including that tenant's own people. |
+| Tenant Operator | `tenant_operator` | no | 26 | Day-to-day work on one tenant's resources. No identity administration. |
+| Tenant Read Only | `tenant_read_only` | no | 20 | Sees one tenant's resources, changes nothing. |
 
 The two differences that surprise people:
 
@@ -108,6 +108,8 @@ Administrator, MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operato
 | `updates.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `updates.execute` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `updates.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
+| `placement.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `placement.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `upgrades.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `upgrades.execute` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `automation.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -166,6 +168,8 @@ granted today and guards nothing yet.
 | `updates.read` | See available package updates | 6 |
 | `updates.execute` | Apply updates to real nodes | 6 |
 | `updates.manage` | Set update policies and maintenance windows: what updates itself, when, with or without approval | 6 |
+| `placement.read` | See a cluster's placement rules, whether they hold, and its placement settings | 7B |
+| `placement.manage` | Write placement rules — into Proxmox's HA rules on PVE 9 — and let Velnox move running guests to meet them or to even out memory, by itself if allowed | 7B |
 | `upgrades.read` | See major-upgrade plans and readiness | 8 |
 | `upgrades.execute` | Run a major upgrade against real infrastructure | 8 |
 | `automation.read` | See schedules and automation rules | 8 |
@@ -195,12 +199,13 @@ they are used. See [Technical decisions](tech-decisions.md), ADR-009 and ADR-023
 
 ## Privileged permissions and two-factor authentication
 
-These twenty-one permissions let a principal change customer infrastructure or the security posture of
+These twenty-two permissions let a principal change customer infrastructure or the security posture of
 the installation. They are what the `REQUIRED_FOR_PRIVILEGED` two-factor policy resolves to:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
 `roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
-`autoconfig.manage` · `updates.execute` · `updates.manage` · `upgrades.execute` ·
+`autoconfig.manage` · `updates.execute` · `updates.manage` · `placement.manage` ·
+`upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
 `jobs.approve` · `support.manage` · `system.manage`
 

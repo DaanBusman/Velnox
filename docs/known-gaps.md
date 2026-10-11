@@ -243,6 +243,14 @@ itself: a cluster using HA should be tried with care first. The target for each 
 with the most memory free, not the least loaded by CPU. The plan in the interface comes from the
 inventory; the job reads Proxmox again and its answer counts. See ADR-048.
 
+### Placement: proven against the fixture, and Proxmox's HA rules against a model of them
+Rules, corrections, balancing and the rolling update keeping the rules are proven against the
+fixture. PVE 9's HA rules are proven against the fixture's model of `/cluster/ha/rules`, written from
+Proxmox's documentation — not yet against a real PVE 9 cluster, where it remains to be seen whether
+Proxmox accepts a rule naming guests that are not under HA, and how its HA manager and Velnox's own
+moves get along for guests that are. Balancing is by memory only. Velnox does not remove `velnox-`
+HA rules from a cluster that was removed from Velnox. See ADR-049.
+
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
 Let's Encrypt's test server — not yet against Let's Encrypt on a public host. HTTP-01 only, as Caddy

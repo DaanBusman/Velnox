@@ -62,13 +62,13 @@ in je eigen organisatie.
 
 | Rol | Sleutel | Alleen MSP | Kent toe | Voor |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | ja | 44 van 44 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
-| MSP Administrator | `msp_administrator` | ja | 41 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, niet hoe lang supportlogs bewaard blijven, en niet de tweede factor van een collega. |
-| MSP Engineer | `msp_engineer` | ja | 35 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
-| MSP Read Only | `msp_read_only` | ja | 21 | Ziet alles over alle tenants, wijzigt niets. |
-| Tenant Administrator | `tenant_administrator` | nee | 38 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
-| Tenant Operator | `tenant_operator` | nee | 25 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
-| Tenant Read Only | `tenant_read_only` | nee | 19 | Ziet de resources van één tenant, wijzigt niets. |
+| MSP Super Administrator | `msp_super_administrator` | ja | 46 van 46 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
+| MSP Administrator | `msp_administrator` | ja | 43 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, niet hoe lang supportlogs bewaard blijven, en niet de tweede factor van een collega. |
+| MSP Engineer | `msp_engineer` | ja | 37 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
+| MSP Read Only | `msp_read_only` | ja | 22 | Ziet alles over alle tenants, wijzigt niets. |
+| Tenant Administrator | `tenant_administrator` | nee | 40 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
+| Tenant Operator | `tenant_operator` | nee | 26 | Dagelijks werk op de resources van één tenant. Geen identiteitsbeheer. |
+| Tenant Read Only | `tenant_read_only` | nee | 20 | Ziet de resources van één tenant, wijzigt niets. |
 
 De twee verschillen die mensen verrassen:
 
@@ -113,6 +113,8 @@ Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only
 | `updates.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `updates.execute` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `updates.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
+| `placement.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `placement.manage` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `upgrades.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `upgrades.execute` | ✓ | ✓ | ✓ | · | ✓ | · | · |
 | `automation.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -171,6 +173,8 @@ vandaag toekenbaar en bewaakt nog niets.
 | `updates.read` | Beschikbare pakketupdates zien | 6 |
 | `updates.execute` | Updates toepassen op echte nodes | 6 |
 | `updates.manage` | Updatebeleid en onderhoudsvensters instellen: wat zichzelf bijwerkt, wanneer, met of zonder goedkeuring | 6 |
+| `placement.read` | De plaatsingsregels van een cluster zien, of ze kloppen, en de plaatsingsinstellingen | 7B |
+| `placement.manage` | Plaatsingsregels schrijven — in de HA-regels van Proxmox op PVE 9 — en Velnox draaiende gasten laten verplaatsen om ze na te leven of het geheugen te spreiden, zelfstandig als dat mag | 7B |
 | `upgrades.read` | Plannen en gereedheid voor major upgrades zien | 8 |
 | `upgrades.execute` | Een major upgrade uitvoeren tegen echte infrastructuur | 8 |
 | `automation.read` | Schema's en automatiseringsregels zien | 8 |
@@ -201,13 +205,14 @@ worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
 
 ## Bevoorrechte rechten en meervoudige authenticatie
 
-Deze eenentwintig rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
+Deze tweeëntwintig rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
 van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige
 authenticatie op uitkomt:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
 `roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
-`autoconfig.manage` · `updates.execute` · `updates.manage` · `upgrades.execute` ·
+`autoconfig.manage` · `updates.execute` · `updates.manage` · `placement.manage` ·
+`upgrades.execute` ·
 `automation.manage` · `credentials.manage` · `credentials.rotate` · `migrations.execute` ·
 `jobs.approve` · `support.manage` · `system.manage`
 

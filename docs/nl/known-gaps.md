@@ -262,6 +262,15 @@ kan reageren door ze zelf te verplaatsen: probeer een cluster met HA eerst voorz
 elke gast is de node met het meeste vrije geheugen, niet de minst belaste qua CPU. Het plan in de
 interface komt uit de inventaris; de job leest Proxmox opnieuw en zijn antwoord telt. Zie ADR-048.
 
+### Plaatsing: bewezen tegen de fixture, en de HA-regels van Proxmox tegen een model ervan
+Regels, correcties, balanceren en de rolling update die zich aan de regels houdt, zijn bewezen tegen
+de fixture. De HA-regels van PVE 9 zijn bewezen tegen het model van `/cluster/ha/rules` in de fixture,
+geschreven uit de documentatie van Proxmox — nog niet tegen een echt PVE 9-cluster, waar nog moet
+blijken of Proxmox een regel accepteert die gasten buiten HA noemt, en hoe zijn HA-manager en de eigen
+verplaatsingen van Velnox samengaan voor gasten die er wel onder vallen. Balanceren gaat alleen op
+geheugen. Velnox verwijdert geen `velnox-`-HA-regels van een cluster dat uit Velnox verwijderd is. Zie
+ADR-049.
+
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,
 de testserver van Let's Encrypt — nog niet tegen Let's Encrypt op een publieke host. Alleen HTTP-01,

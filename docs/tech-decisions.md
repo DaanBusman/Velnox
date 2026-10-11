@@ -1474,6 +1474,44 @@ guests.
 
 ---
 
+## ADR-049 — Placement: rules Velnox keeps, written into Proxmox where Proxmox can keep them
+
+**Decision:** A cluster's placement rules — keep apart, keep together, prefer nodes (strict or
+soft) — are stored in Velnox (`placement_rules`), name guests by VMID, and count only running guests.
+One pure module (`packages/shared/src/placement.ts`) decides, for the API, the worker and the tests
+alike: which rules are not met, whether a guest may go to a node, the moves that meet the rules
+without breaking another (hard rules first), and the one move that narrows the spread of memory use.
+On a cluster whose nodes all run PVE 9, the worker writes each rule as one of Proxmox's HA rules
+(`velnox-<id>`: resource affinity, negative or positive; node affinity, strict or not), reads it back,
+and writes it again when it was changed or removed in Proxmox; a removed rule is removed there before
+its row goes. Corrections and balancing are `cluster.placement` jobs — check that the cluster is whole,
+plan from Proxmox's own view, move one guest at a time with the rules checked again just before each
+move, verify — on the cluster's concurrency key. A per-cluster setting lets the worker start them by
+itself, never on a cluster that is not whole, never within a quiet period of the last. The rolling
+update (ADR-048) chooses every target through the same rules and refuses before it starts when a
+guest would have nowhere allowed to go.
+
+**Why Velnox holds the rules, and Proxmox a copy.** PVE 8 has no such rules, and on PVE 9 they bind
+only guests under HA. One store, one evaluator and one set of moves work on both; Proxmox's copy is
+what keeps a rule true while Velnox is not running.
+
+**Why Velnox does not put guests under HA.** HA restarts a guest elsewhere when its node fails — a
+change in behaviour an operator should choose, not a side effect of a placement rule.
+
+**Why balancing is by memory and one move at a time.** Memory decides whether a guest fits and changes
+slowly; CPU use changes by the minute, and balancing on it moves guests back and forth. One move per
+run, a threshold and a quiet period keep balancing from becoming the load.
+
+**Why the sync status keeps `updated_at`.** "Held by Proxmox" means: held since the last change a
+person made. The worker's own writes leave `updated_at` alone, so a rule edited after it was written
+shows as being written again until Proxmox has it.
+
+**Not built:** balancing on CPU; adding guests to HA; rules over pools or tags rather than VMIDs;
+removing `velnox-` rules from Proxmox that Velnox no longer knows of (a cluster removed from Velnox
+leaves its rules in Proxmox).
+
+---
+
 ## Version targets
 
 | Component | Version |

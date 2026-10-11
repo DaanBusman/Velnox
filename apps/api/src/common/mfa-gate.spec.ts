@@ -27,6 +27,7 @@ import { MailController } from '../modules/mail/mail.controller';
 import { SupportController } from '../modules/support/support.controller';
 import { PackagesController } from '../modules/autoconfig/packages.controller';
 import { UpdatesController } from '../modules/updates/updates.controller';
+import { PlacementController } from '../modules/placement/placement.controller';
 import { SitesController } from '../modules/tenancy/sites.controller';
 import { TenantsController } from '../modules/tenancy/tenants.controller';
 import { UsersController } from '../modules/users/users.controller';
@@ -114,6 +115,7 @@ const CONTROLLERS = [
   SupportController,
   PackagesController,
   UpdatesController,
+  PlacementController,
 ];
 
 function collectRoutes(): Route[] {

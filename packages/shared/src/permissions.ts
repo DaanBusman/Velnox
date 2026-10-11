@@ -95,6 +95,15 @@ export const PERMISSIONS = {
    * own, inside its window, without anyone pressing a button.
    */
   updatesManage: 'updates.manage',
+  /**
+   * Placement rules (Phase 7B): which guests are kept apart or together, and
+   * which nodes a guest belongs on. `manage` writes the rules — into Proxmox's
+   * own HA rules on PVE 9 — and lets Velnox move guests to meet them or to
+   * even out memory, by itself when the cluster's settings allow. Privileged:
+   * it moves running guests between nodes.
+   */
+  placementRead: 'placement.read',
+  placementManage: 'placement.manage',
   upgradesRead: 'upgrades.read',
   upgradesExecute: 'upgrades.execute',
   automationRead: 'automation.read',
@@ -173,6 +182,7 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = Object.freeze([
   PERMISSIONS.workloadsProvision,
   PERMISSIONS.updatesExecute,
   PERMISSIONS.updatesManage,
+  PERMISSIONS.placementManage,
   PERMISSIONS.upgradesExecute,
   PERMISSIONS.automationManage,
   PERMISSIONS.credentialsManage,
@@ -342,6 +352,7 @@ const ENGINEER_PERMISSIONS: readonly Permission[] = [
   P.autoconfigManage,
   P.updatesExecute,
   P.updatesManage,
+  P.placementManage,
   P.upgradesExecute,
   P.credentialsManage,
   P.credentialsRotate,
@@ -405,6 +416,7 @@ export const SYSTEM_ROLES: readonly SystemRoleDefinition[] = Object.freeze([
       P.autoconfigManage,
       P.updatesExecute,
       P.updatesManage,
+      P.placementManage,
       P.upgradesExecute,
       P.credentialsManage,
       P.credentialsRotate,

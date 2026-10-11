@@ -5,8 +5,12 @@ import {
   PERMISSIONS,
   REBOOT_POLICIES,
   maxUnavailableNodes,
+  placementForbids,
+  placementRank,
   windowState,
+  type PlacementRuleLike,
   type PlannedGuest,
+  type Positions,
   type RollingUpdateParams,
 } from '@velnox/shared';
 import {
@@ -17,7 +21,15 @@ import {
   type StepDefinition,
 } from '../jobs/steps';
 import type { LibraryServices } from '../library/services';
-import { assessGuests, chooseTarget, freeMemory, sharedStorages } from './guests';
+import {
+  assessGuests,
+  chooseTarget,
+  freeMemory,
+  moveGuest,
+  placementRulesOf,
+  positionsOf,
+  sharedStorages,
+} from './guests';
 import {
   distUpgrade,
   rebootIfNeeded,
@@ -185,39 +197,52 @@ export function rollingUpdatePlaybook(
     }
   };
 
-  const migrate = async (context: StepContext, pve: ProxmoxClient, g: Move): Promise<void> => {
-    const upid = await pve.migrateGuest(g.from, g.kind, g.vmid, g.to);
-    const outcome = await waitForTask(pve, upid, {
-      signal: context.signal,
-      timeoutMs: 30 * 60_000,
-    });
-    if (!outcome.succeeded) {
+  const migrate = (context: StepContext, pve: ProxmoxClient, g: Move): Promise<void> =>
+    moveGuest(pve, context.signal, g, ERROR_CODES.updateMigrationFailed);
+
+  /**
+   * The node a guest goes to while its own is emptied: within the placement
+   * rules, preferred nodes first, then the most free memory. Says which —
+   * room or a rule — when there is none.
+   */
+  const target = (
+    guest: PlannedGuest,
+    free: Map<string, number>,
+    away: Set<string>,
+    rules: PlacementRuleLike[],
+    positions: Positions,
+    groupLabel: string,
+  ): string => {
+    const to = chooseTarget(
+      guest,
+      free,
+      away,
+      (node) => !placementForbids(rules, positions, guest.vmid, node),
+      (node) => placementRank(rules, guest.vmid, node),
+    );
+    if (to) return to;
+    const roomy = [...free].filter(
+      ([node, bytes]) => !away.has(node) && bytes >= guest.memoryBytes,
+    );
+    if (roomy.length) {
+      const names = [
+        ...new Set(
+          roomy.map(([node]) => placementForbids(rules, positions, guest.vmid, node)?.name),
+        ),
+      ].filter((n): n is string => Boolean(n));
       throw new StepError(
-        ERROR_CODES.updateMigrationFailed,
-        `Moving ${guestLabel(g)} from ${g.from} to ${g.to} failed: ${outcome.exitStatus}`,
-        {
-          vmid: g.vmid,
-          from: g.from,
-          to: g.to,
-        },
+        ERROR_CODES.updatePlacementBlocked,
+        `No node outside ${groupLabel} may take ${guestLabel(guest)} under placement rule${names.length === 1 ? '' : 's'} ${names.map((n) => `"${n}"`).join(', ')}`,
+        { guest: guestLabel(guest), rules: names.join(', ') },
       );
     }
-    const after = await pve.clusterResources();
-    const where = after.find(
-      (r) => r.vmid === g.vmid && (r.type === 'qemu' || r.type === 'lxc'),
-    )?.node;
-    if (where !== g.to) {
-      throw new StepError(
-        ERROR_CODES.updateMigrationFailed,
-        `${guestLabel(g)} is on ${where ?? 'no node'} after moving it to ${g.to}`,
-        {
-          vmid: g.vmid,
-          from: g.from,
-          to: g.to,
-        },
-      );
-    }
+    throw new StepError(
+      ERROR_CODES.updateCapacityShort,
+      `No node outside ${groupLabel} has room for ${guestLabel(guest)}`,
+      { node: groupLabel, neededGb: gb(guest.memoryBytes), freeGb: 0 },
+    );
   };
+  const label = (group: string[]) => group.join('+');
 
   const cephHealth = async (pve: ProxmoxClient): Promise<string | null> => {
     try {
@@ -290,8 +315,27 @@ export function rollingUpdatePlaybook(
           );
         }
         const free = freeMemory(resources);
+        const rules = await placementRulesOf(prisma, params.clusterId);
+        if (rules.length) {
+          await context.log(
+            'STDOUT',
+            `Placement rules in force: ${rules.map((r) => `"${r.name}"`).join(', ')}`,
+          );
+        }
         for (const group of params.groups) {
           const away = new Set(group);
+          // Where each guest would go, rules and all, as the evacuation will choose.
+          const positions = positionsOf(resources);
+          const trial = new Map(free);
+          const leaving = guests
+            .filter((g) => away.has(g.node))
+            .sort((a, b) => b.memoryBytes - a.memoryBytes);
+          for (const g of leaving) positions.delete(g.vmid);
+          for (const g of leaving) {
+            if (g.blocker) continue;
+            const to = target(g, trial, away, rules, positions, label(group));
+            positions.set(g.vmid, to);
+          }
           const needed = guests
             .filter((g) => away.has(g.node) && !g.blocker)
             .reduce((sum, g) => sum + g.memoryBytes, 0);
@@ -378,6 +422,9 @@ export function rollingUpdatePlaybook(
             );
             const free = freeMemory(resources);
             const away = new Set(group);
+            const rules = await placementRulesOf(prisma, params.clusterId);
+            const positions = positionsOf(resources);
+            for (const guest of guests) positions.delete(guest.vmid);
             const moves: Move[] = [];
             const stopped: Stopped[] = [];
             const record = async () => ({
@@ -424,18 +471,8 @@ export function rollingUpdatePlaybook(
                   stopped.push({ vmid: guest.vmid, kind: guest.kind, node: guest.node });
                   continue;
                 }
-                const to = chooseTarget(guest as PlannedGuest, free, away);
-                if (!to) {
-                  throw new StepError(
-                    ERROR_CODES.updateCapacityShort,
-                    `No node outside ${label} has room for ${guestLabel(guest)}`,
-                    {
-                      node: label,
-                      neededGb: gb(guest.memoryBytes),
-                      freeGb: 0,
-                    },
-                  );
-                }
+                const to = target(guest as PlannedGuest, free, away, rules, positions, label);
+                positions.set(guest.vmid, to);
                 const move: Move = { vmid: guest.vmid, kind: guest.kind, from: guest.node, to };
                 await context.log(
                   'STDOUT',
@@ -548,8 +585,18 @@ export function rollingUpdatePlaybook(
           const returned: number[] = [];
           const notReturned: string[] = [];
           if (params.migrateBack) {
+            const rules = await placementRulesOf(prisma, params.clusterId);
             for (const move of moves) {
               const resources = await pve.clusterResources();
+              const positions = positionsOf(resources);
+              positions.delete(move.vmid);
+              const forbids = placementForbids(rules, positions, move.vmid, move.from);
+              if (forbids) {
+                notReturned.push(
+                  `${guestLabel(move)} stays on ${move.to}: back on ${move.from} it would break placement rule "${forbids.name}"`,
+                );
+                continue;
+              }
               const now = resources.find(
                 (r) => r.vmid === move.vmid && (r.type === 'qemu' || r.type === 'lxc'),
               );
