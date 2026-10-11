@@ -31,6 +31,12 @@ export interface TaskStep {
   kind: 'task';
   key: string;
   phase: string;
+  /**
+   * Asked when the step is reached (Phase 8): false skips it, recorded as
+   * SKIPPED. For a step that is only sometimes needed — a remediation with
+   * nothing to remediate.
+   */
+  when?(): Promise<boolean>;
   run(context: StepContext): Promise<Record<string, string | number | boolean | null> | void>;
 }
 
@@ -48,7 +54,15 @@ export interface ApprovalStep {
   requiredPermission: string;
   reason: string;
   requireDifferentApprover: boolean;
-  changeSet: Record<string, string | number | boolean | null>;
+  /**
+   * What is being approved. A function is asked when the gate is reached, for
+   * a change only known by then (Phase 8: the remediations a preflight found).
+   */
+  changeSet:
+    | Record<string, string | number | boolean | null>
+    | (() => Promise<Record<string, string | number | boolean | null>>);
+  /** As for a task: false skips the gate, and nobody is asked. */
+  when?(): Promise<boolean>;
 }
 
 export type StepDefinition = TaskStep | ApprovalStep;

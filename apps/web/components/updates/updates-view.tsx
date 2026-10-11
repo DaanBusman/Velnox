@@ -23,11 +23,12 @@ import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { useApiResource } from '@/components/server/use-api-resource';
 import { JobStatusBadge } from '@/components/jobs/primitives';
 import { RollingCard } from './rolling-card';
+import { UpgradesTab } from './upgrades-tab';
 
 const select =
   'block h-9 w-full rounded border border-line bg-surface-2 px-2.5 text-sm text-ink focus:border-accent focus:outline-none';
 
-type Tab = 'nodes' | 'policies' | 'windows' | 'history';
+type Tab = 'nodes' | 'policies' | 'windows' | 'history' | 'upgrades';
 
 /**
  * Update management (Phase 6): what each node would update, updating one,
@@ -38,15 +39,19 @@ export function UpdatesView({
   tenants,
   canExecute,
   canManage,
+  canUpgrade,
+  initialTab = 'nodes',
 }: {
   clusters: ClusterSummary[];
   tenants: TenantSummary[];
   canExecute: boolean;
   canManage: boolean;
+  canUpgrade: boolean;
+  initialTab?: Tab;
 }) {
   const t = useTranslations();
-  const [tab, setTab] = useState<Tab>('nodes');
-  const tabs: Tab[] = ['nodes', 'policies', 'windows', 'history'];
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const tabs: Tab[] = ['nodes', 'policies', 'windows', 'history', 'upgrades'];
   return (
     <div className="space-y-4">
       <div role="tablist" className="flex flex-wrap gap-1 border-b border-line">
@@ -70,6 +75,7 @@ export function UpdatesView({
       {tab === 'policies' && <PoliciesTab clusters={clusters} canManage={canManage} />}
       {tab === 'windows' && <WindowsTab tenants={tenants} canManage={canManage} />}
       {tab === 'history' && <HistoryTab />}
+      {tab === 'upgrades' && <UpgradesTab clusters={clusters} canExecute={canUpgrade} />}
     </div>
   );
 }

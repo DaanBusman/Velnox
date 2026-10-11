@@ -205,6 +205,18 @@ describe('Ceph', () => {
     expect(ceph.daemons.find((d) => d.kind === 'OSD')?.name).toBe('osd.0');
   });
 
+  it('keeps a monitor and a manager on the same host apart, qualified as Ceph does', () => {
+    const ceph = mapCeph({
+      status: healthy,
+      metadata: {
+        mon: { pve1: { name: 'pve1', hostname: 'pve1' } },
+        mgr: { pve1: { name: 'pve1', hostname: 'pve1' } },
+      },
+      flags: [],
+    })!;
+    expect(ceph.daemons.map((d) => d.name).sort()).toEqual(['mgr.pve1', 'mon.pve1']);
+  });
+
   it('is not clean while a placement group is backfilling', () => {
     // The failure this guards: "no state mentions degraded" reads as clean, and
     // phase 9A would start an upgrade on a cluster that is still moving data.

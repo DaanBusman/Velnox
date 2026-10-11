@@ -709,6 +709,7 @@ model Cluster {
   provisionings   Provisioning[]
   updatePolicy    UpdatePolicy?
   placementRules    PlacementRule[]
+  upgradePlans      UpgradePlan[]
   placementSettings PlacementSettings?
 
   @@index([tenantId])
@@ -1893,4 +1894,184 @@ model PlacementSettings {
 
   @@index([tenantId])
   @@map("placement_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Major upgrades (Phase 8)
+// ---------------------------------------------------------------------------
+
+enum UpgradePlanKind {
+  PVE_MAJOR
+  CEPH
+  COMPOSITE
+  SELFTEST
+
+  @@map("upgrade_plan_kind")
+}
+
+enum UpgradePlanStatus {
+  DRAFT
+  RUNNING
+  WAITING_APPROVAL
+  BLOCKED
+  COMPLETED
+  FAILED
+  CANCELLED
+
+  @@map("upgrade_plan_status")
+}
+
+enum UpgradeTargetKind {
+  NODE
+  CEPH_DAEMON
+
+  @@map("upgrade_target_kind")
+}
+
+enum CheckSeverity {
+  PASS
+  INFO
+  WARNING
+  BLOCKER
+  UNKNOWN
+
+  @@map("check_severity")
+}
+
+enum RemediationMode {
+  AUTOMATIC
+  APPROVED
+
+  @@map("remediation_mode")
+}
+
+enum RemediationStatus {
+  PLANNED
+  APPLIED
+  VALIDATED
+  FAILED
+  ROLLED_BACK
+
+  @@map("remediation_status")
+}
+
+/// One upgrade of one cluster, by one playbook — or a composite of several,
+/// run in order (a Ceph upgrade, then the PVE upgrade).
+model UpgradePlan {
+  id              String            @id @default(uuid()) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  clusterId       String            @map("cluster_id") @db.Uuid
+  name            String
+  kind            UpgradePlanKind
+  /// Null for a composite, which has children instead.
+  playbookId      String?           @map("playbook_id")
+  playbookVersion Int?              @map("playbook_version")
+  parentPlanId    String?           @map("parent_plan_id") @db.Uuid
+  /// Order among its parent's children, from 1.
+  sequence        Int               @default(1)
+  status          UpgradePlanStatus @default(DRAFT)
+  options         Json              @default("{}")
+  /// What discovery collected, and what the playbook's actions keep between steps.
+  facts           Json              @default("{}")
+  /// The job that runs it, once started.
+  jobId           String?           @map("job_id") @db.Uuid
+  report          Json?
+  /// Who made the plan: its jobs, including a composite's children, run in their name.
+  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  createdByLabel  String?           @map("created_by_label")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  startedAt       DateTime?         @map("started_at") @db.Timestamptz(3)
+  finishedAt      DateTime?         @map("finished_at") @db.Timestamptz(3)
+
+  cluster      Cluster          @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  parent       UpgradePlan?     @relation("UpgradePlanChildren", fields: [parentPlanId], references: [id], onDelete: Cascade)
+  children     UpgradePlan[]    @relation("UpgradePlanChildren")
+  targets      UpgradeTarget[]
+  checks       UpgradeCheck[]
+  remediations RemediationRun[]
+
+  @@index([tenantId])
+  @@index([clusterId])
+  @@index([parentPlanId])
+  @@map("upgrade_plans")
+}
+
+/// A node, or a Ceph daemon, that a plan upgrades — in order.
+model UpgradeTarget {
+  id           String            @id @default(uuid()) @db.Uuid
+  tenantId     String            @map("tenant_id") @db.Uuid
+  planId       String            @map("plan_id") @db.Uuid
+  targetKind   UpgradeTargetKind @map("target_kind")
+  nodeId       String?           @map("node_id") @db.Uuid
+  cephDaemonId String?           @map("ceph_daemon_id") @db.Uuid
+  /// `pve1`, `osd.3`: what the report calls it, kept if the inventory row goes.
+  label        String
+  /// MON, MGR, OSD, MDS, RGW for a daemon; null for a node.
+  daemonGroup  String?           @map("daemon_group")
+  sequence     Int
+  status       String            @default("PENDING")
+  preState     Json?             @map("pre_state")
+  postState    Json?             @map("post_state")
+  startedAt    DateTime?         @map("started_at") @db.Timestamptz(3)
+  finishedAt   DateTime?         @map("finished_at") @db.Timestamptz(3)
+
+  plan UpgradePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, sequence])
+  @@index([tenantId])
+  @@map("upgrade_targets")
+}
+
+/// One finding of one run of a plan's checks. `run_index` 0 is the first
+/// preflight; each re-check after remediation is the next.
+model UpgradeCheck {
+  id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  planId        String        @map("plan_id") @db.Uuid
+  /// Null for a check of the whole plan.
+  targetId      String?       @map("target_id") @db.Uuid
+  source        String
+  parserVersion Int           @default(1) @map("parser_version")
+  checkKey      String        @map("check_key")
+  severity      CheckSeverity
+  title         String
+  detail        String?
+  rawLine       String?       @map("raw_line")
+  remediationId String?       @map("remediation_id")
+  runIndex      Int           @map("run_index")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  plan UpgradePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([planId, runIndex])
+  @@map("upgrade_checks")
+}
+
+/// A remediation planned, approved or not, applied and validated — with the
+/// exact change it made, which is the change that was approved.
+model RemediationRun {
+  id            String            @id @default(uuid()) @db.Uuid
+  tenantId      String            @map("tenant_id") @db.Uuid
+  planId        String            @map("plan_id") @db.Uuid
+  jobId         String?           @map("job_id") @db.Uuid
+  targetId      String?           @map("target_id") @db.Uuid
+  checkKey      String            @map("check_key")
+  remediationId String            @map("remediation_id")
+  risk          String
+  mode          RemediationMode
+  changeSet     Json              @map("change_set")
+  status        RemediationStatus @default(PLANNED)
+  appliedAt     DateTime?         @map("applied_at") @db.Timestamptz(3)
+  validatedAt   DateTime?         @map("validated_at") @db.Timestamptz(3)
+  error         String?
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  plan UpgradePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([planId])
+  @@map("remediation_runs")
 }

@@ -515,42 +515,45 @@ balancing are jobs of type `cluster.placement`.
 
 ## 8. Major upgrades
 
-### `upgrade_plans`
-`id, tenant_id, cluster_id, name, kind (PVE_MAJOR|CEPH|PBS|COMPOSITE), from_version, to_version,
-playbook_id, playbook_version, parent_plan_id, sequence, status (DRAFT|PREFLIGHT|BLOCKED|READY|
-RUNNING|COMPLETED|FAILED|CANCELLED), strategy jsonb (concurrency, reboot policy, abort rules),
-version_matrix_id, created_by, approved_by, scheduled_for`
+Built in Phase 8 (migration `20261011180000_upgrade_framework`); ADR-050. Every table takes its tenant
+from its cluster or plan by trigger.
 
-A `COMPOSITE` plan has child plans ordered by `sequence` — this is how a Ceph-backed PVE 8 → 9
-upgrade is expressed: child 1 is the `CEPH` plan, child 2 the `PVE_MAJOR` plan. A child plan can also
-exist on its own, which is what makes "upgrade Ceph only" a normal operation rather than a special
-case. `version_matrix_id` records **which version matrix produced this plan**, so a report remains
-interpretable after the matrix is updated.
+### `upgrade_plans`
+`id, tenant_id, cluster_id, name, kind (PVE_MAJOR|CEPH|COMPOSITE|SELFTEST), playbook_id,
+playbook_version, parent_plan_id, sequence, status (DRAFT|RUNNING|WAITING_APPROVAL|BLOCKED|COMPLETED|
+FAILED|CANCELLED), options jsonb, facts jsonb, job_id, report jsonb, created_by_user_id,
+created_by_label, created_at, updated_at, started_at, finished_at`
+
+A `COMPOSITE` plan has no playbook (`upgrade_plans_playbook`) and child plans ordered by `sequence` —
+how a Ceph-backed PVE 8 → 9 upgrade is expressed: child 1 the `CEPH` plan, child 2 the `PVE_MAJOR`
+plan. A child plan upgrades its parent's cluster (trigger). `facts` is what discovery collected and
+what actions keep between steps; `report` holds the report and its Markdown. Designed and not yet
+built: `version_matrix_id` (Phase 9A), `strategy`, `scheduled_for`, `approved_by`.
 
 ### `upgrade_targets`
-`id, plan_id, target_kind (NODE|CEPH_DAEMON), node_id, ceph_daemon_id, daemon_group (MON|MGR|OSD|
-MDS|RGW, null for nodes), sequence, status, pre_state jsonb, post_state jsonb, started_at,
+`id, tenant_id, plan_id, target_kind (NODE|CEPH_DAEMON), node_id, ceph_daemon_id, label,
+daemon_group, sequence (unique per plan), status, pre_state jsonb, post_state jsonb, started_at,
 finished_at`
 
-`pre_state`/`post_state` are the before/after snapshots the Phase 7 report is generated from. The
-`target_kind` discriminator is what lets one report, one progress model and one UI serve both a
-node-by-node PVE upgrade and a daemon-by-daemon Ceph upgrade.
+`upgrade_targets_one_kind` keeps a target a node or a daemon. `label` keeps the name if the inventory
+row goes. `pre_state`/`post_state` are the before and after the report shows; `target_kind` is what
+lets one report, one progress model and one screen serve a node-by-node and a daemon-by-daemon run.
 
 ### `upgrade_checks`
-`id, target_id, source (PVE8TO9|CEPH_HEALTH|CEPH_VERSION_MATRIX|VELNOX_GUARD), parser_version, check_key, severity
-(PASS|INFO|WARNING|BLOCKER|UNKNOWN), title, detail, raw_line, remediation_id (nullable),
-run_index int (0 = initial preflight, 1+ = re-checks), created_at`
+`id, tenant_id, plan_id, target_id (null for the whole plan), source, parser_version, check_key,
+severity (PASS|INFO|WARNING|BLOCKER|UNKNOWN), title, detail, raw_line, remediation_id, run_index,
+created_at`
 
-`run_index` is what makes "re-run preflight after remediation and compare" a query rather than a
-guess.
+`run_index` 0 is the first preflight, 1 and on each re-check: "what did the remediation fix" is a
+query, not a guess.
 
 ### `remediation_runs`
-`id, tenant_id, job_id, target_id, check_id, remediation_id, risk, mode (AUTOMATIC|APPROVED),
-change_set jsonb, backup_ref, status (PLANNED|APPROVED|APPLIED|VALIDATED|FAILED|ROLLED_BACK),
-applied_at, validated_at, rollback_at, error`
+`id, tenant_id, plan_id, job_id, target_id, check_key, remediation_id, risk, mode (AUTOMATIC|APPROVED),
+change_set jsonb, status (PLANNED|APPLIED|VALIDATED|FAILED|ROLLED_BACK), applied_at, validated_at,
+error, created_at, updated_at`
 
-`change_set` holds the exact planned diff — the same object shown to the operator before approval,
-so the audit trail proves what was approved equals what ran.
+`change_set` holds the exact planned change — the object shown before approval, so the record proves
+that what was approved is what ran. `backup_ref` and rolling back are not built.
 
 ---
 

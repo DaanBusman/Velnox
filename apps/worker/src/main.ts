@@ -55,6 +55,7 @@ import { LIVE_TICK_MS, LivePoller } from './inventory/live';
 import { pruneTasks } from './inventory/tasks';
 import { scheduleUpdates, UPDATE_SCHEDULER_INTERVAL_MS } from './updates/scheduler';
 import { keepPlacement, PLACEMENT_INTERVAL_MS } from './placement/scheduler';
+import { driveUpgrades, UPGRADE_DRIVER_INTERVAL_MS } from './upgrade/composite';
 
 /**
  * Velnox worker.
@@ -449,6 +450,19 @@ async function bootstrap(): Promise<void> {
       );
   const placementTimer = setInterval(() => void placementTick(), PLACEMENT_INTERVAL_MS);
 
+  // Composite upgrade plans, child after child, and plans whose job ended
+  // without them hearing of it (Phase 8).
+  const upgradeTick = () =>
+    driveUpgrades(prisma, policyQueue)
+      .then((result) => {
+        if (result.started.length || result.finished.length)
+          logger.info(result, 'Upgrade plans driven');
+      })
+      .catch((error: unknown) =>
+        logger.error({ err: rootRedactor.value(error) }, 'Driving upgrade plans failed'),
+      );
+  const upgradeTimer = setInterval(() => void upgradeTick(), UPGRADE_DRIVER_INTERVAL_MS);
+
   logger.info(
     {
       queue: QUEUE_NAMES.system,
@@ -474,6 +488,7 @@ async function bootstrap(): Promise<void> {
     clearInterval(sweepTimer);
     clearInterval(updateTimer);
     clearInterval(placementTimer);
+    clearInterval(upgradeTimer);
     clearInterval(liveTimer);
     livePoller.close();
     liveRedis.disconnect();

@@ -244,6 +244,8 @@ export const JOB_TYPES = {
   rollingUpdate: 'cluster.rolling_update',
   /** Move guests to meet placement rules, or one to even out memory (Phase 7B). */
   placement: 'cluster.placement',
+  /** Run one upgrade plan with its playbook (Phase 8). */
+  upgradeRun: 'upgrade.run',
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

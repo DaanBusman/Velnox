@@ -21,6 +21,7 @@ import { MailModule } from './modules/mail/mail.module';
 import { SupportModule } from './modules/support/support.module';
 import { UpdatesModule } from './modules/updates/updates.module';
 import { PlacementModule } from './modules/placement/placement.module';
+import { UpgradesModule } from './modules/upgrades/upgrades.module';
 
 /**
  * Application composition root.
@@ -50,6 +51,7 @@ import { PlacementModule } from './modules/placement/placement.module';
     SupportModule,
     UpdatesModule,
     PlacementModule,
+    UpgradesModule,
     UsersModule,
     IdentityModule,
     RolesModule,

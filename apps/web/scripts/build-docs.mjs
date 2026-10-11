@@ -45,6 +45,7 @@ const DOCUMENTS = [
   'building-vms',
   'updating-nodes',
   'placement',
+  'major-upgrades',
   'working-with-jobs',
   'permissions',
   'deployment',

@@ -251,6 +251,15 @@ Proxmox accepts a rule naming guests that are not under HA, and how its HA manag
 moves get along for guests that are. Balancing is by memory only. Velnox does not remove `velnox-`
 HA rules from a cluster that was removed from Velnox. See ADR-049.
 
+### Major upgrades: an engine, proven by its self-tests
+The engine — playbooks, guards, checks per run, automatic and approved remediation, the gate,
+target-by-target steps, composites and reports — is proven with its self-test playbooks, which change
+nothing outside Velnox. There is no Ceph or Proxmox VE playbook yet (Phases 9A and 9B), so no plan
+upgrades anything real. A plan cannot be scheduled for later, a remediation cannot be rolled back, and
+there is no version matrix yet. Discovery now names Ceph daemons as Ceph does (`mon.pve1`, `mgr.pve1`):
+a monitor and a manager on one host used to share a name, and one of them was lost from the
+inventory. See ADR-050.
+
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
 Let's Encrypt's test server — not yet against Let's Encrypt on a public host. HTTP-01 only, as Caddy

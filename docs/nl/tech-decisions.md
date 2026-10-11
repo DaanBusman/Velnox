@@ -1604,6 +1604,45 @@ verwijderd is, laat zijn regels in Proxmox achter).
 
 ---
 
+## ADR-050 — De upgrade-engine: playbooks als data, één runner, samengestelde plannen van buitenaf gestuurd
+
+**Beslissing:** Een grote upgrade is een plan (`upgrade_plans`) dat draait op een playbook dat als data
+is gedefinieerd in `packages/shared/src/upgrade.ts`: stappen in vaste fasen (discovery, preflight,
+herstel, hercontrole, upgrade, validatie, rapport), elk met een actie, eventueel één keer per doel,
+eventueel achter een guard — een voorwaarde over verzamelde feiten, als data, beoordeeld door één
+functie die precies zegt wat niet klopte. De worker maakt van een playbook jobstappen op de bestaande
+jobrunner; opeenvolgende stappen per doel gaan doel voor doel. De runner krijgt er twee generieke
+dingen bij: een stap kan zeggen dat hij niet nodig is (`when`, vastgelegd als SKIPPED), en de
+wijzigingsset van een goedkeuring kan worden berekend als de poort bereikt wordt. Controles worden per
+run vastgelegd (`run_index`); de herstelactie van een bevinding wordt bij de eerste run gepland en
+gerouteerd op haar metadata — alleen automatisch als het risico laag is en ze ongedaan kan worden
+gemaakt, anders een goedkeuring die de exacte wijziging toont, die wordt bewaard en is wat wordt
+toegepast. Staat na de hercontrole nog iets open dat een upgrade tegenhoudt, dan eindigt de run als
+geblokkeerd voordat een doel is aangeraakt. Samengestelde plannen hebben geen job: een aansturing in
+de worker start de job van elk kind om de beurt als de concurrency-sleutel van het cluster vrij is, en
+laat bij een mislukt kind het samengestelde plan mislukken en annuleert de rest.
+
+**Waarom de stappenlijst vast blijft.** De runner bouwt de stappen van een job na een goedkeuring
+opnieuw op en gaat verder op stapsleutel. Een playbook dat tijdens het draaien stappen bijmaakte, zou
+niet twee keer op dezelfde manier verdergaan; voorwaardelijke stappen houden de lijst vast en het
+gedrag dynamisch.
+
+**Waarom een samengesteld plan wordt aangestuurd en niet afgewacht.** Een ouderjob die op zijn kinderen
+wacht, houdt urenlang een workerplek bezet — met één plek, voor altijd — en kon niet eens een kind in
+de wachtrij zetten, want beide willen de sleutel van het cluster. Een aansturing die elke tien seconden
+kijkt, heeft geen van beide nodig en overleeft een herstart van de worker; ze zet ook een plan bij
+waarvan de job eindigde zonder het te melden.
+
+**Waarom er zelftest-playbooks meegaan.** De acceptatie van de engine vraagt playbooks die elk pad
+doorlopen — automatisch en goedgekeurd herstel, een blokkade, een mislukt doel, een samengesteld plan
+dat stopt — op elk cluster, zonder het te veranderen. Ze worden alleen aan `system.manage` aangeboden
+en veranderen niets buiten Velnox.
+
+**Niet gebouwd:** de versiematrix (`version_matrix_id`, fase 9A), een plan inplannen voor later,
+strategie-instellingen buiten die van het playbook zelf, een herstelactie terugdraaien, en PBS-plannen.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

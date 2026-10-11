@@ -364,10 +364,15 @@ export function mapCeph(input: {
         >
       | undefined,
   ): void => {
+    // Proxmox names a monitor and a manager after their host — both `pve1` —
+    // so the name is qualified by kind, as Ceph itself does: `mon.pve1`,
+    // `mgr.pve1`, `osd.0`. Unqualified, the second overwrote the first.
+    const prefix = kind.toLowerCase();
     for (const [key, entry] of Object.entries(entries ?? {})) {
+      const raw = entry?.name ?? key;
       daemons.push({
         kind,
-        name: entry?.name ?? (kind === 'OSD' ? `osd.${key}` : key),
+        name: raw.startsWith(`${prefix}.`) ? raw : `${prefix}.${raw}`,
         host: text(entry?.hostname),
         version: text(entry?.ceph_version_short) ?? text(entry?.ceph_version),
       });

@@ -71,6 +71,7 @@ const CREATE_PERMISSION: Record<string, Permission> = {
   [JOB_TYPES.nodeUpdate]: PERMISSIONS.updatesExecute,
   [JOB_TYPES.rollingUpdate]: PERMISSIONS.updatesExecute,
   [JOB_TYPES.placement]: PERMISSIONS.placementManage,
+  [JOB_TYPES.upgradeRun]: PERMISSIONS.upgradesExecute,
 };
 
 /**

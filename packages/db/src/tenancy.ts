@@ -207,6 +207,10 @@ const TENANT_SCOPED: Record<string, ScopeFilter> = {
   UpdatePolicy: (ids) => ({ tenantId: { in: ids } }),
   PlacementRule: (ids) => ({ tenantId: { in: ids } }),
   PlacementSettings: (ids) => ({ tenantId: { in: ids } }),
+  UpgradePlan: (ids) => ({ tenantId: { in: ids } }),
+  UpgradeTarget: (ids) => ({ tenantId: { in: ids } }),
+  UpgradeCheck: (ids) => ({ tenantId: { in: ids } }),
+  RemediationRun: (ids) => ({ tenantId: { in: ids } }),
 };
 
 /** Models whose `tenantId` on a create must be inside the scope. */
@@ -235,6 +239,10 @@ const TENANT_COLUMN: Record<string, 'required' | 'optional'> = {
   UpdatePolicy: 'required',
   PlacementRule: 'required',
   PlacementSettings: 'required',
+  UpgradePlan: 'required',
+  UpgradeTarget: 'required',
+  UpgradeCheck: 'required',
+  RemediationRun: 'required',
 };
 
 export const tenantScopedModels = (): string[] => Object.keys(TENANT_SCOPED).sort();

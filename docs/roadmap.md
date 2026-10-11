@@ -383,7 +383,15 @@ by a rolling update emptying a node; a violation found on a cluster is reported 
 corrected by a migration job; on PVE 9 the rule exists in Proxmox's own HA rules and survives
 Velnox being stopped; balancing moves nothing while a cluster is degraded.
 
-## Phase 8 — Major upgrade framework (generic) · **L**
+## Phase 8 — Major upgrade framework (generic) · **L** · built, not yet complete
+
+**As built** (0.5.29, ADR-050): playbooks as data with phases, per-target steps and guards; one runner
+on the job system, with conditional steps and approvals whose change set is computed when reached;
+checks recorded per run; remediations routed by risk and reversibility, the exact change shown and
+stored; a gate that blocks before any target; composite plans run child by child, stopping on a
+failure; reports for node and daemon runs, as Markdown too. **Operations → Updates & upgrades →
+Major upgrades.** Two self-test playbooks prove it, `scripts/verify-upgrades.sh` against the fixture.
+**Not yet:** genericity is proven only when 9A and 9B run on it unchanged.
 
 Playbook engine, step registry, guard evaluator, phase model (Discovery → Preflight → Remediation →
 Re-check → Upgrade → Validation → Report). Upgrade plans and targets. Remediation plugin interface

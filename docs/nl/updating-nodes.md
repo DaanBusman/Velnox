@@ -7,7 +7,8 @@
 bij elke inventarisatie de wachtende pakketten van elke node, classificeert ze, merkt op wanneer een
 node een herstart nodig heeft, en past updates node voor node toe als een job die je regel voor regel
 kunt volgen. Een **rolling update** doet een heel cluster, node na node, en verplaatst de draaiende
-gasten van elke node vóór zijn herstart en zet ze daarna terug.
+gasten van elke node vóór zijn herstart en zet ze daarna terug. Naar een nieuwe grote versie gaan —
+Ceph, of Proxmox VE 8 naar 9 — is een [grote upgrade](major-upgrades.md).
 
 Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-046,
 ADR-047 en ADR-048 in [Technische beslissingen](tech-decisions.md).

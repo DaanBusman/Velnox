@@ -530,41 +530,48 @@ balanceren zijn jobs van type `cluster.placement`.
 
 ## 8. Major upgrades
 
-### `upgrade_plans`
-`id, tenant_id, cluster_id, name, kind (PVE_MAJOR|CEPH|PBS|COMPOSITE), from_version, to_version,
-playbook_id, playbook_version, parent_plan_id, sequence, status (DRAFT|PREFLIGHT|BLOCKED|READY|RUNNING|
-COMPLETED|FAILED|CANCELLED), strategy jsonb (gelijktijdigheid, herstartbeleid, afbreekregels),
-version_matrix_id, created_by, approved_by, scheduled_for`
+Gebouwd in fase 8 (migratie `20261011180000_upgrade_framework`); ADR-050. Elke tabel neemt haar tenant
+via een trigger over van haar cluster of plan.
 
-Een `COMPOSITE`-plan heeft kindplannen geordend op `sequence` — zo wordt een PVE 8 → 9-upgrade van een
-Ceph-cluster uitgedrukt: kind 1 is het `CEPH`-plan, kind 2 het `PVE_MAJOR`-plan. Een kindplan kan ook op
-zichzelf bestaan, waardoor "alleen Ceph upgraden" een gewone handeling is en geen uitzondering.
-`version_matrix_id` legt vast **welke versiematrix dit plan opleverde**, zodat een rapport
-interpreteerbaar blijft nadat de matrix is bijgewerkt.
+### `upgrade_plans`
+`id, tenant_id, cluster_id, name, kind (PVE_MAJOR|CEPH|COMPOSITE|SELFTEST), playbook_id,
+playbook_version, parent_plan_id, sequence, status (DRAFT|RUNNING|WAITING_APPROVAL|BLOCKED|COMPLETED|
+FAILED|CANCELLED), options jsonb, facts jsonb, job_id, report jsonb, created_by_user_id,
+created_by_label, created_at, updated_at, started_at, finished_at`
+
+Een `COMPOSITE`-plan heeft geen playbook (`upgrade_plans_playbook`) en kindplannen geordend op
+`sequence` — zo wordt een PVE 8 → 9-upgrade van een Ceph-cluster uitgedrukt: kind 1 het `CEPH`-plan,
+kind 2 het `PVE_MAJOR`-plan. Een kindplan upgradet het cluster van zijn ouder (trigger). `facts` is wat
+discovery verzamelde en wat acties tussen stappen bewaren; `report` bevat het rapport en zijn Markdown.
+Ontworpen en nog niet gebouwd: `version_matrix_id` (fase 9A), `strategy`, `scheduled_for`,
+`approved_by`.
 
 ### `upgrade_targets`
-`id, plan_id, target_kind (NODE|CEPH_DAEMON), node_id, ceph_daemon_id, daemon_group (MON|MGR|OSD|MDS|
-RGW, leeg voor nodes), sequence, status, pre_state jsonb, post_state jsonb, started_at, finished_at`
+`id, tenant_id, plan_id, target_kind (NODE|CEPH_DAEMON), node_id, ceph_daemon_id, label,
+daemon_group, sequence (uniek per plan), status, pre_state jsonb, post_state jsonb, started_at,
+finished_at`
 
-`pre_state`/`post_state` zijn de voor/na-momentopnames waaruit het rapport van fase 7 wordt opgesteld. De
-discriminator `target_kind` zorgt dat één rapport, één voortgangsmodel en één UI zowel een
-node-voor-node PVE-upgrade als een daemon-voor-daemon Ceph-upgrade bedienen.
+`upgrade_targets_one_kind` houdt een doel een node of een daemon. `label` bewaart de naam als de rij in
+de inventaris verdwijnt. `pre_state`/`post_state` zijn het voor en na dat het rapport toont;
+`target_kind` laat één rapport, één voortgangsmodel en één scherm zowel een node-voor-node- als een
+daemon-voor-daemonrun bedienen.
 
 ### `upgrade_checks`
-`id, target_id, source (PVE8TO9|CEPH_HEALTH|CEPH_VERSION_MATRIX|VELNOX_GUARD), parser_version,
-check_key, severity (PASS|INFO|WARNING|BLOCKER|UNKNOWN), title, detail, raw_line, remediation_id (mag
-leeg zijn), run_index int (0 = eerste preflight, 1+ = hercontroles), created_at`
+`id, tenant_id, plan_id, target_id (leeg voor heel het plan), source, parser_version, check_key,
+severity (PASS|INFO|WARNING|BLOCKER|UNKNOWN), title, detail, raw_line, remediation_id, run_index,
+created_at`
 
-`run_index` maakt "preflight opnieuw draaien na herstel en vergelijken" een query in plaats van een
-inschatting.
+`run_index` 0 is de eerste preflight, 1 en verder elke hercontrole: "wat heeft de herstelactie
+verholpen" is een query, geen gok.
 
 ### `remediation_runs`
-`id, tenant_id, job_id, target_id, check_id, remediation_id, risk, mode (AUTOMATIC|APPROVED),
-change_set jsonb, backup_ref, status (PLANNED|APPROVED|APPLIED|VALIDATED|FAILED|ROLLED_BACK),
-applied_at, validated_at, rollback_at, error`
+`id, tenant_id, plan_id, job_id, target_id, check_key, remediation_id, risk, mode (AUTOMATIC|APPROVED),
+change_set jsonb, status (PLANNED|APPLIED|VALIDATED|FAILED|ROLLED_BACK), applied_at, validated_at,
+error, created_at, updated_at`
 
-`change_set` bevat de exact geplande diff — hetzelfde object dat de operator vóór goedkeuring zag, zodat
-het auditspoor bewijst dat wat goedgekeurd werd gelijk is aan wat draaide.
+`change_set` bevat de exact geplande wijziging — het object dat vóór goedkeuring getoond wordt, zodat
+de vastlegging bewijst dat wat goedgekeurd werd ook is wat draaide. `backup_ref` en terugdraaien zijn
+niet gebouwd.
 
 ---
 

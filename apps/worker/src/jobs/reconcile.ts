@@ -59,7 +59,8 @@ export async function reconcileLostJobs(context: JobsContext, now = new Date()):
           data: {
             status: 'FAILED',
             errorCode: 'job.worker_lost',
-            errorMessage: 'The worker stopped while running this job. It was not restarted automatically.',
+            errorMessage:
+              'The worker stopped while running this job. It was not restarted automatically.',
             finishedAt: now,
             leaseUntil: null,
           },
@@ -78,7 +79,10 @@ export async function reconcileLostJobs(context: JobsContext, now = new Date()):
         data: { status: 'SKIPPED' },
       });
 
-      context.log.warn({ jobId: job.id, worker: job.workerId }, 'Reconciled a job whose worker was lost');
+      context.log.warn(
+        { jobId: job.id, worker: job.workerId },
+        'Reconciled a job whose worker was lost',
+      );
     }
 
     return reconciled;
@@ -125,4 +129,3 @@ export async function reconcileStaleDiscoveryRuns(
     return result.count;
   });
 }
-

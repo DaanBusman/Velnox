@@ -1512,6 +1512,40 @@ leaves its rules in Proxmox).
 
 ---
 
+## ADR-050 — The upgrade engine: playbooks as data, one runner, composites driven from outside
+
+**Decision:** A major upgrade is a plan (`upgrade_plans`) run by a playbook defined as data in
+`packages/shared/src/upgrade.ts`: steps in fixed phases (discovery, preflight, remediation, recheck,
+upgrade, validation, report), each naming an action, optionally once per target, optionally behind a
+guard — a condition over collected facts, as data, evaluated by one function that says exactly what
+did not hold. The worker turns a playbook into job steps on the existing job runner; consecutive
+per-target steps go target by target. The runner gains two generic things: a step may say it is not
+needed (`when`, recorded as SKIPPED), and an approval's change set may be computed when the gate is
+reached. Checks are recorded per run (`run_index`); a finding's remediation is planned on the first
+run and routed by its metadata — automatic only when the risk is low and it can be undone, otherwise
+an approval showing the exact change, which is stored and is what gets applied. Anything that stops an
+upgrade still open after the re-check ends the run as blocked before any target. Composite plans have
+no job: a driver in the worker starts each child's job in turn when the cluster's concurrency key is
+free, and on a child's failure fails the composite and cancels the rest.
+
+**Why the step list stays static.** The runner rebuilds a job's steps after an approval and resumes by
+step key. A playbook that grew steps at run time would not resume the same way twice; conditional
+steps keep the list fixed and the behaviour dynamic.
+
+**Why a composite is driven, not waited on.** A parent job waiting for its children would hold a
+worker slot for hours — with one slot, for ever — and could not even queue a child, since both would
+want the cluster's key. A driver that looks every ten seconds needs neither, and survives a worker
+restart; it also sets a plan whose job ended without telling it.
+
+**Why self-test playbooks ship.** The engine's acceptance needs playbooks that exercise every path —
+automatic and approved remediation, a blocker, a failed target, a composite stopping — on any cluster,
+without changing it. They are offered to `system.manage` only, and change nothing outside Velnox.
+
+**Not built:** the version matrix (`version_matrix_id`, Phase 9A), scheduling a plan for later,
+strategy settings beyond the playbook's own, rolling a remediation back, and PBS plans.
+
+---
+
 ## Version targets
 
 | Component | Version |

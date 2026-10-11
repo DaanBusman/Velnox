@@ -336,7 +336,13 @@
     },
     "upgrade": {
       "blockers_present": "{count, plural, one {# blocker} other {# blockers}} must be resolved before this upgrade can start.",
-      "unparsed_output": "Preflight output contained lines this version of Velnox does not recognise. They are treated as blockers and shown verbatim."
+      "unparsed_output": "Preflight output contained lines this version of Velnox does not recognise. They are treated as blockers and shown verbatim.",
+      "unknown_playbook": "There is no playbook {playbook}, or it is not offered to you.",
+      "not_draft": "Only a plan that has not run yet can be started or removed; this one is {status}.",
+      "guard_failed": "A condition for this step does not hold: {failed}",
+      "remediation_failed": "{target}: remediation {remediation} failed. The job’s output says why.",
+      "target_failed": "The upgrade of {target} failed. The job’s output says why.",
+      "child_failed": "A plan of this composite failed; the plans after it were not started."
     },
     "validation": "Some of the values submitted are not valid.",
     "ssh": {
@@ -620,7 +626,8 @@
       "package_verify": "Check package",
       "update": "Update node",
       "rolling_update": "Rolling update",
-      "placement": "Placement"
+      "placement": "Placement",
+      "run": "Major upgrade"
     }
   },
   "layout": {
@@ -1601,7 +1608,8 @@
       "nodes": "Nodes",
       "policies": "Policies",
       "windows": "Maintenance windows",
-      "history": "History"
+      "history": "History",
+      "upgrades": "Major upgrades"
     },
     "cluster": "Cluster",
     "allClusters": "All clusters",
@@ -1806,5 +1814,52 @@
       "balance": "Balancing"
     },
     "bySettings": "by the settings"
+  },
+  "upgrades": {
+    "noPlaybooks": "No upgrade playbooks yet: the Ceph and Proxmox VE upgrades arrive in Phases 9A and 9B. Plans made earlier are listed below.",
+    "plansTitle": "Upgrade plans",
+    "plansBody": "Each plan runs one playbook — checks, remediations, the upgrade target by target, validation — or, as a composite, several plans one after another.",
+    "noPlans": "No upgrade plans yet.",
+    "composite": "Composite",
+    "newTitle": "New plan",
+    "newBody": "Targets come from the inventory: nodes by name, Ceph daemons in Ceph’s own order — monitors, managers, OSDs, then the rest.",
+    "cluster": "Cluster",
+    "playbook": "Playbook",
+    "name": "Name",
+    "selftestComposite": "As a composite: the daemon self-test, then the node self-test",
+    "selftestApproval": "With a change that needs approval",
+    "selftestUnfixable": "With a blocker nothing fixes",
+    "create": "Make the plan",
+    "status": {
+      "DRAFT": "Not started",
+      "RUNNING": "Running",
+      "WAITING_APPROVAL": "Waiting for approval",
+      "BLOCKED": "Blocked",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed",
+      "CANCELLED": "Cancelled"
+    },
+    "refresh": "Refresh",
+    "followJob": "Follow the job",
+    "start": "Start",
+    "remove": "Remove",
+    "children": "Plans, in order",
+    "nodes": "Nodes",
+    "daemons": "Ceph daemons",
+    "target": "Target",
+    "targetStatus": "State",
+    "before": "Before",
+    "after": "After",
+    "wholePlan": "whole plan",
+    "preflight": "Preflight",
+    "recheck": "Check again ({run})",
+    "remediations": "Remediations",
+    "mode": {
+      "AUTOMATIC": "Applied by Velnox",
+      "APPROVED": "Needs approval"
+    },
+    "risk": "{risk} risk",
+    "report": "Report",
+    "downloadReport": "Download as Markdown"
   }
 }

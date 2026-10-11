@@ -176,6 +176,18 @@ export const ERROR_CODES = {
   placementUnresolved: 'placement.unresolved',
   /** Moving a guest to correct or balance placement failed. */
   placementMigrationFailed: 'placement.migration_failed',
+  /** A playbook names that does not exist, or is not offered to this caller (Phase 8). */
+  upgradeUnknownPlaybook: 'upgrade.unknown_playbook',
+  /** Only a plan that has not run yet can be started or removed. */
+  upgradeNotDraft: 'upgrade.not_draft',
+  /** A step's guard did not hold, and the playbook says that blocks the run. */
+  upgradeGuardFailed: 'upgrade.guard_failed',
+  /** A remediation could not be applied, or did not fix what it should. */
+  upgradeRemediationFailed: 'upgrade.remediation_failed',
+  /** A target's upgrade or its validation failed. */
+  upgradeTargetFailed: 'upgrade.target_failed',
+  /** A child plan of a composite failed; the ones after it were not started. */
+  upgradeChildFailed: 'upgrade.child_failed',
   /** A maintenance window still used by a policy. */
   maintenanceWindowInUse: 'maintenance.window_in_use',
 

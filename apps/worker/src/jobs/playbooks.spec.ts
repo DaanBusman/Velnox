@@ -44,7 +44,12 @@ describe('self-test parameters', () => {
 describe('the self-test playbook', () => {
   it('has one task per step and unique keys', () => {
     const playbook = selftestPlaybook(parseSelftestParams({ steps: 4 }));
-    expect(playbook.steps.map((step) => step.key)).toEqual(['step-1', 'step-2', 'step-3', 'step-4']);
+    expect(playbook.steps.map((step) => step.key)).toEqual([
+      'step-1',
+      'step-2',
+      'step-3',
+      'step-4',
+    ]);
   });
 
   it('puts the approval gate immediately before the step it guards', () => {
@@ -88,7 +93,11 @@ describe('the self-test playbook', () => {
 
   it('refuses a library job on a worker that has no library, rather than half-running it', () => {
     expect(() =>
-      playbookFor(JOB_TYPES.libraryFetch, { itemId: '4a9d1c33-7e0c-4f35-9b1e-6a8d0c3e2f11' }, CONTEXT),
+      playbookFor(
+        JOB_TYPES.libraryFetch,
+        { itemId: '4a9d1c33-7e0c-4f35-9b1e-6a8d0c3e2f11' },
+        CONTEXT,
+      ),
     ).toThrow(StepError);
   });
 });
@@ -142,4 +151,3 @@ describe('what counts as a stale discovery run', () => {
     });
   });
 });
-

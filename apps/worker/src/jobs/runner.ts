@@ -11,7 +11,14 @@ import {
   type JobEventMessage,
   type JobStatus,
 } from '@velnox/shared';
-import { PartialStop, StepError, playbookFor, type Playbook, type StepContext, type StepDefinition } from './playbooks';
+import {
+  PartialStop,
+  StepError,
+  playbookFor,
+  type Playbook,
+  type StepContext,
+  type StepDefinition,
+} from './playbooks';
 import type { LibraryServices } from '../library/services';
 import type { ProvisioningServices } from '../provisioning/playbook';
 
@@ -157,7 +164,12 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
   const claimed = await recordEvent(
     context,
     jobId,
-    { level: 'INFO', key: JOB_EVENT_KEYS.claimed, message: `Claimed by worker ${workerId}`, data: { worker: workerId } },
+    {
+      level: 'INFO',
+      key: JOB_EVENT_KEYS.claimed,
+      message: `Claimed by worker ${workerId}`,
+      data: { worker: workerId },
+    },
     {
       guard: { status: 'QUEUED' },
       data: { status: 'PREFLIGHT', workerId, leaseUntil: leaseUntil(), startedAt: new Date() },
@@ -221,7 +233,10 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
    * job that could not tidy up still has to end, and the warning is what tells
    * someone to look.
    */
-  const cleanUp = async (playbook: Playbook | null, reason: 'cancelled' | 'failed'): Promise<void> => {
+  const cleanUp = async (
+    playbook: Playbook | null,
+    reason: 'cancelled' | 'failed',
+  ): Promise<void> => {
     if (!playbook?.cleanup) return;
     try {
       await playbook.cleanup(reason);
@@ -235,13 +250,21 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
   };
 
   /** Record a cancellation: the interrupted step failed, the rest skipped. */
-  const finishCancelled = async (steps: StepDefinition[], seen: Map<string, string>, interrupted: string | null) => {
+  const finishCancelled = async (
+    steps: StepDefinition[],
+    seen: Map<string, string>,
+    interrupted: string | null,
+  ) => {
     if (interrupted) {
       // The step began and did not finish, so it is recorded as failed with
       // that reason rather than skipped: "this step never ran" would be untrue.
       await prisma.jobStep.update({
         where: { jobId_stepKey: { jobId, stepKey: interrupted } },
-        data: { status: 'FAILED', finishedAt: new Date(), error: 'Interrupted: the job was cancelled' },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          error: 'Interrupted: the job was cancelled',
+        },
       });
       seen.set(interrupted, 'FAILED');
     }
@@ -341,8 +364,31 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
         return 'CANCELLED';
       }
 
+      if (step.when && !(await step.when())) {
+        await prisma.jobStep.update({
+          where: { jobId_stepKey: { jobId, stepKey: step.key } },
+          data: { status: 'SKIPPED', finishedAt: new Date() },
+        });
+        recorded.set(step.key, 'SKIPPED');
+        if (step.kind === 'task') tasksDone += 1;
+        await recordEvent(context, jobId, {
+          level: 'INFO',
+          key: JOB_EVENT_KEYS.stepSkipped,
+          stepKey: step.key,
+          message: `Step ${step.key} not needed`,
+        });
+        continue;
+      }
+
       if (step.kind === 'approval') {
-        const parked = await approvalGate(context, jobId, job.tenantId, step, job.createdByUserId, move);
+        const parked = await approvalGate(
+          context,
+          jobId,
+          job.tenantId,
+          step,
+          job.createdByUserId,
+          move,
+        );
         if (parked === 'PARKED') return 'WAITING_APPROVAL';
         if (parked === 'REJECTED') return 'FAILED';
         recorded.set(step.key, 'SUCCEEDED');
@@ -356,8 +402,16 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
       const started = await recordEvent(
         context,
         jobId,
-        { level: 'INFO', key: JOB_EVENT_KEYS.stepStarted, stepKey: step.key, message: `Step ${step.key} started` },
-        { guard: { ...owned, status: 'RUNNING' }, data: { currentStep: step.key, currentPhase: step.phase } },
+        {
+          level: 'INFO',
+          key: JOB_EVENT_KEYS.stepStarted,
+          stepKey: step.key,
+          message: `Step ${step.key} started`,
+        },
+        {
+          guard: { ...owned, status: 'RUNNING' },
+          data: { currentStep: step.key, currentPhase: step.phase },
+        },
       );
       if (!started) throw new OwnershipLost(jobId);
 
@@ -424,7 +478,11 @@ async function run(context: JobsContext, jobId: string): Promise<RunOutcome> {
 
         await prisma.jobStep.update({
           where: { jobId_stepKey: { jobId, stepKey: step.key } },
-          data: { status: 'FAILED', finishedAt: new Date(), error: rootRedactor.text(describe(error)) },
+          data: {
+            status: 'FAILED',
+            finishedAt: new Date(),
+            error: rootRedactor.text(describe(error)),
+          },
         });
         await skipRemaining(prisma, jobId, steps, recorded, step.key);
         await cleanUp(playbook, 'failed');
@@ -482,7 +540,11 @@ async function approvalGate(
   tenantId: string,
   step: Extract<StepDefinition, { kind: 'approval' }>,
   requestedBy: string | null,
-  move: (to: JobStatus, event: EventInput, extra?: Prisma.JobUpdateManyMutationInput) => Promise<void>,
+  move: (
+    to: JobStatus,
+    event: EventInput,
+    extra?: Prisma.JobUpdateManyMutationInput,
+  ) => Promise<void>,
 ): Promise<'PASSED' | 'PARKED' | 'REJECTED'> {
   const { prisma } = context;
 
@@ -522,7 +584,7 @@ async function approvalGate(
         stepKey: step.key,
         requiredPermission: step.requiredPermission,
         reason: step.reason,
-        changeSet: step.changeSet,
+        changeSet: typeof step.changeSet === 'function' ? await step.changeSet() : step.changeSet,
         requireDifferentApprover: step.requireDifferentApprover,
       },
     });
@@ -556,7 +618,10 @@ async function skipRemaining(
 ): Promise<void> {
   const keys = steps
     .map((step) => step.key)
-    .filter((key) => key !== after && !['SUCCEEDED', 'FAILED', 'SKIPPED'].includes(recorded.get(key) ?? ''));
+    .filter(
+      (key) =>
+        key !== after && !['SUCCEEDED', 'FAILED', 'SKIPPED'].includes(recorded.get(key) ?? ''),
+    );
   if (keys.length === 0) return;
   await prisma.jobStep.updateMany({
     where: { jobId, stepKey: { in: keys }, status: { in: ['PENDING', 'RUNNING'] } },

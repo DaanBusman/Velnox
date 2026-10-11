@@ -11,6 +11,7 @@ import { packageVerifyPlaybook } from '../provisioning/package-verify';
 import { nodeUpdatePlaybook } from '../updates/playbook';
 import { rollingUpdatePlaybook } from '../updates/rolling';
 import { placementPlaybook } from '../placement/playbook';
+import { upgradePlaybook } from '../upgrade/engine';
 import { provisionPlaybook, type ProvisioningServices } from '../provisioning/playbook';
 import { StepError, type Playbook, type StepDefinition } from './steps';
 
@@ -132,6 +133,8 @@ export function playbookFor(type: string, params: unknown, context: PlaybookCont
       return rollingUpdatePlaybook(params, context.jobId, library());
     case JOB_TYPES.placement:
       return placementPlaybook(params, context.jobId, library());
+    case JOB_TYPES.upgradeRun:
+      return upgradePlaybook(params, context.jobId, library());
     case JOB_TYPES.vmProvision:
       if (!context.provisioning) throw new StepError('generic', 'This worker cannot provision');
       return provisionPlaybook(params, context.provisioning);

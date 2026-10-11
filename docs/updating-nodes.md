@@ -4,7 +4,8 @@
 node's pending packages with each discovery, classifies them, notices when a node needs a reboot,
 and applies updates one node at a time as a job you can follow line by line. A **rolling update** does a
 whole cluster, node after node, moving each node's running guests away before it reboots and back
-afterwards.
+afterwards. Moving to a new major version — Ceph, or Proxmox VE 8 to 9 — is a
+[major upgrade](major-upgrades.md).
 
 For who may do what, see [Roles and permissions](permissions.md). For why it works the way it does,
 see ADR-046, ADR-047 and ADR-048 in [Technology decisions](tech-decisions.md).

@@ -337,7 +337,13 @@
     },
     "upgrade": {
       "blockers_present": "{count, plural, one {# blokkade} other {# blokkades}} moeten worden opgelost voordat deze upgrade kan starten.",
-      "unparsed_output": "De preflight-uitvoer bevatte regels die deze versie van Velnox niet herkent. Ze worden als blokkade behandeld en letterlijk getoond."
+      "unparsed_output": "De preflight-uitvoer bevatte regels die deze versie van Velnox niet herkent. Ze worden als blokkade behandeld en letterlijk getoond.",
+      "unknown_playbook": "Er is geen playbook {playbook}, of het wordt jou niet aangeboden.",
+      "not_draft": "Alleen een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden; dit plan is {status}.",
+      "guard_failed": "Een voorwaarde voor deze stap klopt niet: {failed}",
+      "remediation_failed": "{target}: herstelactie {remediation} is mislukt. De uitvoer van de job zegt waarom.",
+      "target_failed": "De upgrade van {target} is mislukt. De uitvoer van de job zegt waarom.",
+      "child_failed": "Een plan van dit samengestelde plan is mislukt; de plannen erna zijn niet gestart."
     },
     "validation": "Een deel van de ingevoerde waarden is niet geldig.",
     "ssh": {
@@ -621,7 +627,8 @@
       "package_verify": "Pakket controleren",
       "update": "Node bijwerken",
       "rolling_update": "Rolling update",
-      "placement": "Plaatsing"
+      "placement": "Plaatsing",
+      "run": "Grote upgrade"
     }
   },
   "layout": {
@@ -1602,7 +1609,8 @@
       "nodes": "Nodes",
       "policies": "Beleid",
       "windows": "Onderhoudsvensters",
-      "history": "Geschiedenis"
+      "history": "Geschiedenis",
+      "upgrades": "Grote upgrades"
     },
     "cluster": "Cluster",
     "allClusters": "Alle clusters",
@@ -1807,5 +1815,52 @@
       "balance": "Balanceren"
     },
     "bySettings": "door de instellingen"
+  },
+  "upgrades": {
+    "noPlaybooks": "Nog geen upgrade-playbooks: de upgrades van Ceph en Proxmox VE komen in fase 9A en 9B. Eerder gemaakte plannen staan hieronder.",
+    "plansTitle": "Upgradeplannen",
+    "plansBody": "Elk plan draait één playbook — controles, herstelacties, de upgrade doel voor doel, validatie — of, als samengesteld plan, meerdere plannen na elkaar.",
+    "noPlans": "Nog geen upgradeplannen.",
+    "composite": "Samengesteld",
+    "newTitle": "Nieuw plan",
+    "newBody": "De doelen komen uit de inventaris: nodes op naam, Ceph-daemons in de eigen volgorde van Ceph — monitors, managers, OSD’s, dan de rest.",
+    "cluster": "Cluster",
+    "playbook": "Playbook",
+    "name": "Naam",
+    "selftestComposite": "Als samengesteld plan: de daemon-zelftest, dan de node-zelftest",
+    "selftestApproval": "Met een wijziging die goedkeuring nodig heeft",
+    "selftestUnfixable": "Met een blokkade die niets verhelpt",
+    "create": "Plan maken",
+    "status": {
+      "DRAFT": "Niet gestart",
+      "RUNNING": "Bezig",
+      "WAITING_APPROVAL": "Wacht op goedkeuring",
+      "BLOCKED": "Geblokkeerd",
+      "COMPLETED": "Voltooid",
+      "FAILED": "Mislukt",
+      "CANCELLED": "Geannuleerd"
+    },
+    "refresh": "Vernieuwen",
+    "followJob": "De job volgen",
+    "start": "Starten",
+    "remove": "Verwijderen",
+    "children": "Plannen, op volgorde",
+    "nodes": "Nodes",
+    "daemons": "Ceph-daemons",
+    "target": "Doel",
+    "targetStatus": "Toestand",
+    "before": "Voor",
+    "after": "Na",
+    "wholePlan": "heel het plan",
+    "preflight": "Preflight",
+    "recheck": "Opnieuw gecontroleerd ({run})",
+    "remediations": "Herstelacties",
+    "mode": {
+      "AUTOMATIC": "Door Velnox toegepast",
+      "APPROVED": "Vraagt goedkeuring"
+    },
+    "risk": "risico {risk}",
+    "report": "Rapport",
+    "downloadReport": "Downloaden als Markdown"
   }
 }

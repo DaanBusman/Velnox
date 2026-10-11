@@ -414,7 +414,16 @@ wordt gemeld en, als dat mag, gecorrigeerd met een migratiejob; op PVE 9 staat d
 HA-regels van Proxmox en overleeft hij het stoppen van Velnox; balanceren verplaatst niets zolang een
 cluster gedegradeerd is.
 
-## Phase 8 — Framework voor major upgrades (generiek) · **L**
+## Phase 8 — Framework voor major upgrades (generiek) · **L** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (0.5.29, ADR-050): playbooks als data met fasen, stappen per doel en guards; één
+runner op het jobsysteem, met voorwaardelijke stappen en goedkeuringen waarvan de wijzigingsset bij
+het bereiken wordt berekend; controles per run vastgelegd; herstelacties gerouteerd op risico en
+omkeerbaarheid, de exacte wijziging getoond en bewaard; een poort die blokkeert voordat een doel wordt
+aangeraakt; samengestelde plannen kind voor kind uitgevoerd, stoppend bij een fout; rapporten voor
+node- en daemonruns, ook als Markdown. **Beheer → Updates & upgrades → Grote upgrades.** Twee
+zelftest-playbooks bewijzen het, `scripts/verify-upgrades.sh` tegen de fixture. **Nog niet:** de
+generiekheid is pas bewezen als 9A en 9B er ongewijzigd op draaien.
 
 Playbook-engine, stapregister, guard-evaluator, fasemodel (Discovery → Preflight → Herstel → Hercontrole →
 Upgrade → Validatie → Rapport). Upgradeplannen en -doelen. Interface en register voor

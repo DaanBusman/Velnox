@@ -271,6 +271,15 @@ verplaatsingen van Velnox samengaan voor gasten die er wel onder vallen. Balance
 geheugen. Velnox verwijdert geen `velnox-`-HA-regels van een cluster dat uit Velnox verwijderd is. Zie
 ADR-049.
 
+### Grote upgrades: een engine, bewezen door haar zelftests
+De engine — playbooks, guards, controles per run, automatisch en goedgekeurd herstel, de poort, stappen
+doel voor doel, samengestelde plannen en rapporten — is bewezen met haar zelftest-playbooks, die niets
+buiten Velnox veranderen. Er is nog geen playbook voor Ceph of Proxmox VE (fase 9A en 9B), dus geen
+plan upgradet iets echts. Een plan kan niet voor later worden ingepland, een herstelactie kan niet
+worden teruggedraaid, en er is nog geen versiematrix. Discovery benoemt Ceph-daemons nu zoals Ceph dat
+doet (`mon.pve1`, `mgr.pve1`): een monitor en een manager op één host deelden eerder een naam, en een
+van beide verdween uit de inventaris. Zie ADR-050.
+
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,
 de testserver van Let's Encrypt — nog niet tegen Let's Encrypt op een publieke host. Alleen HTTP-01,

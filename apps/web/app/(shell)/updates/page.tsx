@@ -28,6 +28,7 @@ export default async function UpdatesPage() {
           tenants={tenants.ok ? tenants.data.tenants : []}
           canExecute={permissions.has('updates.execute')}
           canManage={permissions.has('updates.manage')}
+          canUpgrade={permissions.has('upgrades.execute')}
         />
       ) : (
         <Notice tone="warn">
