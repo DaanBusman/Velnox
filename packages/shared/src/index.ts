@@ -16,6 +16,7 @@ export * from './redaction';
 export * from './rolling';
 export * from './placement';
 export * from './upgrade';
+export * from './ceph';
 export * from './rrule';
 export * from './slug';
 export * from './system';

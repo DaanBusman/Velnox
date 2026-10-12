@@ -188,6 +188,10 @@ export const ERROR_CODES = {
   upgradeTargetFailed: 'upgrade.target_failed',
   /** A child plan of a composite failed; the ones after it were not started. */
   upgradeChildFailed: 'upgrade.child_failed',
+  /** The running Ceph release, the target and the version matrix disagree (Phase 9A). */
+  upgradeMatrixMismatch: 'upgrade.matrix_mismatch',
+  /** Ceph did not come back whole after a daemon's restart, or showed a warning Velnox does not know. */
+  upgradeCephUnhealthy: 'upgrade.ceph_unhealthy',
   /** A maintenance window still used by a policy. */
   maintenanceWindowInUse: 'maintenance.window_in_use',
 

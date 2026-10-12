@@ -34,6 +34,16 @@ export interface CommandSpec {
   argv: readonly string[];
 }
 
+import {
+  CEPH_CHANNELS,
+  CEPH_MATRIX,
+  CEPH_RELEASE_NAMES,
+  cephRepoLine,
+  type CephChannel,
+  type CephMatrixEntry,
+  type CephRelease,
+} from '@velnox/shared';
+
 const MINUTE = 60_000;
 
 export const COMMANDS = {
@@ -85,6 +95,48 @@ export const COMMANDS = {
 } as const satisfies Record<string, CommandSpec>;
 
 export type CommandId = keyof typeof COMMANDS;
+
+/**
+ * Ceph's commands (Phase 9A), one fixed spec per matrix entry and channel and
+ * per release — generated here from the version matrix, which is code, so the
+ * registry stays closed: no plan, request or setting supplies a line of them.
+ */
+const CEPH_LIST = '/etc/apt/sources.list.d/ceph.list';
+
+export function cephRepoCommand(entry: CephMatrixEntry, channel: CephChannel): CommandSpec {
+  const line = cephRepoLine(entry, channel);
+  return {
+    id: `ceph.repository.${entry.to}.${channel}`,
+    readOnly: false,
+    privileged: true,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: [
+      'sh',
+      '-c',
+      `cp -p ${CEPH_LIST} ${CEPH_LIST}.velnox-before 2>/dev/null; printf '%s\\n' '${line}' > ${CEPH_LIST} && cat ${CEPH_LIST}`,
+    ],
+  };
+}
+
+export function cephRequireReleaseCommand(release: CephRelease): CommandSpec {
+  return {
+    id: `ceph.require_osd_release.${release}`,
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 2 * MINUTE,
+    interruptible: true,
+    argv: ['ceph', 'osd', 'require-osd-release', release],
+  };
+}
+
+/** Every Ceph command there can be — for the documentation and its sudoers lines. */
+export const CEPH_COMMANDS: readonly CommandSpec[] = [
+  ...CEPH_MATRIX.flatMap((entry) =>
+    CEPH_CHANNELS.map((channel) => cephRepoCommand(entry, channel)),
+  ),
+  ...CEPH_RELEASE_NAMES.map(cephRequireReleaseCommand),
+];
 
 /** Proxmox's rule for a node name: what may follow `hostname -s`. */
 const NODE_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;

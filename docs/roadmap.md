@@ -406,7 +406,16 @@ the parent when a child fails; reports render for both node-targeted and daemon-
 genericity claim is not asserted here — it is *proven* in 9A and 9B, which run two structurally
 different workflows on this engine without changing it.
 
-## Phase 9A — Ceph major upgrade workflow · **L**
+## Phase 9A — Ceph major upgrade workflow · **L** · built, not yet complete
+
+**As built** (0.5.30, ADR-051): the version matrix (Quincy → Reef, Reef → Squid) as dated data,
+recorded on every plan; plans refused naming whether the running release, the target or the matrix is
+unexpected; a preflight from Ceph as it is (health, PGs, quorum, homogeneity, pve-manager, SSH,
+CephFS); the repository, `noout`, packages, then every daemon restarted in Ceph's order, one at a time,
+with health read again after each; `require-osd-release` last; `noout` cleared on success, failure,
+cancellation and a dead worker. On the engine of Phase 8, unchanged but for the cleanup it gained.
+`scripts/verify-ceph.sh` proves it against the fixture. **Not yet:** a real Ceph cluster; CephFS
+preparation by Velnox; RGW.
 
 The Ceph playbook: version-matrix data file validated against the live cluster at plan time;
 repository stage; `noout` set/unset with guaranteed cleanup on failure and cancellation; daemon

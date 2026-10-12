@@ -453,7 +453,7 @@ async function bootstrap(): Promise<void> {
   // Composite upgrade plans, child after child, and plans whose job ended
   // without them hearing of it (Phase 8).
   const upgradeTick = () =>
-    driveUpgrades(prisma, policyQueue)
+    driveUpgrades(prisma, policyQueue, library)
       .then((result) => {
         if (result.started.length || result.finished.length)
           logger.info(result, 'Upgrade plans driven');

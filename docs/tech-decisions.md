@@ -1546,6 +1546,33 @@ strategy settings beyond the playbook's own, rolling a remediation back, and PBS
 
 ---
 
+## ADR-051 — The Ceph upgrade: a matrix as data, one daemon at a time, noout never left behind
+
+**Decision:** Ceph upgrades follow a version matrix in `packages/shared/src/ceph.ts` — Quincy → Reef,
+Reef → Squid, each with the lowest versions Proxmox asks for and its repository — dated and recorded
+on every plan. A plan is refused when the release that runs, the target and the matrix disagree,
+naming which. The playbook switches the repository on every node, sets `noout`, upgrades packages on
+every node, then restarts each daemon through Proxmox's API in Ceph's order and waits, after every one,
+until Ceph is whole: health OK apart from `noout` and the not-yet-raised `require-osd-release`, every
+PG active+clean, full quorum. Warnings a restart causes for a moment are waited out; a warning Velnox
+does not know stops the run. `require-osd-release` is raised only when every OSD runs the target. The
+playbook names a cleanup, run by the job when it fails or is cancelled and by the driver when a
+worker died, that clears `noout` if Velnox set it — recorded before it is set.
+
+**Why one daemon at a time, not one node.** Proxmox's guide restarts a node's OSDs together. One at a
+time is slower and never worse: a cluster that will not settle after one OSD says so before a node's
+worth of them is down.
+
+**Why the commands come from the matrix.** The SSH registry stays closed (ADR-046): one fixed command
+per matrix step and channel and per release, generated from the matrix, which is code. No plan or
+request supplies a repository line.
+
+**Not built:** reducing CephFS to one active MDS and switching standby replay off — the operator does
+it and says so on the plan; RGW daemons, which discovery does not read; the deb822 `ceph.sources`
+format.
+
+---
+
 ## Version targets
 
 | Component | Version |

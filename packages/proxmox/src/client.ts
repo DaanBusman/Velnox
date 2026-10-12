@@ -212,6 +212,19 @@ export class ProxmoxClient {
     return this.get<CephFlag[]>('/cluster/ceph/flags');
   }
 
+  /** Set or clear one of Ceph's cluster flags, such as `noout` (Phase 9A). */
+  setCephFlag(flag: string, on: boolean): Promise<null> {
+    return this.put<null>(`/cluster/ceph/flags/${encodeURIComponent(flag)}`, { value: on ? 1 : 0 });
+  }
+
+  /**
+   * Restart one Ceph daemon on its node — `mon.pve1`, `mgr.pve1`, `osd.3`,
+   * `mds.pve2` — so it runs the version installed there. Returns the task's UPID.
+   */
+  restartCephService(node: string, service: string): Promise<string> {
+    return this.postOnce<string>(`/nodes/${encodeURIComponent(node)}/ceph/restart`, { service });
+  }
+
   // --- Storage content (Phase 5A) -------------------------------------------
 
   /** One storage as a node sees it: whether it is active, and how full. */

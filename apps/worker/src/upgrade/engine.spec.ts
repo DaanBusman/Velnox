@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { SELFTEST_CEPH_PLAYBOOK, SELFTEST_NODE_PLAYBOOK, playbookProblems } from '@velnox/shared';
+import {
+  CEPH_MAJOR_PLAYBOOK,
+  SELFTEST_CEPH_PLAYBOOK,
+  SELFTEST_NODE_PLAYBOOK,
+  playbookProblems,
+} from '@velnox/shared';
 import type { LibraryServices } from '../library/services';
 import { knownActions, upgradePlaybook } from './engine';
 
@@ -16,6 +21,7 @@ describe('upgradePlaybook', () => {
   it('every action a shipped playbook names exists in this worker', () => {
     expect(playbookProblems(SELFTEST_NODE_PLAYBOOK, knownActions())).toEqual([]);
     expect(playbookProblems(SELFTEST_CEPH_PLAYBOOK, knownActions())).toEqual([]);
+    expect(playbookProblems(CEPH_MAJOR_PLAYBOOK, knownActions())).toEqual([]);
   });
 
   it('turns the playbook into steps, per target where it says so', () => {
@@ -55,5 +61,23 @@ describe('upgradePlaybook', () => {
         services,
       ),
     ).toThrow(/v9/);
+  });
+
+  it('restarts each Ceph daemon and lets Ceph settle before the next', () => {
+    const playbook = upgradePlaybook(
+      { ...params('velnox.ceph-major', ['mon.pve1', 'osd.0']) },
+      'j',
+      services,
+    );
+    expect(playbook.steps.map((s) => s.key).slice(-8)).toEqual([
+      'restart-1',
+      'settle-1',
+      'restart-2',
+      'settle-2',
+      'require-release',
+      'noout-unset',
+      'verify',
+      'report',
+    ]);
   });
 });

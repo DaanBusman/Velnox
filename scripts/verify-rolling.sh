@@ -188,7 +188,7 @@ ssh-keygen -q -t ed25519 -N '' -C velnox-client -f "$WORK/client_key" >/dev/null
 HOST_KEY_FINGERPRINT="$(ssh-keygen -lf "$WORK/host_key.pub" | awk '{print $2}')"
 
 mkdir -p "$WORK/store"
-cp "$ROOT/scripts/fixtures/fake-pve.mjs" "$ROOT/scripts/fixtures/fake-pve-storage.mjs" "$ROOT/scripts/fixtures/fake-pve-ops.mjs" "$WORK/"
+cp "$ROOT/scripts/fixtures/fake-pve.mjs" "$ROOT/scripts/fixtures/fake-pve-storage.mjs" "$ROOT/scripts/fixtures/fake-pve-ops.mjs" "$ROOT/scripts/fixtures/fake-pve-ceph.mjs" "$WORK/"
 chmod -R a+rwX "$WORK" 2>/dev/null || true
 
 MSYS_NO_PATHCONV=1 docker run -d --rm --name "$FIXTURE_NAME" \
@@ -218,7 +218,17 @@ fi
 unset VELNOX_ADMIN_PASSWORD
 
 TENANT_ID="$(call GET /api/v1/tenants | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const t=JSON.parse(r).tenants.find(x=>x.kind!=="MSP_ROOT"&&x.status==="ACTIVE");process.stdout.write(t?t.id:"")})')"
-CLUSTER="$(call POST /api/v1/clusters "$(T="$TENANT_ID" R="$RUN" H="$FIXTURE_HOST" F="$TLS_FINGERPRINT" I="$TOKEN_ID" S="$TOKEN_SECRET" body '{ tenantId: e.T, name: e.R, host: e.H, port: 8006, fingerprint: e.F, auth: { kind: "API_TOKEN", tokenId: e.I, secret: e.S } }')")"
+register_cluster() {
+  call POST /api/v1/clusters "$(T="$TENANT_ID" R="$RUN" H="$FIXTURE_HOST" F="$TLS_FINGERPRINT" I="$TOKEN_ID" S="$TOKEN_SECRET" body '{ tenantId: e.T, name: e.R, host: e.H, port: 8006, fingerprint: e.F, auth: { kind: "API_TOKEN", tokenId: e.I, secret: e.S } }')"
+}
+CLUSTER="$(register_cluster)"
+# A run that was interrupted leaves its cluster on the same fixture address behind.
+LEFTOVER="$(printf '%s' "$CLUSTER" | json error.params.clusterId)"
+if [[ "$(printf '%s' "$CLUSTER" | json error.code)" == cluster.duplicate && -n "$LEFTOVER" ]]; then
+  info "Removing a cluster an interrupted run left behind."
+  call DELETE "/api/v1/clusters/${LEFTOVER}" >/dev/null
+  CLUSTER="$(register_cluster)"
+fi
 CLUSTER_ID="$(printf '%s' "$CLUSTER" | json id)"
 [[ -n "$CLUSTER_ID" ]] || { red "no cluster to test against: $(printf '%s' "$CLUSTER" | head -c 300)"; exit 1; }
 for _ in $(seq 1 60); do

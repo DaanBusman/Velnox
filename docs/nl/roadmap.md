@@ -440,7 +440,16 @@ node-gerichte als daemon-gerichte uitvoeringen. De genericiteitsclaim wordt hier
 *bewezen* in 9A en 9B, die twee structureel verschillende workflows op deze engine draaien zonder haar te
 wijzigen.
 
-## Phase 9A — Ceph major upgrade-workflow · **L**
+## Phase 9A — Ceph major upgrade-workflow · **L** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (0.5.30, ADR-051): de versiematrix (Quincy → Reef, Reef → Squid) als gedateerde data,
+vastgelegd bij elk plan; plannen geweigerd met of de draaiende release, het doel of de matrix
+onverwacht is; een preflight vanuit Ceph zoals het is (gezondheid, PG's, quorum, homogeniteit,
+pve-manager, SSH, CephFS); de repository, `noout`, de pakketten, dan elke daemon herstart in de
+volgorde van Ceph, één tegelijk, met de gezondheid na elke opnieuw gelezen; `require-osd-release` als
+laatste; `noout` uitgezet bij succes, mislukking, annulering en een gestorven worker. Op de engine van
+fase 8, ongewijzigd op de opruimactie na die erbij kwam. `scripts/verify-ceph.sh` bewijst het tegen de
+fixture. **Nog niet:** een echt Ceph-cluster; CephFS-voorbereiding door Velnox; RGW.
 
 Het Ceph-playbook: versiematrix-databestand dat bij het opstellen van het plan tegen het live cluster wordt
 gevalideerd; repositorystap; `noout` zetten en opheffen met gegarandeerde opruiming bij falen en

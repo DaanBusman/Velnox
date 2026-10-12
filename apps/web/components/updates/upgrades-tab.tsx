@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import {
+  CEPH_CHANNELS,
+  CEPH_MATRIX,
   fileDiff,
   type CheckSeverity,
   type JobStatus,
@@ -134,9 +136,14 @@ function NewPlan({
   const [composite, setComposite] = useState(false);
   const [configOld, setConfigOld] = useState(true);
   const [unfixable, setUnfixable] = useState(false);
+  const [target, setTarget] = useState('squid');
+  const [channel, setChannel] = useState<'no-subscription' | 'enterprise'>('no-subscription');
+  const [mdsPrepared, setMdsPrepared] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [pending, setPending] = useState(false);
-  const selftest = playbooks.find((p) => p.id === playbookId)?.kind === 'SELFTEST';
+  const kind = playbooks.find((p) => p.id === playbookId)?.kind;
+  const selftest = kind === 'SELFTEST';
+  const ceph = kind === 'CEPH';
   const options = { markerMissing: true, configOld, unfixable, failTarget: null };
 
   async function create() {
@@ -152,7 +159,13 @@ function NewPlan({
             .sort((a) => (a.targetKind === 'CEPH_DAEMON' ? -1 : 1))
             .map((p) => ({ name: `${name} — ${p.title}`, playbookId: p.id, options })),
         }
-      : { kind: 'PLAYBOOK', clusterId, name, playbookId, options: selftest ? options : {} };
+      : {
+          kind: 'PLAYBOOK',
+          clusterId,
+          name,
+          playbookId,
+          options: selftest ? options : ceph ? { target, channel, mdsPrepared } : {},
+        };
     const result = await apiPost<UpgradePlanDetail>('/upgrades/plans', body);
     setPending(false);
     if (!result.ok) return setFailure(result.error);
@@ -204,6 +217,54 @@ function NewPlan({
             )}
           </Field>
         </div>
+        {ceph && (
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field label={t('upgrades.cephTarget')} hint={t('upgrades.cephTargetHint')}>
+              {(props) => (
+                <select
+                  {...props}
+                  className={select}
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                >
+                  {CEPH_MATRIX.map((m) => (
+                    <option key={m.to} value={m.to}>
+                      {t('upgrades.cephStep', { from: m.from, to: m.to })}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <Field label={t('upgrades.cephChannel')}>
+              {(props) => (
+                <select
+                  {...props}
+                  className={select}
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value as typeof channel)}
+                >
+                  {CEPH_CHANNELS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <label className="flex items-start gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={mdsPrepared}
+                onChange={(e) => setMdsPrepared(e.target.checked)}
+              />
+              <span>
+                {t('upgrades.cephMds')}
+                <span className="block text-xs text-ink-muted">{t('upgrades.cephMdsHint')}</span>
+              </span>
+            </label>
+          </div>
+        )}
         {selftest && (
           <div className="flex flex-wrap gap-4 text-sm text-ink">
             <label className="flex items-center gap-2">

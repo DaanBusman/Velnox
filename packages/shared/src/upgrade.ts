@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CEPH_MAJOR_PLAYBOOK } from './ceph';
 import { compareVersions } from './updates';
 
 /**
@@ -177,6 +178,11 @@ export interface UpgradePlaybookDef {
   internal: boolean;
   /** The check providers `checks.run` uses, by name. */
   checkProviders: string[];
+  /**
+   * An action run when the run fails, is cancelled, or its worker died — to
+   * undo what must not be left behind, such as Ceph's noout flag.
+   */
+  cleanup?: string;
   steps: PlaybookStepDef[];
 }
 
@@ -552,10 +558,11 @@ export const SELFTEST_REMEDIATIONS: RemediationDef[] = [
   },
 ];
 
-/** Every playbook, by id. 9A and 9B add theirs. */
+/** Every playbook, by id. */
 export const UPGRADE_PLAYBOOKS: Record<string, UpgradePlaybookDef> = {
   [SELFTEST_NODE_PLAYBOOK.id]: SELFTEST_NODE_PLAYBOOK,
   [SELFTEST_CEPH_PLAYBOOK.id]: SELFTEST_CEPH_PLAYBOOK,
+  [CEPH_MAJOR_PLAYBOOK.id]: CEPH_MAJOR_PLAYBOOK,
 };
 
 export const UPGRADE_REMEDIATIONS: Record<string, RemediationDef> = Object.fromEntries(

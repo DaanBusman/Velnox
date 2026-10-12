@@ -18,11 +18,33 @@ import {
   type PlaybookStepDef,
   type UpgradeJobParams,
   type UpgradePlanStatus,
-  type UpgradePlaybookDef,
 } from '@velnox/shared';
 import { StepError, type Playbook, type StepContext, type StepDefinition } from '../jobs/steps';
 import type { LibraryServices } from '../library/services';
 import { SELFTEST_ACTIONS, SELFTEST_PROVIDERS, SELFTEST_REMEDIATION_IMPLS } from './selftest';
+import { CEPH_ACTIONS, CEPH_PROVIDERS, cephNooutCleanup } from './ceph';
+import {
+  loadPlan,
+  mergeFacts,
+  plan,
+  setStatus,
+  type CheckProvider,
+  type PlanRow,
+  type RemediationImpl,
+  type TargetRow,
+  type UpgradeAction,
+  type UpgradeRuntime,
+} from './runtime';
+
+export type {
+  ActionArgs,
+  CheckProvider,
+  PlanRow,
+  RemediationImpl,
+  TargetRow,
+  UpgradeAction,
+  UpgradeRuntime,
+} from './runtime';
 
 /**
  * The generic upgrade runner (Phase 8).
@@ -35,78 +57,6 @@ import { SELFTEST_ACTIONS, SELFTEST_PROVIDERS, SELFTEST_REMEDIATION_IMPLS } from
  * remediations register by name; the self-test's are in ./selftest, 9A's and
  * 9B's will sit beside them. Nothing here knows which playbook it runs.
  */
-
-export interface UpgradeRuntime {
-  prisma: VelnoxPrismaClient;
-  services: LibraryServices;
-  jobId: string;
-  params: UpgradeJobParams;
-  def: UpgradePlaybookDef;
-}
-
-export type PlanRow = Prisma.UpgradePlanGetPayload<{ include: typeof PLAN_INCLUDE }>;
-export type TargetRow = PlanRow['targets'][number];
-
-export interface ActionArgs {
-  rt: UpgradeRuntime;
-  step: PlaybookStepDef;
-  target: TargetRow | null;
-  context: StepContext;
-}
-export type UpgradeAction = (
-  args: ActionArgs,
-) => Promise<Record<string, string | number | boolean | null> | void>;
-
-/** A check provider: findings for the plan or its targets. */
-export type CheckProvider = (
-  rt: UpgradeRuntime,
-  plan: PlanRow,
-) => Promise<(CheckResult & { targetId: string | null; source: string })[]>;
-
-/** How a remediation is planned, applied and proven. Its metadata is in shared. */
-export interface RemediationImpl {
-  plan(rt: UpgradeRuntime, plan: PlanRow, targetId: string | null): Promise<ChangeSet>;
-  apply(
-    rt: UpgradeRuntime,
-    plan: PlanRow,
-    targetId: string | null,
-    change: ChangeSet,
-  ): Promise<void>;
-  /** Whether the check it fixes now passes. */
-  validate(rt: UpgradeRuntime, plan: PlanRow, targetId: string | null): Promise<boolean>;
-}
-
-const PLAN_INCLUDE = {
-  targets: { orderBy: { sequence: 'asc' } },
-  cluster: { select: { id: true, name: true, tenantId: true } },
-} as const satisfies Prisma.UpgradePlanInclude;
-
-function loadPlan(prisma: VelnoxPrismaClient, planId: string): Promise<PlanRow | null> {
-  return prisma.upgradePlan.findUnique({ where: { id: planId }, include: PLAN_INCLUDE });
-}
-
-export async function plan(rt: UpgradeRuntime): Promise<PlanRow> {
-  const row = await loadPlan(rt.prisma, rt.params.planId);
-  if (!row) throw new StepError(ERROR_CODES.notFound, 'The upgrade plan is gone');
-  return row;
-}
-
-/** Merge into the plan's facts — what actions keep between steps. */
-export async function mergeFacts(rt: UpgradeRuntime, patch: Facts): Promise<Facts> {
-  const row = await plan(rt);
-  const facts = { ...(row.facts as Facts), ...patch };
-  await rt.prisma.upgradePlan.update({
-    where: { id: row.id },
-    data: { facts: facts as Prisma.InputJsonValue },
-  });
-  return facts;
-}
-
-const setStatus = (
-  rt: UpgradeRuntime,
-  status: UpgradePlanStatus,
-  extra: Prisma.UpgradePlanUpdateInput = {},
-) => rt.prisma.upgradePlan.update({ where: { id: rt.params.planId }, data: { status, ...extra } });
 
 // ---------------------------------------------------------------------------
 // The actions every playbook shares
@@ -121,7 +71,10 @@ const lastRunIndex = async (rt: UpgradeRuntime): Promise<number | null> => {
   return row?.runIndex ?? null;
 };
 
-const providers = (): Record<string, CheckProvider> => ({ ...SELFTEST_PROVIDERS });
+const providers = (): Record<string, CheckProvider> => ({
+  ...SELFTEST_PROVIDERS,
+  ...CEPH_PROVIDERS,
+});
 const remediationImpls = (): Record<string, RemediationImpl> => ({ ...SELFTEST_REMEDIATION_IMPLS });
 
 const labelOf = (row: PlanRow, targetId: string | null) =>
@@ -387,7 +340,31 @@ async function reportInput(
   };
 }
 
-const ACTIONS = (): Record<string, UpgradeAction> => ({ ...SHARED_ACTIONS, ...SELFTEST_ACTIONS });
+const ACTIONS = (): Record<string, UpgradeAction> => ({
+  ...SHARED_ACTIONS,
+  ...SELFTEST_ACTIONS,
+  ...CEPH_ACTIONS,
+});
+
+/** What a playbook's `cleanup` names: undone when a run fails, is cancelled or its worker died. */
+const CLEANUPS: Record<string, (rt: UpgradeRuntime) => Promise<void>> = {
+  'ceph.noout-cleanup': (rt) => cephNooutCleanup(rt, async () => undefined),
+};
+
+/**
+ * Run a playbook's cleanup for a plan. Called by the job's own cleanup, and by
+ * the driver for a job whose worker died — whose own cleanup died with it.
+ */
+export async function runPlaybookCleanup(
+  services: LibraryServices,
+  params: UpgradeJobParams,
+  jobId: string,
+): Promise<void> {
+  const def = UPGRADE_PLAYBOOKS[params.playbookId];
+  const cleanup = def?.cleanup ? CLEANUPS[def.cleanup] : undefined;
+  if (!def || !cleanup) return;
+  await cleanup({ prisma: services.prisma, services, jobId, params, def });
+}
 /** Every action name, for checking a playbook before it runs. */
 export const knownActions = (): Set<string> =>
   new Set([...Object.keys(ACTIONS()), 'remediate.approval']);
@@ -532,7 +509,9 @@ export function upgradePlaybook(raw: unknown, jobId: string, services: LibrarySe
     version: 1,
     steps,
     async cleanup(reason) {
-      // A plan that did not finish says so, and keeps a report of how far it got.
+      // What must not be left behind first — Ceph's noout — then the plan says
+      // it did not finish, and keeps a report of how far it got.
+      await runPlaybookCleanup(services, params, jobId);
       const row = await loadPlan(services.prisma, params.planId);
       if (!row) return;
       const status: UpgradePlanStatus =

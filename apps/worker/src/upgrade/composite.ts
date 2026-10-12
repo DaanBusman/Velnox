@@ -7,7 +7,8 @@ import {
   compositeNext,
   type UpgradeJobParams,
 } from '@velnox/shared';
-import { writeReport } from './engine';
+import type { LibraryServices } from '../library/services';
+import { runPlaybookCleanup, writeReport } from './engine';
 
 /**
  * Composite plans, driven in order (Phase 8), every ten seconds.
@@ -28,6 +29,7 @@ export const UPGRADE_DRIVER_INTERVAL_MS = 10_000;
 export async function driveUpgrades(
   prisma: VelnoxPrismaClient,
   queue: Queue,
+  services?: LibraryServices,
 ): Promise<{ started: string[]; finished: string[] }> {
   return withSystemScope('upgrade plans are driven on their own schedule', async () => {
     const started: string[] = [];
@@ -40,7 +42,7 @@ export async function driveUpgrades(
         status: { in: ['RUNNING', 'WAITING_APPROVAL'] },
         jobId: { not: null },
       },
-      select: { id: true, jobId: true },
+      include: { targets: { orderBy: { sequence: 'asc' } } },
     });
     for (const plan of running) {
       const job = await prisma.job.findUnique({
@@ -48,6 +50,20 @@ export async function driveUpgrades(
         select: { status: true },
       });
       if (!job || ACTIVE_JOB_STATUSES.has(job.status)) continue;
+      // Its worker's cleanup died with it: undo what must not be left behind.
+      if (services && plan.playbookId && job.status !== 'SUCCEEDED') {
+        await runPlaybookCleanup(
+          services,
+          {
+            planId: plan.id,
+            clusterId: plan.clusterId,
+            playbookId: plan.playbookId,
+            playbookVersion: plan.playbookVersion ?? 1,
+            targets: plan.targets.map((t) => ({ id: t.id, label: t.label })),
+          },
+          plan.jobId!,
+        ).catch(() => undefined);
+      }
       await prisma.upgradePlan.update({
         where: { id: plan.id },
         data: {

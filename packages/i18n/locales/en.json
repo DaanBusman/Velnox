@@ -342,7 +342,9 @@
       "guard_failed": "A condition for this step does not hold: {failed}",
       "remediation_failed": "{target}: remediation {remediation} failed. The job’s output says why.",
       "target_failed": "The upgrade of {target} failed. The job’s output says why.",
-      "child_failed": "A plan of this composite failed; the plans after it were not started."
+      "child_failed": "A plan of this composite failed; the plans after it were not started.",
+      "matrix_mismatch": "The running release, the target and the version matrix disagree; unexpected is {unexpected, select, running {the release that runs} target {the target} matrix {the matrix} other {{unexpected}}}: {reason}",
+      "ceph_unhealthy": "Ceph is not whole: {reason}"
     },
     "validation": "Some of the values submitted are not valid.",
     "ssh": {
@@ -1860,6 +1862,12 @@
     },
     "risk": "{risk} risk",
     "report": "Report",
-    "downloadReport": "Download as Markdown"
+    "downloadReport": "Download as Markdown",
+    "cephTarget": "Upgrade to",
+    "cephTargetHint": "From the version matrix: the release that runs now must be the one each step starts from.",
+    "cephStep": "{from} → {to}",
+    "cephChannel": "Repository",
+    "cephMds": "CephFS is prepared",
+    "cephMdsHint": "Only with CephFS: max_mds is 1 and standby replay is off for every file system, as Proxmox’s guide asks. Velnox restarts the MDS daemons one at a time and does not change those settings."
   }
 }

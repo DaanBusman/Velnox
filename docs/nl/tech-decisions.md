@@ -1643,6 +1643,34 @@ strategie-instellingen buiten die van het playbook zelf, een herstelactie terugd
 
 ---
 
+## ADR-051 — De Ceph-upgrade: een matrix als data, één daemon tegelijk, noout nooit achtergelaten
+
+**Beslissing:** Ceph-upgrades volgen een versiematrix in `packages/shared/src/ceph.ts` — Quincy →
+Reef, Reef → Squid, elk met de laagste versies die Proxmox vraagt en zijn repository — gedateerd en
+vastgelegd bij elk plan. Een plan wordt geweigerd als de release die draait, het doel en de matrix
+elkaar tegenspreken, met welke. Het playbook zet de repository om op elke node, zet `noout` aan,
+upgradet de pakketten op elke node, herstart dan elke daemon via de API van Proxmox in de volgorde van
+Ceph en wacht na elke tot Ceph heel is: gezond op `noout` en de nog niet verhoogde
+`require-osd-release` na, elke PG active+clean, volledig quorum. Waarschuwingen die een herstart even
+veroorzaakt, worden afgewacht; een waarschuwing die Velnox niet kent, stopt de run.
+`require-osd-release` wordt pas verhoogd als elke OSD het doel draait. Het playbook noemt een
+opruimactie, gedraaid door de job als die mislukt of geannuleerd wordt en door de aansturing als een
+worker stierf, die `noout` uitzet als Velnox het aanzette — vastgelegd voordat het aangezet wordt.
+
+**Waarom één daemon tegelijk, en niet één node.** De handleiding van Proxmox herstart de OSD's van een
+node samen. Eén tegelijk is langzamer en nooit slechter: een cluster dat na één OSD niet tot rust komt,
+zegt dat voordat de OSD's van een hele node down zijn.
+
+**Waarom de opdrachten uit de matrix komen.** Het SSH-register blijft gesloten (ADR-046): één vaste
+opdracht per matrixstap en kanaal en per release, gegenereerd uit de matrix, die code is. Geen plan of
+verzoek levert een repositoryregel.
+
+**Niet gebouwd:** CephFS terugbrengen tot één actieve MDS en standby replay uitzetten — de beheerder
+doet het en zegt het bij het plan; RGW-daemons, die discovery niet leest; het deb822-formaat
+`ceph.sources`.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

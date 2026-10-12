@@ -11,7 +11,7 @@ import type {
   RemediationImpl,
   UpgradeAction,
   UpgradeRuntime,
-} from './engine';
+} from './runtime';
 
 /**
  * The self-test playbooks' own pieces (Phase 8). They prove the engine —

@@ -5,9 +5,9 @@
 
 **Plannen die een cluster doel voor doel upgraden, de controles vooraf, de herstelacties, en het
 rapport erna.** Een plan draait één playbook — een Ceph-upgrade, een Proxmox VE-upgrade — of, als
-*samengesteld* plan, meerdere plannen na elkaar: eerst Ceph, dan Proxmox VE. De playbooks voor Ceph en
-Proxmox VE komen in fase 9A en 9B; tot dan zijn de enige playbooks de eigen zelftests van de engine,
-die niets buiten Velnox veranderen.
+*samengesteld* plan, meerdere plannen na elkaar: eerst Ceph, dan Proxmox VE. Het Ceph-playbook staat
+hieronder; het playbook voor Proxmox VE 8 → 9 komt in fase 9B. De eigen zelftests van de engine, die
+niets buiten Velnox veranderen, zijn er ook.
 
 Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-050 in
 [Technische beslissingen](tech-decisions.md).
@@ -55,6 +55,74 @@ Elk playbook gaat door dezelfde fasen, als één job die je stap voor stap kunt 
 
 ---
 
+## Ceph: een grote upgrade
+
+Het playbook **Ceph major upgrade** upgradet een hypergeconvergeerd Ceph-cluster één release, zoals
+de handleidingen van Proxmox het doen. **Nieuw plan** met dit playbook vraagt naar de release waarnaar
+geüpgraded wordt en het repositorykanaal (no-subscription of enterprise).
+
+**De versiematrix.** Velnox upgradet alleen langs stappen die het kent, elk zoals Proxmox het
+documenteert:
+
+| Van | Naar | Vraagt minstens |
+|---|---|---|
+| Quincy (17) | Reef (18) | Ceph 17.2.7 |
+| Reef (18) | Squid (19) | Ceph 18.2.4 en pve-manager 8.2.8 — Proxmox VE 9 vraagt Squid |
+
+Een plan wordt niet gemaakt als de release die draait, de gevraagde release en de matrix elkaar
+tegenspreken, en de weigering zegt welke van de drie onverwacht is: een cluster waarvan de daemons
+verschillende releases draaien — al midden in een upgrade — of een release die Velnox niet kent, is
+*de release die draait*; een release die niet nieuwer is, is *het doel*; een stap die de matrix niet
+heeft, zoals Quincy rechtstreeks naar Squid, is *de matrix*. Het plan legt vast welke matrixversie het
+maakte.
+
+**Voordat er iets verandert**, leest de preflight Ceph zoals Proxmox het dan geeft, en blokkeert op:
+Ceph niet `HEALTH_OK`, een placement group niet `active+clean`, een monitor buiten quorum, daemons op
+verschillende releases, een waarschuwing die Velnox niet kent (letterlijk getoond, als `UNKNOWN`),
+pve-manager ouder dan de stap vraagt, geen SSH op een node, en — met CephFS — MDS-daemons waarvan het
+plan niet weet dat ze voorbereid zijn. `noout` dat al aan staat is een waarschuwing: Velnox laat het
+zoals het was.
+
+**Dan, op volgorde:**
+
+1. **repository** — `/etc/apt/sources.list.d/ceph.list` op elke node gezet op de regel van Proxmox
+   voor het doel, het oude bestand bewaard als `ceph.list.velnox-before`.
+2. **noout** — aangezet, zodat OSD's die herstarten niet out worden gemarkeerd.
+3. **packages** — `apt-get update` en de dist-upgrade op elke node. De daemons blijven de oude release
+   draaien.
+4. **restart** en **settle**, daemon voor daemon, in de volgorde van Ceph — monitors, managers, OSD's,
+   MDS: elk herstart via Proxmox, bewezen op de nieuwe release, en Ceph opnieuw gelezen tot het heel
+   is — gezond op `noout` na en de waarschuwing dat `require-osd-release` nog niet verhoogd is —
+   voordat de volgende begint. Een waarschuwing die Velnox niet kent, stopt de run meteen; een die een
+   herstart even veroorzaakt, zoals een monitor buiten quorum, wordt afgewacht, tot de
+   stabilisatietijd (standaard tien minuten).
+5. **require-release** — `ceph osd require-osd-release` verhoogd naar het doel, pas als elke OSD het
+   draait.
+6. **noout-unset**, dan **verify**: elke daemon op de doelrelease, `min_mon_release` het doel, Ceph
+   gezond.
+
+**noout wordt altijd uitgezet.** Als de run mislukt, geannuleerd wordt of zijn worker sterft, zet
+Velnox `noout` uit als het dat zelf aanzette — dat van een gestorven worker door de volgende worker,
+binnen seconden nadat die het merkt.
+
+**CephFS.** De handleiding van Proxmox brengt elk bestandssysteem terug tot één actieve MDS en zet
+standby replay uit voordat MDS-daemons herstarten. Velnox wijzigt die instellingen niet: doe het eerst,
+en vink dan **CephFS is voorbereid** aan bij het plan. Zonder dat wordt een cluster met MDS-daemons
+geblokkeerd.
+
+**SSH en sudo.** De repository en de pakketten vragen SSH op elke node; het commando `ceph` vraagt de
+admin-keyring van het cluster. Root is het eenvoudigst. Met een eigen account voeg je aan de
+sudoregels voor updates de exacte opdrachten toe — voor Squid bijvoorbeeld:
+
+```
+velnox ALL=(root) NOPASSWD: /usr/bin/ceph osd require-osd-release squid
+```
+
+en de omschakeling van de repository, die Velnox draait als `sh -c` met de exacte regel voor het doel;
+controleer de opdracht in de uitvoer van de job.
+
+---
+
 ## Samengestelde plannen
 
 Een samengesteld plan draait zijn plannen op volgorde, elk als eigen job: het volgende begint als het
@@ -86,3 +154,5 @@ doel dat mislukt — gekozen als het plan wordt gemaakt.
 | *De upgrade van … is mislukt* | De upgrade of de validatie van een doel mislukte. De doelen ervoor zijn klaar. |
 | *Alleen een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden* | Maak een nieuw plan. |
 | *Er is geen playbook …, of het wordt jou niet aangeboden* | Zelftests vragen `system.manage`. |
+| *De draaiende release, het doel en de versiematrix spreken elkaar tegen* | De weigering noemt welke; zie [de versiematrix](#ceph-een-grote-upgrade). |
+| *Ceph is niet heel: …* | Na de herstart van een daemon kwam Ceph niet binnen de stabilisatietijd gezond terug, of toonde een waarschuwing die Velnox niet kent. `noout` is uitgezet. |

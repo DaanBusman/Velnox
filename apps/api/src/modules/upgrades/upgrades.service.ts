@@ -9,6 +9,9 @@ import {
   VelnoxError,
   isAllowed,
   selftestOptionsSchema,
+  CEPH_MATRIX_VERSION,
+  cephPlanOptionsSchema,
+  checkMatrix,
   type ChangeSet,
   type CreateUpgradePlanInput,
   type JobDetail,
@@ -54,6 +57,8 @@ interface PlannedPlan {
   def: UpgradePlaybookDef;
   targets: PlannedTarget[];
   options: Record<string, unknown>;
+  /** What the plan starts with: for a Ceph plan, the matrix that produced it. */
+  facts: Record<string, unknown>;
 }
 
 @Injectable()
@@ -93,8 +98,43 @@ export class UpgradesService {
     return def;
   }
 
-  private options(def: UpgradePlaybookDef, raw: Record<string, unknown>): Record<string, unknown> {
-    if (def.kind !== 'SELFTEST') return raw;
+  private async options(
+    def: UpgradePlaybookDef,
+    raw: Record<string, unknown>,
+    clusterId: string,
+  ): Promise<{ options: Record<string, unknown>; facts: Record<string, unknown> }> {
+    if (def.kind === 'CEPH') {
+      const parsed = cephPlanOptionsSchema.safeParse(raw);
+      if (!parsed.success) {
+        throw new VelnoxError(ERROR_CODES.validation, {
+          status: 400,
+          message: 'A Ceph plan needs a target release, and a channel if not no-subscription',
+        });
+      }
+      // The running release, the target and the matrix must agree before a
+      // plan exists; when they do not, the refusal says which is unexpected.
+      const daemons = await this.prisma.client.cephDaemon.findMany({
+        where: { clusterId },
+        select: { version: true },
+      });
+      const outcome = checkMatrix(
+        daemons.map((d) => d.version),
+        parsed.data.target,
+      );
+      if (!outcome.ok) {
+        throw new VelnoxError(ERROR_CODES.upgradeMatrixMismatch, {
+          status: 409,
+          params: { unexpected: outcome.unexpected, reason: outcome.reason },
+        });
+      }
+      return {
+        options: parsed.data,
+        facts: {
+          matrix: { version: CEPH_MATRIX_VERSION, from: outcome.from, entry: outcome.entry },
+        },
+      };
+    }
+    if (def.kind !== 'SELFTEST') return { options: raw, facts: {} };
     const parsed = selftestOptionsSchema.safeParse(raw);
     if (!parsed.success) {
       throw new VelnoxError(ERROR_CODES.validation, {
@@ -102,7 +142,7 @@ export class UpgradesService {
         message: 'Self-test options are not valid',
       });
     }
-    return parsed.data;
+    return { options: parsed.data, facts: {} };
   }
 
   private async targetsFor(clusterId: string, def: UpgradePlaybookDef): Promise<PlannedTarget[]> {
@@ -160,7 +200,12 @@ export class UpgradesService {
               : 'The cluster has no Ceph daemons in the inventory',
         });
       }
-      planned.push({ child, def, targets, options: this.options(def, child.options) });
+      planned.push({
+        child,
+        def,
+        targets,
+        ...(await this.options(def, child.options, cluster.id)),
+      });
     }
 
     const common = {
@@ -181,6 +226,7 @@ export class UpgradesService {
             parentPlanId,
             sequence,
             options: p.options as Prisma.InputJsonValue,
+            facts: p.facts as Prisma.InputJsonValue,
             targets: { create: p.targets.map((t) => ({ ...t, tenantId: cluster.tenantId })) },
           },
         });

@@ -35,6 +35,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { installCeph } from './fake-pve-ceph.mjs';
 import { join } from 'node:path';
 
 const KERNEL_RUNNING = '6.8.12-4';
@@ -73,6 +74,8 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     }
   };
 
+  const ceph = installCeph({ nodes, log, control, storage, extraWarn: () => cephWarn });
+
   /** The version every node reports: PVE 8 unless the control file says otherwise. */
   const version = () => String(control().pve ?? '8.2.4');
   const major = () => Number(version().split('.')[0]);
@@ -80,6 +83,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
 
   /** Cluster-wide routes that change something: Proxmox 9's HA rules. */
   function handleCluster(request, response, path, send) {
+    if (ceph.handleCluster(request, response, path, send, readForm)) return true;
     const match = /^\/api2\/json\/cluster\/ha\/rules(?:\/([^/]+))?$/.exec(path);
     if (!match) return false;
     const method = request.method ?? 'GET';
@@ -226,9 +230,10 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     }
     if (!nodes[node].online) return (offline(send, response, node), true);
 
+    if (ceph.handleNode(request, response, node, rest, send, readForm)) return true;
     if (rest === 'apt/update' && method === 'GET') {
       send(response, 200, {
-        data: s.pending.map(({ archive: _archive, ...p }) => ({ ...p, Priority: 'optional', Section: 'admin' })),
+        data: [...s.pending, ...ceph.pendingFor(node)].map(({ archive: _archive, ...p }) => ({ ...p, Priority: 'optional', Section: 'admin' })),
       });
       return true;
     }
@@ -340,27 +345,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
         ),
       ];
     },
-    '/api2/json/cluster/ceph/status': () => ({
-      fsid: '9f2b8a54-0a11-4f0c-9d8e-5b1a2c3d4e5f',
-      health: cephWarn
-        ? { status: 'HEALTH_WARN', checks: { OSD_DOWN: { severity: 'HEALTH_WARN', summary: { message: '2 osds down' } } } }
-        : { status: 'HEALTH_OK', checks: {} },
-      monmap: { mons: Object.keys(nodes).map((name) => ({ name })) },
-      quorum_names: Object.keys(nodes).filter((name) => nodes[name].online),
-      osdmap: { osdmap: { num_osds: 6, num_up_osds: cephWarn ? 4 : 6, num_in_osds: 6, flags: '' } },
-      pgmap: { num_pgs: 257, pgs_by_state: [{ state_name: 'active+clean', count: 257 }], bytes_used: 1e12, bytes_total: 1e13 },
-    }),
-    '/api2/json/cluster/ceph/metadata': () => ({
-      mon: Object.fromEntries(Object.keys(nodes).map((n) => [n, { name: n, hostname: n, ceph_version_short: '18.2.4' }])),
-      mgr: { pve1: { name: 'pve1', hostname: 'pve1', ceph_version_short: '18.2.4' } },
-      osd: Object.fromEntries(
-        Object.keys(nodes).flatMap((n, i) => [0, 1].map((k) => [i * 2 + k, { id: i * 2 + k, hostname: n, ceph_version_short: '18.2.4' }])),
-      ),
-    }),
-    '/api2/json/cluster/ceph/flags': () => [
-      { name: 'noout', value: 0, description: 'OSDs will not be marked out automatically' },
-      { name: 'nobackfill', value: 0, description: 'Backfilling of PGs is suspended' },
-    ],
+    ...ceph.routes,
     '/api2/json/cluster/status': () => {
       tickAll();
       return [
@@ -408,7 +393,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     if (body === 'env LC_ALL=C apt-get -s -o Debug::NoLocking=1 dist-upgrade') {
       log(`ops: ${node} simulate`);
       channel.write('NOTE: This is only a simulation!\n');
-      for (const p of s.pending) {
+      for (const p of [...s.pending, ...ceph.pendingFor(node)]) {
         channel.write(`Inst ${p.Package}${p.OldVersion ? ` [${p.OldVersion}]` : ''} (${p.Version} ${p.archive} [amd64])\n`);
       }
       return (done(0), true);
@@ -418,12 +403,13 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       "env LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade"
     ) {
       s.upgrades += 1;
-      log(`ops: ${node} dist-upgrade (${s.pending.length} packages)`);
+      const all = [...s.pending, ...ceph.pendingFor(node)];
+      log(`ops: ${node} dist-upgrade (${all.length} packages)`);
       const lines = [
         'Reading package lists...',
         'Building dependency tree...',
-        `${s.pending.length} upgraded, 0 newly installed, 0 to remove and 0 not upgraded.`,
-        ...s.pending.flatMap((p) => [`Unpacking ${p.Package} (${p.Version}) ...`, `Setting up ${p.Package} (${p.Version}) ...`]),
+        `${all.length} upgraded, 0 newly installed, 0 to remove and 0 not upgraded.`,
+        ...all.flatMap((p) => [`Unpacking ${p.Package} (${p.Version}) ...`, `Setting up ${p.Package} (${p.Version}) ...`]),
       ];
       let i = 0;
       const timer = setInterval(() => {
@@ -445,6 +431,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
           }
         }
         s.pending = [];
+        ceph.installAll(node);
         done(0);
       }, 150);
       return true;
@@ -453,6 +440,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       channel.write(s.rebootMarker ? 'required\nlinux-base\n' : 'no\n');
       return (done(0), true);
     }
+    if (ceph.exec(body, node, channel, done)) return true;
     log(`EXEC REFUSED: ${command}`);
     return false;
   }

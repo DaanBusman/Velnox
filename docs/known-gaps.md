@@ -260,6 +260,16 @@ there is no version matrix yet. Discovery now names Ceph daemons as Ceph does (`
 a monitor and a manager on one host used to share a name, and one of them was lost from the
 inventory. See ADR-050.
 
+### Ceph upgrades: proven against the fixture, not yet on a real cluster
+The Ceph playbook is proven against the fixture's model of Ceph — versions installed and running,
+restarts that degrade it for a moment, `noout`, `require-osd-release` — not yet against a real
+cluster, where restarts take longer and warnings can be ones the model never shows (they stop the
+run, as they should). Velnox does not reduce CephFS to one active MDS for the upgrade: the operator
+does, and says so on the plan. RGW daemons are not discovered, so not restarted. The repository is
+written to `ceph.list`; a node that uses the deb822 `ceph.sources` instead keeps that file as well.
+The exact sudo rule for the repository switch is left to the operator to read from the job; root is
+simplest. See ADR-051.
+
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
 Let's Encrypt's test server — not yet against Let's Encrypt on a public host. HTTP-01 only, as Caddy

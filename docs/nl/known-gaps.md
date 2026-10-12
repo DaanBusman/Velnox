@@ -280,6 +280,16 @@ worden teruggedraaid, en er is nog geen versiematrix. Discovery benoemt Ceph-dae
 doet (`mon.pve1`, `mgr.pve1`): een monitor en een manager op één host deelden eerder een naam, en een
 van beide verdween uit de inventaris. Zie ADR-050.
 
+### Ceph-upgrades: bewezen tegen de fixture, nog niet op een echt cluster
+Het Ceph-playbook is bewezen tegen het model van Ceph in de fixture — geïnstalleerde en draaiende
+versies, herstarts die het even degraderen, `noout`, `require-osd-release` — nog niet tegen een echt
+cluster, waar herstarts langer duren en waarschuwingen kunnen voorkomen die het model nooit toont (die
+stoppen de run, zoals het hoort). Velnox brengt CephFS voor de upgrade niet terug tot één actieve MDS:
+de beheerder doet dat en zegt het bij het plan. RGW-daemons worden niet ontdekt, dus niet herstart. De
+repository wordt naar `ceph.list` geschreven; een node die in plaats daarvan het deb822-bestand
+`ceph.sources` gebruikt, houdt dat bestand ook. De exacte sudoregel voor de omschakeling van de
+repository laat Velnox aan de beheerder om uit de job te lezen; root is het eenvoudigst. Zie ADR-051.
+
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,
 de testserver van Let's Encrypt — nog niet tegen Let's Encrypt op een publieke host. Alleen HTTP-01,
