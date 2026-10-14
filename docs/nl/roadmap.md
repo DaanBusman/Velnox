@@ -3,7 +3,9 @@
 > **Vertaling.** Bron: [docs/roadmap.md](../roadmap.md) @ `5554f64`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Fase 0 tot en met 5 en 5A afgerond. Fase 5B is gebouwd en wacht op bewijs op een echt cluster; fase 5C is de volgende; fase 6–15 wachten op goedkeuring.
+**Status:** Fase 0 tot en met 5, 5A, 6, 7 en 7B afgerond — 6, 7 en 7B op besluit van de eigenaar met 0.7.0, terwijl
+bewijs op een echt cluster voor die fasen nog openstaat. Fase 5B, 5C, 8, 9A en 9B zijn gebouwd en wachten op datzelfde
+bewijs; fase 10–15 wachten op goedkeuring.
 
 Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
 acceptatiecriteria tegen een draaiende stack — 36 controles over elke afhankelijkheid, de
@@ -343,7 +345,7 @@ tenant bevat zijn jobs en de Proxmox-taken van zijn nodes, de niet door Velnox g
 en niets van een andere tenant; een template installeert een geüploade MSI met argumenten, en een
 pakket van de ene tenant is voor een andere onzichtbaar en onbruikbaar.
 
-## Phase 6 — Updatebeheer · **M** · gebouwd, nog niet afgerond
+## Phase 6 — Updatebeheer · **M** · ✅ afgerond
 
 **Zoals gebouwd** (0.5.26, ADR-046, ADR-047): wachtende updates per node geclassificeerd als
 beveiliging, kernel en Proxmox; herstart-nodig uit de kernels; een `node.update`-job met live uitvoer
@@ -361,7 +363,7 @@ node draait als job met live uitvoer; vereiste herstart wordt gedetecteerd en ge
 onderhoudsvenster voert niets uit buiten dat venster; beleid met handmatige goedkeuring parkeert de job in
 `waiting_approval`.
 
-## Phase 7 — Rolling updates · **L** · gebouwd, nog niet afgerond
+## Phase 7 — Rolling updates · **L** · ✅ afgerond
 
 **Zoals gebouwd** (0.5.27, ADR-048): een `cluster.rolling_update`-job in groepen niet groter dan
 quorum toelaat, standaard één node; geweigerd op een gedegradeerd cluster (node offline, geen quorum,
@@ -382,7 +384,7 @@ onder property-tests voor clustergroottes 1–15; een node die de validatie niet
 uitvoering en rapporteert `partially_succeeded`; workloads worden teruggemigreerd of expliciet
 verantwoord.
 
-## Phase 7B — Cluster resource scheduling (plaatsingsregels en balanceren) · **L** · gebouwd, nog niet afgerond
+## Phase 7B — Cluster resource scheduling (plaatsingsregels en balanceren) · **L** · ✅ afgerond
 
 **Zoals gebouwd** (0.5.28, ADR-049): **Beheer → Plaatsing**; regels per cluster — uit elkaar houden,
 bij elkaar houden, voorkeur voor nodes (strikt of zacht) — en of elke regel klopt, uit de inventaris;

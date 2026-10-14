@@ -1,6 +1,8 @@
 # Velnox — Implementation Roadmap
 
-**Status:** Phases 0 to 5 and 5A complete. Phase 5B is built and awaits proof on a real cluster; Phase 5C is next; phases 6–15 await approval.
+**Status:** Phases 0 to 5, 5A, 6, 7 and 7B complete — 6, 7 and 7B on the owner's call with 0.7.0, while proof on a
+real cluster is still open for them. Phases 5B, 5C, 8, 9A and 9B are built and await that same proof; phases 10–15
+await approval.
 
 Each landed phase is verified rather than asserted. `bash scripts/verify-stack.sh` asserts its acceptance criteria
 against a running stack — 36 checks covering every dependency, the migration state, security headers,
@@ -318,7 +320,7 @@ nodes' Proxmox tasks, those not started by Velnox marked, and nothing of another
 installs an uploaded MSI with arguments, and a package uploaded by one tenant is invisible to and
 unusable by another.
 
-## Phase 6 — Update management · **M** · built, not yet complete
+## Phase 6 — Update management · **M** · ✅ complete
 
 **As built** (0.5.26, ADR-046, ADR-047): pending updates per node classified as security, kernel and
 Proxmox; reboot-required from the kernels; a `node.update` job with live output over SSH commands
@@ -334,7 +336,7 @@ runs as a job with live output; reboot-required is detected and surfaced; a poli
 maintenance window does not execute outside it; manual-approval policy parks the job in
 `waiting_approval`.
 
-## Phase 7 — Rolling updates · **L** · built, not yet complete
+## Phase 7 — Rolling updates · **L** · ✅ complete
 
 **As built** (0.5.27, ADR-048): a `cluster.rolling_update` job in groups no larger than quorum
 allows, one node by default; refused on a degraded cluster (node offline, no quorum, Ceph not
@@ -354,7 +356,7 @@ the run refuses to start on an already-degraded cluster; the quorum invariant ho
 tests for cluster sizes 1–15; a node failing post-validation stops the run and reports
 `partially_succeeded`; workloads are migrated back or accounted for explicitly.
 
-## Phase 7B — Cluster resource scheduling (placement rules and balancing) · **L** · built, not yet complete
+## Phase 7B — Cluster resource scheduling (placement rules and balancing) · **L** · ✅ complete
 
 **As built** (0.5.28, ADR-049): **Operations → Placement**; rules per cluster — keep apart, keep
 together, prefer nodes (strict or soft) — whether each holds, from the inventory; on PVE 9 written
