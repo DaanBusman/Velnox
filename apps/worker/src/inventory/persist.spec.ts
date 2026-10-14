@@ -28,6 +28,8 @@ const node = (over: Partial<DiscoveredNode> = {}): DiscoveredNode => ({
   subscriptionStatus: 'active',
   subscriptionLevel: 'c',
   pendingUpdateCount: 0,
+  pendingUpdates: null,
+  installedKernels: null,
   repositories: [],
   storages: [],
   interfaces: [],
