@@ -344,7 +344,8 @@
       "target_failed": "The upgrade of {target} failed. The job’s output says why.",
       "child_failed": "A plan of this composite failed; the plans after it were not started.",
       "matrix_mismatch": "The running release, the target and the version matrix disagree; unexpected is {unexpected, select, running {the release that runs} target {the target} matrix {the matrix} other {{unexpected}}}: {reason}",
-      "ceph_unhealthy": "Ceph is not whole: {reason}"
+      "ceph_unhealthy": "Ceph is not whole: {reason}",
+      "ceph_first": "Ceph runs {release}, and Proxmox VE 9 needs Squid: upgrade Ceph first — make the plan with “Upgrade Ceph to Squid first”."
     },
     "validation": "Some of the values submitted are not valid.",
     "ssh": {
@@ -1868,6 +1869,8 @@
     "cephStep": "{from} → {to}",
     "cephChannel": "Repository",
     "cephMds": "CephFS is prepared",
-    "cephMdsHint": "Only with CephFS: max_mds is 1 and standby replay is off for every file system, as Proxmox’s guide asks. Velnox restarts the MDS daemons one at a time and does not change those settings."
+    "cephMdsHint": "Only with CephFS: max_mds is 1 and standby replay is off for every file system, as Proxmox’s guide asks. Velnox restarts the MDS daemons one at a time and does not change those settings.",
+    "pveCephFirst": "Upgrade Ceph to Squid first",
+    "pveCephFirstHint": "Proxmox VE 9 needs Ceph Squid. Ticked, the plan is a composite: the Ceph upgrade, then — only if it completed — Proxmox VE, node by node."
   }
 }

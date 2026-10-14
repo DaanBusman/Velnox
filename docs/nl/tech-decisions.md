@@ -1671,6 +1671,47 @@ doet het en zegt het bij het plan; RGW-daemons, die discovery niet leest; het de
 
 ---
 
+## ADR-052 — Proxmox VE 8 → 9: pve8to9 regel voor regel gelezen, verholpen waar het veilig is, een kanarie eerst
+
+**Beslissing:** Het PVE-playbook draait `pve8to9 --full` op elke node en leest het met een
+geversioneerde parser, geschreven tegen `PVE/CLI/pve8to9.pm` (pve-manager `stable-8`): zijn
+voorvoegsels, zijn voortgangsregels zonder voorvoegsel, zijn sectiekoppen en samenvatting, en de
+vervolgregels van een bevinding — lege regels inbegrepen. Een regel die de parser niet kan plaatsen is
+`UNKNOWN` en houdt de upgrade tegen. Een classificatie benoemt elke bevinding op haar tekst en geeft
+wat Velnox kan verhelpen een herstelactie; de CPU-microcode wordt zelf verholpen (gevraagd door de
+eigenaar op 11 oktober 2026: laag risico, omkeerbaar), de rest wacht op goedkeuring met de exacte
+wijziging. Elke herstelactie wordt bewezen door pve8to9 zelf. Dan node voor node: gasten weg binnen de
+plaatsingsregels, bronnen naar trixie, dist-upgrade, herstart met `noout` eromheen op een Ceph-cluster,
+validatie op PVE 9, zijn kernel en opnieuw pve8to9, gasten terug. De engine (ADR-050) krijgt één ding
+erbij: een kanariepoort, een goedkeuring alleen na de stappen van het eerste doel. Een PVE-plan op een
+Ceph-cluster dat niet op Squid staat, wordt geweigerd tenzij een Ceph-upgrade naar Squid eerst komt in
+hetzelfde samengestelde plan, en zijn preflight controleert Squid opnieuw als het draait.
+
+**Waarom referentiebestanden samengesteld uit de bron.** Er was geen volledige echte uitvoer bij de
+hand. De bestanden in `packages/shared/testdata/pve8to9/` zijn opgebouwd uit de eigen meldingen van
+pve8to9.pm en zeggen dat; echte uitvoer van een node komt ernaast, en de tests moeten op beide kloppen.
+
+**Waarom een node onder pve-manager 8.4.2 wordt bijgewerkt voordat er iets wordt gecontroleerd.**
+pve8to9 zat voor het eerst in pve-manager 8.4.2 (de changelog: "add initial `pve8to9` upgrade check
+list tool"). Op een oudere node kan de checklist helemaal niet draaien, dus zijn bevindingen — de
+microcode daaronder — zijn niet te kennen, laat staan in dezelfde run te verhelpen. Het playbook
+leest daarom de versie van elke node vóór de controles, plant de update naar de laatste Proxmox VE 8
+voor elke node onder 8.4.2, wacht op één goedkeuring die ze noemt, past die toe en bewijst hem, en
+draait pas daarna pve8to9 en zijn herstelacties. De update is middelhoog risico en niet ongedaan te
+maken, dus nooit automatisch.
+
+**Waarom de microcode de enige automatische herstelactie is.** Een firmwarepakket installeren en het
+Debian-onderdeel aanzetten waarin het staat, verandert niets dat draait tot de volgende boot, die de
+upgrade toch brengt, en is ongedaan te maken door het pakket te verwijderen. Al het andere verandert
+nu hoe een node opstart of zich gedraagt, en daar kijkt eerst een persoon naar.
+
+**Niet gebouwd:** `apt modernize-sources` (deb822); de vragen per bestand tijdens de dist-upgrade uit
+de handleiding (Velnox houdt de eigen bestanden van de node); het vastpinnen van NIC-namen; een node
+waarvan de upgrade halverwege mislukt, blijft voor een persoon — de run stopt daar, met zijn gasten
+verantwoord.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

@@ -431,7 +431,18 @@ continues; `noout` is unset on success, on failure **and** on cancellation, veri
 kills the run mid-flight; a cluster already mid-upgrade (heterogeneous versions) is a blocker; the
 report shows every daemon's version before and after.
 
-## Phase 9B — PVE 8 → 9 workflow · **L**
+## Phase 9B — PVE 8 → 9 workflow · **L** · built, not yet complete
+
+**As built** (0.5.31, ADR-052): a node too old to have pve8to9 (below pve-manager 8.4.2) brought to
+the latest Proxmox VE 8 first, after approval; then pve8to9 run on every node and parsed line by line, every line kept,
+an unknown one a blocker; findings classified, the CPU microcode installed by Velnox by itself (as
+the owner asked), sysctl, systemd-boot, GRUB, LVM autoactivation and bookworm updates fixed after an
+approval showing the exact change, each proven by pve8to9 again; disk space, cgroup v1 containers,
+GlusterFS and the like blocking. Then node by node — guests away, trixie sources, dist-upgrade, reboot
+with noout, validation, guests back — with the first node a canary the run waits after. A Ceph
+cluster upgrades Ceph to Squid first, in the same composite. `scripts/verify-pve9.sh` proves it
+against the fixture. **Not yet:** a real cluster, and pve8to9 output captured from one for the golden
+files.
 
 The PVE playbook. `pve8to9` execution and versioned parser with golden-file tests over real output
 from multiple point releases. Repository remediations (bookworm → trixie, deprecated repository

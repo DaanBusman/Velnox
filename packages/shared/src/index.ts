@@ -17,6 +17,8 @@ export * from './rolling';
 export * from './placement';
 export * from './upgrade';
 export * from './ceph';
+export * from './pve8to9';
+export * from './pve-major';
 export * from './rrule';
 export * from './slug';
 export * from './system';

@@ -5,9 +5,8 @@
 
 **Plannen die een cluster doel voor doel upgraden, de controles vooraf, de herstelacties, en het
 rapport erna.** Een plan draait één playbook — een Ceph-upgrade, een Proxmox VE-upgrade — of, als
-*samengesteld* plan, meerdere plannen na elkaar: eerst Ceph, dan Proxmox VE. Het Ceph-playbook staat
-hieronder; het playbook voor Proxmox VE 8 → 9 komt in fase 9B. De eigen zelftests van de engine, die
-niets buiten Velnox veranderen, zijn er ook.
+*samengesteld* plan, meerdere plannen na elkaar: eerst Ceph, dan Proxmox VE. Beide playbooks staan
+hieronder. De eigen zelftests van de engine, die niets buiten Velnox veranderen, zijn er ook.
 
 Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-050 in
 [Technische beslissingen](tech-decisions.md).
@@ -123,6 +122,68 @@ controleer de opdracht in de uitvoer van de job.
 
 ---
 
+## Proxmox VE 8 → 9
+
+Het playbook **Proxmox VE 8 → 9** upgradet een cluster node voor node, zoals de
+[upgradehandleiding](https://pve.proxmox.com/wiki/Upgrade_from_8_to_9) van Proxmox het doet. Proxmox
+VE 9 vraagt Ceph Squid: op een Ceph-cluster dat nog op Reef staat, vink **Eerst Ceph naar Squid
+upgraden** aan en het plan wordt samengesteld — de [Ceph-upgrade](#ceph-een-grote-upgrade), dan,
+alleen als die voltooid is, Proxmox VE. Een los Proxmox VE-plan wordt daar geweigerd.
+
+**Eerst elke node op de laatste Proxmox VE 8.** pve8to9 bestaat pas vanaf pve-manager 8.4.2; op een
+oudere node valt er niets te draaien. Daarom leest Velnox eerst de versie van elke node, en een node
+onder 8.4.2 wordt naar de laatste Proxmox VE 8 op bookworm gebracht — `apt-get update` en de
+dist-upgrade, via de eigen apt-bronnen van de node — na een goedkeuring die de node en zijn versie
+noemt. Vóór die goedkeuring wordt niets gecontroleerd en geen node aangeraakt. Elke update wordt
+bewezen doordat de node pve-manager 8.4.2 of later meldt en pve8to9 daar daarna draait zonder "te
+oud" of openstaande updates. Een node die binnen 8 is bijgewerkt hoeft niet apart te herstarten: de
+upgrade naar 9 herstart hem toch.
+
+**pve8to9, gelezen.** Daarna draait Velnox `pve8to9 --full` op elke node en
+bewaart elke regel die het print. Elke bevinding wordt een controle — `PASS`, `INFO`, `WARNING`,
+`BLOCKER` — en een regel die Velnox niet kan plaatsen is `UNKNOWN`, wordt letterlijk getoond, en houdt
+de upgrade tegen: hij wordt nooit onschuldig verondersteld. Wat Velnox met de bevindingen doet:
+
+| pve8to9 zegt | Velnox |
+|---|---|
+| Het passende CPU-microcodepakket is niet gevonden | **Verhelpt het zelf:** zet het onderdeel `non-free-firmware` van Debian aan op de Debian-bronnen (het oude bestand blijft bewaard) en installeert `intel-microcode` of `amd64-microcode`. Laag risico, en ongedaan te maken. |
+| Verouderde config `/etc/sysctl.conf` bevat instellingen | Na goedkeuring: elke instelling naar `/etc/sysctl.d/99-velnox-from-sysctl-conf.conf`, en uitgecommentarieerd waar ze stond. De goedkeuring toont beide bestanden regel voor regel. |
+| Meta-pakket systemd-boot geïnstalleerd | Na goedkeuring: `systemd-boot` verwijderd (`systemd-boot-efi` en `systemd-boot-tools` blijven). |
+| Meta-pakket grub-efi-amd64 niet geïnstalleerd | Na goedkeuring: geïnstalleerd. |
+| Verwisselbare bootloader … niet ingesteld om bij te werken | Na goedkeuring: de debconf-instelling en een herinstallatie van `grub-efi-amd64`, zoals pve8to9 aanraadt. |
+| LVM-autoactivatie (gedeelde opslag) | Na goedkeuring: het eigen script `pve-lvm-disable-autoactivation` van Proxmox. Op lokale opslag is het een melding, die blijft zo. |
+| proxmox-ve te oud / updates beschikbaar | Na goedkeuring: de node eerst bijgewerkt op bookworm — net als een node die te oud is om pve8to9 te hebben. |
+| Minder dan 5 GB vrij op `/`, containers die cgroup v1 nodig hebben, Ceph te oud, nodes offline, GlusterFS | **Blokkeert.** Niets wat Velnox kan verhelpen; het plan zegt waarom. |
+
+Elke herstelactie wordt bewezen door pve8to9 op die node opnieuw te draaien; daarna draait de hele
+controle opnieuw, en wat de upgrade nog tegenhoudt, beëindigt de run voordat een node wordt
+aangeraakt.
+
+**Dan, node voor node:**
+
+1. **evacuate** — de draaiende gasten van de node live naar de andere verplaatst, binnen de
+   [plaatsingsregels](placement.md); een gast die niet kan verhuizen wordt geweigerd, of afgesloten als
+   het plan dat zegt.
+2. **repositories** — elke apt-bron van bookworm naar trixie, elk bestand bewaard als
+   `*.velnox-bookworm`.
+3. **packages** — `apt-get update` en de dist-upgrade, met behoud van de eigen configuratiebestanden
+   van de node.
+4. **reboot** — met `noout` van Ceph eromheen, en alleen zolang het cluster quorum houdt.
+5. **validate** — de node terug op Proxmox VE 9 en zijn nieuwe kernel, Ceph heel, `noout` uitgezet, en
+   opnieuw pve8to9 zonder iets dat tegenhoudt.
+6. **return** — de gasten teruggezet, de afgesloten gasten weer gestart.
+
+**De eerste node is een kanarie.** Daarna wacht de run op iemand met `upgrades.execute` en
+`jobs.approve`, en toont wat de node was en nu is, voordat de tweede node begint.
+
+Aan het eind draait elke node Proxmox VE 9, en zet Proxmox HA-groepen zelf om naar HA-regels. Het
+rapport toont van elke node de versie en de kernel voor en na.
+
+**SSH en sudo.** pve8to9 en de herstelacties vragen root; root over SSH is het eenvoudigst. Elke
+opdracht die Velnox draait ligt vast in Velnox en staat in de uitvoer van de job en in de goedkeuring.
+
+---
+
 ## Samengestelde plannen
 
 Een samengesteld plan draait zijn plannen op volgorde, elk als eigen job: het volgende begint als het
@@ -155,4 +216,5 @@ doel dat mislukt — gekozen als het plan wordt gemaakt.
 | *Alleen een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden* | Maak een nieuw plan. |
 | *Er is geen playbook …, of het wordt jou niet aangeboden* | Zelftests vragen `system.manage`. |
 | *De draaiende release, het doel en de versiematrix spreken elkaar tegen* | De weigering noemt welke; zie [de versiematrix](#ceph-een-grote-upgrade). |
+| *Ceph draait …, en Proxmox VE 9 vraagt Squid* | Maak het plan met **Eerst Ceph naar Squid upgraden**. |
 | *Ceph is niet heel: …* | Na de herstart van een daemon kwam Ceph niet binnen de stabilisatietijd gezond terug, of toonde een waarschuwing die Velnox niet kent. `noout` is uitgezet. |

@@ -36,6 +36,7 @@
 
 import { readFileSync } from 'node:fs';
 import { installCeph } from './fake-pve-ceph.mjs';
+import { installMajor } from './fake-pve-major.mjs';
 import { join } from 'node:path';
 
 const KERNEL_RUNNING = '6.8.12-4';
@@ -75,6 +76,11 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
   };
 
   const ceph = installCeph({ nodes, log, control, storage, extraWarn: () => cephWarn });
+  const pve9 = installMajor({ nodes, log, control });
+  const cephRelease = () => {
+    const mon = ceph.stats().daemons.find((d) => d.kind === 'mon');
+    return { 17: 'quincy', 18: 'reef', 19: 'squid' }[Number(String(mon?.running ?? '').split('.')[0])] ?? null;
+  };
 
   /** The version every node reports: PVE 8 unless the control file says otherwise. */
   const version = () => String(control().pve ?? '8.2.4');
@@ -155,6 +161,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       s.bootedAt = Date.now();
       s.running = s.kernels.slice().sort(compare).pop();
       s.rebootMarker = false;
+      pve9.rebooted(name);
       nodes[name].online = true;
       log(`ops: ${name} is back on ${s.running}`);
     }
@@ -193,7 +200,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       send(response, 200, {
         data: {
           uptime: Math.floor((Date.now() - s.bootedAt) / 1000),
-          pveversion: `pve-manager/${version()}/faa83925c9641325`,
+          pveversion: `pve-manager/${pve9.versionOf(node) ?? version()}/faa83925c9641325`,
           cpuinfo: { cpus: 32, sockets: 1, model: 'AMD EPYC 7313P 16-Core Processor' },
           memory: { total: 128 * GIB, used: nodeMemory(node), free: 128 * GIB - nodeMemory(node) },
           rootfs: { total: 107_374_182_400, used: 21_474_836_480, avail: 85_899_345_920 },
@@ -233,7 +240,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     if (ceph.handleNode(request, response, node, rest, send, readForm)) return true;
     if (rest === 'apt/update' && method === 'GET') {
       send(response, 200, {
-        data: [...s.pending, ...ceph.pendingFor(node)].map(({ archive: _archive, ...p }) => ({ ...p, Priority: 'optional', Section: 'admin' })),
+        data: [...s.pending, ...ceph.pendingFor(node), ...pve9.pendingFor(node)].map(({ archive: _archive, ...p }) => ({ ...p, Priority: 'optional', Section: 'admin' })),
       });
       return true;
     }
@@ -393,7 +400,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     if (body === 'env LC_ALL=C apt-get -s -o Debug::NoLocking=1 dist-upgrade') {
       log(`ops: ${node} simulate`);
       channel.write('NOTE: This is only a simulation!\n');
-      for (const p of [...s.pending, ...ceph.pendingFor(node)]) {
+      for (const p of [...s.pending, ...ceph.pendingFor(node), ...pve9.pendingFor(node)]) {
         channel.write(`Inst ${p.Package}${p.OldVersion ? ` [${p.OldVersion}]` : ''} (${p.Version} ${p.archive} [amd64])\n`);
       }
       return (done(0), true);
@@ -403,7 +410,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       "env LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade"
     ) {
       s.upgrades += 1;
-      const all = [...s.pending, ...ceph.pendingFor(node)];
+      const all = [...s.pending, ...ceph.pendingFor(node), ...pve9.pendingFor(node)];
       log(`ops: ${node} dist-upgrade (${all.length} packages)`);
       const lines = [
         'Reading package lists...',
@@ -432,6 +439,11 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
         }
         s.pending = [];
         ceph.installAll(node);
+        const kernel = pve9.installAll(node);
+        if (kernel) {
+          s.kernels.push(kernel);
+          s.rebootMarker = true;
+        }
         done(0);
       }, 150);
       return true;
@@ -441,6 +453,8 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       return (done(0), true);
     }
     if (ceph.exec(body, node, channel, done)) return true;
+    const offlineCount = Object.values(nodes).filter((n) => !n.online).length;
+    if (pve9.exec(body, node, channel, done, { cephRelease: cephRelease(), offline: offlineCount })) return true;
     log(`EXEC REFUSED: ${command}`);
     return false;
   }

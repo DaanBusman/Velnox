@@ -139,33 +139,58 @@ function NewPlan({
   const [target, setTarget] = useState('squid');
   const [channel, setChannel] = useState<'no-subscription' | 'enterprise'>('no-subscription');
   const [mdsPrepared, setMdsPrepared] = useState(false);
+  const [nonMigratable, setNonMigratable] = useState<'BLOCK' | 'SHUTDOWN'>('BLOCK');
+  const [cephFirst, setCephFirst] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [pending, setPending] = useState(false);
   const kind = playbooks.find((p) => p.id === playbookId)?.kind;
   const selftest = kind === 'SELFTEST';
   const ceph = kind === 'CEPH';
+  const pveMajor = kind === 'PVE_MAJOR';
   const options = { markerMissing: true, configOld, unfixable, failTarget: null };
 
   async function create() {
     setPending(true);
     setFailure(null);
-    const body = composite
-      ? {
-          kind: 'COMPOSITE',
-          clusterId,
-          name,
-          children: playbooks
-            .filter((p) => p.kind === 'SELFTEST')
-            .sort((a) => (a.targetKind === 'CEPH_DAEMON' ? -1 : 1))
-            .map((p) => ({ name: `${name} — ${p.title}`, playbookId: p.id, options })),
-        }
-      : {
-          kind: 'PLAYBOOK',
-          clusterId,
-          name,
-          playbookId,
-          options: selftest ? options : ceph ? { target, channel, mdsPrepared } : {},
-        };
+    const pveOptions = { nonMigratable };
+    const body =
+      pveMajor && cephFirst
+        ? {
+            kind: 'COMPOSITE',
+            clusterId,
+            name,
+            children: [
+              {
+                name: `${name} — Ceph → Squid`,
+                playbookId: 'velnox.ceph-major',
+                options: { target: 'squid', channel, mdsPrepared },
+              },
+              { name: `${name} — Proxmox VE 8 → 9`, playbookId, options: pveOptions },
+            ],
+          }
+        : composite
+          ? {
+              kind: 'COMPOSITE',
+              clusterId,
+              name,
+              children: playbooks
+                .filter((p) => p.kind === 'SELFTEST')
+                .sort((a) => (a.targetKind === 'CEPH_DAEMON' ? -1 : 1))
+                .map((p) => ({ name: `${name} — ${p.title}`, playbookId: p.id, options })),
+            }
+          : {
+              kind: 'PLAYBOOK',
+              clusterId,
+              name,
+              playbookId,
+              options: selftest
+                ? options
+                : ceph
+                  ? { target, channel, mdsPrepared }
+                  : pveMajor
+                    ? pveOptions
+                    : {},
+            };
     const result = await apiPost<UpgradePlanDetail>('/upgrades/plans', body);
     setPending(false);
     if (!result.ok) return setFailure(result.error);
@@ -217,7 +242,41 @@ function NewPlan({
             )}
           </Field>
         </div>
-        {ceph && (
+        {pveMajor && (
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field label={t('nodeUpdates.nonMigratable')} hint={t('nodeUpdates.nonMigratableHint')}>
+              {(props) => (
+                <select
+                  {...props}
+                  className={select}
+                  value={nonMigratable}
+                  onChange={(e) => setNonMigratable(e.target.value as 'BLOCK' | 'SHUTDOWN')}
+                >
+                  {(['BLOCK', 'SHUTDOWN'] as const).map((n) => (
+                    <option key={n} value={n}>
+                      {t(`nodeUpdates.nonMigratablePolicy.${n}`)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <label className="flex items-start gap-2 text-sm text-ink md:col-span-2">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={cephFirst}
+                onChange={(e) => setCephFirst(e.target.checked)}
+              />
+              <span>
+                {t('upgrades.pveCephFirst')}
+                <span className="block text-xs text-ink-muted">
+                  {t('upgrades.pveCephFirstHint')}
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
+        {(ceph || (pveMajor && cephFirst)) && (
           <div className="grid gap-3 md:grid-cols-3">
             <Field label={t('upgrades.cephTarget')} hint={t('upgrades.cephTargetHint')}>
               {(props) => (

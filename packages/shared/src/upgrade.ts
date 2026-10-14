@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CEPH_MAJOR_PLAYBOOK } from './ceph';
+import { PVE_MAJOR_PLAYBOOK, PVE_REMEDIATIONS } from './pve-major';
 import { compareVersions } from './updates';
 
 /**
@@ -394,9 +395,14 @@ const counts = (list: readonly { severity: CheckSeverity }[]) =>
     CHECK_SEVERITIES.map((s) => [s, list.filter((c) => c.severity === s).length]),
   ) as Record<CheckSeverity, number>;
 
+/**
+ * A target's state, its version first and the rest by name — not in the
+ * order the database keeps the keys, which for jsonb is not the order written.
+ */
 const state = (s: Record<string, unknown> | null) =>
   s && Object.keys(s).length
     ? Object.entries(s)
+        .sort(([a], [b]) => (a === 'version' ? -1 : b === 'version' ? 1 : a.localeCompare(b)))
         .map(([k, v]) => `${k} ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
         .join(', ')
     : '—';
@@ -563,10 +569,11 @@ export const UPGRADE_PLAYBOOKS: Record<string, UpgradePlaybookDef> = {
   [SELFTEST_NODE_PLAYBOOK.id]: SELFTEST_NODE_PLAYBOOK,
   [SELFTEST_CEPH_PLAYBOOK.id]: SELFTEST_CEPH_PLAYBOOK,
   [CEPH_MAJOR_PLAYBOOK.id]: CEPH_MAJOR_PLAYBOOK,
+  [PVE_MAJOR_PLAYBOOK.id]: PVE_MAJOR_PLAYBOOK,
 };
 
 export const UPGRADE_REMEDIATIONS: Record<string, RemediationDef> = Object.fromEntries(
-  SELFTEST_REMEDIATIONS.map((r) => [r.id, r]),
+  [...SELFTEST_REMEDIATIONS, ...PVE_REMEDIATIONS].map((r) => [r.id, r]),
 );
 
 // ---------------------------------------------------------------------------

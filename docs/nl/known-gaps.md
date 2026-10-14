@@ -290,6 +290,18 @@ repository wordt naar `ceph.list` geschreven; een node die in plaats daarvan het
 `ceph.sources` gebruikt, houdt dat bestand ook. De exacte sudoregel voor de omschakeling van de
 repository laat Velnox aan de beheerder om uit de job te lezen; root is het eenvoudigst. Zie ADR-051.
 
+### Proxmox VE 8 → 9: bewezen tegen de fixture, pve8to9 tegen zijn eigen bron
+De upgrade is bewezen tegen de fixture, waarvan de nodes pve8to9 beantwoorden met de eigen meldingen
+van pve8to9.pm — nog niet op een echt cluster, en de referentiebestanden van de parser zijn uit die
+bron samengesteld in plaats van op een node vastgelegd. Een regel die de parser niet kent, houdt de
+upgrade tegen, dus een nieuwere pve8to9 vergist zich aan de kant van stoppen. Velnox houdt tijdens de
+dist-upgrade de eigen configuratiebestanden van elke node, waar de handleiding soms die van de
+maintainer neemt; het pint geen NIC-namen vast en zet apt-bronnen niet om naar deb822. Het
+LVM-autoactivatiescript van Proxmox wordt gedraaid zoals het is. Een node die te oud is voor pve8to9
+wordt binnen 8 bijgewerkt via de apt-bronnen die hij al heeft: een enterprise-repository zonder
+abonnement laat `apt-get update` falen, de run stopt daar, en Velnox zet de node niet uit zichzelf
+over op een andere repository. Zie ADR-052.
+
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,
 de testserver van Let's Encrypt — nog niet tegen Let's Encrypt op een publieke host. Alleen HTTP-01,

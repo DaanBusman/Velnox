@@ -10,6 +10,8 @@ import {
   isAllowed,
   selftestOptionsSchema,
   CEPH_MATRIX_VERSION,
+  pvePlanOptionsSchema,
+  releaseOf,
   cephPlanOptionsSchema,
   checkMatrix,
   type ChangeSet,
@@ -134,6 +136,16 @@ export class UpgradesService {
         },
       };
     }
+    if (def.kind === 'PVE_MAJOR') {
+      const parsed = pvePlanOptionsSchema.safeParse(raw);
+      if (!parsed.success) {
+        throw new VelnoxError(ERROR_CODES.validation, {
+          status: 400,
+          message: 'Proxmox VE upgrade options are not valid',
+        });
+      }
+      return { options: parsed.data, facts: {} };
+    }
     if (def.kind !== 'SELFTEST') return { options: raw, facts: {} };
     const parsed = selftestOptionsSchema.safeParse(raw);
     if (!parsed.success) {
@@ -205,6 +217,28 @@ export class UpgradesService {
         def,
         targets,
         ...(await this.options(def, child.options, cluster.id)),
+      });
+    }
+
+    // Proxmox VE 9 needs Ceph Squid: on a Ceph cluster not yet there, a PVE
+    // upgrade only comes after a Ceph upgrade to Squid in the same composite.
+    const daemons = await this.prisma.client.cephDaemon.findMany({
+      where: { clusterId: cluster.id },
+      select: { version: true },
+    });
+    const releases = [...new Set(daemons.map((d) => releaseOf(d.version)))];
+    if (daemons.length && !(releases.length === 1 && releases[0] === 'squid')) {
+      planned.forEach((p, i) => {
+        if (p.def.kind !== 'PVE_MAJOR') return;
+        const cephFirst = planned
+          .slice(0, i)
+          .some((q) => q.def.kind === 'CEPH' && q.options.target === 'squid');
+        if (!cephFirst) {
+          throw new VelnoxError(ERROR_CODES.upgradeCephFirst, {
+            status: 409,
+            params: { release: releases.map((r) => r ?? 'unknown').join(', ') },
+          });
+        }
       });
     }
 

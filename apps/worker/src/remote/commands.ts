@@ -138,6 +138,116 @@ export const CEPH_COMMANDS: readonly CommandSpec[] = [
   ...CEPH_RELEASE_NAMES.map(cephRequireReleaseCommand),
 ];
 
+/**
+ * The Proxmox VE 8 → 9 upgrade's commands (Phase 9B): pve8to9 itself, and
+ * one fixed command per remediation Velnox offers for its findings. Each keeps
+ * a copy of what it changes, as `*.velnox-before`.
+ */
+const SYSCTL_D = '/etc/sysctl.d/99-velnox-from-sysctl-conf.conf';
+const APT = ['env', 'LC_ALL=C', 'DEBIAN_FRONTEND=noninteractive', 'apt-get', '-y'] as const;
+
+export const PVE_COMMANDS = {
+  /** The checklist, with the expensive checks. Read-only; needs root to read everything. */
+  pve8to9: {
+    id: 'pve.pve8to9',
+    readOnly: true,
+    privileged: true,
+    timeoutMs: 10 * MINUTE,
+    interruptible: true,
+    argv: ['pve8to9', '--full'],
+  },
+  sysctlRead: {
+    id: 'pve.sysctl_read',
+    readOnly: true,
+    privileged: false,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: ['cat', '/etc/sysctl.conf'],
+  },
+  /** Every setting out of /etc/sysctl.conf into one file of /etc/sysctl.d/, commented where it was. */
+  sysctlMove: {
+    id: 'pve.sysctl_move',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: [
+      'sh',
+      '-c',
+      `set -e; cp -p /etc/sysctl.conf /etc/sysctl.conf.velnox-before; grep -Ev '^[[:space:]]*([#;]|$)' /etc/sysctl.conf > ${SYSCTL_D}; sed -i -E 's|^([[:space:]]*[^#;[:space:]].*)$|# moved to ${SYSCTL_D}: \\1|' /etc/sysctl.conf; sysctl --system > /dev/null`,
+    ],
+  },
+  removeSystemdBoot: {
+    id: 'pve.remove_systemd_boot',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 10 * MINUTE,
+    interruptible: false,
+    argv: [...APT, 'remove', 'systemd-boot'],
+  },
+  installGrubEfi: {
+    id: 'pve.install_grub_efi',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 10 * MINUTE,
+    interruptible: false,
+    argv: [...APT, 'install', 'grub-efi-amd64'],
+  },
+  grubRemovable: {
+    id: 'pve.grub_removable',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 10 * MINUTE,
+    interruptible: false,
+    argv: [
+      'sh',
+      '-c',
+      "echo 'grub-efi-amd64 grub2/force_efi_extra_removable boolean true' | debconf-set-selections -v -u && DEBIAN_FRONTEND=noninteractive apt-get -y install --reinstall grub-efi-amd64",
+    ],
+  },
+  lvmAutoactivation: {
+    id: 'pve.lvm_autoactivation',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 30 * MINUTE,
+    interruptible: false,
+    argv: ['/usr/share/pve-manager/migrations/pve-lvm-disable-autoactivation'],
+  },
+  /** Debian and Proxmox sources from bookworm to trixie, each file kept as `*.velnox-bookworm`. */
+  sourcesTrixie: {
+    id: 'pve.sources_trixie',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 5 * MINUTE,
+    interruptible: true,
+    argv: [
+      'sh',
+      '-c',
+      'set -e; for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do [ -f "$f" ] || continue; grep -q bookworm "$f" || continue; cp -p "$f" "$f.velnox-bookworm"; sed -i "s/\\bbookworm\\b/trixie/g" "$f"; done; grep -rh trixie /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null || true',
+    ],
+  },
+} as const satisfies Record<string, CommandSpec>;
+
+/**
+ * The CPU's microcode, as pve8to9 advises: Debian's `non-free-firmware`
+ * component enabled on the Debian sources, then the package for this CPU —
+ * one fixed command per vendor.
+ */
+export function microcodeCommand(pkg: 'intel-microcode' | 'amd64-microcode'): CommandSpec {
+  return {
+    id: `pve.microcode.${pkg}`,
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 10 * MINUTE,
+    interruptible: false,
+    argv: [
+      'sh',
+      '-c',
+      `set -e; for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do [ -f "$f" ] && cp -p "$f" "$f.velnox-before"; done; [ -f /etc/apt/sources.list ] && sed -i -E '/^deb .*(deb|security)\\.debian\\.org/{/non-free-firmware/!s/$/ non-free-firmware/}' /etc/apt/sources.list; [ -f /etc/apt/sources.list.d/debian.sources ] && sed -i -E '/^Components:/{/non-free-firmware/!s/$/ non-free-firmware/}' /etc/apt/sources.list.d/debian.sources; export DEBIAN_FRONTEND=noninteractive; apt-get update -qq; apt-get install -y ${pkg}`,
+    ],
+  };
+}
+
 /** Proxmox's rule for a node name: what may follow `hostname -s`. */
 const NODE_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
 

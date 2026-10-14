@@ -41,14 +41,25 @@ export type UpgradeAction = (
 ) => Promise<Record<string, string | number | boolean | null> | void>;
 
 /** A check provider: findings for the plan or its targets. */
-export type CheckProvider = (
-  rt: UpgradeRuntime,
-  plan: PlanRow,
-) => Promise<(CheckResult & { targetId: string | null; source: string })[]>;
+/** One finding as a provider gives it: for a target or the plan, with what its fix needs. */
+export type Finding = CheckResult & {
+  targetId: string | null;
+  source: string;
+  parserVersion?: number;
+  /** Read from the finding for its remediation: the microcode package pve8to9 names. */
+  params?: Record<string, string>;
+};
+
+export type CheckProvider = (rt: UpgradeRuntime, plan: PlanRow) => Promise<Finding[]>;
 
 /** How a remediation is planned, applied and proven. Its metadata is in shared. */
 export interface RemediationImpl {
-  plan(rt: UpgradeRuntime, plan: PlanRow, targetId: string | null): Promise<ChangeSet>;
+  plan(
+    rt: UpgradeRuntime,
+    plan: PlanRow,
+    targetId: string | null,
+    finding: Finding,
+  ): Promise<ChangeSet>;
   apply(
     rt: UpgradeRuntime,
     plan: PlanRow,

@@ -1,0 +1,89 @@
+= CHECKING VERSION INFORMATION FOR PVE PACKAGES =
+
+Checking for package updates..
+WARN: updates for the following packages are available:
+  pve-manager, proxmox-kernel-6.8
+
+Checking proxmox-ve package version..
+PASS: proxmox-ve package has version >= 8.4-0
+
+Checking running kernel version..
+PASS: running kernel '6.8.12-9-pve' is considered suitable for upgrade.
+
+= CHECKING CLUSTER HEALTH/SETTINGS =
+
+PASS: systemd unit 'pve-cluster.service' is in state 'active'
+PASS: systemd unit 'corosync.service' is in state 'active'
+PASS: Cluster Filesystem is quorate.
+
+Analzying quorum settings and state..
+PASS: configured votes - nodes: 3
+PASS: configured votes - expected: 3
+PASS: configured votes - total: 3
+
+Checking nodelist entries..
+PASS: nodelist settings OK
+
+Checking totem settings..
+PASS: totem settings OK
+
+= CHECKING HYPER-CONVERGED CEPH STATUS =
+
+SKIP: no hyper-converged ceph setup detected!
+
+= CHECKING CONFIGURED STORAGES =
+
+PASS: storage 'local' enabled and active.
+PASS: storage 'local-lvm' enabled and active.
+INFO: Checking storage content type configuration..
+PASS: no storage content problems found
+PASS: no storage re-uses a directory for multiple content types.
+
+= VIRTUAL GUEST CHECKS =
+
+INFO: Checking for running guests..
+WARN: 2 running guest(s) detected - consider migrating or stopping them.
+
+= MISCELLANEOUS CHECKS =
+
+INFO: Checking common daemon services..
+PASS: systemd unit 'pveproxy.service' is in state 'active'
+PASS: systemd unit 'pvedaemon.service' is in state 'active'
+PASS: systemd unit 'pvescheduler.service' is in state 'active'
+PASS: systemd unit 'pvestatd.service' is in state 'active'
+INFO: Checking for supported & active NTP service..
+PASS: Detected active time synchronisation unit 'chrony.service'
+INFO: Checking if the local node's hostname 'pve1' is resolvable..
+INFO: Checking if resolved IP is configured on local node..
+PASS: Resolved node IP '10.0.0.11' configured and active on single interface.
+INFO: Check node certificate's RSA key size
+PASS: Certificate 'pve-root-ca.pem' passed Debian Busters (and newer) security level for TLS connections (4096 >= 2048 RSA)
+INFO: Checking bootloader configuration...
+FAIL: systemd-boot meta-package installed. This will cause problems on upgrades of other boot-related packages. Remove 'systemd-boot' See https://pve.proxmox.com/wiki/Upgrade_from_8_to_9#sd-boot-warning for more information.
+INFO: Check for dkms modules...
+SKIP: could not get dkms status
+INFO: Check for LVM autoactivation settings on LVM and LVM-thin storages...
+NOTICE: storage 'local-lvm' has guest volumes with autoactivation enabled
+NOTICE: Starting with PVE 9, autoactivation will be disabled for new LVM/LVM-thin guest volumes. This system has some volumes that still have autoactivation enabled. All volumes with autoactivations reside on local storage, where this normally does not cause any issues.
+You can run the following command to disable autoactivation for existing LVM/LVM-thin guest volumes:
+
+	/usr/share/pve-manager/migrations/pve-lvm-disable-autoactivation
+
+INFO: Checking if the legacy sysctl file '/etc/sysctl.conf' needs to be migrated to new '/etc/sysctl.d/' path.
+WARN: Deprecated config '/etc/sysctl.conf' contains settings - move them to a dedicated file in '/etc/sysctl.d/'.
+INFO: Checking if matching CPU microcode package is installed.
+WARN: The matching CPU microcode package 'intel-microcode' could not be found! Consider installing it to receive the latest security and bug fixes for your CPU.
+	Ensure you enable the 'non-free-firmware' component in the apt sources and run:
+	apt install intel-microcode
+SKIP: NOTE: Expensive checks, like CT cgroupv2 compat, not performed without '--full' parameter
+
+= SUMMARY =
+
+TOTAL:    31
+PASSED:   21
+SKIPPED:  3
+WARNINGS: 3
+FAILURES: 1
+
+ATTENTION: Please check the output for detailed information!
+Try to solve the problems one at a time and then run this checklist tool again.

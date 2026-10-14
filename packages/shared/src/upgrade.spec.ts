@@ -225,6 +225,19 @@ describe('reports', () => {
     expect(md).toContain('| pve1 | DONE | version 1 | version 2 | selftest.marker-missing | — |');
   });
 
+  it('shows a target’s version first, whatever order its state was stored in', () => {
+    const input = base('NODE');
+    input.targets[0] = {
+      ...input.targets[0]!,
+      preState: { kernel: '6.8.12-4-pve', version: '8.4.1' },
+      postState: { kernel: '6.14.11-2-pve', version: '9.0.10' },
+    };
+    expect(buildUpgradeReport(input).targets[0]).toMatchObject({
+      before: 'version 8.4.1, kernel 6.8.12-4-pve',
+      after: 'version 9.0.10, kernel 6.14.11-2-pve',
+    });
+  });
+
   it('reports a daemon-by-daemon run the same way, and a composite with its children', () => {
     const daemon = base('CEPH_DAEMON');
     const md = reportMarkdown(buildUpgradeReport(daemon));

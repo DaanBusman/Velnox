@@ -13,7 +13,6 @@ import {
   reportMarkdown,
   routeRemediation,
   type ChangeSet,
-  type CheckResult,
   type Facts,
   type PlaybookStepDef,
   type UpgradeJobParams,
@@ -23,12 +22,14 @@ import { StepError, type Playbook, type StepContext, type StepDefinition } from 
 import type { LibraryServices } from '../library/services';
 import { SELFTEST_ACTIONS, SELFTEST_PROVIDERS, SELFTEST_REMEDIATION_IMPLS } from './selftest';
 import { CEPH_ACTIONS, CEPH_PROVIDERS, cephNooutCleanup } from './ceph';
+import { PVE_ACTIONS, PVE_PROVIDERS, PVE_REMEDIATION_IMPLS, pveCleanup } from './pve';
 import {
   loadPlan,
   mergeFacts,
   plan,
   setStatus,
   type CheckProvider,
+  type Finding,
   type PlanRow,
   type RemediationImpl,
   type TargetRow,
@@ -74,8 +75,12 @@ const lastRunIndex = async (rt: UpgradeRuntime): Promise<number | null> => {
 const providers = (): Record<string, CheckProvider> => ({
   ...SELFTEST_PROVIDERS,
   ...CEPH_PROVIDERS,
+  ...PVE_PROVIDERS,
 });
-const remediationImpls = (): Record<string, RemediationImpl> => ({ ...SELFTEST_REMEDIATION_IMPLS });
+const remediationImpls = (): Record<string, RemediationImpl> => ({
+  ...SELFTEST_REMEDIATION_IMPLS,
+  ...PVE_REMEDIATION_IMPLS,
+});
 
 const labelOf = (row: PlanRow, targetId: string | null) =>
   targetId ? (row.targets.find((t) => t.id === targetId)?.label ?? 'a target') : row.cluster.name;
@@ -179,7 +184,7 @@ export const SHARED_ACTIONS: Record<string, UpgradeAction> = {
     const runIndex = recheck ? (last ?? -1) + 1 : 0;
     // Running a step again after a crash replaces its own findings, nothing else.
     await rt.prisma.upgradeCheck.deleteMany({ where: { planId: row.id, runIndex } });
-    const findings: (CheckResult & { targetId: string | null; source: string })[] = [];
+    const findings: Finding[] = [];
     for (const name of rt.def.checkProviders) {
       const provider = providers()[name];
       if (!provider) throw new StepError(ERROR_CODES.validation, `No check provider "${name}"`);
@@ -198,6 +203,7 @@ export const SHARED_ACTIONS: Record<string, UpgradeAction> = {
           detail: f.detail ?? null,
           rawLine: f.rawLine ?? null,
           remediationId: f.remediationId ?? null,
+          parserVersion: f.parserVersion ?? 1,
           runIndex,
         },
       });
@@ -215,7 +221,7 @@ export const SHARED_ACTIONS: Record<string, UpgradeAction> = {
         const def = UPGRADE_REMEDIATIONS[f.remediationId];
         const impl = remediationImpls()[f.remediationId];
         if (!def || !impl) continue;
-        const change = await impl.plan(rt, row, f.targetId);
+        const change = await impl.plan(rt, row, f.targetId, f);
         const mode = routeRemediation(def);
         await rt.prisma.remediationRun.create({
           data: {
@@ -344,11 +350,13 @@ const ACTIONS = (): Record<string, UpgradeAction> => ({
   ...SHARED_ACTIONS,
   ...SELFTEST_ACTIONS,
   ...CEPH_ACTIONS,
+  ...PVE_ACTIONS,
 });
 
 /** What a playbook's `cleanup` names: undone when a run fails, is cancelled or its worker died. */
 const CLEANUPS: Record<string, (rt: UpgradeRuntime) => Promise<void>> = {
   'ceph.noout-cleanup': (rt) => cephNooutCleanup(rt, async () => undefined),
+  'pve.cleanup': pveCleanup,
 };
 
 /**
@@ -367,7 +375,7 @@ export async function runPlaybookCleanup(
 }
 /** Every action name, for checking a playbook before it runs. */
 export const knownActions = (): Set<string> =>
-  new Set([...Object.keys(ACTIONS()), 'remediate.approval']);
+  new Set([...Object.keys(ACTIONS()), 'remediate.approval', 'gate.canary']);
 
 // ---------------------------------------------------------------------------
 // From playbook to job steps
@@ -462,6 +470,37 @@ export function upgradePlaybook(raw: unknown, jobId: string, services: LibrarySe
     };
   };
 
+  /** Wait for a person after the first target: what it was, what it is now. */
+  const canaryGate = (
+    step: PlaybookStepDef,
+    unit: { id: string; label: string },
+  ): StepDefinition => ({
+    kind: 'approval',
+    key: step.key,
+    phase: step.phase,
+    requiredPermission: PERMISSIONS.upgradesExecute,
+    reason: `${unit.label} is upgraded — look at it before the others follow`,
+    requireDifferentApprover: false,
+    changeSet: async () => {
+      const target = (await plan(rt)).targets.find((t) => t.id === unit.id);
+      const show = (v: unknown) =>
+        v && typeof v === 'object'
+          ? Object.entries(v)
+              .map(([k, x]) => `${k} ${String(x)}`)
+              .join(', ')
+          : '—';
+      return {
+        canary: unit.label,
+        before: show(target?.preState),
+        after: show(target?.postState),
+        next: params.targets
+          .slice(1)
+          .map((t) => t.label)
+          .join(', '),
+      };
+    },
+  });
+
   const steps: StepDefinition[] = [];
   for (let index = 0; index < def.steps.length; index += 1) {
     const step = def.steps[index]!;
@@ -501,8 +540,16 @@ export function upgradePlaybook(raw: unknown, jobId: string, services: LibrarySe
       group.push(def.steps[index + 1]!);
       index += 1;
     }
-    for (const unit of params.targets)
-      for (const member of group) steps.push(taskFor(member, unit));
+    params.targets.forEach((unit, index) => {
+      for (const member of group) {
+        // The canary: after the first target only, and only when others follow.
+        if (member.action === 'gate.canary') {
+          if (index === 0 && params.targets.length > 1) steps.push(canaryGate(member, unit));
+          continue;
+        }
+        steps.push(taskFor(member, unit));
+      }
+    });
   }
 
   return {

@@ -1573,6 +1573,44 @@ format.
 
 ---
 
+## ADR-052 — Proxmox VE 8 → 9: pve8to9 read line by line, fixed where safe, a canary first
+
+**Decision:** The PVE playbook runs `pve8to9 --full` on every node and parses it with a versioned
+parser written against `PVE/CLI/pve8to9.pm` (pve-manager `stable-8`): its prefixes, its unprefixed
+progress lines, its section headers and summary, and a finding's further lines — blank lines
+included. A line it cannot place is `UNKNOWN` and stops the upgrade. A classifier names each finding
+by its text and gives the ones Velnox can fix a remediation; the CPU microcode is fixed by itself
+(asked for by the owner on 11 October 2026: low risk, reversible), the others wait for approval with
+the exact change. Each fix is proven by pve8to9 itself. Then node by node: guests moved away within
+the placement rules, sources to trixie, dist-upgrade, reboot with `noout` around it on a Ceph cluster,
+validation on PVE 9, its kernel and pve8to9 again, guests back. The engine (ADR-050) gains one thing:
+a canary gate, an approval after the first target's steps only. A PVE plan on a Ceph cluster not on
+Squid is refused unless a Ceph upgrade to Squid comes first in the same composite, and its preflight
+checks Squid again when it runs.
+
+**Why golden files assembled from the source.** No complete real output was at hand. The files in
+`packages/shared/testdata/pve8to9/` are built from pve8to9.pm's own messages and say so; real output
+captured from a node is added beside them, and the tests must hold on both.
+
+**Why a node below pve-manager 8.4.2 is updated before anything is checked.** pve8to9 first shipped
+in pve-manager 8.4.2 (its changelog: "add initial `pve8to9` upgrade check list tool"). On an older
+node the checklist cannot run at all, so its findings — the microcode among them — cannot be known,
+let alone fixed in the same run. The playbook therefore reads every node's version before the
+checks, plans the update to the latest Proxmox VE 8 for each node below 8.4.2, waits for one approval
+naming them, applies it and proves it, and only then runs pve8to9 and its fixes. The update is
+medium risk and cannot be undone, so it is never automatic.
+
+**Why the microcode is the one automatic fix.** Installing a firmware package and enabling the
+Debian component it lives in changes nothing that runs until the next boot, which the upgrade
+brings anyway, and is undone by removing the package. Everything else changes how a node boots or
+behaves now, and a person looks first.
+
+**Not built:** `apt modernize-sources` (deb822); the guide's per-file prompts during the
+dist-upgrade (Velnox keeps the node's own files); NIC name pinning; a node whose upgrade fails
+part-way is left for a person — the run stops there, its guests accounted for.
+
+---
+
 ## Version targets
 
 | Component | Version |

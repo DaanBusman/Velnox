@@ -1,0 +1,25 @@
+= CHECKING VERSION INFORMATION FOR PVE PACKAGES =
+
+Checking for package updates..
+PASS: all packages up-to-date
+
+Checking proxmox-ve package version..
+PASS: already upgraded to Proxmox VE 9
+
+Checking running kernel version..
+PASS: running new kernel '6.14.11-2-pve' after upgrade.
+
+= MISCELLANEOUS CHECKS =
+
+INFO: Checking bootloader configuration...
+PASS: bootloader packages installed correctly
+INFO: Checking if matching CPU microcode package is installed.
+PASS: Found matching CPU microcode package 'intel-microcode' installed.
+
+= SUMMARY =
+
+TOTAL:    5
+PASSED:   5
+SKIPPED:  0
+WARNINGS: 0
+FAILURES: 0

@@ -188,7 +188,7 @@ ssh-keygen -q -t ed25519 -N '' -C velnox-client -f "$WORK/client_key" >/dev/null
 HOST_KEY_FINGERPRINT="$(ssh-keygen -lf "$WORK/host_key.pub" | awk '{print $2}')"
 
 mkdir -p "$WORK/store"
-cp "$ROOT/scripts/fixtures/fake-pve.mjs" "$ROOT/scripts/fixtures/fake-pve-storage.mjs" "$ROOT/scripts/fixtures/fake-pve-ops.mjs" "$ROOT/scripts/fixtures/fake-pve-ceph.mjs" "$WORK/"
+cp "$ROOT/scripts/fixtures/fake-pve.mjs" "$ROOT/scripts/fixtures/fake-pve-storage.mjs" "$ROOT/scripts/fixtures/fake-pve-ops.mjs" "$ROOT/scripts/fixtures/fake-pve-ceph.mjs" "$ROOT/scripts/fixtures/fake-pve-major.mjs" "$WORK/"
 chmod -R a+rwX "$WORK" 2>/dev/null || true
 
 MSYS_NO_PATHCONV=1 docker run -d --rm --name "$FIXTURE_NAME" \

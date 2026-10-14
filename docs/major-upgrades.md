@@ -2,9 +2,8 @@
 
 **Plans that upgrade a cluster target by target, the checks before, the remediations, and the report
 after.** A plan runs one playbook — a Ceph upgrade, a Proxmox VE upgrade — or, as a *composite*,
-several plans one after another: Ceph first, then Proxmox VE. The Ceph playbook is below; the Proxmox
-VE 8 → 9 playbook arrives in Phase 9B. The engine's own self-tests, which change nothing outside
-Velnox, are there too.
+several plans one after another: Ceph first, then Proxmox VE. Both playbooks are below. The engine's
+own self-tests, which change nothing outside Velnox, are there too.
 
 For who may do what, see [Roles and permissions](permissions.md). For why it works the way it does,
 see ADR-050 in [Technology decisions](tech-decisions.md).
@@ -113,6 +112,63 @@ command in the job's output.
 
 ---
 
+## Proxmox VE 8 → 9
+
+The playbook **Proxmox VE 8 → 9** upgrades a cluster node by node, as Proxmox's
+[upgrade guide](https://pve.proxmox.com/wiki/Upgrade_from_8_to_9) does it. Proxmox VE 9 needs Ceph
+Squid: on a Ceph cluster still on Reef, tick **Upgrade Ceph to Squid first** and the plan becomes a
+composite — the [Ceph upgrade](#ceph-a-major-upgrade), then, only if it completed, Proxmox VE. A
+Proxmox VE plan on its own is refused there.
+
+**First, every node on the latest Proxmox VE 8.** pve8to9 only exists from pve-manager 8.4.2 on; on
+an older node there is nothing to run. So Velnox reads every node's version first, and a node below
+8.4.2 is brought to the latest Proxmox VE 8 on bookworm — `apt-get update` and the dist-upgrade,
+through the node's own apt sources — after an approval that names the node and its version. Nothing
+is checked, and no node is touched, before that approval. Each update is proven by the node reporting
+pve-manager 8.4.2 or later and pve8to9 then running there without "too old" or pending updates. A node
+updated within 8 does not need its own reboot: the upgrade to 9 reboots it anyway.
+
+**pve8to9, read.** Then Velnox runs `pve8to9 --full` on every node and keeps
+every line it prints. Each finding becomes a check — `PASS`, `INFO`, `WARNING`, `BLOCKER` — and a
+line Velnox cannot place is `UNKNOWN`, shown verbatim, and stops the upgrade: it is never assumed
+harmless. What Velnox does about the findings:
+
+| pve8to9 says | Velnox |
+|---|---|
+| The matching CPU microcode package could not be found | **Fixes it by itself:** enables Debian's `non-free-firmware` component on the Debian sources (keeping the old file) and installs `intel-microcode` or `amd64-microcode`. Low risk, and it can be undone. |
+| Deprecated config `/etc/sysctl.conf` contains settings | After approval, moves every setting to `/etc/sysctl.d/99-velnox-from-sysctl-conf.conf` and comments it where it was. The approval shows both files line by line. |
+| systemd-boot meta-package installed | After approval, removes `systemd-boot` (`systemd-boot-efi` and `systemd-boot-tools` stay). |
+| grub-efi-amd64 meta-package not installed | After approval, installs it. |
+| Removable bootloader … not set up to update it | After approval, the debconf setting and a reinstall of `grub-efi-amd64`, as pve8to9 advises. |
+| LVM autoactivation (shared storage) | After approval, runs Proxmox's own `pve-lvm-disable-autoactivation`. On local storage it is a notice, left be. |
+| proxmox-ve too old / updates available | After approval, brings the node up to date on bookworm first — as for a node too old to have pve8to9 at all. |
+| Less than 5 GB free on `/`, containers needing cgroup v1, Ceph too old, nodes offline, GlusterFS | **Blocks.** Nothing Velnox can fix; the plan says why. |
+
+Every fix is proven by running pve8to9 again on that node; then the whole check runs again, and
+anything that still stops the upgrade ends the run before any node is touched.
+
+**Then, node by node:**
+
+1. **evacuate** — the node's running guests moved live to the others, within the
+   [placement rules](placement.md); one that cannot move is refused, or shut down if the plan says so.
+2. **repositories** — every apt source from bookworm to trixie, each file kept as `*.velnox-bookworm`.
+3. **packages** — `apt-get update` and the dist-upgrade, keeping the node's own configuration files.
+4. **reboot** — with Ceph's `noout` set around it, and only while the cluster keeps quorum.
+5. **validate** — the node back on Proxmox VE 9 and its new kernel, Ceph whole, `noout` cleared,
+   and pve8to9 again with nothing that stops.
+6. **return** — the guests moved back, those shut down started again.
+
+**The first node is a canary.** After it, the run waits for someone with `upgrades.execute` and
+`jobs.approve`, showing what the node was and is now, before the second node begins.
+
+At the end every node runs Proxmox VE 9, and Proxmox turns HA groups into HA rules by itself. The
+report shows each node's version and kernel before and after.
+
+**SSH and sudo.** pve8to9 and the fixes need root; root over SSH is simplest. Every command Velnox
+runs is fixed in Velnox and shown in the job's output and in the approval.
+
+---
+
 ## Composite plans
 
 A composite runs its plans in order, each as its own job: the next starts when the one before it has
@@ -144,4 +200,5 @@ when the plan is made.
 | *Only a plan that has not run yet can be started or removed* | Make a new plan. |
 | *There is no playbook …, or it is not offered to you* | Self-tests need `system.manage`. |
 | *The running release, the target and the version matrix disagree* | The refusal names which; see [the version matrix](#ceph-a-major-upgrade). |
+| *Ceph runs …, and Proxmox VE 9 needs Squid* | Make the plan with **Upgrade Ceph to Squid first**. |
 | *Ceph is not whole: …* | After a daemon's restart Ceph did not come back healthy within the settle time, or showed a warning Velnox does not know. `noout` has been cleared. |

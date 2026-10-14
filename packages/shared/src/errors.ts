@@ -192,6 +192,8 @@ export const ERROR_CODES = {
   upgradeMatrixMismatch: 'upgrade.matrix_mismatch',
   /** Ceph did not come back whole after a daemon's restart, or showed a warning Velnox does not know. */
   upgradeCephUnhealthy: 'upgrade.ceph_unhealthy',
+  /** Proxmox VE 9 needs Ceph Squid: a Ceph cluster on an older release upgrades Ceph first (Phase 9B). */
+  upgradeCephFirst: 'upgrade.ceph_first',
   /** A maintenance window still used by a policy. */
   maintenanceWindowInUse: 'maintenance.window_in_use',
 

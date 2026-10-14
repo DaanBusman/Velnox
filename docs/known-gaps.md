@@ -270,6 +270,17 @@ written to `ceph.list`; a node that uses the deb822 `ceph.sources` instead keeps
 The exact sudo rule for the repository switch is left to the operator to read from the job; root is
 simplest. See ADR-051.
 
+### Proxmox VE 8 → 9: proven against the fixture, pve8to9 against its own source
+The upgrade is proven against the fixture, whose nodes answer pve8to9 with pve8to9.pm's own messages
+— not yet on a real cluster, and the parser's golden files are assembled from that source rather
+than captured from a node. A line the parser does not know stops the upgrade, so a newer pve8to9
+errs on the side of stopping. Velnox keeps each node's own configuration files during the
+dist-upgrade where the guide would sometimes take the maintainer's; it does not pin NIC names or
+modernise apt sources to deb822. Proxmox's LVM autoactivation script is run as it is. A node too old
+for pve8to9 is updated within 8 through the apt sources it already has: an enterprise repository
+without a subscription makes `apt-get update` fail, the run stops there, and Velnox does not switch
+the node to another repository by itself. See ADR-052.
+
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
 Let's Encrypt's test server — not yet against Let's Encrypt on a public host. HTTP-01 only, as Caddy

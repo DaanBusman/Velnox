@@ -1,0 +1,61 @@
+= CHECKING VERSION INFORMATION FOR PVE PACKAGES =
+
+Checking for package updates..
+PASS: all packages up-to-date
+
+Checking proxmox-ve package version..
+PASS: proxmox-ve package has version >= 8.4-0
+
+Checking running kernel version..
+PASS: running kernel '6.8.12-15-pve' is considered suitable for upgrade.
+
+= CHECKING CLUSTER HEALTH/SETTINGS =
+
+PASS: systemd unit 'pve-cluster.service' is in state 'active'
+PASS: systemd unit 'corosync.service' is in state 'active'
+PASS: Cluster Filesystem is quorate.
+
+Analzying quorum settings and state..
+PASS: configured votes - nodes: 3
+PASS: configured votes - expected: 3
+PASS: configured votes - total: 3
+
+Checking nodelist entries..
+PASS: nodelist settings OK
+
+Checking totem settings..
+PASS: totem settings OK
+
+= CHECKING HYPER-CONVERGED CEPH STATUS =
+
+INFO: hyper-converged ceph setup detected!
+INFO: getting Ceph status/health information..
+PASS: Ceph health reported as 'HEALTH_OK'.
+INFO: checking local Ceph version..
+PASS: found expected Ceph 19 Squid release.
+INFO: getting Ceph daemon versions..
+PASS: single running version detected for daemon type monitor.
+PASS: single running version detected for daemon type manager.
+PASS: single running version detected for daemon type OSD.
+PASS: single running overall version detected for all Ceph daemon types.
+WARN: 'noout' flag not set - recommended to prevent rebalancing during upgrades.
+
+= MISCELLANEOUS CHECKS =
+
+A line from a newer pve8to9 that this parser has never seen
+INFO: Checking common daemon services..
+PASS: systemd unit 'pveproxy.service' is in state 'active'
+INFO: Checking bootloader configuration...
+PASS: bootloader packages installed correctly
+INFO: Checking if matching CPU microcode package is installed.
+PASS: Found matching CPU microcode package 'amd64-microcode' installed.
+
+= SUMMARY =
+
+TOTAL:    22
+PASSED:   20
+SKIPPED:  0
+WARNINGS: 1
+FAILURES: 0
+
+ATTENTION: Please check the output for detailed information!

@@ -465,7 +465,18 @@ gaan; `noout` wordt opgeheven bij succes, bij falen **en** bij annulering, gever
 uitvoering halverwege afbreekt; een cluster dat al middenin een upgrade zit (heterogene versies) is een
 blokkade; het rapport toont de versie van elke daemon vóór en na.
 
-## Phase 9B — PVE 8 → 9-workflow · **L**
+## Phase 9B — PVE 8 → 9-workflow · **L** · gebouwd, nog niet afgerond
+
+**Zoals gebouwd** (0.5.31, ADR-052): een node die te oud is voor pve8to9 (onder pve-manager 8.4.2)
+eerst naar de laatste Proxmox VE 8 gebracht, na goedkeuring; dan pve8to9 gedraaid op elke node en regel voor regel gelezen, elke
+regel bewaard, een onbekende een blokkade; bevindingen geclassificeerd, de CPU-microcode door Velnox
+zelf geïnstalleerd (zoals de eigenaar vroeg), sysctl, systemd-boot, GRUB, LVM-autoactivatie en
+bookworm-updates verholpen na een goedkeuring die de exacte wijziging toont, elk bewezen door opnieuw
+pve8to9; schijfruimte, cgroup v1-containers, GlusterFS en dergelijke blokkeren. Dan node voor node —
+gasten weg, trixie-bronnen, dist-upgrade, herstart met noout, validatie, gasten terug — met de eerste
+node als kanarie waarna de run wacht. Een Ceph-cluster upgradet eerst Ceph naar Squid, in hetzelfde
+samengestelde plan. `scripts/verify-pve9.sh` bewijst het tegen de fixture. **Nog niet:** een echt
+cluster, en pve8to9-uitvoer van een echt cluster voor de referentiebestanden.
 
 Het PVE-playbook. Uitvoering van `pve8to9` en een geversioneerde parser met referentiebestandtests over
 echte uitvoer van meerdere point releases. Repository-herstelacties (bookworm → trixie, omgang met

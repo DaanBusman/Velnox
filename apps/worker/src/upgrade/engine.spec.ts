@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CEPH_MAJOR_PLAYBOOK,
+  PVE_MAJOR_PLAYBOOK,
   SELFTEST_CEPH_PLAYBOOK,
   SELFTEST_NODE_PLAYBOOK,
   playbookProblems,
@@ -22,6 +23,7 @@ describe('upgradePlaybook', () => {
     expect(playbookProblems(SELFTEST_NODE_PLAYBOOK, knownActions())).toEqual([]);
     expect(playbookProblems(SELFTEST_CEPH_PLAYBOOK, knownActions())).toEqual([]);
     expect(playbookProblems(CEPH_MAJOR_PLAYBOOK, knownActions())).toEqual([]);
+    expect(playbookProblems(PVE_MAJOR_PLAYBOOK, knownActions())).toEqual([]);
   });
 
   it('turns the playbook into steps, per target where it says so', () => {
@@ -79,5 +81,30 @@ describe('upgradePlaybook', () => {
       'verify',
       'report',
     ]);
+  });
+
+  it('upgrades node by node, and waits for a person after the first only', () => {
+    const playbook = upgradePlaybook(
+      params('velnox.pve-8-to-9', ['pve1', 'pve2', 'pve3']),
+      'j',
+      services,
+    );
+    const keys = playbook.steps.map((s) => s.key);
+    const node = (n: number) =>
+      ['evacuate', 'repositories', 'packages', 'reboot', 'validate', 'return'].map(
+        (k) => `${k}-${n}`,
+      );
+    expect(keys.slice(keys.indexOf('evacuate-1'), keys.indexOf('final'))).toEqual([
+      ...node(1),
+      'canary',
+      ...node(2),
+      ...node(3),
+    ]);
+    expect(playbook.steps.find((s) => s.key === 'canary')?.kind).toBe('approval');
+  });
+
+  it('has no canary when there is one node', () => {
+    const playbook = upgradePlaybook(params('velnox.pve-8-to-9', ['pve1']), 'j', services);
+    expect(playbook.steps.some((s) => s.key === 'canary')).toBe(false);
   });
 });
