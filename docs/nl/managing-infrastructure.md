@@ -11,6 +11,19 @@ rollen, zie [Gebruikers en toegang beheren](managing-access.md).
 
 ---
 
+## Cluster en node: de twee woorden
+
+- Een **node** is één fysieke server waarop Proxmox VE draait.
+- Een **cluster** is één Proxmox VE-installatie zoals Velnox ermee verbindt, via één API-adres:
+  meerdere nodes samen in een Proxmox-cluster, of één losse node — een cluster van één.
+
+Elke node hoort bij precies één cluster. Je voegt een **cluster** toe aan Velnox — nooit een losse
+node — en zijn nodes komen mee, omdat het cluster ze meldt. Twee losse servers die apart zijn
+toegevoegd, zijn twee clusters met elk één node; voeg je ze in Proxmox samen, dan worden ze daar één
+cluster, en dat moet Velnox verteld worden (zie [Bekende hiaten](known-gaps.md)).
+
+---
+
 ## Wat Velnox leest, en waar het niet aan komt
 
 In deze fase is Velnox **alleen-lezen op je infrastructuur**. Het maakt verbinding, vraagt Proxmox
@@ -126,6 +139,75 @@ geheim dat niemand gaat roteren.
 
 ---
 
+## SSH: waarvoor het is, en het instellen
+
+De Proxmox-API dekt de inventarisatie, het uitlezen, VM's bouwen en guests verplaatsen. Wat hij niet
+kan, doet Velnox via SSH naar elke node:
+
+| Wat | Via SSH | Het account heeft nodig |
+|---|---|---|
+| Een ISO of schijfimage van een node naar de bibliotheek kopiëren | SFTP, één bestand lezen | Leestoegang tot de opslagmap |
+| Updates toepassen, rolling updates | Drie vaste opdrachten — zie [Nodes bijwerken](updating-nodes.md#voordat-je-updates-kunt-toepassen-ssh) | root, of sudo voor de dist-upgrade |
+| Grote upgrades van Ceph en Proxmox VE | Vaste opdrachten per stap — zie [Grote upgrades](major-upgrades.md) | root |
+
+Velnox opent nooit een shell, en voert nooit een opdracht uit die iemand typt of die via de API
+binnenkomt: elke opdracht staat in een vaste lijst in Velnox (ADR-046) en verschijnt in de uitvoer van
+de job. **root is het eenvoudigste account**, en het enige waarmee alles zonder verdere instelling
+werkt.
+
+### Instellen
+
+Op de pagina van het cluster, tabblad **Verbinding**, kaart **SSH**, **SSH instellen**:
+
+1. **Lees en bevestig de hostsleutel van elke node.** Velnox maakt verbinding met elke online node en
+   legt de sleutel vast die hij toont, **zonder in te loggen**. Vergelijk elke vingerafdruk met de
+   node zelf voordat je hem aanvinkt — op de node:
+
+   ```bash
+   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+   ```
+
+2. **Het account** waarmee Velnox inlogt — `root`, tenzij je het verandert.
+3. **De sleutel.** Een van beide:
+   - **Maak hier een nieuw sleutelpaar** — de standaard. Je browser maakt een Ed25519-sleutelpaar, en
+     Velnox toont de **publieke sleutel**, één regel die begint met `ssh-ed25519`, met **Kopiëren**, en
+     de opdracht die hem op een node toevoegt:
+
+     ```bash
+     echo 'ssh-ed25519 AAAA… velnox' >> /root/.ssh/authorized_keys
+     ```
+
+     Op een Proxmox-cluster is `/root/.ssh/authorized_keys` normaal een link naar
+     `/etc/pve/priv/authorized_keys`, één bestand dat alle nodes delen, dus voor root is het meestal
+     genoeg om dit één keer op een willekeurige node te draaien. Controleer met
+     `ls -l /root/.ssh/authorized_keys`; is het geen link, draai het dan op elke node. Voor een ander
+     account is het de `~/.ssh/authorized_keys` van dat account.
+   - **Gebruik een sleutelpaar dat je al hebt.** Plak de private sleutel, en de wachtwoordzin als hij
+     er een heeft. De publieke helft moet al in de `authorized_keys` van het account staan.
+4. **Opslaan en de bevestigde nodes vertrouwen.** Velnox slaat de private sleutel versleuteld op en
+   bewijst hem op elke bevestigde node. Weigert een node — meestal omdat de publieke sleutel er nog
+   niet op staat — dan wordt er niets opgeslagen en blijft de vorige instelling, als die er was, zoals
+   hij was. Een hier gemaakte sleutel blijft in het formulier tot je het sluit, dus zet de publieke
+   sleutel waar hij ontbreekt en sla opnieuw op.
+
+### Waar de publieke sleutel daarna staat
+
+Op dezelfde kaart **SSH**, als **Publieke sleutel** met **Kopiëren**, zolang SSH is ingesteld — voor
+een hier gemaakte sleutel en voor een geplakte. Het is de regel voor een node die later bij het
+cluster komt, of om terug te zetten na het herinstalleren van een node. De **private** sleutel wordt
+nooit meer getoond, door geen enkel scherm en geen enkele API-aanroep.
+
+**Sleutel vervangen** doorloopt dezelfde stappen met een nieuwe sleutel; **SSH verwijderen** verwijdert
+de sleutel en de vastgepinde hostsleutels. Haal de oude publieke regel zelf uit `authorized_keys`:
+Velnox bewerkt dat bestand niet.
+
+**Een node waarvan de hostsleutel verandert, wordt geweigerd**, net zoals een veranderd
+TLS-certificaat. Stel na het herinstalleren van een node SSH opnieuw in en bevestig zijn nieuwe sleutel
+bewust. Met een node die later aan het cluster wordt toegevoegd, wordt geen verbinding gemaakt tot je
+hetzelfde doet.
+
+---
+
 ## De inventarisatie lezen
 
 **Clusters** is het geheel in één oogopslag. Vier kolommen dragen dat:
@@ -167,7 +249,7 @@ Er zijn twee soorten uitlezen, en ze verschillen:
   iemand anders te raken.
 - **Live status** — of elke node en gast draait, CPU, geheugen, uptime, opslaggebruik, en gasten die
   zijn aangemaakt of verwijderd — wordt uitgelezen zolang iemand kijkt. Elk scherm met de inventaris
-  van een cluster vraagt erom op het verversinterval van de kijker (**Instellingen → Schermen
+  van een cluster vraagt erom op het verversinterval van de kijker (je naam → **Instellingen → Schermen
   automatisch verversen**, standaard twee seconden); de kijker die het vaakst ververst bepaalt het
   tempo, en ongeveer tien seconden nadat de laatste kijker weg is stopt het. Het is één aanroep naar
   Proxmox (`/cluster/resources`) per cluster. Staat verversen uit, dan vraagt een scherm er niet om.

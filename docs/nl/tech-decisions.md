@@ -1118,6 +1118,11 @@ iemand het instelt. De worker opent **SFTP en verder niets** — er is geen code
 uitvoert. De hostsleutel van elke node wordt gelezen, getoond en bevestigd voordat er inloggegevens
 worden aangeboden, precies zoals een TLS-vingerafdruk bij het toevoegen van een cluster (ADR-031).
 
+**Sinds fase 6 doet dezelfde instelling meer.** Updates, rolling updates en de grote upgrades draaien
+er vaste opdrachten over (ADR-046), dus "alleen SFTP" beschrijft nu de kopie, niet de instelling; de
+interface en de documentatie zeggen dat. ADR-053 voegt het sleutelpaar toe dat in de browser wordt
+gemaakt, en bewaart de publieke helft van de sleutel.
+
 **Waarom überhaupt SSH.** De API van Proxmox kan een bestand op een opslag zetten en er een
 verwijderen, en heeft geen aanroep om er een terug te lezen; de enige download die hij aanbiedt is
 file-restore uit Proxmox Backup Server. Een ISO van een cluster naar de bibliotheek halen heeft dus
@@ -1709,6 +1714,38 @@ nu hoe een node opstart of zich gedraagt, en daar kijkt eerst een persoon naar.
 de handleiding (Velnox houdt de eigen bestanden van de node); het vastpinnen van NIC-namen; een node
 waarvan de upgrade halverwege mislukt, blijft voor een persoon — de run stopt daar, met zijn gasten
 verantwoord.
+
+## ADR-053 — SSH: een sleutelpaar gemaakt in de browser, en de publieke helft bewaard
+
+**Besluit:** SSH instellen maakt standaard een Ed25519-sleutelpaar in de browser van de beheerder,
+met WebCrypto, en toont de publieke helft — één regel voor `authorized_keys` — met de opdracht die hem
+op een node toevoegt. De private sleutel gaat één keer naar de API, bij het opslaan, zoals een
+geplakte sleutel altijd al deed, en wordt versleuteld bewaard; hij wordt nooit meer getoond. Een
+bestaande sleutel plakken blijft mogelijk. Voor beide leest de worker de publieke helft uit de
+opgeslagen private sleutel wanneer hij de sleutel bewijst, en het cluster bewaart hem, zodat de kaart
+SSH hem toont zolang SSH is ingesteld. Van een sleutel die eerder is opgeslagen wordt de publieke helft
+één keer gelezen, de eerste keer dat de kaart wordt getoond.
+
+**Waarom.** Het formulier vroeg om "een private key waarvan de publieke helft in authorized_keys
+staat", en nergens stond waar die publieke helft vandaan kwam, of dat hij er vóór het opslaan al moest
+staan. Een beheerder zonder sleutelpaar bij de hand moest er eerst elders een maken. Hem maken waar
+het formulier is, en de regel tonen die op de nodes hoort, haalt die stap en die vraag weg.
+
+**Waarom in de browser en niet op de server.** De API mag de infrastructuurbibliotheken niet
+importeren (ADR-009), en een sleutel die de worker maakt zou via Redis terugkomen bij de API, waar het
+resultaat van een job bewaard blijft. In de browser gemaakt reist hij precies zoals een geplakte
+sleutel: één keer, naar de API, over de TLS van de sessie. De OpenSSH-formaten worden met de hand
+geschreven — WebCrypto exporteert geen van beide — en de spec van de worker bewijst dat ssh2 het
+resultaat leest, dat het ondertekent, en dat de publieke regel de handtekening controleert.
+
+**Waarom de publieke helft bewaard wordt.** Hij is publiek, en het is het enige dat een beheerder
+opnieuw nodig heeft: voor een node die later bij het cluster komt, of een die opnieuw wordt
+geïnstalleerd. Hem elke keer uit de private sleutel lezen zou betekenen dat de worker de sleutel
+ontsleutelt voor het bekijken van een pagina.
+
+**Niet gebouwd:** Velnox zet de sleutel niet zelf op de nodes — daar is een toegang voor nodig die het
+nog niet heeft — en haalt een oude publieke regel niet uit `authorized_keys` als de sleutel wordt
+vervangen.
 
 ---
 

@@ -212,7 +212,9 @@ ceph_versions_homogeneous bool`
 
 SSH columns (Phase 5A, ADR-038): `ssh_credential_id, ssh_username, ssh_port (default 22),
 ssh_verified_at`. Both of the first two or neither — `clusters_ssh_complete` — because half a
-configuration fails every copy with a confusing error.
+configuration fails every copy with a confusing error. `ssh_public_key` (ADR-053): the key's public
+half in `authorized_keys` form, read from the private key by the worker, so the interface can show it
+again.
 
 `ceph_flags` matters operationally: a cluster left with `noout` set after an aborted maintenance is
 a silent time bomb, so it is inventoried, surfaced in the UI and alerted on.
@@ -633,7 +635,7 @@ certificate column.
 
 `product_name` lives here and is read by the frontend, so rebranding from "Velnox" is a settings
 change plus asset swap — not a code change. `source_url` and `build_commit` back the AGPL §13
-obligation: they are what `GET /api/v1/system/source` and **Settings → About** serve, and an operator
+obligation: they are what `GET /api/v1/system/source` and **About** (behind *Source code* at the foot of every screen) serve, and an operator
 running a modified build points `source_url` at their own source.
 
 ---

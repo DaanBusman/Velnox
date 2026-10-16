@@ -597,7 +597,7 @@ Dat is dus een **functie met acceptatiecriteria**, geen bestand in de repository
 
 - `GET /api/v1/system/source` geeft de versie, de build-commit, het buildtijdstip en de bron-URL van de
   draaiende build.
-- **Instellingen → Over** toont hetzelfde, met een zichtbare link, bereikbaar voor elke ingelogde
+- **Over**, achter *Broncode* onderaan elk scherm, toont hetzelfde, met een zichtbare link, bereikbaar voor elke ingelogde
   gebruiker — niet alleen beheerders.
 - De bron-URL is een buildvariabele (`VELNOX_SOURCE_URL`) die standaard naar de upstream-repository
   wijst. Een operator met een aangepaste build zet die naar de eigen broncode. De build sluit de

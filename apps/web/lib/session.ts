@@ -9,6 +9,7 @@ import type {
   ProvisioningSummary,
   TemplateSummary,
   TlsStatusResponse,
+  UpgradePlanSummary,
 } from '@velnox/shared';
 import { cookies } from 'next/headers';
 import { LIVE_REFRESH_HEADER } from '@velnox/shared';
@@ -293,9 +294,12 @@ export function getJob(id: string) {
 }
 
 export function listJobLogs(id: string) {
-  return readAs<{ lines: JobLogLine[] }>(
-    `/api/v1/jobs/${encodeURIComponent(id)}/logs?limit=1000`,
-  );
+  return readAs<{ lines: JobLogLine[] }>(`/api/v1/jobs/${encodeURIComponent(id)}/logs?limit=1000`);
+}
+
+/** Major upgrade plans this account may see (Phases 8–9B). */
+export function listUpgradePlans() {
+  return readAs<{ plans: UpgradePlanSummary[] }>('/api/v1/upgrades/plans');
 }
 
 /** The ISO library and how full it is (Phase 5A). */

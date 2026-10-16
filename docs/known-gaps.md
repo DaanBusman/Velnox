@@ -8,7 +8,10 @@ not met its gate.
 
 ---
 
-## Current status: Phase 5B (building VMs) — built, not yet proven on a real cluster
+## Current status: Phases 1–7B complete; 8, 9A and 9B built
+
+The dashboard says the same, read from the [roadmap](roadmap.md) this build ships with: which phases
+are complete, which are built and still to be proven on a real cluster, and what comes next.
 
 Sign-in works. The setup wizard creates the first administrator and then closes permanently. Every
 API endpoint that is not deliberately public requires a session, and the global guard is
@@ -23,15 +26,18 @@ Work that takes time runs as a **job**: a recorded run with steps, a live event 
 at safe boundaries, approval gates with an optional four-eyes rule, and a dead worker detected and
 reported rather than left looking busy. See [Watching, cancelling and approving jobs](working-with-jobs.md).
 
-The **ISO library** holds installers and cloud images on the Velnox host, and copies them onto a
-cluster's storage and back. See [The ISO library](managing-the-library.md).
+**What Velnox changes on your infrastructure**, each as a job you can watch, and each only when
+someone with the permission for it starts it or a policy they set allows it:
 
-**VMs are built from templates** — Windows unattended from its ISO, Linux from a cloud image — with
-their passwords generated or stored encrypted, shown only through an audited reveal, and a mail when
-they are ready. See [Building VMs from templates](building-vms.md).
+- files on a cluster's storage — the [ISO library](managing-the-library.md);
+- new VMs, built from templates — [Building VMs](building-vms.md);
+- packages on a node, and its reboot — [Updating nodes](updating-nodes.md), one node or the whole
+  cluster as a rolling update that moves guests away first;
+- where guests run — [placement rules](placement.md), and on Proxmox VE 9 Proxmox's own HA rules;
+- the release a cluster runs — [major upgrades](major-upgrades.md): Ceph, and Proxmox VE 8 → 9.
 
-**Those two are the only things Velnox writes to your infrastructure:** files on storage, and new
-VMs. Nothing stops, migrates, updates or reconfigures an existing node or guest.
+Everything else is read, not written. Updates, placement and the major upgrades are proven against
+the fixture; proof on a real cluster is still open for them.
 
 What is **not** there yet, in order of how much it matters:
 
@@ -41,6 +47,13 @@ provider's discovery document, validates it, and records what it observed. The a
 PKCE flow that would actually sign someone in is not written. `signInAvailable` in the API response
 says `false`, the sign-in page shows no Microsoft button, and the settings page says so in as many
 words. Nothing here pretends to work.
+
+### Two clusters joined in Proxmox stay two clusters in Velnox
+Velnox reads every node of a Proxmox cluster through its API. But two standalone servers added to
+Velnox separately, and joined into one Proxmox cluster afterwards, stay two registrations in Velnox,
+each now reporting the same nodes. Merging them into one — keeping the SSH set-up, placement rules,
+update policy, maintenance windows, site and history of both — is planned next. Until then, remove
+one of the two and keep the other.
 
 ### Roles are seeded, not editable
 The seven system roles are created at setup from the frozen catalogue in `packages/shared`, and the
@@ -89,12 +102,6 @@ other security header is strict; this one specific relaxation is real and is not
 sets. Tracing creates symlinks, and Windows refuses that without Developer Mode — leaving it always
 on would mean a developer on Windows could not build the app at all. The shipped image is always
 the standalone one.
-
-### Two dashboard counters are still dashes
-Nodes needing updates (Phase 6) and upgrade blockers (Phase 9) show `—` with the phase that fills
-them — the first is counted already, and shows once Phase 6 is marked complete. They are not placeholders for hidden data and they are not zeroes pretending to be
-measurements. The other six count what the signed-in account can see. Service status is not on the
-dashboard: it lives in **Server management**, visible only to an account holding `system.manage`.
 
 ### Alerts have no lifecycle
 The alerts screen shows conditions computed from the inventory each time it is opened. That is the

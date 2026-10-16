@@ -1060,6 +1060,11 @@ sets it up. The worker opens **SFTP and nothing else** — there is no code path
 Each node's host key is read, shown and confirmed before any credential is offered, exactly as a TLS
 fingerprint is when a cluster is added (ADR-031).
 
+**Since Phase 6 the same set-up does more.** Updates, rolling updates and the major upgrades run
+fixed commands over it (ADR-046), so "SFTP only" now describes the copy, not the set-up; the
+interface and the documentation say so. ADR-053 adds the key pair made in the browser and keeps the
+key's public half.
+
 **Why SSH at all.** Proxmox's API can put a file on a storage and can delete one, and has no call to
 read one back; the only download it offers is file-restore from Proxmox Backup Server. Pulling an ISO
 from a cluster into the library therefore needs another way in. The owner chose SSH, per cluster and
@@ -1608,6 +1613,34 @@ behaves now, and a person looks first.
 **Not built:** `apt modernize-sources` (deb822); the guide's per-file prompts during the
 dist-upgrade (Velnox keeps the node's own files); NIC name pinning; a node whose upgrade fails
 part-way is left for a person — the run stops there, its guests accounted for.
+
+## ADR-053 — SSH: a key pair made in the browser, and its public half kept
+
+**Decision:** Setting SSH up makes an Ed25519 key pair in the operator's browser by default, with
+WebCrypto, and shows its public half — one `authorized_keys` line — with the command that adds it on
+a node. The private key goes to the API once, on save, as a pasted key always has, and is stored
+encrypted; it is never shown again. Pasting an existing key stays possible. For either, the worker
+reads the public half from the stored private key when it proves the key, and the cluster keeps it,
+so the SSH card shows it for as long as SSH is set up. A key stored before this has its public half
+read once, the first time the card is shown.
+
+**Why.** The form asked for "a private key whose public half is in authorized_keys" and nothing
+said where the public half came from, or that it was needed at all before saving. An operator
+without a key pair at hand had to make one elsewhere first. Making it where the form is, and showing
+the line that goes on the nodes, removes that step and the question.
+
+**Why in the browser and not on the server.** The API may not import the infrastructure libraries
+(ADR-009), and a key made by the worker would come back to the API through Redis, where a job's
+result is kept. Made in the browser it travels exactly as a pasted key does: once, to the API, over
+the session's TLS. The OpenSSH formats are written by hand — WebCrypto exports neither — and the
+worker's spec proves ssh2 reads the result, that it signs, and that its public line verifies.
+
+**Why the public half is kept.** It is public, and it is the one thing an operator needs again: for a
+node that joins the cluster later, or one that is reinstalled. Reading it from the private key each
+time would mean the worker decrypting the key for a page view.
+
+**Not built:** Velnox does not put the key on the nodes itself — that needs a way in it does not
+have yet — and does not remove an old public line from `authorized_keys` when the key is replaced.
 
 ---
 

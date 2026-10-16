@@ -14,7 +14,7 @@ does, see ADR-035 and ADR-036 in [Technology decisions](tech-decisions.md).
 **Jobs** in the sidebar lists every job this account may see, newest first, with its status, how
 far it has got, who started it and how long it took. Filter by status at the top of the list.
 
-The list re-reads itself on your refresh setting (**Settings → Refresh screens automatically**) and
+The list re-reads itself on your refresh setting (your name → **Settings → Refresh screens automatically**) and
 pauses while a form on it is open. Opening a job shows it **live**: its events arrive as they
 happen, not when you reload.
 

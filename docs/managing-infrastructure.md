@@ -8,6 +8,19 @@ see [Managing users and access](managing-access.md).
 
 ---
 
+## Cluster and node: the two words
+
+- A **node** is one physical server running Proxmox VE.
+- A **cluster** is one Proxmox VE installation as Velnox connects to it, through one API address:
+  several nodes joined into a Proxmox cluster, or a single standalone node — a cluster of one.
+
+Every node belongs to exactly one cluster. You add a **cluster** to Velnox — never a node on its own
+— and its nodes come with it, because the cluster reports them. Two standalone servers added
+separately are two clusters, each with one node; join them in Proxmox and they become one cluster
+there, which Velnox has to be told about (see [Known gaps](known-gaps.md)).
+
+---
+
 ## What Velnox reads, and what it does not touch
 
 In this phase Velnox is **read-only against your infrastructure**. It connects, asks Proxmox what is
@@ -119,6 +132,71 @@ is going to rotate.
 
 ---
 
+## SSH: what it is for, and setting it up
+
+The Proxmox API covers the inventory, discovery, building VMs and moving guests. What it cannot do,
+Velnox does over SSH to each node:
+
+| What | Over SSH | The account needs |
+|---|---|---|
+| Copying an ISO or disk image off a node into the library | SFTP, reading one file | Read access to the storage directory |
+| Applying updates, rolling updates | Three fixed commands — see [Updating nodes](updating-nodes.md#before-you-can-apply-updates-ssh) | root, or sudo for the dist-upgrade |
+| Ceph and Proxmox VE major upgrades | Fixed commands per step — see [Major upgrades](major-upgrades.md) | root |
+
+Velnox never opens a shell, and never runs a command typed by a person or received over the API:
+every command is in a fixed list inside Velnox (ADR-046) and appears in the job's output. **root is
+the simplest account**, and the only one every feature works with without further set-up.
+
+### Setting it up
+
+On the cluster's page, **Connection** tab, **SSH** card, **Set up SSH**:
+
+1. **Read and confirm each node's host key.** Velnox connects to every online node and records the
+   key it presents, **without logging in**. Compare each fingerprint with the node itself before
+   ticking it — on the node:
+
+   ```bash
+   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+   ```
+
+2. **The account** Velnox signs in as — `root` unless you change it.
+3. **The key.** Either:
+   - **Make a new key pair here** — the default. Your browser makes an Ed25519 key pair, and Velnox
+     shows its **public key**, one line starting `ssh-ed25519`, with **Copy**, and the command that
+     adds it on a node:
+
+     ```bash
+     echo 'ssh-ed25519 AAAA… velnox' >> /root/.ssh/authorized_keys
+     ```
+
+     On a Proxmox cluster `/root/.ssh/authorized_keys` is normally a link to
+     `/etc/pve/priv/authorized_keys`, one file every node shares, so for root running it once on any
+     node is usually enough. Check with `ls -l /root/.ssh/authorized_keys`; if it is not a link, run
+     it on every node. For another account it is that account's `~/.ssh/authorized_keys`.
+   - **Use a key pair you already have.** Paste its private key, and the passphrase if it has one.
+     Its public half must already be in the account's `authorized_keys`.
+4. **Save and trust the confirmed nodes.** Velnox stores the private key encrypted and proves it on
+   every confirmed node. If any node refuses — usually because the public key is not on it yet —
+   nothing is saved and the previous set-up, if there was one, stays as it was. A key made here stays
+   in the form until you close it, so add the public key where it is missing and save again.
+
+### Where the public key is afterwards
+
+On the same **SSH** card, as **Public key** with **Copy**, for as long as SSH is set up — for a key
+made here and for one you pasted. It is the line to add to a node that joins the cluster later, or to
+put back after a node is reinstalled. The **private** key is never shown again, by any screen or any
+API call.
+
+**Replace key** goes through the same steps with a new key; **Remove SSH** deletes the key and the
+pinned host keys. Remove the old public line from `authorized_keys` yourself: Velnox does not edit
+that file.
+
+**A node whose host key changes is refused**, the same way a changed TLS certificate is. After
+reinstalling a node, set SSH up again and confirm its new key deliberately. A node added to the
+cluster later has no confirmed key and is not connected to until you do the same.
+
+---
+
 ## Reading the inventory
 
 **Clusters** is the fleet at a glance. Four columns carry it:
@@ -159,7 +237,7 @@ Two kinds of reading, and they are different:
   else.
 - **Live status** — whether each node and guest is up, CPU, memory, uptime, storage use, and guests
   created or removed — is read while someone is looking. Every screen showing a cluster's inventory
-  asks for it at the viewer's own refresh interval (**Settings → Refresh screens automatically**,
+  asks for it at the viewer's own refresh interval (your name → **Settings → Refresh screens automatically**,
   two seconds by default); the most eager viewer of a cluster sets its pace, and about ten seconds
   after the last viewer leaves it stops. It is one call to Proxmox (`/cluster/resources`) per
   cluster. With refreshing switched off, a screen asks for none. The cluster page shows which

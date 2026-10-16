@@ -671,6 +671,11 @@ export interface ClusterSshStatus {
   username: string | null;
   port: number;
   verifiedAt: string | null;
+  /**
+   * The public half of the stored key, one authorized_keys line. Null when SSH
+   * is not set up, or the worker could not read it.
+   */
+  publicKey: string | null;
   nodes: {
     node: string;
     address: string | null;

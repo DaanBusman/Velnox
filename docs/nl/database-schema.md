@@ -219,7 +219,9 @@ ceph_versions_homogeneous bool`
 
 SSH-kolommen (fase 5A, ADR-038): `ssh_credential_id, ssh_username, ssh_port (standaard 22),
 ssh_verified_at`. De eerste twee allebei of geen van beide — `clusters_ssh_complete` — omdat een halve
-instelling elke kopie laat mislukken met een verwarrende fout.
+instelling elke kopie laat mislukken met een verwarrende fout. `ssh_public_key` (ADR-053): de publieke
+helft van de sleutel in `authorized_keys`-vorm, door de worker uit de private sleutel gelezen, zodat
+de interface hem opnieuw kan tonen.
 
 `ceph_flags` is operationeel van belang: een cluster waar `noout` na afgebroken onderhoud is blijven
 staan, is een stille tijdbom, en wordt daarom geïnventariseerd, in de UI getoond en gealarmeerd.
@@ -652,7 +654,7 @@ certificaatkolom.
 `product_name` staat hier en wordt door de frontend gelezen, zodat hernoemen vanaf "Velnox" een
 instellingswijziging plus assetwissel is — geen codewijziging. `source_url` en `build_commit`
 ondersteunen de verplichting uit AGPL artikel 13: ze zijn wat `GET /api/v1/system/source` en
-**Instellingen → Over** tonen, en een operator met een aangepaste build wijst `source_url` naar de eigen
+**Over** (achter *Broncode* onderaan elk scherm) tonen, en een operator met een aangepaste build wijst `source_url` naar de eigen
 broncode.
 
 ---

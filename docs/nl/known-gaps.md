@@ -11,7 +11,11 @@ heeft haar poort niet gehaald.
 
 ---
 
-## Huidige status: fase 5B (VM's bouwen) — gebouwd, nog niet bewezen op een echt cluster
+## Huidige status: fase 1–7B afgerond; 8, 9A en 9B gebouwd
+
+Het dashboard zegt hetzelfde, gelezen uit de [roadmap](roadmap.md) die met deze build meekomt: welke
+fasen afgerond zijn, welke gebouwd zijn en nog op een echt cluster bewezen moeten worden, en wat er
+hierna komt.
 
 Aanmelden werkt. De installatiewizard maakt de eerste beheerder aan en sluit daarna permanent. Elk
 API-endpoint dat niet bewust publiek is, vereist een sessie, en de globale guard beschermt
@@ -27,15 +31,19 @@ gebeurtenissenstroom, annuleren op veilige punten, goedkeuringspunten met een op
 vierogenprincipe, en een dode worker die wordt opgemerkt en gemeld in plaats van bezig te blijven
 lijken. Zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md).
 
-De **ISO-bibliotheek** bevat installers en cloud images op de Velnox-host, en kopieert ze naar de
-opslag van een cluster en terug. Zie [De ISO-bibliotheek](managing-the-library.md).
+**Wat Velnox aan je infrastructuur verandert**, elk als job die je kunt volgen, en elk alleen als
+iemand met het recht ervoor het start of een beleid dat diegene instelde het toestaat:
 
-**VM's worden vanuit templates gebouwd** — Windows onbeheerd vanaf zijn ISO, Linux vanuit een cloud
-image — met hun wachtwoorden gegenereerd of versleuteld opgeslagen, alleen getoond via een vastgelegde
-onthulling, en een mail als ze klaar zijn. Zie [VM's bouwen vanuit templates](building-vms.md).
+- bestanden op de opslag van een cluster — de [ISO-bibliotheek](managing-the-library.md);
+- nieuwe VM's, gebouwd vanuit templates — [VM's bouwen](building-vms.md);
+- pakketten op een node, en zijn herstart — [Nodes bijwerken](updating-nodes.md), één node of het hele
+  cluster als rolling update die eerst de gasten wegzet;
+- waar gasten draaien — [plaatsingsregels](placement.md), en op Proxmox VE 9 de eigen HA-regels van
+  Proxmox;
+- de release die een cluster draait — [grote upgrades](major-upgrades.md): Ceph, en Proxmox VE 8 → 9.
 
-**Die twee zijn het enige wat Velnox naar je infrastructuur schrijft:** bestanden op opslag, en
-nieuwe VM's. Niets stopt, migreert, werkt bij of herconfigureert een bestaande node of gast.
+Al het andere wordt gelezen, niet geschreven. Updates, plaatsing en de grote upgrades zijn bewezen
+tegen de fixture; bewijs op een echt cluster staat voor die onderdelen nog open.
 
 Wat er **nog niet** is, op volgorde van hoe zwaar het weegt:
 
@@ -46,6 +54,13 @@ waargenomen. De authorization code + PKCE-flow waarmee iemand daadwerkelijk zou 
 geschreven. `signInAvailable` staat in het API-antwoord op `false`, de aanmeldpagina toont geen
 Microsoft-knop, en de instellingenpagina zegt het met zoveel woorden. Niets hier doet alsof het
 werkt.
+
+### Twee clusters die in Proxmox zijn samengevoegd, blijven twee clusters in Velnox
+Velnox leest elke node van een Proxmox-cluster via zijn API. Maar twee losse servers die apart aan
+Velnox zijn toegevoegd en daarna in Proxmox tot één cluster zijn samengevoegd, blijven in Velnox twee
+registraties, die nu allebei dezelfde nodes melden. Ze samenvoegen tot één — met behoud van de
+SSH-instelling, plaatsingsregels, updatebeleid, onderhoudsvensters, locatie en geschiedenis van beide
+— staat als volgende gepland. Verwijder tot dan een van de twee en houd de andere.
 
 ### Rollen worden aangemaakt, niet bewerkt
 De zeven systeemrollen worden bij de installatie aangemaakt uit de bevroren catalogus in
@@ -98,12 +113,6 @@ weggepoetst.
 Dockerfile zet. Tracing maakt symlinks, en Windows weigert dat zonder Ontwikkelaarsmodus — het altijd
 aan laten staan zou betekenen dat een ontwikkelaar op Windows de app helemaal niet kan bouwen. De
 image die wordt uitgeleverd is altijd de standalone-versie.
-
-### Twee tellers op het dashboard zijn nog streepjes
-Nodes met openstaande updates (fase 6) en upgradeblokkades (fase 9) tonen `—` met de fase die ze
-vult — de eerste wordt al geteld, en verschijnt zodra fase 6 als afgerond is gemarkeerd. Het zijn geen plaatshouders voor verborgen gegevens en geen nullen die zich voordoen als
-metingen. De andere zes tellen wat het aangemelde account kan zien. De servicestatus staat niet op
-het dashboard: die staat in **Serverbeheer**, alleen zichtbaar voor een account met `system.manage`.
 
 ### Meldingen hebben geen levenscyclus
 Het meldingenscherm toont condities die bij elke keer openen uit de inventarisatie worden berekend.

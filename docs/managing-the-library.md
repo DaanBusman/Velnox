@@ -137,7 +137,7 @@ clusters stay where they are.
 
 Proxmox's API can put a file on a storage and delete one, but has no way to hand one back. So **Copy
 to library** on the **ISOs & images** tab needs **SSH** on that cluster, set up once, under the
-cluster's **Connection** tab. Everything else in Velnox works without it.
+cluster's **Connection** tab. Updates and upgrades use the same set-up.
 
 ### What Velnox does over SSH
 
@@ -161,26 +161,8 @@ both.
 
 ### Setting it up
 
-1. **Read host keys.** Velnox connects to every online node and records the key it presents, **without
-   logging in**: no account and no key are offered to a node nobody has confirmed.
-2. **Compare** each fingerprint with the node itself before confirming it:
-
-   ```bash
-   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
-   ```
-
-3. Enter the **username** and the **private key** whose public half is in that account's
-   `authorized_keys`, and a passphrase if the key has one.
-4. **Save and trust the confirmed nodes.** Velnox stores the key encrypted and proves it opens SFTP on
-   every confirmed node. If any node refuses, nothing is saved and the previous set-up, if there was
-   one, stays as it was.
-
-The private key is never shown again, by any screen or any API call. **Replace key** starts the same
-steps with a new one; **Remove SSH** deletes the key and the pinned host keys.
-
-**A node whose host key changes is refused**, the same way a changed TLS certificate is. After
-reinstalling a node, set SSH up again and confirm its new key deliberately. A node added to the
-cluster later has no confirmed key and is not connected to until you do the same.
+Step by step — the host keys, the account, a key pair made in your browser and where its public key
+goes — in [SSH: what it is for, and setting it up](managing-infrastructure.md#ssh-what-it-is-for-and-setting-it-up).
 
 ### The copy
 

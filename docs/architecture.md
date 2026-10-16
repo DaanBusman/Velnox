@@ -586,7 +586,7 @@ This is therefore a **feature with acceptance criteria**, not a file in the repo
 
 - `GET /api/v1/system/source` returns the version, the build commit, the build timestamp and the
   source URL of the running build.
-- **Settings → About** displays the same, with a visible link, reachable by every authenticated
+- **About**, behind *Source code* at the foot of every screen, displays the same, with a visible link, reachable by every authenticated
   user — not only administrators.
 - The source URL is a build-time variable (`VELNOX_SOURCE_URL`) that defaults to the upstream
   repository. An operator running a modified build sets it to their own source. The build embeds

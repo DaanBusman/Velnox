@@ -680,16 +680,21 @@ model Cluster {
   /// How often scheduled discovery runs. Zero turns it off for this cluster.
   discoveryIntervalMinutes Int @default(30) @map("discovery_interval_minutes")
 
-  // --- SSH, optional (Phase 5A) ---
-  /// Used for one thing: copying an ISO or disk image off a node, which the
-  /// Proxmox API has no call for. SFTP only — Velnox never opens a shell. Null
-  /// until an operator adds a key and confirms each node's host key; the rest of
-  /// Velnox works without it. See ADR-038.
+  // --- SSH (Phase 5A; commands since Phase 6) ---
+  /// Copying an ISO or disk image off a node over SFTP (Phase 5A), and the
+  /// fixed commands of updates, rolling updates and major upgrades (Phases 6–9B,
+  /// ADR-046) — never a shell. Null until an operator adds a key and confirms
+  /// each node's host key; the inventory and everything through the Proxmox API
+  /// works without it. See ADR-038.
   sshCredentialId String?   @map("ssh_credential_id") @db.Uuid
   sshUsername     String?   @map("ssh_username")
   sshPort         Int       @default(22) @map("ssh_port")
   /// When the key last authenticated against every pinned node.
   sshVerifiedAt   DateTime? @map("ssh_verified_at") @db.Timestamptz(3)
+  /// The public half of the stored key, in authorized_keys form — read from
+  /// the private key by the worker, so it is shown again whenever it is needed.
+  /// Public by nature; the private key is never shown.
+  sshPublicKey    String?   @map("ssh_public_key")
 
   /// No soft delete. Removing a cluster removes Velnox's cache of somebody
   /// else's infrastructure — the infrastructure is untouched and the audit trail

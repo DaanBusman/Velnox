@@ -203,7 +203,11 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 2 -config "$WORK/openssl.cnf" \
 TLS_FINGERPRINT="$(openssl x509 -in "$WORK/cert.pem" -noout -fingerprint -sha256 | cut -d= -f2)"
 
 ssh-keygen -q -t ed25519 -N '' -C fixture-host -f "$WORK/host_key" >/dev/null
-ssh-keygen -q -t ed25519 -N '' -C velnox-client -f "$WORK/client_key" >/dev/null
+# The client key is made by the code the SSH form runs in the browser (ADR-053), so every SFTP copy
+# below runs on it, and OpenSSH itself has to read it.
+node -e 'require(process.argv[1]).generateOpenSshEd25519("velnox-client").then((p) => { const fs = require("fs"); fs.writeFileSync(process.argv[2], p.privateKey, { mode: 0o600 }); fs.writeFileSync(process.argv[2] + ".pub", p.publicKey + String.fromCharCode(10)); })' \
+  "$ROOT/packages/shared/dist/ssh-key.js" "$WORK/client_key"
+chmod 600 "$WORK/client_key"
 HOST_KEY_FINGERPRINT="$(ssh-keygen -lf "$WORK/host_key.pub" | awk '{print $2}')"
 
 mkdir -p "$WORK/store"
@@ -255,7 +259,17 @@ check "admin: signs in" 200 "$(last_status)"
 [[ "$(printf '%s' "$LOGIN" | json status)" == "authenticated" ]] || { red "session not authenticated (second factor required?)"; exit 1; }
 
 TENANT_ID="$(call GET /api/v1/tenants | json tenants.0.id)"
-CLUSTER="$(call POST /api/v1/clusters "{\"tenantId\":\"${TENANT_ID}\",\"name\":\"${RUN}\",\"host\":\"${FIXTURE_HOST}\",\"port\":8006,\"fingerprint\":\"${TLS_FINGERPRINT}\",\"auth\":{\"kind\":\"API_TOKEN\",\"tokenId\":\"${TOKEN_ID}\",\"secret\":\"${TOKEN_SECRET}\"}}")"
+register_cluster() {
+  call POST /api/v1/clusters "{\"tenantId\":\"${TENANT_ID}\",\"name\":\"${RUN}\",\"host\":\"${FIXTURE_HOST}\",\"port\":8006,\"fingerprint\":\"${TLS_FINGERPRINT}\",\"auth\":{\"kind\":\"API_TOKEN\",\"tokenId\":\"${TOKEN_ID}\",\"secret\":\"${TOKEN_SECRET}\"}}"
+}
+CLUSTER="$(register_cluster)"
+# A run that was interrupted leaves its cluster on the same fixture address behind.
+LEFTOVER="$(printf '%s' "$CLUSTER" | json error.params.clusterId)"
+if [[ "$(printf '%s' "$CLUSTER" | json error.code)" == cluster.duplicate && -n "$LEFTOVER" ]]; then
+  info "Removing a cluster an interrupted run left behind."
+  call DELETE "/api/v1/clusters/${LEFTOVER}" >/dev/null
+  CLUSTER="$(register_cluster)"
+fi
 check "cluster: the fixture is added" 201 "$(last_status)"
 CLUSTER_ID="$(printf '%s' "$CLUSTER" | json id)"
 # Everything after this needs the cluster. Without it every job id is empty and
@@ -424,6 +438,11 @@ call PUT "/api/v1/clusters/${CLUSTER_ID}/ssh" "$(ssh_body "$HOST_KEY_FINGERPRINT
 check "ssh: set up with the confirmed keys" 200 "$(last_status)"
 check "ssh: proven against the nodes" true "$(call GET "/api/v1/clusters/${CLUSTER_ID}/ssh" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>process.stdout.write(String(JSON.parse(r).verifiedAt!==null)))')"
 lacks "ssh: the private key is never sent back" "PRIVATE KEY" "$(call GET "/api/v1/clusters/${CLUSTER_ID}/ssh")"
+check "ssh: the key made as the browser makes it is read by OpenSSH as its own public key" "$(cut -d' ' -f1-2 "$WORK/client_key.pub")" "$(ssh-keygen -y -f "$WORK/client_key" | cut -d' ' -f1-2)"
+check "ssh: its public half is shown, to put on a node" "$(cut -d' ' -f1-2 "$WORK/client_key.pub")" "$(call GET "/api/v1/clusters/${CLUSTER_ID}/ssh" | json publicKey)"
+psql_at "UPDATE clusters SET ssh_public_key = NULL WHERE id = '${CLUSTER_ID}';" >/dev/null
+check "ssh: a key stored before it was kept has its public half read once" "$(cut -d' ' -f1-2 "$WORK/client_key.pub")" "$(call GET "/api/v1/clusters/${CLUSTER_ID}/ssh" | json publicKey)"
+check "ssh: and kept" "$(cut -d' ' -f1-2 "$WORK/client_key.pub")" "$(psql_at "SELECT ssh_public_key FROM clusters WHERE id = '${CLUSTER_ID}';")"
 
 info "Pulling the pushed file back, after removing the library's copy."
 call DELETE "/api/v1/library/${ITEM}" >/dev/null

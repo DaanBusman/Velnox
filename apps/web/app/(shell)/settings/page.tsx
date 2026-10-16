@@ -1,35 +1,21 @@
 import type { Metadata } from 'next';
-import { getLocale, getTranslations } from 'next-intl/server';
-import { InterfaceSettings } from '@/components/interface-settings';
+import { getTranslations } from 'next-intl/server';
 import { Card, Mono, Notice, PageHeader } from '@/components/ui/primitives';
-import {
-  REFRESH_CHOICES,
-  installationTimeZone,
-  motionBackground,
-  refreshSeconds,
-  viewerTimeZone,
-} from '@/lib/preferences';
 import { tryGetSourceOffer } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations();
-  return { title: t('settings.title') };
+  return { title: t('about.title') };
 }
 
 /**
- * Settings.
+ * About this build, and its source — open to everyone.
  *
- * What this sidebar entry used to be was a page of read-only build facts called
- * Settings, which is a name for a page where you change something. Those facts
- * moved to Server management > About this server; this is the page that changes
- * things.
- *
- * Only per-viewer preferences live here, and the page is open to everyone —
- * anything that changes the installation for all of its users belongs behind
- * `system.manage` in Server management, not on a page any signed-in account can
- * open.
+ * This was the Settings page. The per-viewer preferences it held moved to the
+ * account menu, as a window over the page (PreferencesDialog), as the owner
+ * asked; the page says where they went, for anyone arriving by an old link.
  *
  * The source offer at the bottom is not decoration. AGPLv3 section 13 requires
  * the Corresponding Source to be reachable by anyone interacting with the
@@ -38,28 +24,14 @@ export async function generateMetadata(): Promise<Metadata> {
  * every screen are that home. See NOTICE and docs/architecture.md section 15.
  */
 export default async function SettingsPage() {
-  const [t, locale, refresh, moving, zone, source] = await Promise.all([
-    getTranslations(),
-    getLocale(),
-    refreshSeconds(),
-    motionBackground(),
-    viewerTimeZone(),
-    tryGetSourceOffer(),
-  ]);
+  const [t, source] = await Promise.all([getTranslations(), tryGetSourceOffer()]);
 
   return (
     <>
-      <PageHeader title={t('settings.title')} description={t('settings.subtitle')} />
+      <PageHeader title={t('about.title')} description={t('settings.subtitle')} />
 
       <div className="space-y-5">
-        <InterfaceSettings
-          locale={locale}
-          refreshSeconds={refresh}
-          refreshChoices={REFRESH_CHOICES}
-          motionBackground={moving}
-          timeZone={zone}
-          installationTimeZone={installationTimeZone()}
-        />
+        <Notice>{t('settings.preferencesMoved')}</Notice>
 
         <Card title={t('about.title')} description={t('settings.aboutBody')}>
           {source ? (

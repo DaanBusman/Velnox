@@ -6,6 +6,7 @@ import { LocaleSwitcher } from './locale-switcher';
 import { TenantSelector, type SelectableTenant } from './tenant-selector';
 import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
+import type { ViewerPreferences } from './preferences-dialog';
 
 /**
  * Top bar.
@@ -20,7 +21,9 @@ export function Topbar({
   user,
   tenants,
   selectedTenantId,
+  preferences,
 }: {
+  preferences: ViewerPreferences;
   locale: string;
   user: SessionUser;
   tenants: SelectableTenant[];
@@ -47,7 +50,7 @@ export function Topbar({
         <LocaleSwitcher current={locale} />
         <ThemeToggle />
         <span aria-hidden className="mx-1 h-5 w-px bg-line" />
-        <UserMenu user={user} />
+        <UserMenu user={user} preferences={preferences} />
       </div>
     </header>
   );

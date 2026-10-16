@@ -32,8 +32,9 @@ would install and which kernels are installed:
 ## Before you can apply updates: SSH
 
 Proxmox's API can refresh the package lists and reboot a node, but cannot install packages. Applying
-updates therefore needs **SSH on the cluster**, set up under the cluster's **Connection** tab as for
-[copying a file into the library](managing-the-library.md#copying-a-file-from-a-cluster-into-the-library),
+updates therefore needs **SSH on the cluster**, set up under the cluster's **Connection** tab —
+step by step, with where the public key goes, in
+[SSH: what it is for, and setting it up](managing-infrastructure.md#ssh-what-it-is-for-and-setting-it-up) —
 with each node's host key confirmed. A node without a confirmed key shows *Needs SSH*.
 
 **What Velnox runs.** Only commands from a fixed list in Velnox itself — never one typed by a person

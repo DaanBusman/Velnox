@@ -1,22 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormatter, useTranslations } from 'next-intl';
-import type { ClusterSshProbe, ClusterSshStatus } from '@velnox/shared';
+import {
+  canGenerateEd25519,
+  generateOpenSshEd25519,
+  type ClusterSshProbe,
+  type ClusterSshStatus,
+  type OpenSshKeyPair,
+} from '@velnox/shared';
 import { apiDelete, apiPost, apiPut, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
+import { CopyField } from '@/components/copy-field';
 import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { Card, KeyValue, Notice, StatusBadge } from '@/components/ui/primitives';
+
+/** Where an account's authorized_keys is, for the command shown to the operator. */
+const authorizedKeysOf = (username: string) =>
+  username === 'root' ? '/root/.ssh/authorized_keys' : `/home/${username}/.ssh/authorized_keys`;
 
 /**
  * SSH on a cluster, set up the way the cluster itself was added.
  *
  * Read each node's host key without logging in; compare it with the node;
  * confirm it; only then hand over a key, which is proven against every
- * confirmed node before it is kept. SFTP only — the text says so, because an
- * operator deciding which account to give Velnox should know it will never be
- * used to run a command.
+ * confirmed node before it is kept.
+ *
+ * The key is made here by default — an Ed25519 pair from the browser's
+ * WebCrypto — and its public half is shown with the command that puts it on
+ * the nodes, because "paste a private key whose public half is in
+ * authorized_keys" left the operator to find out where the public half comes
+ * from. The public half stays visible on this card afterwards. What SSH is for
+ * is said plainly: since Phase 6 it runs the fixed commands of updates and
+ * upgrades, as root, not only SFTP.
  */
 export function ClusterSsh({
   clusterId,
@@ -39,12 +56,23 @@ export function ClusterSsh({
   const [port, setPort] = useState(String(ssh?.port ?? 22));
   const [probe, setProbe] = useState<ClusterSshProbe | null>(null);
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
-  const [username, setUsername] = useState(ssh?.username ?? 'velnox');
+  const [username, setUsername] = useState(ssh?.username ?? 'root');
+  const [keySource, setKeySource] = useState<'generate' | 'existing'>('generate');
+  const [canGenerate, setCanGenerate] = useState<boolean | null>(null);
+  const [generated, setGenerated] = useState<OpenSshKeyPair | null>(null);
   const [privateKey, setPrivateKey] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [pending, setPending] = useState<string | null>(null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+
+  useEffect(() => {
+    if (!open || canGenerate !== null) return;
+    void canGenerateEd25519().then((able) => {
+      setCanGenerate(able);
+      if (!able) setKeySource('existing');
+    });
+  }, [open, canGenerate]);
 
   const editing = (value: boolean) => {
     setOpen(value);
@@ -52,10 +80,23 @@ export function ClusterSsh({
     if (!value) {
       setProbe(null);
       setConfirmed(new Set());
+      setGenerated(null);
       setPrivateKey('');
       setPassphrase('');
     }
   };
+
+  async function generate() {
+    setPending('generate');
+    setFailure(null);
+    try {
+      setGenerated(await generateOpenSshEd25519('velnox'));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  const keyToSend = keySource === 'generate' ? (generated?.privateKey ?? '') : privateKey;
 
   async function readKeys() {
     setPending('probe');
@@ -79,12 +120,14 @@ export function ClusterSsh({
     const result = await apiPut(`/clusters/${clusterId}/ssh`, {
       username: username.trim(),
       port: Number(port),
-      privateKey,
-      passphrase: passphrase || null,
+      privateKey: keyToSend,
+      passphrase: keySource === 'existing' ? passphrase || null : null,
       hostKeys,
     });
     setPending(null);
-    // The key is dropped from memory whatever happened; a retry pastes it again.
+    // A pasted key is dropped from memory whatever happened; a retry pastes it
+    // again. A generated one is kept until the form closes: its public half may
+    // already be on the nodes, and a refusal usually means it is not on one yet.
     setPrivateKey('');
     setPassphrase('');
     if (!result.ok) return setFailure(result.error);
@@ -120,6 +163,19 @@ export function ClusterSsh({
                 <StatusBadge tone="warn">{t('clusters.ssh.notVerified')}</StatusBadge>
               )}
             </KeyValue>
+            <div className="py-2">
+              {ssh.publicKey ? (
+                <CopyField
+                  label={t('clusters.ssh.publicKey')}
+                  value={ssh.publicKey}
+                  hint={t('clusters.ssh.publicKeyHint', {
+                    path: authorizedKeysOf(ssh.username ?? 'root'),
+                  })}
+                />
+              ) : (
+                <p className="text-xs text-ink-muted">{t('clusters.ssh.publicKeyUnknown')}</p>
+              )}
+            </div>
             {ssh.nodes.map((node) => (
               <KeyValue key={node.node} label={node.node}>
                 {node.fingerprint ? (
@@ -163,7 +219,8 @@ export function ClusterSsh({
 
         {open && (
           <div className="space-y-3 rounded border border-line p-3">
-            <p className="text-xs text-ink-muted">{t('clusters.ssh.sftpOnly')}</p>
+            <p className="text-xs text-ink-muted">{t('clusters.ssh.whatFor')}</p>
+            <p className="text-sm font-medium text-ink">{t('clusters.ssh.stepHostKeys')}</p>
             <div className="flex items-end gap-2">
               <Field label={t('clusters.ssh.port')}>
                 {(props) => (
@@ -227,6 +284,7 @@ export function ClusterSsh({
                   ))}
                 </ul>
 
+                <p className="pt-2 text-sm font-medium text-ink">{t('clusters.ssh.stepAccount')}</p>
                 <Field label={t('clusters.ssh.username')} hint={t('clusters.ssh.usernameHint')}>
                   {(props) => (
                     <TextInput
@@ -237,36 +295,94 @@ export function ClusterSsh({
                     />
                   )}
                 </Field>
-                <Field label={t('clusters.ssh.privateKey')} hint={t('clusters.ssh.privateKeyHint')}>
-                  {(props) => (
-                    <textarea
-                      {...props}
-                      value={privateKey}
-                      onChange={(event) => setPrivateKey(event.target.value)}
-                      rows={6}
-                      spellCheck={false}
-                      autoComplete="off"
-                      className="block w-full rounded border border-line bg-surface-2 px-2.5 py-2 font-mono text-xs text-ink focus:border-accent focus:outline-none"
+                <p className="pt-2 text-sm font-medium text-ink">{t('clusters.ssh.stepKey')}</p>
+                <div className="space-y-1 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="ssh-key-source"
+                      checked={keySource === 'generate'}
+                      disabled={canGenerate === false}
+                      onChange={() => setKeySource('generate')}
                     />
-                  )}
-                </Field>
-                <Field label={t('clusters.ssh.passphrase')}>
-                  {(props) => (
-                    <TextInput
-                      {...props}
-                      type="password"
-                      value={passphrase}
-                      onChange={(event) => setPassphrase(event.target.value)}
-                      autoComplete="off"
+                    {t('clusters.ssh.keyGenerate')}
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="ssh-key-source"
+                      checked={keySource === 'existing'}
+                      onChange={() => setKeySource('existing')}
                     />
+                    {t('clusters.ssh.keyExisting')}
+                  </label>
+                  {canGenerate === false && (
+                    <p className="text-xs text-ink-muted">
+                      {t('clusters.ssh.keyGenerateUnsupported')}
+                    </p>
                   )}
-                </Field>
+                </div>
+
+                {keySource === 'generate' &&
+                  (generated ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-ink-muted">{t('clusters.ssh.generated')}</p>
+                      <CopyField label={t('clusters.ssh.publicKey')} value={generated.publicKey} />
+                      <Notice tone="warn" title={t('clusters.ssh.addKeyTitle')}>
+                        <p>{t('clusters.ssh.addKeyBody')}</p>
+                      </Notice>
+                      <CopyField
+                        label={t('clusters.ssh.addKeyCommand')}
+                        value={`echo '${generated.publicKey}' >> ${authorizedKeysOf(username.trim() || 'root')}`}
+                      />
+                    </div>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      pending={pending === 'generate'}
+                      onClick={() => void generate()}
+                    >
+                      {t('clusters.ssh.generate')}
+                    </Button>
+                  ))}
+
+                {keySource === 'existing' && (
+                  <>
+                    <Field
+                      label={t('clusters.ssh.privateKey')}
+                      hint={t('clusters.ssh.privateKeyHint')}
+                    >
+                      {(props) => (
+                        <textarea
+                          {...props}
+                          value={privateKey}
+                          onChange={(event) => setPrivateKey(event.target.value)}
+                          rows={6}
+                          spellCheck={false}
+                          autoComplete="off"
+                          className="block w-full rounded border border-line bg-surface-2 px-2.5 py-2 font-mono text-xs text-ink focus:border-accent focus:outline-none"
+                        />
+                      )}
+                    </Field>
+                    <Field label={t('clusters.ssh.passphrase')}>
+                      {(props) => (
+                        <TextInput
+                          {...props}
+                          type="password"
+                          value={passphrase}
+                          onChange={(event) => setPassphrase(event.target.value)}
+                          autoComplete="off"
+                        />
+                      )}
+                    </Field>
+                  </>
+                )}
                 <div className="flex gap-2">
                   <Button
                     pending={pending === 'save'}
                     disabled={
                       confirmed.size === 0 ||
-                      privateKey.trim().length === 0 ||
+                      keyToSend.trim().length === 0 ||
                       username.trim().length === 0
                     }
                     onClick={() => void save()}

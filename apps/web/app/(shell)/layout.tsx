@@ -2,7 +2,13 @@ import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActivityBar } from '@/components/activity-bar';
 import { MotionBackground } from '@/components/motion-background';
-import { motionBackground } from '@/lib/preferences';
+import {
+  REFRESH_CHOICES,
+  installationTimeZone,
+  motionBackground,
+  refreshSeconds,
+  viewerTimeZone,
+} from '@/lib/preferences';
 import { UploadsProvider } from '@/components/library/uploads-provider';
 import { SessionKeepAlive } from '@/components/session-keepalive';
 import { SessionRecovery } from '@/components/session-recovery';
@@ -49,7 +55,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   // finish is the only useful thing to do.
   if (!session.mfaSatisfied) redirect('/mfa');
 
-  const [locale, t, info, tenants, selected] = await Promise.all([
+  const [locale, t, info, tenants, selected, refresh, zone] = await Promise.all([
     getLocale(),
     getTranslations(),
     tryGetSystemInfo(),
@@ -63,6 +69,9 @@ export default async function ShellLayout({ children }: { children: React.ReactN
      */
     listTenants(),
     selectedTenantId(),
+    // The account menu's Settings window: this viewer's own preferences.
+    refreshSeconds(),
+    viewerTimeZone(),
   ]);
 
   const selectableTenants = tenants.ok ? tenants.data.tenants : [];
@@ -103,6 +112,14 @@ export default async function ShellLayout({ children }: { children: React.ReactN
             user={session.user}
             tenants={selectableTenants}
             selectedTenantId={resolveSelection(selected, selectableTenants)}
+            preferences={{
+              locale,
+              refreshSeconds: refresh,
+              refreshChoices: REFRESH_CHOICES,
+              motionBackground: moving,
+              timeZone: zone,
+              installationTimeZone: installationTimeZone(),
+            }}
           />
 
           <main id="main" className="min-h-0 flex-1 overflow-y-auto">

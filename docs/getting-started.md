@@ -139,8 +139,12 @@ Working today:
 | **Audit log** | Every authentication and authorisation event, newest first |
 | **Security** | Two-factor authentication for your own account and, for administrators, single sign-on — the Microsoft Entra ID wizard |
 | **Server management** | The installation itself: service status, audit log, certificate, upgrade procedure, and About this server |
-| **Settings** | Language, how often screens refresh, your time zone, the moving background, and the source offer — per browser, open to everyone |
 | **Documentation** | This documentation, offline, stamped with the running version |
+
+**Your own preferences** — language, how often screens refresh, your time zone, the moving
+background (experimental) — are under **your name at the top right → Settings**, a window over
+whatever you were doing. They are kept per browser and change nothing for anyone else. The source
+offer the AGPL requires is behind **Source code** at the foot of every screen, open to everyone.
 
 **Server management** opens as a window over whatever you were doing, from the bottom of the
 sidebar, and closes back onto it. It groups everything about the Velnox server itself, as opposed to
@@ -165,7 +169,7 @@ the API returns error *codes* rather than sentences, so a message is rendered in
 language rather than the server's. [Localization architecture](i18n.md) explains how that is
 enforced.
 
-**Your own time zone.** Under **Settings → Time zone**, every date and time on the screens —
+**Your own time zone.** Under **your name → Settings → Time zone**, every date and time on the screens —
 *Last read*, job times, the audit log — is shown in the zone you choose: the installation's, your
 browser's, or any other. Like the language, it is kept in this browser and changes nothing for
 anyone else.
@@ -214,7 +218,7 @@ lives on GitHub. So it ships inside the build, under **Documentation**.
 Every page states the version it was built from. That string comes from the same place the running
 software reports its version, produced by the same build, so the documentation and the software
 cannot be a release apart. If a page ever shows a version differing from the one on
-**Settings**, the page says so rather than letting you read instructions for another release.
+**About** (behind *Source code* at the foot of every screen), the page says so rather than letting you read instructions for another release.
 
 ---
 

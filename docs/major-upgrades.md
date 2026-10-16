@@ -165,7 +165,8 @@ At the end every node runs Proxmox VE 9, and Proxmox turns HA groups into HA rul
 report shows each node's version and kernel before and after.
 
 **SSH and sudo.** pve8to9 and the fixes need root; root over SSH is simplest. Every command Velnox
-runs is fixed in Velnox and shown in the job's output and in the approval.
+runs is fixed in Velnox and shown in the job's output and in the approval. Setting SSH up, and where
+its public key goes: [SSH](managing-infrastructure.md#ssh-what-it-is-for-and-setting-it-up).
 
 ---
 

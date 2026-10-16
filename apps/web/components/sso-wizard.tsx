@@ -143,7 +143,10 @@ export function SsoWizard({
 
         {step === 'register' && (
           <div className="space-y-4">
-            <CopyField label={t('sso.wizard.register.nameLabel')} value={provider.suggestedAppName} />
+            <CopyField
+              label={t('sso.wizard.register.nameLabel')}
+              value={provider.suggestedAppName}
+            />
             <CopyField
               label={t('sso.wizard.register.redirectLabel')}
               value={provider.redirectUri}
@@ -155,7 +158,10 @@ export function SsoWizard({
 
         {step === 'identifiers' && (
           <div className="space-y-4">
-            <Field label={t('sso.wizard.identifiers.tenantLabel')} hint={t('sso.wizard.identifiers.tenantHint')}>
+            <Field
+              label={t('sso.wizard.identifiers.tenantLabel')}
+              hint={t('sso.wizard.identifiers.tenantHint')}
+            >
               {(props) => (
                 <TextInput
                   {...props}
@@ -168,7 +174,10 @@ export function SsoWizard({
               )}
             </Field>
 
-            <Field label={t('sso.wizard.identifiers.clientLabel')} hint={t('sso.wizard.identifiers.clientHint')}>
+            <Field
+              label={t('sso.wizard.identifiers.clientLabel')}
+              hint={t('sso.wizard.identifiers.clientHint')}
+            >
               {(props) => (
                 <TextInput
                   {...props}
@@ -246,7 +255,9 @@ export function SsoWizard({
               </div>
               <div className="flex justify-between gap-4 py-0.5">
                 <dt className="text-ink-muted">{t('sso.allowedDomains')}</dt>
-                <dd className="truncate text-ink">{domains.trim() || t('sso.wizard.test.anyDomain')}</dd>
+                <dd className="truncate text-ink">
+                  {domains.trim() || t('sso.wizard.test.anyDomain')}
+                </dd>
               </div>
             </dl>
 
@@ -269,13 +280,11 @@ export function SsoWizard({
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-line pt-4">
-        {index > 0 ? (
+        {/* No Cancel on the first step, as the owner asked: it only lists what
+            is needed, so there is nothing to cancel yet. */}
+        {index > 0 && (
           <Button type="button" variant="secondary" onClick={back} disabled={pending}>
             {t('sso.wizard.back')}
-          </Button>
-        ) : (
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            {t('common.cancel')}
           </Button>
         )}
 

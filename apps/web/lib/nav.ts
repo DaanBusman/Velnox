@@ -116,7 +116,7 @@ export const NAVIGATION: NavGroup[] = [
         requiresPermission: 'placement.read',
       },
       { key: 'migrations', href: '/migrations', phase: 11 },
-      { key: 'automation', href: '/automation', phase: 8 },
+      { key: 'automation', href: '/automation', phase: 13 },
       {
         key: 'autoconfig',
         href: '/autoconfig',
@@ -125,7 +125,7 @@ export const NAVIGATION: NavGroup[] = [
       },
       { key: 'jobs', href: '/jobs', phase: null, requiresPermission: 'jobs.read' },
       { key: 'alerts', href: '/alerts', phase: null, requiresPermission: 'alerts.read' },
-      { key: 'reports', href: '/reports', phase: 8 },
+      { key: 'reports', href: '/reports', phase: 13 },
     ],
   },
   {
@@ -141,12 +141,10 @@ export const NAVIGATION: NavGroup[] = [
         supersededBy: 'system.manage',
       },
       { key: 'security', href: '/settings/security', phase: null },
-      // Open to everyone, for two reasons. It holds per-viewer preferences,
-      // which every account has; and it carries the source offer, which AGPL
-      // section 13 requires to be reachable by anyone interacting with the
-      // software — Server management, where the fuller version lives, is
-      // administrators only.
-      { key: 'settings', href: '/settings', phase: null },
+      // Personal preferences moved to the account menu (Settings, a window over
+      // the page), as the owner asked. /settings stays, for everyone: it carries
+      // the source offer AGPL section 13 requires to be reachable by anyone,
+      // linked from the footer of every screen.
     ],
   },
   {

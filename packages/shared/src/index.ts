@@ -21,6 +21,7 @@ export * from './pve8to9';
 export * from './pve-major';
 export * from './rrule';
 export * from './slug';
+export * from './ssh-key';
 export * from './system';
 export * from './updates';
 
@@ -67,6 +68,11 @@ export const JOB_NAMES = {
   inventorySshProbe: 'inventory.ssh_probe',
   /** Prove the stored SSH key works against the pinned host keys. */
   inventorySshVerify: 'inventory.ssh_verify',
+  /**
+   * Read the public half of a stored SSH key, for a key stored before Velnox
+   * kept it — so the interface can show what goes into authorized_keys.
+   */
+  inventorySshPublicKey: 'inventory.ssh_public_key',
   /**
    * Send one test mail with the stored settings. The worker sends, because the
    * worker is what may read the mail server's password.

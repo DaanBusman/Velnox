@@ -38,9 +38,9 @@ Proxmox.
 
 De API van Proxmox kan de pakketlijsten verversen en een node herstarten, maar geen pakketten
 installeren. Updates toepassen vereist daarom **SSH op het cluster**, ingesteld onder het tabblad
-**Verbinding** van het cluster zoals voor
-[een bestand naar de bibliotheek kopiëren](managing-the-library.md), met de hostsleutel van elke node
-bevestigd. Een node zonder bevestigde sleutel toont *Vereist SSH*.
+**Verbinding** van het cluster — stap voor stap, met waar de publieke sleutel heen moet, in
+[SSH: waarvoor het is, en het instellen](managing-infrastructure.md#ssh-waarvoor-het-is-en-het-instellen) —
+met de hostsleutel van elke node bevestigd. Een node zonder bevestigde sleutel toont *Vereist SSH*.
 
 **Wat Velnox uitvoert.** Alleen opdrachten uit een vaste lijst in Velnox zelf — nooit een die iemand
 typte of die via de API binnenkwam. Voor updates drie:

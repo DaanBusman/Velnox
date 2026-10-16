@@ -26,11 +26,13 @@ import { assertAllowedAt, type Actor } from '../../common/actor';
 
 const PROBE_TIMEOUT_MS = 30_000;
 const VERIFY_TIMEOUT_MS = 45_000;
+const PUBLIC_KEY_TIMEOUT_MS = 15_000;
 
 export type ProbeResult = ClusterSshProbe;
 
 export interface VerifyResult {
   nodes: { node: string; ok: boolean; error: string | null; code: string | null }[];
+  publicKey: string | null;
 }
 
 @Injectable()
@@ -53,6 +55,7 @@ export class ClusterSshService {
         sshUsername: true,
         sshPort: true,
         sshVerifiedAt: true,
+        sshPublicKey: true,
         nodes: {
           select: {
             id: true,
@@ -76,6 +79,9 @@ export class ClusterSshService {
       username: cluster.sshUsername,
       port: cluster.sshPort,
       verifiedAt: cluster.sshVerifiedAt?.toISOString() ?? null,
+      publicKey: cluster.sshCredentialId
+        ? (cluster.sshPublicKey ?? (await this.readPublicKey(cluster.id)))
+        : null,
       nodes: cluster.nodes.map((node) => ({
         node: node.name,
         address: node.address,
@@ -83,6 +89,30 @@ export class ClusterSshService {
         keyType: node.sshHostKeyType,
       })),
     };
+  }
+
+  /**
+   * A key stored before Velnox kept its public half: the worker reads it once
+   * from the private key, and it is kept from then on. Not knowing it is not
+   * an error — the status shows none.
+   */
+  private async readPublicKey(clusterId: string): Promise<string | null> {
+    try {
+      const { publicKey } = await this.queue.runAndWait<{ publicKey: string | null }>(
+        JOB_NAMES.inventorySshPublicKey,
+        { clusterId },
+        PUBLIC_KEY_TIMEOUT_MS,
+      );
+      if (publicKey) {
+        await this.prisma.client.cluster.update({
+          where: { id: clusterId },
+          data: { sshPublicKey: publicKey },
+        });
+      }
+      return publicKey;
+    } catch {
+      return null;
+    }
   }
 
   async probe(id: string, port: number, actor: Actor): Promise<ProbeResult> {
@@ -252,7 +282,7 @@ export class ClusterSshService {
 
     await this.prisma.client.cluster.update({
       where: { id: cluster.id },
-      data: { sshVerifiedAt: new Date() },
+      data: { sshVerifiedAt: new Date(), sshPublicKey: verified.publicKey },
     });
     if (previous.credentialId && previous.credentialId !== credentialId) {
       await this.secrets.deleteCredential(previous.credentialId).catch(() => undefined);
@@ -287,7 +317,12 @@ export class ClusterSshService {
     await this.prisma.client.$transaction([
       this.prisma.client.cluster.update({
         where: { id: cluster.id },
-        data: { sshCredentialId: null, sshUsername: null, sshVerifiedAt: null },
+        data: {
+          sshCredentialId: null,
+          sshUsername: null,
+          sshVerifiedAt: null,
+          sshPublicKey: null,
+        },
       }),
       this.prisma.client.node.updateMany({
         where: { clusterId: cluster.id },

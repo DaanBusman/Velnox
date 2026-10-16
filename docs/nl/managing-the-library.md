@@ -149,8 +149,8 @@ weg, en kopieën die al op clusters staan blijven waar ze zijn.
 
 De API van Proxmox kan een bestand op een opslag zetten en er een verwijderen, maar kan er geen
 teruggeven. Daarom vraagt **Naar bibliotheek kopiëren** op het tabblad **ISO's en images** om **SSH**
-op dat cluster, eenmalig ingesteld onder het tabblad **Verbinding** van het cluster. Al het andere in
-Velnox werkt zonder.
+op dat cluster, eenmalig ingesteld onder het tabblad **Verbinding** van het cluster. Updates en
+upgrades gebruiken dezelfde instelling.
 
 ### Wat Velnox via SSH doet
 
@@ -175,28 +175,8 @@ heeft een account dat beide doet.
 
 ### Instellen
 
-1. **Host keys lezen.** Velnox maakt verbinding met elke online node en legt de sleutel vast die hij
-   toont, **zonder in te loggen**: er wordt geen account en geen sleutel aangeboden aan een node die
-   niemand heeft bevestigd.
-2. **Vergelijk** elke vingerafdruk met de node zelf voordat je hem bevestigt:
-
-   ```bash
-   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
-   ```
-
-3. Vul de **Gebruikersnaam** in en de **Private key** waarvan de publieke helft in de
-   `authorized_keys` van dat account staat, en een wachtwoordzin als de sleutel er een heeft.
-4. **Opslaan en de bevestigde nodes vertrouwen.** Velnox slaat de sleutel versleuteld op en bewijst dat
-   hij SFTP opent op elke bevestigde node. Weigert een node, dan wordt er niets opgeslagen en blijft de
-   vorige instelling, als die er was, zoals hij was.
-
-De private key wordt nooit meer getoond, door geen enkel scherm en geen enkele API-aanroep.
-**Sleutel vervangen** doorloopt dezelfde stappen met een nieuwe; **SSH verwijderen** verwijdert de
-sleutel en de vastgepinde host keys.
-
-**Een node waarvan de host key verandert, wordt geweigerd**, net zoals een veranderd TLS-certificaat.
-Stel na het herinstalleren van een node SSH opnieuw in en bevestig zijn nieuwe sleutel bewust. Met een
-node die later aan het cluster wordt toegevoegd, wordt geen verbinding gemaakt tot je hetzelfde doet.
+Stap voor stap — de hostsleutels, het account, een sleutelpaar dat je browser maakt en waar de
+publieke sleutel heen moet — in [SSH: waarvoor het is, en het instellen](managing-infrastructure.md#ssh-waarvoor-het-is-en-het-instellen).
 
 ### De kopie
 

@@ -41,6 +41,7 @@ import { buildBlockList, ownNetworks } from './library/address-guard';
 import { createLibraryServices } from './library/services';
 import {
   processSshProbe,
+  processSshPublicKey,
   processSshVerify,
   type SshProbeData,
   type SshVerifyData,
@@ -209,6 +210,8 @@ async function bootstrap(): Promise<void> {
           return processSshProbe(job as Job<SshProbeData>, inventoryContext);
         case JOB_NAMES.inventorySshVerify:
           return processSshVerify(job as Job<SshVerifyData>, inventoryContext);
+        case JOB_NAMES.inventorySshPublicKey:
+          return processSshPublicKey(job as Job<SshVerifyData>, inventoryContext);
         // On this queue because the API waits for it the way it waits for a
         // probe; it talks to a mail server, not a hypervisor.
         case JOB_NAMES.mailTest:

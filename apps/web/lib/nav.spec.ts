@@ -8,7 +8,9 @@ describe('activeNavHref', () => {
     // A prefix match alone lit Settings as well as each of these.
     expect(activeNavHref(items, '/settings/security')).toBe('/settings/security');
     expect(activeNavHref(items, '/settings/mail')).toBe('/settings/mail');
-    expect(activeNavHref(items, '/settings')).toBe('/settings');
+    // /settings left the sidebar with the preferences (now in the account
+    // menu); reached from the footer, it lights nothing.
+    expect(activeNavHref(items, '/settings')).toBeNull();
   });
 
   it('keeps an entry lit on the pages that belong to it', () => {

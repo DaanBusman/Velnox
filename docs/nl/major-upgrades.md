@@ -181,6 +181,7 @@ rapport toont van elke node de versie en de kernel voor en na.
 
 **SSH en sudo.** pve8to9 en de herstelacties vragen root; root over SSH is het eenvoudigst. Elke
 opdracht die Velnox draait ligt vast in Velnox en staat in de uitvoer van de job en in de goedkeuring.
+SSH instellen, en waar de publieke sleutel heen moet: [SSH](managing-infrastructure.md#ssh-waarvoor-het-is-en-het-instellen).
 
 ---
 

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { SessionUser } from '@/lib/session-types';
 import { SignOutLink } from '@/components/sign-out-link';
+import { PreferencesDialog, type ViewerPreferences } from '@/components/preferences-dialog';
 
 /**
  * The account menu.
@@ -15,9 +16,16 @@ import { SignOutLink } from '@/components/sign-out-link';
  * usually brought in for and the part hand-rolled menus usually miss — without
  * it, closing the menu drops keyboard focus to the top of the document.
  */
-export function UserMenu({ user }: { user: SessionUser }) {
+export function UserMenu({
+  user,
+  preferences,
+}: {
+  user: SessionUser;
+  preferences: ViewerPreferences;
+}) {
   const t = useTranslations();
   const [open, setOpen] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -90,6 +98,18 @@ export function UserMenu({ user }: { user: SessionUser }) {
             </p>
           </div>
 
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setPreferencesOpen(true);
+            }}
+            className="block w-full rounded px-3 py-2 text-left text-xs text-ink hover:bg-surface-2"
+          >
+            {t('settings.title')}
+          </button>
+
           <Link
             role="menuitem"
             href="/settings/security"
@@ -104,6 +124,15 @@ export function UserMenu({ user }: { user: SessionUser }) {
           </div>
         </div>
       )}
+
+      <PreferencesDialog
+        open={preferencesOpen}
+        onClose={() => {
+          setPreferencesOpen(false);
+          buttonRef.current?.focus();
+        }}
+        preferences={preferences}
+      />
     </div>
   );
 }

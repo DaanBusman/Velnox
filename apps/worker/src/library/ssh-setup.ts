@@ -1,4 +1,5 @@
 import type { Job } from 'bullmq';
+import { utils } from 'ssh2';
 import { withSystemScope, type VelnoxPrismaClient } from '@velnox/db';
 import { rootRedactor } from '@velnox/shared';
 import type { CredentialReader } from '../inventory/credentials';
@@ -38,6 +39,24 @@ export interface SshVerifyData {
 
 export interface SshVerifyResult {
   nodes: { node: string; ok: boolean; error: string | null; code: string | null }[];
+  /** The key's public half, for the operator to see again; null if it could not be read. */
+  publicKey: string | null;
+}
+
+export interface SshPublicKeyResult {
+  publicKey: string | null;
+}
+
+/**
+ * The authorized_keys line for a private key: what the operator puts on the
+ * nodes. Without a comment — the key's own comment, if it has one, is the
+ * operator's, and need not be what they named it.
+ */
+export function publicKeyLine(privateKey: string, passphrase?: string): string | null {
+  const parsed = utils.parseKey(privateKey, passphrase);
+  const key = Array.isArray(parsed) ? parsed[0] : parsed;
+  if (!key || key instanceof Error) return null;
+  return `${key.type} ${key.getPublicSSH().toString('base64')}`;
 }
 
 interface SetupContext {
@@ -107,6 +126,7 @@ export function processSshVerify(
     const cluster = await nodesOf(context.prisma, job.data.clusterId);
     if (!cluster.sshCredentialId || !cluster.sshUsername) throw new Error('SSH is not configured');
     const key = await context.credentials.sshKey(cluster.sshCredentialId);
+    const publicKey = publicKeyLine(key.privateKey, key.passphrase);
 
     const pinned = cluster.nodes.filter((node) => node.sshHostKeyFingerprint);
     const nodes = await Promise.all(
@@ -145,6 +165,19 @@ export function processSshVerify(
         }
       }),
     );
-    return { nodes };
+    return { nodes, publicKey };
+  });
+}
+
+/** The public half of a cluster's stored key, read once for a key stored before it was kept. */
+export function processSshPublicKey(
+  job: Job<SshVerifyData>,
+  context: SetupContext,
+): Promise<SshPublicKeyResult> {
+  return withSystemScope('reading a public key belongs to no request', async () => {
+    const cluster = await nodesOf(context.prisma, job.data.clusterId);
+    if (!cluster.sshCredentialId) return { publicKey: null };
+    const key = await context.credentials.sshKey(cluster.sshCredentialId);
+    return { publicKey: publicKeyLine(key.privateKey, key.passphrase) };
   });
 }

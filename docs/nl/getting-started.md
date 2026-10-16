@@ -144,8 +144,12 @@ Werkt vandaag:
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
 | **Beveiliging** | Meervoudige authenticatie voor je eigen account en, voor beheerders, single sign-on — de wizard voor Microsoft Entra ID |
 | **Serverbeheer** | De installatie zelf: servicestatus, auditlog, certificaat, upgradeprocedure, en Over deze server |
-| **Instellingen** | Taal, hoe vaak schermen verversen, je tijdzone, de dynamische achtergrond, en het bronaanbod — per browser, voor iedereen toegankelijk |
 | **Documentatie** | Deze documentatie, offline, gestempeld met de draaiende versie |
+
+**Je eigen voorkeuren** — taal, hoe vaak schermen verversen, je tijdzone, de dynamische achtergrond
+(experimenteel) — staan onder **je naam rechtsboven → Instellingen**, een venster boven waar je mee
+bezig was. Ze worden per browser bewaard en veranderen niets voor anderen. Het bronaanbod dat de AGPL
+vereist staat achter **Broncode** onderaan elk scherm, voor iedereen toegankelijk.
 
 **Serverbeheer** opent als een venster over waar je mee bezig was, vanaf de onderkant van de
 zijbalk, en sluit daar weer op terug. Het groepeert alles over de Velnox-server zelf, tegenover de
@@ -169,7 +173,7 @@ Nederlandse pagina opduiken — en de API geeft foutcodes terug in plaats van zi
 melding in de taal van de lezer wordt weergegeven en niet in die van de server.
 [Lokalisatiearchitectuur](i18n.md) legt uit hoe dat wordt afgedwongen.
 
-**Je eigen tijdzone.** Onder **Instellingen → Tijdzone** wordt elke datum en tijd op de schermen —
+**Je eigen tijdzone.** Onder **je naam → Instellingen → Tijdzone** wordt elke datum en tijd op de schermen —
 *Laatst uitgelezen*, tijden van jobs, het auditlog — getoond in de zone die je kiest: die van de
 installatie, die van je browser, of een andere. Net als de taal wordt die in deze browser bewaard en
 verandert die voor niemand anders iets.
@@ -219,7 +223,7 @@ moment om te ontdekken dat ze op GitHub staat. Daarom zit ze in de build, onder 
 Elke pagina vermeldt de versie waaruit ze is gebouwd. Die tekst komt uit dezelfde bron als de versie
 die de draaiende software rapporteert, voortgebracht door dezelfde build, dus de documentatie en de
 software kunnen geen release uit elkaar lopen. Toont een pagina ooit een andere versie dan
-**Instellingen**, dan zegt de pagina dat, in plaats van je instructies voor een andere release te
+**Over** (achter *Broncode* onderaan elk scherm), dan zegt de pagina dat, in plaats van je instructies voor een andere release te
 laten lezen.
 
 ---
