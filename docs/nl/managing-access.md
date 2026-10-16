@@ -1,6 +1,6 @@
 # Gebruikers en toegang beheren
 
-> **Vertaling.** Bron: [docs/managing-access.md](../managing-access.md) @ `508ffab`.
+> **Vertaling.** Bron: [docs/managing-access.md](../managing-access.md) @ `03ad728`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Alles over wie zich kan aanmelden bij Velnox en wat diegene mag.** Elk hoofdstuk is één taak,
