@@ -55,11 +55,10 @@ each now reporting the same nodes. Merging them into one — keeping the SSH set
 update policy, maintenance windows, site and history of both — is planned next. Until then, remove
 one of the two and keep the other.
 
-### Roles are seeded, not editable
-The seven system roles are created at setup from the frozen catalogue in `packages/shared`, and the
-Roles & Permissions page shows exactly what each one grants. There is no interface for creating a
-custom role or changing which permissions a role holds — that arrives with multi-tenancy, where a
-tenant-defined role first has something to scope to.
+### Only the MSP makes roles
+Custom roles are made by the MSP and are installation-wide: a customer's Tenant Administrator can
+grant one inside its own tenant, but not make one. A custom role cannot be limited to one customer
+except by where it is granted. See ADR-054.
 
 ### There is no self-service password change
 An administrator sets an account's initial password and passes it on out of band, because Velnox

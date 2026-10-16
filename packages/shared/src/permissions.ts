@@ -483,3 +483,110 @@ export function withSubTenantGrants(
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Custom roles
+// ---------------------------------------------------------------------------
+
+/**
+ * Never in a custom role, as the owner decided: installation-wide system
+ * settings, and managing roles — a role that can make roles is a way round
+ * every limit below.
+ */
+export const NEVER_IN_CUSTOM_ROLE: readonly Permission[] = Object.freeze([
+  PERMISSIONS.systemManage,
+  PERMISSIONS.rolesManage,
+]);
+
+/**
+ * What a custom role given to a customer's account may hold: no more than the
+ * Tenant Administrator system role, which is the most a customer is ever
+ * trusted with — so never the MSP-wide library or tenant administration.
+ */
+export const CUSTOMER_ASSIGNABLE: readonly Permission[] = Object.freeze(
+  systemRole('tenant_administrator').permissions.filter((p) => !NEVER_IN_CUSTOM_ROLE.includes(p)),
+);
+
+/**
+ * The catalogue as areas, for a role editor: per resource, its read
+ * permission and the ones that change something. Derived from the names, so a
+ * permission added to the catalogue appears in the editor by being added.
+ */
+export interface PermissionArea {
+  /** The resource half of `resource.action`: `clusters`. */
+  key: string;
+  read: Permission | null;
+  changes: Permission[];
+}
+
+export function permissionAreas(): PermissionArea[] {
+  const areas = new Map<string, PermissionArea>();
+  for (const permission of ALL_PERMISSIONS) {
+    if (NEVER_IN_CUSTOM_ROLE.includes(permission)) continue;
+    const key = permission.split('.')[0]!;
+    const area = areas.get(key) ?? { key, read: null, changes: [] };
+    if (permission.endsWith('.read')) area.read = permission;
+    else area.changes.push(permission);
+    areas.set(key, area);
+  }
+  return [...areas.values()];
+}
+
+/** "Can change" includes seeing: every area with a change permission gets its read. */
+export function withReadsFor(permissions: readonly Permission[]): Permission[] {
+  const out = new Set(permissions);
+  for (const area of permissionAreas()) {
+    if (area.read && area.changes.some((p) => out.has(p))) out.add(area.read);
+  }
+  return ALL_PERMISSIONS.filter((p) => out.has(p));
+}
+
+export type CustomRoleProblem =
+  | { reason: 'unknown'; permission: string }
+  | { reason: 'never'; permission: Permission }
+  | { reason: 'not_held'; permission: Permission }
+  | { reason: 'not_for_customers'; permission: Permission };
+
+/**
+ * Why a custom role cannot hold these permissions — empty when it can.
+ *
+ * Pure, like `isAllowed`: this is what stops a role being a way to hand out
+ * more than its maker has. A permission must exist; must not be one no custom
+ * role holds; must be held by the maker at GLOBAL scope (custom roles are
+ * installation-wide, made by the MSP); and, for a role customers may be given,
+ * must be one the Tenant Administrator role holds.
+ */
+export function customRoleProblems(
+  input: { permissions: readonly string[]; mspOnly: boolean },
+  makerGrants: readonly Grant[],
+): CustomRoleProblem[] {
+  const problems: CustomRoleProblem[] = [];
+  for (const permission of input.permissions) {
+    if (!isPermission(permission)) {
+      problems.push({ reason: 'unknown', permission });
+    } else if (NEVER_IN_CUSTOM_ROLE.includes(permission)) {
+      problems.push({ reason: 'never', permission });
+    } else if (!isAllowed(makerGrants, permission, {})) {
+      problems.push({ reason: 'not_held', permission });
+    } else if (!input.mspOnly && !CUSTOMER_ASSIGNABLE.includes(permission)) {
+      problems.push({ reason: 'not_for_customers', permission });
+    }
+  }
+  return problems;
+}
+
+/**
+ * The permissions of a role the grantor does not hold at the scope it is being
+ * granted at — empty when the grant hands out nothing the grantor lacks.
+ *
+ * Granting a role used to need only `roles.manage` at that scope, which let an
+ * account holding it give out a role stronger than its own: an MSP
+ * Administrator could make anyone, itself included, MSP Super Administrator.
+ */
+export function permissionsBeyondGrantor(
+  rolePermissions: readonly Permission[],
+  grantorGrants: readonly Grant[],
+  target: TargetScope,
+): Permission[] {
+  return rolePermissions.filter((p) => !isAllowed(grantorGrants, p, target));
+}

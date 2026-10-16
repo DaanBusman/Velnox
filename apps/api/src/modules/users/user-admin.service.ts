@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { checkPasswordStrength, hashPassword } from '@velnox/crypto';
-import { ERROR_CODES, PERMISSIONS, VelnoxError, canResetMfa, type ScopeType } from '@velnox/shared';
+import {
+  ERROR_CODES,
+  PERMISSIONS,
+  VelnoxError,
+  canResetMfa,
+  isPermission,
+  permissionsBeyondGrantor,
+  type ScopeType,
+  type TargetScope,
+} from '@velnox/shared';
 import { withSystemScope } from '@velnox/db';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
@@ -184,7 +193,10 @@ export class UserAdminService {
         where: { id: userId },
         include: { tenant: { select: { kind: true } } },
       }),
-      this.prisma.client.role.findUnique({ where: { id: roleId } }),
+      this.prisma.client.role.findUnique({
+        where: { id: roleId },
+        include: { permissions: { select: { permission: true } } },
+      }),
     ]);
 
     if (!user || user.deletedAt || !role) {
@@ -193,8 +205,6 @@ export class UserAdminService {
 
     assertAllowedAt(actor, PERMISSIONS.rolesManage, { tenantId: user.tenantId });
 
-    // An MSP-only role outside the MSP root tenant is refused by a database
-    // trigger as well; failing here gives a usable error instead of a 500.
     if (role.mspOnly && !actor.isMspRoot) {
       throw new VelnoxError(ERROR_CODES.authzForbidden, {
         status: 403,
@@ -207,6 +217,37 @@ export class UserAdminService {
       { tenantId: user.tenantId, isMspRoot: user.tenant.kind === 'MSP_ROOT' },
       actor,
     );
+
+    /*
+     * An MSP-only role belongs to an account in the MSP organisation — the one
+     * receiving it. This used to check only the account granting it, so an MSP
+     * administrator could give a customer's account an MSP role at its tenant.
+     * A database trigger now refuses it as well (ADR-054); this gives the error.
+     */
+    if (role.mspOnly && user.tenant.kind !== 'MSP_ROOT') {
+      throw new VelnoxError(ERROR_CODES.roleMspOnly, {
+        status: 409,
+        params: { role: role.name },
+      });
+    }
+
+    /*
+     * Nothing beyond the grantor. Holding `roles.manage` at a scope used to be
+     * enough to grant any role there, so an MSP Administrator could make anyone,
+     * itself included, MSP Super Administrator. A role is granted only by
+     * someone who holds every permission in it at the scope it is granted at.
+     */
+    const beyond = permissionsBeyondGrantor(
+      role.permissions.map((p) => p.permission).filter(isPermission),
+      actor.grants,
+      scope.target,
+    );
+    if (beyond.length) {
+      throw new VelnoxError(ERROR_CODES.roleBeyondGrantor, {
+        status: 403,
+        params: { role: role.name, permissions: beyond.join(', ') },
+      });
+    }
 
     /*
      * Find, then create — not upsert.
@@ -286,7 +327,7 @@ export class UserAdminService {
     input: { scopeType: ScopeType; scopeId?: string | null },
     target: { tenantId: string; isMspRoot: boolean },
     actor: Actor,
-  ): Promise<{ scopeType: ScopeType; scopeId: string | null }> {
+  ): Promise<{ scopeType: ScopeType; scopeId: string | null; target: TargetScope }> {
     if (input.scopeType === 'GLOBAL') {
       if (!target.isMspRoot) {
         throw new VelnoxError(ERROR_CODES.authzForbidden, {
@@ -298,7 +339,7 @@ export class UserAdminService {
       }
 
       assertAllowedAt(actor, PERMISSIONS.rolesManage, {});
-      return { scopeType: 'GLOBAL', scopeId: null };
+      return { scopeType: 'GLOBAL', scopeId: null, target: {} };
     }
 
     const scopeId = input.scopeId ?? null;
@@ -318,7 +359,7 @@ export class UserAdminService {
 
       assertAllowedAt(actor, PERMISSIONS.rolesManage, { tenantId: scopeId });
       await this.assertScopeStaysInFamily(scopeId, target);
-      return { scopeType: 'TENANT', scopeId };
+      return { scopeType: 'TENANT', scopeId, target: { tenantId: scopeId } };
     }
 
     if (input.scopeType === 'SITE') {
@@ -333,7 +374,11 @@ export class UserAdminService {
         siteId: site.id,
       });
       await this.assertScopeStaysInFamily(site.tenantId, target);
-      return { scopeType: 'SITE', scopeId };
+      return {
+        scopeType: 'SITE',
+        scopeId,
+        target: { tenantId: site.tenantId, siteId: site.id },
+      };
     }
 
     /*

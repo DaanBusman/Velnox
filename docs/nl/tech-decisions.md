@@ -1747,6 +1747,36 @@ ontsleutelt voor het bekijken van een pagina.
 nog niet heeft — en haalt een oude publieke regel niet uit `authorized_keys` als de sleutel wordt
 vervangen.
 
+## ADR-054 — Eigen rollen, en niets toegekend buiten wat de toekenner heeft
+
+**Besluit:** De MSP maakt eigen rollen: per gebied van de catalogus *Geen*, *Kan alleen lezen* of *Kan
+wijzigen*, met elk wijzigrecht van een gebied apart. Het zijn installatiebrede rijen zoals de
+systeemrollen (`tenant_id` NULL, `is_system` false), zodat de sessie van een klant een rol kan zien die
+hij heeft. `customRoleProblems` bepaalt wat er in kan: nooit `system.manage` of `roles.manage`; niets
+wat de maker niet op globaal niveau heeft; en voor een rol die klanten kunnen krijgen, niets wat de rol
+Tenant Administrator mist. "Kan wijzigen" neemt het leesrecht van het gebied mee. Een wijziging hoogt
+de tokenversie op van iedereen die de rol heeft; een rol in gebruik kan niet worden verwijderd, en niet
+alleen-MSP worden terwijl een klant hem heeft.
+
+**Twee gaten die ermee dicht gingen.** Een rol toekennen controleerde alleen `roles.manage` op het
+niveau, dus een account met dat recht kon een rol uitdelen die sterker was dan zijn eigen — een MSP
+Administrator kon iedereen, ook zichzelf, MSP Super Administrator maken. Toekennen vereist nu elk recht
+van de rol op dat niveau (`permissionsBeyondGrantor`). En een alleen-MSP-rol werd alleen geweigerd als
+de *toekenner* buiten de MSP viel, nooit als het ontvangende account dat deed; het commentaar zei dat
+een databasetrigger het ook weigerde, en die bestond niet. De API controleert nu het ontvangende
+account, en een trigger weigert het. Bestaande toekenningen worden niet herschreven; een installatie kan
+ze opzoeken met
+`SELECT u.email, r.name FROM role_assignments ra JOIN roles r ON r.id = ra.role_id JOIN users u ON u.id = ra.user_id JOIN tenants t ON t.id = u.tenant_id WHERE r.msp_only AND t.kind <> 'MSP_ROOT';`
+
+**Waarom per gebied met drie niveaus.** Zo denkt een beheerder over een rol — "ziet clusters, draait
+updates" — en de namen `resource.action` van de catalogus maken het afleidbaar: een recht dat aan de
+catalogus wordt toegevoegd, verschijnt in de editor doordat het is toegevoegd. De niveaus alleen zouden
+onderscheid verliezen dat de catalogus met opzet maakt (updates draaien tegenover hun beleid
+instellen), dus *Kan wijzigen* opent de wijzigrechten van het gebied, elk aangevinkt.
+
+**Niet gebouwd:** klanten die hun eigen rollen maken; een rol die tot één klant beperkt is anders dan
+door waar hij wordt toegekend; systeemrollen bewerken.
+
 ---
 
 ## Versiedoelen

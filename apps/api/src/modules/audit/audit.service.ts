@@ -50,6 +50,10 @@ export const AUDIT_ACTIONS = {
   userUpdated: 'user.updated',
   roleAssigned: 'role.assigned',
   roleRevoked: 'role.revoked',
+  /** A custom role was made, changed or removed (ADR-054). */
+  roleCreated: 'role.created',
+  roleUpdated: 'role.updated',
+  roleDeleted: 'role.deleted',
 
   tenantCreated: 'tenant.created',
   tenantUpdated: 'tenant.updated',

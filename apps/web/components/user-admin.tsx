@@ -128,15 +128,13 @@ export function UserAdmin({
     });
   }, [users]);
 
-
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return users.filter((user) => {
       if (tenantFilter !== ALL_TENANTS && user.tenantId !== tenantFilter) return false;
       if (!needle) return true;
       return (
-        user.displayName.toLowerCase().includes(needle) ||
-        user.email.toLowerCase().includes(needle)
+        user.displayName.toLowerCase().includes(needle) || user.email.toLowerCase().includes(needle)
       );
     });
   }, [users, tenantFilter, search]);
@@ -582,8 +580,12 @@ function GrantForm({
     : sites.filter((site) => site.tenantId === user.tenantId);
 
   const scopeId = parseScope(scope).scopeId;
+  // An MSP-only role is never offered for a customer's account: the API and
+  // the database refuse it (ADR-054).
   const available = roles.filter(
-    (role) => !user.roles.some((held) => held.roleId === role.id && held.scopeId === scopeId),
+    (role) =>
+      (!role.mspOnly || user.tenantIsMspRoot) &&
+      !user.roles.some((held) => held.roleId === role.id && held.scopeId === scopeId),
   );
 
   return (

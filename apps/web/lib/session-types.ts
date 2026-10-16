@@ -121,6 +121,8 @@ export interface RoleSummary {
   name: string;
   description: string | null;
   mspOnly: boolean;
+  /** False for a custom role (ADR-054), which the MSP can change and remove. */
+  isSystem: boolean;
   permissions: string[];
   /** Stored against the role but not recognised by this build. */
   unknownPermissions: string[];

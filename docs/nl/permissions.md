@@ -232,16 +232,25 @@ kracht is, zodat het risico zichtbaar is voordat je besluit het te sluiten.
 
 ---
 
-## Wijzigen wat een rol toekent
+## Eigen rollen
 
-Niet in deze build. De zeven systeemrollen worden aangemaakt en zijn alleen-lezen; er is geen scherm
-om een rol aan te maken of te bewerken, en dat staat in [Bekende hiaten](known-gaps.md) in plaats van
-dat het wordt gesuggereerd door het bestaan van een pagina die ze opsomt.
+De zeven systeemrollen hierboven kunnen niet worden gewijzigd: die veranderen met een release.
+Daarnaast maakt de MSP **eigen rollen** — per gebied *Geen*, *Kan alleen lezen* of *Kan wijzigen* —
+zoals beschreven in [Je eigen rol maken](managing-access.md#je-eigen-rol-maken). Drie grenzen gelden,
+wie er ook een maakt, en de API dwingt ze af (ADR-054):
 
-Het scherm **Rollen & rechten** leest uit je database en niet uit de catalogus, zodat het correct
-blijft zodra bewerken er is. Toont het ooit een recht dat deze build niet kent, dan zegt het dat —
-dat betekent dat de database en de code het oneens zijn, en dat is het zien waard in plaats van het
-verbergen.
+- nooit `system.manage` of `roles.manage`;
+- nooit een recht dat de maker zelf niet op globaal niveau heeft;
+- voor een rol die accounts van klanten kunnen krijgen, niets meer dan wat **Tenant Administrator**
+  heeft.
+
+Een rol toekennen — systeem of eigen — vereist elk recht uit die rol op het niveau waarop hij wordt
+toegekend, en een rol die alleen voor de MSP is, wordt alleen ooit gehouden door een account in de
+MSP-organisatie.
+
+Het scherm **Rollen & rechten** leest uit je database en niet uit de catalogus. Toont het ooit een
+recht dat deze build niet kent, dan zegt het dat — dat betekent dat de database en de code het oneens
+zijn, en dat is het zien waard in plaats van het verbergen.
 
 ---
 

@@ -62,11 +62,10 @@ registraties, die nu allebei dezelfde nodes melden. Ze samenvoegen tot één —
 SSH-instelling, plaatsingsregels, updatebeleid, onderhoudsvensters, locatie en geschiedenis van beide
 — staat als volgende gepland. Verwijder tot dan een van de twee en houd de andere.
 
-### Rollen worden aangemaakt, niet bewerkt
-De zeven systeemrollen worden bij de installatie aangemaakt uit de bevroren catalogus in
-`packages/shared`, en het scherm Rollen en rechten toont precies wat elke rol verleent. Er is geen
-interface om een eigen rol te maken of te wijzigen welke rechten een rol heeft — dat komt met
-multi-tenancy, waar een tenant-eigen rol pas iets heeft om zich toe te verhouden.
+### Alleen de MSP maakt rollen
+Eigen rollen worden door de MSP gemaakt en gelden voor de hele installatie: de Tenant Administrator
+van een klant kan er een toekennen binnen de eigen tenant, maar er geen maken. Een eigen rol kan niet
+tot één klant worden beperkt, behalve door waar hij wordt toegekend. Zie ADR-054.
 
 ### Een wachtwoord zelf wijzigen kan niet
 Een beheerder stelt het eerste wachtwoord van een account in en geeft dat buitenom door, omdat

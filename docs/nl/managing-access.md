@@ -55,14 +55,17 @@ daarom staan de rollen van een account met hun bereik ernaast.
 Er gelden drie regels, alle drie aan de serverzijde afgedwongen:
 
 - **Je kunt niet toekennen wat je zelf niet hebt.** Een rol toekennen die een klant dekt vereist
-  `roles.manage` dat diezelfde klant dekt — zo kan delegeren toegang nooit verbreden.
+  `roles.manage` dat diezelfde klant dekt, **en elk recht uit de rol** daar — zo kan delegeren
+  toegang nooit verbreden. Een MSP Administrator kan niemand, ook zichzelf niet, MSP Super
+  Administrator maken.
 - **Het account van een klant blijft binnen de eigen tenant.** Alleen accounts in je eigen
   MSP-organisatie mogen een recht hebben dat naar de tenant van iemand anders wijst.
 - **"Alle tenants" vereist een thuis in de MSP-organisatie**, en de optie wordt anders niet
   aangeboden.
 
 Rollen met de aanduiding **alleen MSP** kunnen alleen worden toegekend aan accounts in je eigen
-organisatie, niet aan medewerkers van een klant. Velnox dwingt ook dat aan de serverzijde af, dus het
+organisatie, niet aan medewerkers van een klant, en worden voor het account van een klant niet
+aangeboden. Velnox controleert het account dat de rol krijgt, en de database weigert het ook, dus het
 geldt ongeacht wat de interface aanbiedt.
 
 [Je omgeving indelen](organising-your-fleet.md) bevat een uitgewerkt voorbeeld van een engineer die
@@ -80,6 +83,36 @@ gebruikersbeheer, het is *het volledige* identiteitsbeheer, en dat blijkt niet u
   week: **MSP Read Only**.
 - Houd **MSP Super Administrator** voor de accounts die installatiebrede instellingen echt nodig
   hebben. Het is de enige rol met `system.manage`.
+- Past geen van deze: [maak je eigen rol](#je-eigen-rol-maken).
+
+### Je eigen rol maken
+
+**Je hebt nodig:** een account in de MSP-organisatie, met `roles.manage` voor alle tenants — een MSP
+Administrator of de Super Administrator.
+
+1. Ga naar **Rollen & rechten**, **Eigen rollen**, **Nieuwe rol**. Die opent als venster boven de
+   pagina.
+2. Geef hem een **naam**, en een omschrijving als de naam niet genoeg zegt.
+3. Kies **wie hem kan krijgen**: alleen MSP-medewerkers, of MSP-medewerkers en accounts van klanten.
+4. Kies per gebied — clusters, updates, gebruikers, de ISO-bibliotheek enzovoort — **Geen**, **Kan
+   alleen lezen** of **Kan wijzigen**. *Kan wijzigen* vinkt elk wijzigrecht van dat gebied aan, en elk
+   daarvan kan uit: bij Updates zijn updates draaien en het beleid ervan instellen apart; bij Jobs zijn
+   annuleren en goedkeuren dat.
+5. **Rol opslaan**. Hij wordt toegekend zoals elke andere, onder **Gebruikers**.
+
+Wat een eigen rol nooit kan bevatten, wie hem ook maakt:
+
+- **Systeeminstellingen** (`system.manage`) en **rollen maken** (`roles.manage`) — een rol die rollen
+  kan maken, is een weg om elke grens hier heen.
+- **Meer dan de maker heeft.** Wat je zelf niet hebt, wordt getoond en kan niet worden gekozen; de API
+  weigert het ook.
+- **Voor klanten, meer dan de rol Tenant Administrator** — nooit de ISO-bibliotheek, die één schijf
+  is voor elke klant, en nooit tenantbeheer.
+
+**Een rol wijzigen** geldt voor iedereen die hem heeft: hun sessies eindigen, en ze melden zich
+opnieuw aan met de rol zoals hij nu is. Een rol die een klantaccount heeft, kan niet alleen voor de
+MSP worden. **Verwijderen** kan pas als niemand hem meer heeft. Maken, wijzigen en verwijderen staan in
+het auditlog. De zeven systeemrollen kunnen niet worden gewijzigd: die veranderen met een release.
 
 ---
 

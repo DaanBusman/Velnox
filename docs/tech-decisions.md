@@ -1642,6 +1642,35 @@ time would mean the worker decrypting the key for a page view.
 **Not built:** Velnox does not put the key on the nodes itself — that needs a way in it does not
 have yet — and does not remove an old public line from `authorized_keys` when the key is replaced.
 
+## ADR-054 — Custom roles, and nothing granted beyond the grantor
+
+**Decision:** The MSP makes custom roles: per area of the catalogue *None*, *Can only read* or *Can
+change*, with each change permission of an area separately. They are installation-wide rows like
+the system roles (`tenant_id` NULL, `is_system` false), so a customer's session can see one it holds.
+`customRoleProblems` decides what one may hold: never `system.manage` or `roles.manage`; nothing its
+maker does not hold at global scope; and for a role customers may be given, nothing the Tenant
+Administrator role lacks. "Can change" brings the area's read permission with it. A change bumps the
+token version of everyone holding the role; a role in use cannot be removed, nor made MSP-only while a
+customer holds it.
+
+**Two holes closed with it.** Granting a role checked only `roles.manage` at the scope, so an
+account holding it could give out a role stronger than its own — an MSP Administrator could make
+anyone, itself included, MSP Super Administrator. Granting now needs every permission of the role at
+that scope (`permissionsBeyondGrantor`). And an MSP-only role was refused only when the *grantor* was
+outside the MSP, never when the account receiving it was; the comment said a database trigger refused
+it too, and none existed. The API checks the receiving account, and a trigger now refuses it. Existing
+grants are not rewritten; an installation can look for one with
+`SELECT u.email, r.name FROM role_assignments ra JOIN roles r ON r.id = ra.role_id JOIN users u ON u.id = ra.user_id JOIN tenants t ON t.id = u.tenant_id WHERE r.msp_only AND t.kind <> 'MSP_ROOT';`
+
+**Why per area with three levels.** It is how an administrator thinks about a role — "sees clusters,
+runs updates" — and the catalogue's `resource.action` names make it derivable: a permission added to
+the catalogue appears in the editor by being added. The levels alone would lose distinctions the
+catalogue makes on purpose (running updates against setting their policy), so *Can change* opens the
+area's change permissions, each ticked.
+
+**Not built:** customers making their own roles; a role limited to one customer other than by where
+it is granted; editing system roles.
+
 ---
 
 ## Version targets

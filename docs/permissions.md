@@ -224,15 +224,23 @@ force, so the exposure is visible before you decide to close it.
 
 ---
 
-## Changing what a role grants
+## Custom roles
 
-Not in this build. The seven system roles are seeded and read-only; there is no screen for creating
-a role or editing one, and that is recorded in [Known gaps](known-gaps.md) rather than implied by
-the presence of a page that lists them.
+The seven system roles above cannot be changed: they change with a release. Beside them, the MSP
+makes **custom roles** — per area *None*, *Can only read* or *Can change* — as described in
+[Make your own role](managing-access.md#make-your-own-role). Three limits hold whoever makes one,
+and the API enforces them (ADR-054):
 
-The **Roles & permissions** screen reads from your database rather than from the catalogue, so it
-stays correct once editing arrives. If it ever shows a permission this build does not recognise, it
-says so — that means the database and the code disagree, which is worth seeing rather than hiding.
+- never `system.manage` or `roles.manage`;
+- never a permission its maker does not hold at global scope;
+- for a role customers' accounts may be given, nothing beyond what **Tenant Administrator** holds.
+
+Granting any role — system or custom — needs every permission in it at the scope it is granted at,
+and an MSP-only role is only ever held by an account in the MSP organisation.
+
+The **Roles & permissions** screen reads from your database rather than from the catalogue. If it
+ever shows a permission this build does not recognise, it says so — that means the database and the
+code disagree, which is worth seeing rather than hiding.
 
 ---
 

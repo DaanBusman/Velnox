@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { CustomRoles } from '@/components/roles/custom-roles';
 import { Card, Notice, PageHeader, StatusBadge } from '@/components/ui/primitives';
-import { listRoles } from '@/lib/session';
+import { getSession, listRoles } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,7 @@ const isWrite = (permission: string) => !permission.endsWith('.read');
  * edited is shown as it is rather than as it shipped.
  */
 export default async function RolesPage() {
-  const [t, result] = await Promise.all([getTranslations(), listRoles()]);
+  const [t, result, session] = await Promise.all([getTranslations(), listRoles(), getSession()]);
 
   if (!result.ok) {
     return (
@@ -52,7 +53,13 @@ export default async function RolesPage() {
     );
   }
 
-  const { roles, catalogue } = result.data;
+  const { roles: all, catalogue } = result.data;
+  const roles = all.filter((role) => role.isSystem);
+  const custom = all.filter((role) => !role.isSystem);
+  // Custom roles are made by the MSP (ADR-054); the API decides again.
+  const canManage = Boolean(
+    session?.user.isMspRoot && session.user.permissions.includes('roles.manage'),
+  );
 
   return (
     <>
@@ -107,9 +114,7 @@ export default async function RolesPage() {
                       <StatusBadge tone="ok">{t('roles.readOnlyRole')}</StatusBadge>
                     ) : (
                       <>
-                        <span className="text-sm font-medium text-ink">
-                          {t('roles.canChange')}
-                        </span>
+                        <span className="text-sm font-medium text-ink">{t('roles.canChange')}</span>
                         {changes.map((resource) => (
                           <span
                             key={resource}
@@ -154,9 +159,7 @@ export default async function RolesPage() {
           );
         })}
 
-        <Notice tone="neutral" title={t('roles.editingPendingTitle')}>
-          {t('roles.editingPendingBody')}
-        </Notice>
+        <CustomRoles roles={custom} canManage={canManage} held={session?.user.permissions ?? []} />
       </div>
     </>
   );

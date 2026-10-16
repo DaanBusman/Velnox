@@ -49,14 +49,16 @@ or all of them, which is why the account's roles are listed with their scope bes
 Three rules apply, all of them enforced server-side:
 
 - **You cannot grant what you do not hold.** Granting a role covering a customer requires
-  `roles.manage` covering that same customer — so delegating access can never widen it.
+  `roles.manage` covering that same customer, **and every permission in the role** there — so
+  delegating access can never widen it. An MSP Administrator cannot make anyone, itself included,
+  MSP Super Administrator.
 - **A customer's account stays inside its own tenant.** Only accounts in your own MSP organisation
   may hold a grant pointing at somebody else's tenant.
 - **"Every tenant" needs a home in the MSP organisation**, and the option is not offered otherwise.
 
 Roles marked **MSP only** can be granted only to accounts in your own organisation, not to a
-customer's staff. Velnox enforces that server-side too, so it holds regardless of what the interface
-offers.
+customer's staff, and are not offered for a customer's account. Velnox checks the account receiving
+the role, and the database refuses it as well, so it holds regardless of what the interface offers.
 
 [Organising your fleet](organising-your-fleet.md) has a worked example of scoping an engineer to one
 site.
@@ -73,6 +75,35 @@ management, it is *all* of identity administration, and that is not obvious from
   **MSP Read Only**.
 - Reserve **MSP Super Administrator** for the accounts that genuinely need installation-wide
   settings. It is the only role holding `system.manage`.
+- None of these fits: [make your own role](#make-your-own-role).
+
+### Make your own role
+
+**You need:** to be in the MSP organisation, with `roles.manage` covering every tenant — an MSP
+Administrator or the Super Administrator.
+
+1. Go to **Roles & permissions**, **Custom roles**, **New role**. It opens as a window over the page.
+2. Give it a **name**, and a description if the name does not say enough.
+3. Choose **who may be given it**: MSP staff only, or MSP staff and customers' accounts.
+4. For each area — clusters, updates, users, the ISO library and so on — choose **None**, **Can
+   only read** or **Can change**. *Can change* ticks every change permission of that area, each of
+   which can be unticked: under Updates, running updates and setting their policy are separate;
+   under Jobs, cancelling and approving are.
+5. **Save role**. It is granted like any other, under **Users**.
+
+What a custom role can never hold, whoever makes it:
+
+- **System settings** (`system.manage`) and **making roles** (`roles.manage`) — a role that can make
+  roles is a way round every limit here.
+- **More than its maker holds.** What you do not hold is shown and cannot be chosen; the API refuses
+  it too.
+- **For customers, more than the Tenant Administrator role** — never the ISO library, which is one
+  disk for every customer, and never tenant administration.
+
+**Changing a role** applies to everyone holding it: their sessions end, and they sign in again with
+the role as it is now. A role a customer's account holds cannot be made MSP-only. **Removing** a role
+is only possible once nobody holds it. Making, changing and removing are in the audit log. The seven
+system roles cannot be changed: they change with a release.
 
 ---
 

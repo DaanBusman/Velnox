@@ -170,6 +170,16 @@ export const ERROR_CODES = {
   placementContradiction: 'placement.contradiction',
   /** More guests kept apart than the cluster has nodes. */
   placementImpossible: 'placement.impossible',
+  /** A custom role cannot hold these permissions; `problems` says why, per permission. */
+  roleInvalid: 'role.invalid',
+  /** A system role is changed by a release, never by hand. */
+  roleSystem: 'role.system',
+  /** A role still held by accounts cannot be removed, or made MSP-only. */
+  roleInUse: 'role.in_use',
+  /** Granting a role that holds permissions the grantor does not hold there. */
+  roleBeyondGrantor: 'role.beyond_grantor',
+  /** An MSP-only role, for an account outside the MSP organisation. */
+  roleMspOnly: 'role.msp_only',
   /** Placement moves nothing on a cluster that is not whole. */
   placementClusterDegraded: 'placement.cluster_degraded',
   /** Some rules could not be met: no room, or a guest that cannot move live. */
