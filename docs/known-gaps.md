@@ -48,12 +48,11 @@ PKCE flow that would actually sign someone in is not written. `signInAvailable` 
 says `false`, the sign-in page shows no Microsoft button, and the settings page says so in as many
 words. Nothing here pretends to work.
 
-### Two clusters joined in Proxmox stay two clusters in Velnox
-Velnox reads every node of a Proxmox cluster through its API. But two standalone servers added to
-Velnox separately, and joined into one Proxmox cluster afterwards, stay two registrations in Velnox,
-each now reporting the same nodes. Merging them into one — keeping the SSH set-up, placement rules,
-update policy, maintenance windows, site and history of both — is planned next. Until then, remove
-one of the two and keep the other.
+### Velnox does not form Proxmox clusters
+Two registrations of one Proxmox cluster are noticed and merged in Velnox, but joining servers into a
+cluster (`pvecm create`, `pvecm add`) is done in Proxmox: Velnox does not run it. A merge keeps the
+API connection of one registration only; if that node goes, change the cluster's address. See
+ADR-055.
 
 ### Only the MSP makes roles
 Custom roles are made by the MSP and are installation-wide: a customer's Tenant Administrator can

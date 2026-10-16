@@ -55,12 +55,11 @@ geschreven. `signInAvailable` staat in het API-antwoord op `false`, de aanmeldpa
 Microsoft-knop, en de instellingenpagina zegt het met zoveel woorden. Niets hier doet alsof het
 werkt.
 
-### Twee clusters die in Proxmox zijn samengevoegd, blijven twee clusters in Velnox
-Velnox leest elke node van een Proxmox-cluster via zijn API. Maar twee losse servers die apart aan
-Velnox zijn toegevoegd en daarna in Proxmox tot één cluster zijn samengevoegd, blijven in Velnox twee
-registraties, die nu allebei dezelfde nodes melden. Ze samenvoegen tot één — met behoud van de
-SSH-instelling, plaatsingsregels, updatebeleid, onderhoudsvensters, locatie en geschiedenis van beide
-— staat als volgende gepland. Verwijder tot dan een van de twee en houd de andere.
+### Velnox vormt geen Proxmox-clusters
+Twee registraties van één Proxmox-cluster worden in Velnox opgemerkt en samengevoegd, maar servers tot
+een cluster samenvoegen (`pvecm create`, `pvecm add`) gebeurt in Proxmox: Velnox draait het niet. Een
+samenvoeging houdt de API-verbinding van één registratie; valt die node weg, verander dan het adres
+van het cluster. Zie ADR-055.
 
 ### Alleen de MSP maakt rollen
 Eigen rollen worden door de MSP gemaakt en gelden voor de hele installatie: de Tenant Administrator

@@ -6,6 +6,7 @@ import { WorkloadsController } from './workloads.controller';
 import { ResourcesController } from './resources.controller';
 import { AlertsService } from './alerts.service';
 import { ClustersService } from './clusters.service';
+import { ClusterMergeService } from './cluster-merge.service';
 import { InventoryReadService } from './inventory-read.service';
 
 /**
@@ -18,7 +19,7 @@ import { InventoryReadService } from './inventory-read.service';
 @Module({
   imports: [AuthModule],
   controllers: [ClustersController, NodesController, WorkloadsController, ResourcesController],
-  providers: [ClustersService, InventoryReadService, AlertsService],
+  providers: [ClustersService, ClusterMergeService, InventoryReadService, AlertsService],
   exports: [ClustersService, InventoryReadService, AlertsService],
 })
 export class InventoryModule {}

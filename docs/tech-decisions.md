@@ -1671,6 +1671,30 @@ area's change permissions, each ticked.
 **Not built:** customers making their own roles; a role limited to one customer other than by where
 it is granted; editing system roles.
 
+## ADR-055 — Merging two registrations of one Proxmox cluster, without joining anything
+
+**Decision:** Discovery keeps the name Proxmox gives a cluster (`pve_cluster_name`). Two
+registrations in one tenant with the same name and nodes in common are one cluster added twice —
+servers added one by one and joined in Proxmox afterwards — and the Clusters page offers to merge
+them. The merge keeps one registration and its API connection, renamed; moves what the other held
+(SSH set-up and host-key pins, placement rules and settings, update policy, upgrade plans, VM builds,
+library sources, job and discovery history, site), keeping the kept one's own where both have one and
+saying what was not taken over; then removes the other with its API token and reads the kept one
+again. One transaction, typed queries only, refused while a job runs against either.
+
+**Why administration only.** The owner chose it: forming a Proxmox cluster joins a node's
+configuration into another's, needs it free of conflicting guests, and is hard to undo — Velnox
+would be the wrong place to start it from without its own phase. Merging records is what Velnox owns.
+
+**Why the cluster name and a node in common, not either alone.** Two unrelated standalone servers are
+often both called `pve`, and neither reports a cluster name; two clusters called `lab` share no node.
+Merging two registrations that are not one cluster would drop one from Velnox, so both must hold.
+
+**Removing a cluster now removes its SSH key too.** It used to be left behind: a secret nobody owned.
+
+**Not built:** joining nodes in Proxmox; a second API address to fall back on when the kept one's
+node is down.
+
 ---
 
 ## Version targets

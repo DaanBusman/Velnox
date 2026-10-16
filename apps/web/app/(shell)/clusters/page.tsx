@@ -1,8 +1,15 @@
 import { getTranslations } from 'next-intl/server';
 import { Notice, PageHeader } from '@/components/ui/primitives';
 import { ClusterAdmin } from '@/components/inventory/cluster-admin';
+import { ClusterMergeNotices } from '@/components/inventory/cluster-merge';
 import { refreshSeconds } from '@/lib/preferences';
-import { getSession, listClusters, listSites, listTenants } from '@/lib/session';
+import {
+  getSession,
+  listClusters,
+  listMergeCandidates,
+  listSites,
+  listTenants,
+} from '@/lib/session';
 import { resolveSelection, selectedTenantId } from '@/lib/tenant-selection';
 
 export const dynamic = 'force-dynamic';
@@ -40,10 +47,12 @@ export default async function ClustersPage() {
   }
 
   const permissions = new Set(session?.user.permissions ?? []);
+  const merges = permissions.has('clusters.manage') ? await listMergeCandidates() : null;
 
   return (
     <>
       <PageHeader title={t('nav.clusters')} description={t('clusters.pageDescription')} />
+      <ClusterMergeNotices candidates={merges?.ok ? merges.data.candidates : []} />
       <ClusterAdmin
         clusters={clusters.data.clusters}
         tenants={selectable}

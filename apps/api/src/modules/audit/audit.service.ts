@@ -63,6 +63,8 @@ export const AUDIT_ACTIONS = {
   clusterAdded: 'cluster.added',
   clusterUpdated: 'cluster.updated',
   clusterRemoved: 'cluster.removed',
+  /** Two registrations of one Proxmox cluster made one (ADR-055). */
+  clusterMerged: 'cluster.merged',
   clusterDiscovered: 'cluster.discovered',
   clusterDiscoveryFailed: 'cluster.discovery_failed',
   /** SSH host keys were read for confirmation. Nothing was authenticated. */

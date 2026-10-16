@@ -1777,6 +1777,35 @@ instellen), dus *Kan wijzigen* opent de wijzigrechten van het gebied, elk aangev
 **Niet gebouwd:** klanten die hun eigen rollen maken; een rol die tot één klant beperkt is anders dan
 door waar hij wordt toegekend; systeemrollen bewerken.
 
+## ADR-055 — Twee registraties van één Proxmox-cluster samenvoegen, zonder iets samen te voegen in Proxmox
+
+**Besluit:** Het uitlezen bewaart de naam die Proxmox een cluster geeft (`pve_cluster_name`). Twee
+registraties in één tenant met dezelfde naam en gedeelde nodes zijn één cluster dat twee keer is
+toegevoegd — servers die één voor één zijn toegevoegd en daarna in Proxmox zijn samengevoegd — en de
+pagina Clusters biedt aan ze samen te voegen. Het samenvoegen houdt één registratie en haar
+API-verbinding, hernoemd; verplaatst wat de andere had (SSH-instelling en vastgepinde hostsleutels,
+plaatsingsregels en -instellingen, updatebeleid, upgradeplannen, VM-builds, bibliotheekbronnen, job-
+en uitleesgeschiedenis, locatie), houdt de eigen van de behouden registratie waar beide er een hebben
+en zegt wat niet is overgenomen; verwijdert daarna de andere met haar API-token en leest de behouden
+opnieuw uit. Eén transactie, alleen getypeerde queries, geweigerd zolang er een job tegen een van beide
+draait.
+
+**Waarom alleen de administratie.** De eigenaar koos het: een Proxmox-cluster vormen voegt de
+configuratie van een node in die van een andere, vraagt dat er geen conflicterende gasten zijn, en is
+lastig terug te draaien — Velnox is niet de plek om dat zonder eigen fase te starten. Records
+samenvoegen is wat van Velnox is.
+
+**Waarom de clusternaam én een gedeelde node, niet een van beide.** Twee losse servers zonder verband
+heten vaak allebei `pve`, en geen van beide meldt een clusternaam; twee clusters die `lab` heten, delen
+geen node. Twee registraties samenvoegen die niet één cluster zijn, zou er een uit Velnox laten
+verdwijnen, dus beide moeten kloppen.
+
+**Een cluster verwijderen verwijdert nu ook zijn SSH-sleutel.** Die bleef eerder achter: een geheim
+van niemand.
+
+**Niet gebouwd:** nodes samenvoegen in Proxmox; een tweede API-adres om op terug te vallen als de node
+van de behouden verbinding uitvalt.
+
 ---
 
 ## Versiedoelen

@@ -39,6 +39,10 @@ export const ERROR_CODES = {
   clusterAuthFailed: 'cluster.auth_failed',
   /** A cluster with this endpoint is already registered in this tenant. */
   clusterDuplicate: 'cluster.duplicate',
+  /** Two registrations that are not one Proxmox cluster are never merged (ADR-055). */
+  clusterMergeNotSame: 'cluster.merge_not_same',
+  /** Merging waits while a job runs against either. */
+  clusterMergeBusy: 'cluster.merge_busy',
   clusterQuorumAtRisk: 'cluster.quorum_at_risk',
   clusterAlreadyDegraded: 'cluster.already_degraded',
 

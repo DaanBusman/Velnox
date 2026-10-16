@@ -16,11 +16,12 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { LiveWatchInterceptor } from './live-watch.interceptor';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { PERMISSIONS, isFingerprint } from '@velnox/shared';
+import { PERMISSIONS, clusterMergeSchema, isFingerprint } from '@velnox/shared';
 import { RequirePermission, RequirePermissionSomewhere } from '../../common/auth.guard';
 import { zodBody, zodQuery } from '../../common/zod-validation.pipe';
 import { actorOf } from '../../common/actor';
 import { ClustersService } from './clusters.service';
+import { ClusterMergeService } from './cluster-merge.service';
 import { InventoryReadService } from './inventory-read.service';
 
 const uuidParam = new ParseUUIDPipe({ version: '4' });
@@ -99,6 +100,7 @@ export class ClustersController {
   constructor(
     private readonly clusters: ClustersService,
     private readonly inventory: InventoryReadService,
+    private readonly merging: ClusterMergeService,
   ) {}
 
   @RequirePermissionSomewhere(PERMISSIONS.clustersRead)
@@ -107,6 +109,38 @@ export class ClustersController {
   @ApiOperation({ summary: 'List clusters' })
   async list(@Query(zodQuery(listSchema)) query: z.infer<typeof listSchema>) {
     return { clusters: await this.clusters.list(query) };
+  }
+
+  // Before `:id`, which would read "merge-candidates" as an id.
+  @RequirePermissionSomewhere(PERMISSIONS.clustersManage)
+  @Get('merge-candidates')
+  @ApiOperation({
+    summary: 'Registrations that are one Proxmox cluster',
+    description:
+      'Two registrations in one tenant reporting the same Proxmox cluster name and nodes in ' +
+      'common: servers added one by one and joined in Proxmox afterwards. Only those this ' +
+      'account may manage.',
+  })
+  async mergeCandidates(@Req() request: Request) {
+    return { candidates: await this.merging.candidates(actorOf(request)) };
+  }
+
+  @RequirePermissionSomewhere(PERMISSIONS.clustersManage)
+  @Post('merge')
+  @ApiOperation({
+    summary: 'Make two registrations of one Proxmox cluster one',
+    description:
+      'The kept registration is renamed and takes what the other held — SSH set-up and host-key ' +
+      'pins, placement rules and settings, update policy, upgrade plans, VM builds, library ' +
+      'sources, job and discovery history, site — then the other is removed with its API ' +
+      'credential, and the kept one is read again. Refused unless both are one Proxmox cluster, ' +
+      'and while a job runs against either. Velnox joins nothing in Proxmox.',
+  })
+  merge(
+    @Body(zodBody(clusterMergeSchema)) body: z.infer<typeof clusterMergeSchema>,
+    @Req() request: Request,
+  ) {
+    return this.merging.merge(body, actorOf(request));
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.clustersManage)

@@ -17,7 +17,7 @@ see [Managing users and access](managing-access.md).
 Every node belongs to exactly one cluster. You add a **cluster** to Velnox — never a node on its own
 — and its nodes come with it, because the cluster reports them. Two standalone servers added
 separately are two clusters, each with one node; join them in Proxmox and they become one cluster
-there, which Velnox has to be told about (see [Known gaps](known-gaps.md)).
+there, and Velnox offers to [merge the two registrations](#merging-two-registrations-of-one-cluster).
 
 ---
 
@@ -194,6 +194,35 @@ that file.
 **A node whose host key changes is refused**, the same way a changed TLS certificate is. After
 reinstalling a node, set SSH up again and confirm its new key deliberately. A node added to the
 cluster later has no confirmed key and is not connected to until you do the same.
+
+---
+
+## Merging two registrations of one cluster
+
+Two standalone servers added to Velnox one by one — **PVE-1** and **PVE-2** — and joined into one
+Proxmox cluster afterwards (`pvecm create PVE-PROD` on one, `pvecm add` on the other) are still two
+registrations in Velnox, each now reporting the same nodes. Velnox notices: at the next discovery
+both report the same cluster name from Proxmox and nodes in common, and the **Clusters** page says
+so, with **Merge into one**.
+
+The merge, in a window over the page:
+
+1. **Name in Velnox** — offered as the name Proxmox gives the cluster, `PVE-PROD`.
+2. **Keep the connection of** — the registration whose API address and token stay. The other's are
+   removed.
+3. **Keep the SSH set-up of** — asked only when both have one.
+
+**What comes along** from the registration that goes: its SSH set-up and host-key pins, placement
+rules and settings, update policy, upgrade plans, VM builds, library sources, its job and discovery
+history, and its site. Where the kept registration already has its own — an update policy, a site —
+the kept one's stays, and the merge says what was not taken over. The nodes and guests are not
+copied: it is the same cluster, and it is read again straight after. The other registration is then
+removed, with its API token. Merging is recorded in the audit log on both.
+
+**What it refuses.** Two registrations that are not one Proxmox cluster — merging them would make
+one disappear from Velnox — and a merge while a job runs against either. **Velnox does not join
+nodes in Proxmox itself:** forming the cluster is done in Proxmox, as before. You need
+`clusters.manage` on both.
 
 ---
 

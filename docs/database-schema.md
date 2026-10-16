@@ -212,7 +212,9 @@ ceph_versions_homogeneous bool`
 
 SSH columns (Phase 5A, ADR-038): `ssh_credential_id, ssh_username, ssh_port (default 22),
 ssh_verified_at`. Both of the first two or neither — `clusters_ssh_complete` — because half a
-configuration fails every copy with a confusing error. `ssh_public_key` (ADR-053): the key's public
+configuration fails every copy with a confusing error. `pve_cluster_name` (ADR-055): the name Proxmox gives the
+cluster, null for a standalone node — never shown as its name, but what says two registrations are
+one cluster. `ssh_public_key` (ADR-053): the key's public
 half in `authorized_keys` form, read from the private key by the worker, so the interface can show it
 again.
 

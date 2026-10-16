@@ -237,7 +237,23 @@
     },
     "liveStatus": "Live status",
     "liveEvery": "Every {seconds} s while you look at it — state, CPU, memory, storage use",
-    "liveOff": "Off: your screens do not refresh automatically (Settings)"
+    "liveOff": "Off: your screens do not refresh automatically (Settings)",
+    "merge": {
+      "noticeTitle": "One Proxmox cluster, added twice: {cluster}",
+      "noticeBody": "{registrations} now report the same Proxmox cluster, {cluster}, with nodes {nodes}: servers added one by one and joined in Proxmox afterwards. Merge them into one, and keep what each holds.",
+      "open": "Merge into one",
+      "title": "Merge into one cluster",
+      "name": "Name in Velnox",
+      "nameHint": "Offered as the name Proxmox gives the cluster.",
+      "keep": "Keep the connection of",
+      "keepHint": "Its API address and token stay; the other's are removed.",
+      "remove": "Merge into it",
+      "ssh": "Keep the SSH set-up of",
+      "carriesTitle": "From {remove} to {keep}",
+      "carriesBody": "Its SSH set-up and host-key pins, placement rules and settings, update policy, upgrade plans, VM builds, library sources, job and discovery history and site come along — where the kept one has its own, the kept one's stays. The nodes and guests are read again: it is the same cluster.",
+      "final": "{remove} is then removed from Velnox. Nothing changes in Proxmox.",
+      "submit": "Merge"
+    }
   },
   "common": {
     "cancel": "Cancel",
@@ -323,7 +339,9 @@
       "duplicate": "This tenant already manages that endpoint, as {name}.",
       "not_proxmox": "Something answered on {host}, but it is not a Proxmox VE API.",
       "quorum_at_risk": "Cluster {cluster} would lose quorum: {available} of {required} voting nodes would remain available.",
-      "unreachable": "{host} could not be reached."
+      "unreachable": "{host} could not be reached.",
+      "merge_not_same": "{keep} and {remove} are not one Proxmox cluster, so they are not merged: one would disappear from Velnox.",
+      "merge_busy": "{count, plural, one {A job is} other {# jobs are}} running against these clusters. Merge once {count, plural, one {it has} other {they have}} finished."
     },
     "credential": {
       "rotation_verify_failed": "The new password was applied but could not be verified. Both versions have been kept and the credential is flagged for attention."

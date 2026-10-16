@@ -122,7 +122,7 @@ export class ClustersService {
         resourceType: 'cluster',
         resourceLabel: `${input.host}:${input.port}`,
       });
-      throw translate(error, input.host);  // No credential was sent, so no auth kind.
+      throw translate(error, input.host); // No credential was sent, so no auth kind.
     }
   }
 
@@ -388,6 +388,10 @@ export class ClustersService {
 
     if (cluster.credentialId) {
       await this.secrets.deleteCredential(cluster.credentialId);
+    }
+    // The SSH key too: it used to stay behind, a secret nobody owned.
+    if (cluster.sshCredentialId) {
+      await this.secrets.deleteCredential(cluster.sshCredentialId).catch(() => undefined);
     }
 
     await this.audit.success(AUDIT_ACTIONS.clusterRemoved, {

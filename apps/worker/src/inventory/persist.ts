@@ -104,6 +104,7 @@ export async function persistDiscovery(
       health: clusterHealth(discovered),
       pveVersion: discovered.version,
       pveVersions: discovered.pveVersions,
+      pveClusterName: discovered.name,
       quorate: discovered.quorate,
       nodeCount: discovered.nodes.length,
       cephPresent: discovered.ceph !== null,

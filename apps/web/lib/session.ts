@@ -1,6 +1,7 @@
 import 'server-only';
 import type {
   ClusterFilesResponse,
+  ClusterMergeCandidate,
   ClusterSshStatus,
   JobDetail,
   JobLogLine,
@@ -295,6 +296,11 @@ export function getJob(id: string) {
 
 export function listJobLogs(id: string) {
   return readAs<{ lines: JobLogLine[] }>(`/api/v1/jobs/${encodeURIComponent(id)}/logs?limit=1000`);
+}
+
+/** Registrations that are one Proxmox cluster, which this account may merge (ADR-055). */
+export function listMergeCandidates() {
+  return readAs<{ candidates: ClusterMergeCandidate[] }>('/api/v1/clusters/merge-candidates');
 }
 
 /** Major upgrade plans this account may see (Phases 8–9B). */

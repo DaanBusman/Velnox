@@ -652,6 +652,11 @@ model Cluster {
   pveVersion  String?  @map("pve_version")
   /// Every distinct PVE version across the nodes. More than one is mid-upgrade.
   pveVersions String[] @default([]) @map("pve_versions")
+  /// The name Proxmox gives the cluster (`pvecm create <name>`), null for a
+  /// standalone node. Never shown as the cluster's name — that is the
+  /// operator's — but two registrations reporting the same one, with the same
+  /// nodes, are one cluster added twice: what merging is for (ADR-055).
+  pveClusterName String? @map("pve_cluster_name")
   quorate     Boolean?
   nodeCount   Int      @default(0) @map("node_count")
 

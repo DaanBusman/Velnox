@@ -219,7 +219,9 @@ ceph_versions_homogeneous bool`
 
 SSH-kolommen (fase 5A, ADR-038): `ssh_credential_id, ssh_username, ssh_port (standaard 22),
 ssh_verified_at`. De eerste twee allebei of geen van beide — `clusters_ssh_complete` — omdat een halve
-instelling elke kopie laat mislukken met een verwarrende fout. `ssh_public_key` (ADR-053): de publieke
+instelling elke kopie laat mislukken met een verwarrende fout. `pve_cluster_name` (ADR-055): de naam die Proxmox het
+cluster geeft, null voor een losse node — nooit getoond als zijn naam, maar wat zegt dat twee
+registraties één cluster zijn. `ssh_public_key` (ADR-053): de publieke
 helft van de sleutel in `authorized_keys`-vorm, door de worker uit de private sleutel gelezen, zodat
 de interface hem opnieuw kan tonen.
 

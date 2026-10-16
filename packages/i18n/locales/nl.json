@@ -238,7 +238,23 @@
     },
     "liveStatus": "Live status",
     "liveEvery": "Elke {seconds} s zolang je kijkt — status, CPU, geheugen, opslaggebruik",
-    "liveOff": "Uit: je schermen verversen niet automatisch (Instellingen)"
+    "liveOff": "Uit: je schermen verversen niet automatisch (Instellingen)",
+    "merge": {
+      "noticeTitle": "Eén Proxmox-cluster, twee keer toegevoegd: {cluster}",
+      "noticeBody": "{registrations} melden nu hetzelfde Proxmox-cluster, {cluster}, met de nodes {nodes}: servers die één voor één zijn toegevoegd en daarna in Proxmox zijn samengevoegd. Voeg ze samen tot één, en houd wat elk heeft.",
+      "open": "Samenvoegen tot één",
+      "title": "Samenvoegen tot één cluster",
+      "name": "Naam in Velnox",
+      "nameHint": "Voorgesteld als de naam die Proxmox het cluster geeft.",
+      "keep": "Houd de verbinding van",
+      "keepHint": "Het API-adres en token daarvan blijven; die van de andere worden verwijderd.",
+      "remove": "Erin samenvoegen",
+      "ssh": "Houd de SSH-instelling van",
+      "carriesTitle": "Van {remove} naar {keep}",
+      "carriesBody": "De SSH-instelling en vastgepinde hostsleutels, plaatsingsregels en -instellingen, updatebeleid, upgradeplannen, VM-builds, bibliotheekbronnen, job- en uitleesgeschiedenis en locatie gaan mee — waar de behouden registratie een eigen heeft, blijft die. De nodes en gasten worden opnieuw uitgelezen: het is hetzelfde cluster.",
+      "final": "{remove} wordt daarna uit Velnox verwijderd. In Proxmox verandert niets.",
+      "submit": "Samenvoegen"
+    }
   },
   "common": {
     "cancel": "Annuleren",
@@ -324,7 +340,9 @@
       "duplicate": "Deze tenant heeft dit endpoint al onder beheer, als {name}.",
       "not_proxmox": "Er antwoordde iets op {host}, maar het is geen Proxmox VE-API.",
       "quorum_at_risk": "Cluster {cluster} zou quorum verliezen: {available} van {required} stemmende nodes zouden beschikbaar blijven.",
-      "unreachable": "{host} is niet bereikbaar."
+      "unreachable": "{host} is niet bereikbaar.",
+      "merge_not_same": "{keep} en {remove} zijn niet één Proxmox-cluster, dus ze worden niet samengevoegd: er zou er een uit Velnox verdwijnen.",
+      "merge_busy": "{count, plural, one {Er draait een job} other {Er draaien # jobs}} tegen deze clusters. Voeg ze samen als {count, plural, one {die klaar is} other {die klaar zijn}}."
     },
     "credential": {
       "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."

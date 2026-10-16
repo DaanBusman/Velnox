@@ -20,7 +20,7 @@ rollen, zie [Gebruikers en toegang beheren](managing-access.md).
 Elke node hoort bij precies één cluster. Je voegt een **cluster** toe aan Velnox — nooit een losse
 node — en zijn nodes komen mee, omdat het cluster ze meldt. Twee losse servers die apart zijn
 toegevoegd, zijn twee clusters met elk één node; voeg je ze in Proxmox samen, dan worden ze daar één
-cluster, en dat moet Velnox verteld worden (zie [Bekende hiaten](known-gaps.md)).
+cluster, en Velnox biedt aan [de twee registraties samen te voegen](#twee-registraties-van-n-cluster-samenvoegen).
 
 ---
 
@@ -205,6 +205,36 @@ Velnox bewerkt dat bestand niet.
 TLS-certificaat. Stel na het herinstalleren van een node SSH opnieuw in en bevestig zijn nieuwe sleutel
 bewust. Met een node die later aan het cluster wordt toegevoegd, wordt geen verbinding gemaakt tot je
 hetzelfde doet.
+
+---
+
+## Twee registraties van één cluster samenvoegen
+
+Twee losse servers die één voor één aan Velnox zijn toegevoegd — **PVE-1** en **PVE-2** — en daarna
+in Proxmox tot één cluster zijn samengevoegd (`pvecm create PVE-PROD` op de ene, `pvecm add` op de
+andere) zijn in Velnox nog twee registraties, die nu allebei dezelfde nodes melden. Velnox merkt het
+op: bij de volgende uitleesronde melden beide dezelfde clusternaam van Proxmox en gedeelde nodes, en
+de pagina **Clusters** zegt dat, met **Samenvoegen tot één**.
+
+Het samenvoegen, in een venster boven de pagina:
+
+1. **Naam in Velnox** — voorgesteld als de naam die Proxmox het cluster geeft, `PVE-PROD`.
+2. **Houd de verbinding van** — de registratie waarvan het API-adres en token blijven. Die van de
+   andere worden verwijderd.
+3. **Houd de SSH-instelling van** — alleen gevraagd als beide er een hebben.
+
+**Wat er meegaat** van de registratie die verdwijnt: de SSH-instelling en vastgepinde hostsleutels,
+plaatsingsregels en -instellingen, het updatebeleid, upgradeplannen, VM-builds, bibliotheekbronnen,
+de job- en uitleesgeschiedenis, en de locatie. Waar de behouden registratie al een eigen heeft — een
+updatebeleid, een locatie — blijft die, en het samenvoegen zegt wat niet is overgenomen. De nodes en
+gasten worden niet gekopieerd: het is hetzelfde cluster, en het wordt direct daarna opnieuw uitgelezen.
+De andere registratie wordt daarna verwijderd, met zijn API-token. Samenvoegen staat op beide in het
+auditlog.
+
+**Wat het weigert.** Twee registraties die niet één Proxmox-cluster zijn — samenvoegen zou er een uit
+Velnox laten verdwijnen — en samenvoegen terwijl er een job tegen een van beide draait. **Velnox voegt
+zelf geen nodes samen in Proxmox:** het cluster vorm je in Proxmox, zoals altijd. Je hebt
+`clusters.manage` op beide nodig.
 
 ---
 
