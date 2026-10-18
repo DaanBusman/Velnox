@@ -119,6 +119,7 @@ call() {
 }
 last_status() { cat "$STATUS_FILE"; }
 
+# shellcheck disable=SC2329  # called by the EXIT trap below
 cleanup() {
   # Leave nothing running: a failed run should not hold a lane for a minute.
   local id
@@ -202,7 +203,6 @@ wait_for() {
   return 1
 }
 
-is_terminal() { [[ "$1" =~ ^(SUCCEEDED|PARTIALLY_SUCCEEDED|FAILED|ROLLED_BACK|CANCELLED)$ ]]; }
 
 # ---------------------------------------------------------------------------
 # 1. Live progress over the stream

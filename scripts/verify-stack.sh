@@ -122,29 +122,12 @@ expect_not_contains() {
   return 1
 }
 
-# Visible text only: strips <script> and <style> blocks and all tags.
-#
-# Necessary because the page embeds the whole message catalogue in the RSC
-# payload, so a raw grep matches translation *keys* (`noHeartbeat`) as well as
-# rendered text — which is exactly how the first version of the check below
-# produced a false failure.
-#
-# perl rather than node: perl-base is a required package on Debian and Ubuntu, so
-# it is present on every host this runs on, and Git for Windows ships it too.
-visible_text() {
-  perl -0777 -pe '
-    s{<script\b.*?</script>}{ }gsi;
-    s{<style\b.*?</style>}{ }gsi;
-    s{<[^>]+>}{ }gs;
-    s{\s+}{ }gs;
-  '
-}
-
 # The JSON reader is checked against a known document before anything relies on
 # it. Every assertion below compares a value this function produced, so a reader
 # that silently returns nothing turns real failures into confusing ones and real
 # passes into lies. This costs nothing and removes a whole class of them.
 JSON_SELFTEST='{"a":"x","n":{"b":"y"},"list":[{"k":"first"},{"k":"second"},{"k":"third"}]}'
+# shellcheck disable=SC2329  # run through check, below
 selftest_json() {
   local path="$1" expected="$2" actual
   actual="$(printf '%s' "$JSON_SELFTEST" | json "$path")"

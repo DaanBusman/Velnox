@@ -522,7 +522,7 @@ REVEAL="$(call POST "/api/v1/provisionings/${W_ID}/reveal")"
 check "windows: the passwords can be revealed" 200 "$(last_status)"
 BEHEER_PW="$(printf '%s' "$REVEAL" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const a=JSON.parse(r).accounts.find(x=>x.name==="beheer");process.stdout.write(a?a.password:"")})')"
 check "windows: a desktop's built-in Administrator is reported as switched off" "" "$(printf '%s' "$REVEAL" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const a=JSON.parse(r).accounts.find(x=>x.name==="Administrator");process.stdout.write(a&&a.password?a.password:"")})')"
-[[ ${#BEHEER_PW} -ge 20 ]] && { green "windows: the account got a generated password"; PASS=$((PASS + 1)); } || { red "windows: no generated password revealed"; FAIL=$((FAIL + 1)); }
+if [[ ${#BEHEER_PW} -ge 20 ]]; then green "windows: the account got a generated password"; PASS=$((PASS + 1)); else red "windows: no generated password revealed"; FAIL=$((FAIL + 1)); fi
 contains "windows: and it is the one the guest was handed" "$(P="$BEHEER_PW" node -e 'process.stdout.write(Buffer.from(process.env.P + "Password", "utf16le").toString("base64"))')" "$UNATTEND"
 check "windows: the reveal is audited" 1 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'provisioning.credentials_revealed' AND resource_id = '${W_ID}' AND result = 'SUCCESS';")"
 as_tenant call POST "/api/v1/provisionings/${W_ID}/reveal" >/dev/null
@@ -545,7 +545,7 @@ check "linux: accepted" 201 "$(last_status)"
 L_ID="$(printf '%s' "$L" | json provisioning.id)"
 L_JOB="$(printf '%s' "$L" | json job.id)"
 DOC_PW="$(printf '%s' "$L" | json documentPassword)"
-[[ ${#DOC_PW} -ge 20 ]] && { green "linux: the record's password is shown once, in the response"; PASS=$((PASS + 1)); } || { red "linux: no document password in the response"; FAIL=$((FAIL + 1)); }
+if [[ ${#DOC_PW} -ge 20 ]]; then green "linux: the record's password is shown once, in the response"; PASS=$((PASS + 1)); else red "linux: no document password in the response"; FAIL=$((FAIL + 1)); fi
 lacks "linux: and not again on the record" "$DOC_PW" "$(call GET "/api/v1/provisionings/${L_ID}")"
 check "linux: the job succeeds" SUCCEEDED "$(wait_for "$L_JOB" 240 SUCCEEDED FAILED CANCELLED)"
 L_VMID="$(call GET "/api/v1/provisionings/${L_ID}" | json vmid)"
@@ -553,7 +553,7 @@ contains "linux: the cloud image was put on the node as an import" "${RUN}-noble
 SEED="$(in_fixture "cat /fixture/store/answers-seen/${L_VMID}/user-data")"
 contains "linux: the guest was handed cloud-init" "#cloud-config" "$SEED"
 contains "linux: with the key placed" "ops@harness" "$SEED"
-contains "linux: and a hashed password" '"passwd": "$6$' "$SEED"
+contains "linux: and a hashed password" "\"passwd\": \"\$6\$" "$SEED"
 L_REVEAL="$(call POST "/api/v1/provisionings/${L_ID}/reveal")"
 OPS_PW="$(printf '%s' "$L_REVEAL" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const a=JSON.parse(r).accounts.find(x=>x.name==="ops");process.stdout.write(a?a.password:"")})')"
 lacks "linux: the password is not in the seed in the clear" "$OPS_PW" "$SEED"
@@ -605,8 +605,8 @@ Q_ID="$(printf '%s' "$Q" | json provisioning.id)"
 Q_JOB="$(printf '%s' "$Q" | json job.id)"
 check "per customer: linux built for a customer without a root password of its own" SUCCEEDED "$(wait_for "$Q_JOB" 240 SUCCEEDED FAILED CANCELLED)"
 Q_ROOT="$(call POST "/api/v1/provisionings/${Q_ID}/reveal" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const a=JSON.parse(r).accounts.find(x=>x.name==="root");process.stdout.write(a&&a.password?a.password:"")})')"
-[[ ${#Q_ROOT} -ge 20 ]] && { green "per customer: root got a generated password"; PASS=$((PASS + 1)); } || { red "per customer: no generated root password revealed"; FAIL=$((FAIL + 1)); }
-[[ -n "$Q_ROOT" && "$Q_ROOT" != "$OTHER_PW" ]] && { green "per customer: not the password set for another customer"; PASS=$((PASS + 1)); } || { red "per customer: root got another customer's password"; FAIL=$((FAIL + 1)); }
+if [[ ${#Q_ROOT} -ge 20 ]]; then green "per customer: root got a generated password"; PASS=$((PASS + 1)); else red "per customer: no generated root password revealed"; FAIL=$((FAIL + 1)); fi
+if [[ -n "$Q_ROOT" && "$Q_ROOT" != "$OTHER_PW" ]]; then green "per customer: not the password set for another customer"; PASS=$((PASS + 1)); else red "per customer: root got another customer's password"; FAIL=$((FAIL + 1)); fi
 contains "per customer: the job says one was generated" "one was generated" "$(call GET "/api/v1/jobs/${Q_JOB}/logs")"
 Q_VMID="$(call GET "/api/v1/provisionings/${Q_ID}" | json vmid)"
 contains "per customer: cloud-init sets root's password, hashed" '"name": "root"' "$(in_fixture "cat /fixture/store/answers-seen/${Q_VMID}/user-data")"

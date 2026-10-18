@@ -25,7 +25,7 @@ check() {
   else fail=$((fail + 1)); echo "  FAIL $1"; fi
 }
 dump() { echo "$B/velnox-$(date -d "-$1 days" +%F).dump"; }
-listing() { ls -la "$B" | sort | md5sum; }
+listing() { find "$B" -maxdepth 1 -printf '%f %s %T@\n' | sort | md5sum; }
 
 fixture() {
   rm -rf "$B"; mkdir -p "$B"

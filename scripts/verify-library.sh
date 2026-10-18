@@ -402,7 +402,7 @@ check "the larger file is ready" SUCCEEDED "$(wait_for "$(json job.id <"$WORK/pu
 
 CPUSH="$(call POST "/api/v1/library/${BIGITEM}/push" "$(json_object clusterId "$CLUSTER_ID" node pve1 storage local)" | json id)"
 P="$(wait_progress "$CPUSH" 60)"
-[[ "$P" != "none" ]] && green "push: under way (${P}%) before it is cancelled" && PASS=$((PASS + 1)) || { red "push: never reported progress"; FAIL=$((FAIL + 1)); }
+if [[ "$P" != "none" ]]; then green "push: under way (${P}%) before it is cancelled"; PASS=$((PASS + 1)); else red "push: never reported progress"; FAIL=$((FAIL + 1)); fi
 call POST "/api/v1/jobs/${CPUSH}/cancel" >/dev/null
 check "push: cancelled" CANCELLED "$(wait_for "$CPUSH" 60 CANCELLED SUCCEEDED FAILED)"
 sleep 1
@@ -466,7 +466,7 @@ CPULL="$(call POST "/api/v1/clusters/${CLUSTER_ID}/files/pull" "{\"node\":\"pve1
 CPULL_JOB="$(printf '%s' "$CPULL" | json job.id)"
 CPULL_ITEM="$(printf '%s' "$CPULL" | json item.id)"
 P="$(wait_progress "$CPULL_JOB" 60)"
-[[ "$P" != "none" ]] && green "pull: under way (${P}%) before it is cancelled" && PASS=$((PASS + 1)) || { red "pull: never reported progress"; FAIL=$((FAIL + 1)); }
+if [[ "$P" != "none" ]]; then green "pull: under way (${P}%) before it is cancelled"; PASS=$((PASS + 1)); else red "pull: never reported progress"; FAIL=$((FAIL + 1)); fi
 call POST "/api/v1/jobs/${CPULL_JOB}/cancel" >/dev/null
 check "pull: cancelled" CANCELLED "$(wait_for "$CPULL_JOB" 60 CANCELLED SUCCEEDED FAILED)"
 check "pull: no library item is left" 404 "$(call GET "/api/v1/library/${CPULL_ITEM}" >/dev/null; last_status)"
