@@ -22,6 +22,10 @@ export interface ViewerPreferences {
  * the page inert, keeps focus inside, closes it on Escape and draws the
  * backdrop, so none of that is hand-rolled. Each preference applies the moment
  * it changes (see InterfaceSettings), so closing it is all there is to do.
+ *
+ * `m-auto` is what centres it: the browser centres a modal dialog with
+ * `margin: auto`, and Tailwind's reset sets every margin to 0 — which put it
+ * in the top-left corner.
  */
 export function PreferencesDialog({
   open,
@@ -51,7 +55,7 @@ export function PreferencesDialog({
       onClick={(event) => {
         if (event.target === ref.current) onClose();
       }}
-      className="w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-lg border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-[2px]"
+      className="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-lg border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-[2px]"
     >
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <h2 id="preferences-title" className="text-sm font-semibold tracking-tight">

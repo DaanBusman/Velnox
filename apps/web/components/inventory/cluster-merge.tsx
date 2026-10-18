@@ -102,7 +102,7 @@ function MergeDialog({
       ref={ref}
       aria-labelledby="merge-title"
       onClose={onClose}
-      className="w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-lg border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-[2px]"
+      className="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-lg border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-[2px]"
     >
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <h2 id="merge-title" className="text-sm font-semibold tracking-tight">
