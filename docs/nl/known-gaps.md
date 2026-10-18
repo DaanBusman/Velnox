@@ -305,9 +305,9 @@ upgrade tegen, dus een nieuwere pve8to9 vergist zich aan de kant van stoppen. Ve
 dist-upgrade de eigen configuratiebestanden van elke node, waar de handleiding soms die van de
 maintainer neemt; het pint geen NIC-namen vast en zet apt-bronnen niet om naar deb822. Het
 LVM-autoactivatiescript van Proxmox wordt gedraaid zoals het is. Een node die te oud is voor pve8to9
-wordt binnen 8 bijgewerkt via de apt-bronnen die hij al heeft: een enterprise-repository zonder
-abonnement laat `apt-get update` falen, de run stopt daar, en Velnox zet de node niet uit zichzelf
-over op een andere repository. Zie ADR-052.
+wordt eerst binnen 8 bijgewerkt; een node zonder abonnement gaat daarvoor naar de
+no-subscription-repositories (zie [Een node zonder abonnement](updating-nodes.md#een-node-zonder-abonnement)).
+Zie ADR-052.
 
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,

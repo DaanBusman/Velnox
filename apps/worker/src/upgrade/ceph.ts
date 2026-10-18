@@ -1,4 +1,4 @@
-import { waitForTask, type ProxmoxClient } from '@velnox/proxmox';
+import { subscriptionActive, waitForTask, type ProxmoxClient } from '@velnox/proxmox';
 import {
   ERROR_CODES,
   assessCephHealth,
@@ -212,12 +212,24 @@ export const CEPH_ACTIONS: Record<string, UpgradeAction> = {
     const facts = cephFacts(row);
     if (!facts)
       throw new StepError(ERROR_CODES.upgradeMatrixMismatch, 'No matrix entry for this plan', {});
-    const spec = cephRepoCommand(facts.entry, optionsOf(row).channel);
+    const channel = optionsOf(row).channel;
     await withPve(rt, async (pve) => {
       for (const node of await nodesOf(rt)) {
         const handle = handleFor(rt, pve, node.name, context);
+        // The enterprise repository needs a subscription: a node without one
+        // gets no-subscription, as every other repository does (ADR-056).
+        const subscribed = subscriptionActive(
+          await pve.nodeSubscription(node.name).catch(() => null),
+        );
+        const nodeChannel = channel === 'enterprise' && !subscribed ? 'no-subscription' : channel;
+        if (nodeChannel !== channel) {
+          await handle.log(
+            'STDOUT',
+            `${node.name} has no active subscription: its Ceph repository is no-subscription`,
+          );
+        }
         await handle.log('STDOUT', `Switching the Ceph repository to ${facts.entry.repo}`);
-        await runRegistered(handle, spec, true);
+        await runRegistered(handle, cephRepoCommand(facts.entry, nodeChannel), true);
       }
     });
   },

@@ -53,7 +53,9 @@ Every playbook goes through the same phases, as one job you can follow step by s
 
 The playbook **Ceph major upgrade** upgrades a hyper-converged Ceph cluster one release, as Proxmox's
 own guides do it. **New plan** with this playbook asks for the release to upgrade to and the
-repository channel (no-subscription or enterprise).
+repository channel (no-subscription or enterprise). A node without an active subscription gets
+no-subscription whatever the plan says: the enterprise repository would refuse it
+([why](updating-nodes.md#a-node-without-a-subscription)).
 
 **The version matrix.** Velnox upgrades only along steps it knows, each as Proxmox documents it:
 

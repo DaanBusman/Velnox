@@ -282,9 +282,9 @@ than captured from a node. A line the parser does not know stops the upgrade, so
 errs on the side of stopping. Velnox keeps each node's own configuration files during the
 dist-upgrade where the guide would sometimes take the maintainer's; it does not pin NIC names or
 modernise apt sources to deb822. Proxmox's LVM autoactivation script is run as it is. A node too old
-for pve8to9 is updated within 8 through the apt sources it already has: an enterprise repository
-without a subscription makes `apt-get update` fail, the run stops there, and Velnox does not switch
-the node to another repository by itself. See ADR-052.
+for pve8to9 is updated within 8 first; one without a subscription is moved to the no-subscription
+repositories before that (see [A node without a subscription](updating-nodes.md#a-node-without-a-subscription)).
+See ADR-052.
 
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,

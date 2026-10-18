@@ -306,6 +306,23 @@ check "failure: the job fails" FAILED "$(wait_for "$J3" 120 SUCCEEDED FAILED CAN
 check "failure: as a command that failed" update.command_failed "$(job_field "$J3" errorCode)"
 contains "failure: with dpkg's own words in the output" "dpkg returned an error code" "$(logs_of "$J3")"
 
+info "A node without a subscription, on the enterprise repository (ADR-056)."
+in_fixture() { MSYS_NO_PATHCONV=1 docker exec "$FIXTURE_NAME" sh -c "$1"; }
+in_fixture "printf '%s' '{\"repos\":\"enterprise-${RUN}\"}' > /fixture/store/ops-control.json"
+JS1="$(call POST "/api/v1/updates/nodes/${PVE2_ID}/run" '{"rebootPolicy":"NEVER"}' | json id)"
+check "subscription: pve2, which has none, updates from the enterprise repository's place" SUCCEEDED "$(wait_for "$JS1" 120 SUCCEEDED FAILED CANCELLED)"
+LS1="$(logs_of "$JS1")"
+contains "subscription: the job says why it moves the node" "pve2 has no active subscription" "$LS1"
+contains "subscription: the enterprise repository off" "pve-enterprise.list#0 disabled" "$(FIXLOG)"
+contains "subscription: no-subscription added" "pve2 repository no-subscription added" "$(FIXLOG)"
+lacks "subscription: apt-get update never refused" "pve2 apt-get update refused" "$(FIXLOG)"
+JS2="$(call POST "/api/v1/updates/nodes/${PVE1_ID}/run" '{"rebootPolicy":"NEVER"}' | json id)"
+check "subscription: pve1, which has one, updates too" SUCCEEDED "$(wait_for "$JS2" 120 SUCCEEDED FAILED CANCELLED)"
+lacks "subscription: and its enterprise repository is left alone" "pve1 repository" "$(FIXLOG)"
+in_fixture "printf '%s' '{}' > /fixture/store/ops-control.json"
+# pve2 has now been updated once; what follows counts from here.
+PVE2_UPGRADES="$(FIXLOG | grep -c 'ops: pve2 dist-upgrade')"
+
 # ---------------------------------------------------------------------------
 # Windows and policies
 # ---------------------------------------------------------------------------
@@ -326,7 +343,7 @@ check "policy: updating by itself without a window is refused" 400 "$(last_statu
 J4="$(call POST "/api/v1/updates/nodes/${PVE2_ID}/run" '{}' | json id)"
 check "approval: the update is accepted" 201 "$(last_status)"
 check "approval: and parks for approval" WAITING_APPROVAL "$(wait_for "$J4" 60 WAITING_APPROVAL SUCCEEDED FAILED)"
-check "approval: nothing ran on the node yet" 0 "$(FIXLOG | grep -c 'ops: pve2 dist-upgrade')"
+check "approval: nothing ran on the node yet" 0 "$(($(FIXLOG | grep -c 'ops: pve2 dist-upgrade') - PVE2_UPGRADES))"
 call POST "/api/v1/jobs/${J4}/approve" '{"note":"harness"}' >/dev/null
 check "approval: approving it runs it" SUCCEEDED "$(wait_for "$J4" 120 SUCCEEDED FAILED CANCELLED)"
 contains "approval: inside the window" "Open ${RUN}" "$(logs_of "$J4" | grep -o 'Window [^,]*is open until')"

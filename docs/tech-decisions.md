@@ -1705,6 +1705,31 @@ Merging two registrations that are not one cluster would drop one from Velnox, s
 **Not built:** joining nodes in Proxmox; a second API address to fall back on when the kept one's
 node is down.
 
+## ADR-056 — A node without a subscription is moved to the no-subscription repositories
+
+**Decision:** Before an update, rolling update or major upgrade fetches anything on a node, Velnox
+reads its subscription; when it is not active, every enabled enterprise repository — Proxmox VE and
+Ceph — is turned off and the matching no-subscription one turned on, or added through its standard
+handle when it is not there. On Proxmox VE 8 and 9 alike, as the owner asked. It goes through
+Proxmox's repository API (`/nodes/{node}/apt/repositories`: GET, POST to toggle, PUT to add), with
+the digest of each read checked on the next write. Every change is in the job's output. A node with
+an active subscription is never touched. On the 8 → 9 upgrade it runs before the sources move to
+trixie; on a Ceph upgrade the repository line it writes is chosen per node the same way.
+
+**Why through the API and not by editing files.** Proxmox VE 8 keeps its repositories in one-line
+`.list` files and 9 in deb822 `.sources`; the API reads and writes both, and is what Proxmox's own
+Repositories screen uses. A sed over the files would have to know both formats and every place a
+repository can be, and could not tell a disabled line from a comment.
+
+**Why automatic.** Without a subscription the enterprise repository answers 401, so `apt-get
+update` fails and nothing can be updated: there is no working state this replaces. The switch only
+ever moves a node from a repository that refuses it to one that does not.
+
+**What it does not do.** It does not buy a subscription, nor move a subscribed node back to
+enterprise; it does not run when a node's repositories cannot be read (`Sys.Audit`), and says so. It
+is recorded in the job's output rather than as an audit event of its own: the worker that makes the
+change has no request to attribute it to, and the job already names who started it.
+
 ---
 
 ## Version targets

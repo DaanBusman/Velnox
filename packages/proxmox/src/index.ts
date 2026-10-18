@@ -28,3 +28,4 @@ export * from './client';
 export * from './upload';
 export * from './tasks';
 export * from './discovery';
+export * from './repositories';

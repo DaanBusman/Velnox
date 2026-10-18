@@ -1,4 +1,11 @@
-import { waitForTask, installedKernelVersions, type ProxmoxClient } from '@velnox/proxmox';
+import {
+  installedKernelVersions,
+  isEmptyChange,
+  planNoSubscription,
+  subscriptionActive,
+  waitForTask,
+  type ProxmoxClient,
+} from '@velnox/proxmox';
 import { ERROR_CODES, newerKernelInstalled, type RebootPolicy } from '@velnox/shared';
 import { StepError } from '../jobs/steps';
 import type { LibraryServices } from '../library/services';
@@ -85,8 +92,59 @@ export async function runRegistered(handle: NodeHandle, spec: CommandSpec, echo:
   return result;
 }
 
-/** `apt-get update`, through Proxmox's API. */
+/**
+ * A node without an active subscription is moved off the enterprise
+ * repositories before anything is fetched (ADR-056): its enterprise ones are
+ * disabled and the matching no-subscription ones enabled or added, through
+ * Proxmox's repository API, on PVE 8 and 9 alike. A node with a subscription
+ * is not touched. Every change is said in the job's output. Returns whether
+ * anything changed.
+ */
+export async function useNoSubscriptionRepositories(handle: NodeHandle): Promise<boolean> {
+  const subscription = await handle.pve.nodeSubscription(handle.node).catch(() => null);
+  if (subscriptionActive(subscription)) return false;
+  // Reading them needs Sys.Audit on the node. Without it nothing can be
+  // switched — said, and the update goes on as it would have.
+  const info = await handle.pve.nodeRepositories(handle.node).catch(async (error: unknown) => {
+    await handle.log(
+      'STDERR',
+      `${handle.node}: could not read its repositories to check them (${error instanceof Error ? error.message : 'unknown'})`,
+    );
+    return null;
+  });
+  if (!info) return false;
+  const change = planNoSubscription(info, subscription);
+  if (isEmptyChange(change)) return false;
+
+  await handle.log(
+    'STDOUT',
+    `${handle.node} has no active subscription (${subscription?.status ?? 'none'}): moving it to the no-subscription repositories`,
+  );
+  // Each write changes the digest the next one is checked against.
+  let digest = info.digest;
+  const fresh = async () => {
+    digest = (await handle.pve.nodeRepositories(handle.node)).digest;
+  };
+  for (const toggle of change.toggle) {
+    await handle.pve.setRepositoryEnabled(handle.node, { ...toggle, digest });
+    await handle.log('STDOUT', `  ${toggle.describe}`);
+    await fresh();
+  }
+  for (const add of change.add) {
+    await handle.pve.addStandardRepository(handle.node, { handle: add.handle, digest });
+    await handle.log('STDOUT', `  ${add.describe}`);
+    await fresh();
+  }
+  return true;
+}
+
+/**
+ * `apt-get update`, through Proxmox's API — after moving a node without a
+ * subscription to the no-subscription repositories, which is what lets it
+ * fetch at all.
+ */
 export async function refreshLists(handle: NodeHandle): Promise<void> {
+  await useNoSubscriptionRepositories(handle);
   const upid = await handle.pve.refreshUpdates(handle.node);
   const outcome = await waitForTask(handle.pve, upid, {
     signal: handle.signal,

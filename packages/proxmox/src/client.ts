@@ -167,6 +167,27 @@ export class ProxmoxClient {
     return this.get<RepositoryInfo>(`/nodes/${encodeURIComponent(node)}/apt/repositories`);
   }
 
+  /** Turn one repository on or off: its file and its index in it (ADR-056). */
+  setRepositoryEnabled(
+    node: string,
+    input: { path: string; index: number; enabled: boolean; digest?: string },
+  ): Promise<null> {
+    return this.postOnce<null>(`/nodes/${encodeURIComponent(node)}/apt/repositories`, {
+      path: input.path,
+      index: input.index,
+      enabled: input.enabled ? 1 : 0,
+      ...(input.digest ? { digest: input.digest } : {}),
+    });
+  }
+
+  /** Add one of Proxmox's standard repositories by its handle: `no-subscription`. */
+  addStandardRepository(node: string, input: { handle: string; digest?: string }): Promise<null> {
+    return this.put<null>(`/nodes/${encodeURIComponent(node)}/apt/repositories`, {
+      handle: input.handle,
+      ...(input.digest ? { digest: input.digest } : {}),
+    });
+  }
+
   /** Pending package updates, as apt last saw them (classified by Velnox, Phase 6). */
   nodeUpdates(node: string): Promise<PendingUpdate[]> {
     return this.get<PendingUpdate[]>(`/nodes/${encodeURIComponent(node)}/apt/update`);

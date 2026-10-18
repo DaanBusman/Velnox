@@ -58,7 +58,9 @@ Elk playbook gaat door dezelfde fasen, als één job die je stap voor stap kunt 
 
 Het playbook **Ceph major upgrade** upgradet een hypergeconvergeerd Ceph-cluster één release, zoals
 de handleidingen van Proxmox het doen. **Nieuw plan** met dit playbook vraagt naar de release waarnaar
-geüpgraded wordt en het repositorykanaal (no-subscription of enterprise).
+geüpgraded wordt en het repositorykanaal (no-subscription of enterprise). Een node zonder actief
+abonnement krijgt no-subscription, wat het plan ook zegt: de enterprise-repository zou hem weigeren
+([waarom](updating-nodes.md#een-node-zonder-abonnement)).
 
 **De versiematrix.** Velnox upgradet alleen langs stappen die het kent, elk zoals Proxmox het
 documenteert:

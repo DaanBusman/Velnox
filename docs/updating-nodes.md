@@ -64,6 +64,29 @@ keeps copying files into the library working and makes updates fail with *exit c
 
 ---
 
+## A node without a subscription
+
+Proxmox's **enterprise repository** needs a subscription key: on a node without one,
+`apt-get update` fails with *401 Unauthorized*, and nothing on it can be updated or upgraded. So
+before every update, rolling update and major upgrade fetches anything, Velnox checks the node's
+subscription. When it is not active — none, expired, invalid — Velnox:
+
+1. turns the node's enabled **enterprise** repositories off, for Proxmox VE and for Ceph;
+2. turns the matching **no-subscription** repositories on — or adds them, when they are not there.
+
+It does this through Proxmox's own repository API, the one behind **Node → Updates →
+Repositories**, which handles the one-line `.list` files of Proxmox VE 8 and the deb822 `.sources`
+files of Proxmox VE 9 alike: Velnox edits no file itself. Each change is in the job's output. **A
+node with an active subscription is never touched.** On the Proxmox VE 8 → 9 upgrade this happens
+before the sources move to trixie, so the no-subscription repository moves with them; on a Ceph
+upgrade a node without a subscription gets Ceph's no-subscription repository even when the plan
+says enterprise.
+
+Reading a node's repositories needs `Sys.Audit` on it. Without it Velnox says so in the job and goes
+on; `apt-get update` then fails as before if the node is on the enterprise repository.
+
+---
+
 ## Updating one node
 
 **Update** on the node's row, with what to do about a reboot:

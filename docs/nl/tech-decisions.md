@@ -1817,6 +1817,33 @@ van niemand.
 **Niet gebouwd:** nodes samenvoegen in Proxmox; een tweede API-adres om op terug te vallen als de node
 van de behouden verbinding uitvalt.
 
+## ADR-056 — Een node zonder abonnement gaat naar de no-subscription-repositories
+
+**Besluit:** Voordat een update, rolling update of grote upgrade iets ophaalt op een node, leest Velnox
+het abonnement; is dat niet actief, dan wordt elke ingeschakelde enterprise-repository — Proxmox VE en
+Ceph — uitgezet en de bijbehorende no-subscription-repository aangezet, of toegevoegd via zijn
+standaardnaam als hij er niet is. Op Proxmox VE 8 en 9 gelijk, zoals de eigenaar vroeg. Het gaat via
+de repository-API van Proxmox (`/nodes/{node}/apt/repositories`: GET, POST om er een aan of uit te
+zetten, PUT om er een toe te voegen), met de digest van elke lezing gecontroleerd bij de volgende
+schrijfactie. Elke wijziging staat in de uitvoer van de job. Een node met een actief abonnement wordt
+nooit aangeraakt. Bij de upgrade 8 → 9 gebeurt het voordat de bronnen naar trixie gaan; bij een
+Ceph-upgrade wordt de repositoryregel die Velnox schrijft per node op dezelfde manier gekozen.
+
+**Waarom via de API en niet door bestanden te bewerken.** Proxmox VE 8 houdt zijn repositories bij in
+eenregelige `.list`-bestanden en 9 in deb822-`.sources`; de API leest en schrijft beide, en is wat het
+eigen scherm Repositories van Proxmox gebruikt. Een sed over de bestanden zou beide formaten moeten
+kennen en elke plek waar een repository kan staan, en kan een uitgeschakelde regel niet van
+commentaar onderscheiden.
+
+**Waarom automatisch.** Zonder abonnement antwoordt de enterprise-repository met 401, dus `apt-get
+update` faalt en er kan niets worden bijgewerkt: er is geen werkende toestand die dit vervangt. De
+omschakeling zet een node alleen ooit van een repository die hem weigert naar een die dat niet doet.
+
+**Wat het niet doet.** Het koopt geen abonnement, en zet een node met abonnement niet terug op
+enterprise; het draait niet als de repositories van een node niet te lezen zijn (`Sys.Audit`), en
+zegt dat. Het staat in de uitvoer van de job en niet als eigen auditgebeurtenis: de worker die de
+wijziging doet heeft geen verzoek om hem aan toe te schrijven, en de job noemt al wie hem startte.
+
 ---
 
 ## Versiedoelen

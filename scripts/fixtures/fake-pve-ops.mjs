@@ -32,6 +32,12 @@
  * Phase 7B: `{"pve": "9.0.6"}` makes every node report that version, and
  * Proxmox 9's HA rules (`/cluster/ha/rules`) answer; on 8 they answer 501 as
  * PVE 8 does. The rules live in the fixture, so they outlast Velnox.
+ *
+ * `{"repos": "enterprise"}` puts every node on Proxmox's enterprise
+ * repository, answering `/apt/repositories` (GET, POST to toggle one, PUT to
+ * add a standard one) as Proxmox does. Only pve1 has a subscription, so
+ * `apt-get update` fails with a 401 on the others until they are moved to
+ * no-subscription. A new value starts them over.
  */
 
 import { readFileSync } from 'node:fs';
@@ -67,6 +73,31 @@ const GIB = 1024 ** 3;
 export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUpgrade = [] }) {
   const state = {};
   let cephWarn = false;
+  // Repositories per node, on the enterprise repository until moved (ADR-056).
+  const repos = new Map();
+  let repoDigest = 0;
+  let reposFor;
+  const reposOf = (node) => {
+    if (reposFor !== control().repos) {
+      reposFor = control().repos;
+      repos.clear();
+    }
+    if (!repos.has(node)) {
+      repos.set(node, {
+        digest: `d${++repoDigest}`,
+        files: [
+          { path: '/etc/apt/sources.list', 'file-type': 'list', repositories: [{ Enabled: 1, Types: ['deb'], URIs: ['http://ftp.debian.org/debian'], Suites: ['bookworm'], Components: ['main', 'contrib'] }] },
+          { path: '/etc/apt/sources.list.d/pve-enterprise.list', 'file-type': 'list', repositories: [{ Enabled: 1, Types: ['deb'], URIs: ['https://enterprise.proxmox.com/debian/pve'], Suites: ['bookworm'], Components: ['pve-enterprise'] }] },
+        ],
+      });
+    }
+    return repos.get(node);
+  };
+  // Only pve1 has a subscription, as in the base fixture's /subscription.
+  const blockedByEnterprise = (node) =>
+    node !== 'pve1' &&
+    reposOf(node).files.some((f) => f.repositories.some((r) => r.Enabled === 1 && r.URIs.some((u) => u.includes('enterprise.proxmox.com'))));
+
   const control = () => {
     try {
       return JSON.parse(readFileSync(join(dir, 'ops-control.json'), 'utf8'));
@@ -238,6 +269,41 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     if (!nodes[node].online) return (offline(send, response, node), true);
 
     if (ceph.handleNode(request, response, node, rest, send, readForm)) return true;
+
+    // Repositories (ADR-056), once the control file says `{"repos": "enterprise"}`:
+    // every node starts on the enterprise repository, and only pve1 has a
+    // subscription, so `apt-get update` fails on the others until they are moved.
+    if (rest === 'apt/repositories' && control().repos) {
+      const r = reposOf(node);
+      if (method === 'GET') return (send(response, 200, { data: { digest: r.digest, files: r.files } }), true);
+      readForm(request).then((form) => {
+        if (form.digest && form.digest !== r.digest) return send(response, 400, { data: null, message: 'digest mismatch' });
+        if (method === 'POST') {
+          const repo = r.files.find((f) => f.path === form.path)?.repositories[Number(form.index)];
+          if (!repo) return send(response, 400, { data: null, message: 'no such repository' });
+          repo.Enabled = Number(form.enabled);
+          log(`ops: ${node} repository ${form.path}#${form.index} ${repo.Enabled ? 'enabled' : 'disabled'}`);
+        } else if (method === 'PUT') {
+          if (form.handle !== 'no-subscription') return send(response, 400, { data: null, message: `unknown handle ${form.handle}` });
+          r.files[0].repositories.push({ Enabled: 1, Types: ['deb'], URIs: ['http://download.proxmox.com/debian/pve'], Suites: ['bookworm'], Components: ['pve-no-subscription'] });
+          log(`ops: ${node} repository ${form.handle} added`);
+        } else return send(response, 405, { data: null });
+        r.digest = `d${++repoDigest}`;
+        send(response, 200, { data: null });
+      });
+      return true;
+    }
+    if (rest === 'apt/update' && method === 'POST' && control().repos && blockedByEnterprise(node)) {
+      log(`ops: ${node} apt-get update refused: 401 Unauthorized from enterprise.proxmox.com`);
+      send(response, 200, {
+        data: storage.newTask(node, 'aptupdate', "command 'apt-get update' failed: exit code 100", [
+          'Err:4 https://enterprise.proxmox.com/debian/pve bookworm InRelease',
+          '  401  Unauthorized [IP: 212.224.123.70 443]',
+          'E: Failed to fetch https://enterprise.proxmox.com/debian/pve/dists/bookworm/InRelease  401  Unauthorized',
+        ]),
+      });
+      return true;
+    }
     if (rest === 'apt/update' && method === 'GET') {
       send(response, 200, {
         data: [...s.pending, ...ceph.pendingFor(node), ...pve9.pendingFor(node)].map(({ archive: _archive, ...p }) => ({ ...p, Priority: 'optional', Section: 'admin' })),

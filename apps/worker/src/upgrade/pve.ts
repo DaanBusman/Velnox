@@ -31,7 +31,13 @@ import {
   positionsOf,
   sharedStorages,
 } from '../updates/guests';
-import { distUpgrade, rebootIfNeeded, refreshLists, runRegistered } from '../updates/node-ops';
+import {
+  distUpgrade,
+  rebootIfNeeded,
+  refreshLists,
+  runRegistered,
+  useNoSubscriptionRepositories,
+} from '../updates/node-ops';
 import { quorumAllows } from '../updates/quorum';
 import { handleFor, nodesOf, runningVersions, withPve } from './node';
 import {
@@ -599,11 +605,12 @@ export const PVE_ACTIONS: Record<string, UpgradeAction> = {
     if (!target) return;
     await withPve(rt, async (pve) => {
       if (await skipIfDone(pve, target, context, 'the sources')) return;
-      const out = await runRegistered(
-        handleFor(rt, pve, target.label, context),
-        PVE_COMMANDS.sourcesTrixie,
-        false,
-      );
+      const handle = handleFor(rt, pve, target.label, context);
+      // Before the switch, while the node's API still writes bookworm lines:
+      // the no-subscription repository it adds is then moved to trixie with
+      // the rest (ADR-056).
+      await useNoSubscriptionRepositories(handle);
+      const out = await runRegistered(handle, PVE_COMMANDS.sourcesTrixie, false);
       await context.log('STDOUT', `${target.label}: sources on trixie\n${out.stdout.trim()}`);
     });
   },

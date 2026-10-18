@@ -69,6 +69,31 @@ kopiëren naar de bibliotheek werkend en laat updates mislukken met *exitcode 12
 
 ---
 
+## Een node zonder abonnement
+
+De **enterprise-repository** van Proxmox vraagt een abonnementssleutel: op een node zonder abonnement
+faalt `apt-get update` met *401 Unauthorized*, en kan er niets op worden bijgewerkt of geüpgraded.
+Daarom controleert Velnox het abonnement van de node voordat een update, rolling update of grote
+upgrade iets ophaalt. Is het niet actief — geen, verlopen, ongeldig — dan:
+
+1. zet Velnox de ingeschakelde **enterprise**-repositories van de node uit, voor Proxmox VE en voor
+   Ceph;
+2. zet het de bijbehorende **no-subscription**-repositories aan — of voegt ze toe als ze er niet zijn.
+
+Dat gaat via de eigen repository-API van Proxmox, die achter **Node → Updates → Repositories**,
+die de eenregelige `.list`-bestanden van Proxmox VE 8 en de deb822-`.sources`-bestanden van Proxmox
+VE 9 op dezelfde manier behandelt: Velnox bewerkt zelf geen bestand. Elke wijziging staat in de
+uitvoer van de job. **Een node met een actief abonnement wordt nooit aangeraakt.** Bij de upgrade
+Proxmox VE 8 → 9 gebeurt dit vóórdat de bronnen naar trixie gaan, zodat de no-subscription-repository
+meegaat; bij een Ceph-upgrade krijgt een node zonder abonnement de no-subscription-repository van
+Ceph, ook als het plan enterprise zegt.
+
+Het lezen van de repositories van een node vraagt `Sys.Audit` op die node. Zonder dat zegt Velnox
+het in de job en gaat het door; `apt-get update` faalt dan zoals voorheen als de node op de
+enterprise-repository staat.
+
+---
+
 ## Eén node bijwerken
 
 **Bijwerken** in de rij van de node, met wat er met een herstart moet gebeuren:
