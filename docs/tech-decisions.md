@@ -656,6 +656,16 @@ without the network. Both Dockerfiles now make it readable instead, and pnpm the
 The bump is recorded here rather than left implicit because the lesson below is about pins that stop
 being revisited, and a pin nobody has moved in a while is the thing that lesson is about.
 
+**Amended, 12.6.0 → 12.14.0** (asked for by the owner, 18 October 2026; 12.14.0 was then three days
+old and the registry's `latest`). Nothing broke. The lockfile was rewritten by 12.14.0 itself, in a
+Linux container — pnpm does not run on the machine this was done on — with `--lockfile-only`. It
+moved by 61 lines each way and every one is again pnpm describing itself; the `pnpm@12.14.0`
+integrity matches the one the registry publishes, and 12.14.0 now checks the lockfile against its
+supply-chain policies (626 entries passed). CI's sequence ran in a clean container on 12.14.0 —
+`install --frozen-lockfile`, `validate:i18n`, `validate:licenses`, `lint`, `typecheck`, `test` —
+all passing, including the licence check that cannot run here otherwise. Both images build on it,
+and `pnpm --version` answers 12.14.0 under `--network none`, as root and as `node`.
+
 **The general lesson, which is the reason this is written down:** a pinned tool that has not been
 revisited in a while is not a stable dependency, it is a deferred migration. Four behaviours changed
 under a field that looks like a version number, and three of them would have surfaced as a broken

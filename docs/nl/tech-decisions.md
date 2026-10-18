@@ -689,6 +689,17 @@ De verhoging staat hier opgeschreven in plaats van impliciet te blijven, omdat d
 vastleggingen gaat die niet meer herzien worden, en een vastlegging die al een tijd niemand verzet
 heeft is precies waar die les over gaat.
 
+**Herzien, 12.6.0 → 12.14.0** (gevraagd door de eigenaar, 18 oktober 2026; 12.14.0 was toen drie
+dagen oud en de `latest` van het register). Er brak niets. Het lockfile is door 12.14.0 zelf
+herschreven, in een Linux-container — pnpm draait niet op de machine waarop dit is gedaan — met
+`--lockfile-only`. Het verschoof 61 regels in beide richtingen en elke regel is weer pnpm dat zichzelf
+beschrijft; de integriteit van `pnpm@12.14.0` komt overeen met wat het register publiceert, en 12.14.0
+controleert het lockfile nu tegen zijn supply-chainbeleid (626 vermeldingen geslaagd). De reeks van CI
+draaide in een schone container op 12.14.0 — `install --frozen-lockfile`, `validate:i18n`,
+`validate:licenses`, `lint`, `typecheck`, `test` — en slaagde volledig, ook de licentiecontrole die hier
+anders niet kan draaien. Beide images bouwen ermee, en `pnpm --version` antwoordt 12.14.0 onder
+`--network none`, als root en als `node`.
+
 **De algemene les, en de reden dat dit is opgeschreven:** een vastgelegd hulpmiddel dat al een tijd
 niet is herzien is geen stabiele afhankelijkheid, het is een uitgestelde migratie. Vier gedragingen
 veranderden onder een veld dat eruitziet als een versienummer, en drie ervan zouden zich als een

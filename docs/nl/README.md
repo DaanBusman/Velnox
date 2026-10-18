@@ -136,7 +136,7 @@ op zonder het installatiescript te draaien dat de binary op zijn plek zet.
 Installeer eenmalig een passende pnpm en de doorschakeling is niet meer nodig:
 
 ```bash
-npm install -g @pnpm/exe@12.6.0
+npm install -g @pnpm/exe@12.14.0
 ```
 
 | Commando | Wat het doet |
