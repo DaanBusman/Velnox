@@ -1,6 +1,6 @@
 # Velnox — Servicediagram
 
-> **Vertaling.** Bron: [docs/service-diagram.md](../service-diagram.md) @ `5d8f049`.
+> **Vertaling.** Bron: [docs/service-diagram.md](../service-diagram.md) @ `e2f11a9`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** ontworpen in fase 0. De zes services, hun netwerken en hun volgorde zijn zoals gebouwd;

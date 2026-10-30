@@ -1,6 +1,6 @@
 # Velnox — Voorstel databaseschema
 
-> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `f224c8c`.
+> **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `e2f11a9`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** ontworpen in fase 0, en uitgebreid naarmate elke fase haar tabellen opleverde — de secties

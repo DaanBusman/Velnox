@@ -1,6 +1,6 @@
 # Velnox — Technologiekeuzes (ADR-log)
 
-> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `dce032c`.
+> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `e2f11a9`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** bijgehouden zodra een keuze wordt gemaakt. De fase 0-keuzes waren voorstellen toen ze
