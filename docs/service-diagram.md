@@ -1,6 +1,9 @@
 # Velnox — Service Diagram
 
-**Status:** Phase 0 design proposal.
+**Status:** designed in Phase 0. The six services, their networks and their ordering are as built;
+the VMware, Hyper-V and Entra ID connections are still to come (Phases 11 and 12, and the sign-in
+flow). Where this differs from what runs, `deploy/compose/` and [architecture.md](architecture.md)
+are right.
 
 ---
 

@@ -1,6 +1,7 @@
 # Velnox — Technical Risk Register
 
-**Status:** Phase 0. Risks are ranked by *expected damage*, not by likelihood alone: this product
+**Status:** written in Phase 0, as the risks the design had to answer, and updated where a later phase
+changed one. Risks are ranked by *expected damage*, not by likelihood alone: this product
 holds root credentials for other companies' production hypervisors and reboots them.
 
 Scoring: **Impact** (1–5) × **Likelihood** (1–5) = **Risk**. Anything ≥ 12 needs a mitigation

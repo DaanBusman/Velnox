@@ -15,7 +15,18 @@ auditlogging.
 
 ---
 
-## Projectstatus: fase 5 van 15
+## Projectstatus
+
+Velnox wordt in vijftien fasen gebouwd. Hoe elke fase ervoor staat, zoals
+[docs/roadmap.md](roadmap.md) het vastlegt — het dashboard leest dezelfde roadmap, en
+`pnpm run validate:version` faalt zodra deze drie regels er niet mee overeenkomen:
+
+- **Afgerond:** 1, 2, 3, 4, 5, 5A, 6, 7, 7B
+- **Gebouwd, wacht op bewijs op een echt cluster:** 5B, 5C, 8, 9A, 9B
+- **Nog niet begonnen:** 10, 11, 12, 13, 14, 15
+
+"Afgerond" is voor 6, 7 en 7B een besluit van de eigenaar bij 0.7.0: net als alles sinds fase 5A
+zijn ze bewezen tegen een nagebootste Proxmox-API, nog niet tegen een echt cluster.
 
 **De basis** draait: zes services onder Docker Compose, PostgreSQL met migraties, Redis, een worker
 zonder luisterende poort, Engelse en Nederlandse lokalisatie, gestructureerde logging met
@@ -26,13 +37,18 @@ er bestaan op geen enkel moment standaardinloggegevens. Aanmelden gebruikt Argon
 access-token en een roterend refresh-token waarvan hergebruik de hele sessiefamilie intrekt.
 Optionele TOTP-tweefactorauthenticatie, met een beleid dat het kan verplichten. Elk endpoint dat niet
 bewust publiek is, vereist een sessie, en elke authenticatie- en autorisatiegebeurtenis wordt
-weggeschreven naar een auditlogboek dat de database zelf weigert te wijzigen.
+weggeschreven naar een auditlogboek dat de database zelf weigert te wijzigen. De MSP kan eigen rollen
+maken, per onderdeel als "kan wijzigen" of "kan alleen lezen", en niemand kan meer rechten toekennen dan
+het eigen account heeft.
 
-**Klanten** (fase 3): tenants, locaties, en rechten die beperkt zijn tot wat ze dekken, met de
-scheiding afgedwongen in de datalaag in plaats van onthouden door elk endpoint.
+**Klanten** (fase 3 en 5C): tenants, locaties, en rechten die beperkt zijn tot wat ze dekken, met de
+scheiding afgedwongen in de datalaag in plaats van onthouden door elk endpoint. Hoofdtenants en
+subtenants, supportlogs per tenant, en het eigen certificaat van de installatie — dat van Caddy, Let's
+Encrypt of een geüpload certificaat — gekozen in de interface.
 
 **Proxmox** (fase 4): clusters toegevoegd tegen een bevestigde certificaatvingerafdruk, en hun nodes,
-gasten, opslag, netwerken en Ceph volgens schema geïnventariseerd.
+gasten, opslag, netwerken en Ceph volgens schema geïnventariseerd. Twee registraties van één
+Proxmox-cluster kunnen worden samengevoegd tot één.
 
 **Jobs** (fase 5): werk dat tijd kost draait als vastgelegde job met stappen, een live
 gebeurtenissenstroom, annuleren op veilige punten, goedkeuringspunten met een optioneel
@@ -48,10 +64,27 @@ uit worden gebouwd — Windows vanaf zijn ISO met een gegenereerd antwoordbestan
 image — met elk wachtwoord gegenereerd of versleuteld opgeslagen, alleen getoond via een vastgelegde
 onthulling, en een installatieverslag dat wordt gemaild als de VM klaar is.
 
-> **Dit is nog steeds een build in aanbouw, geen afgerond product.** Velnox leest je infrastructuur,
-> en wijzigt die op twee manieren: het kopieert ISO's en disk-images naar de opslag van een cluster, en
-> het bouwt nieuwe VM's vanuit templates. Updatebeheer komt in fase 6. Rollen zijn niet te bewerken, en aanmelden met
-> Microsoft Entra ID is alleen configuratie — de flow zelf is niet geschreven.
+**Updates** (fase 6 en 7): openstaande pakketten per node, ingedeeld als security, kernel en
+Proxmox; één node bijgewerkt als job met live uitvoer, of het hele cluster als rolling update die
+eerst de gasten verplaatst en nooit meer nodes uitschakelt dan het quorum toelaat; beleid met
+goedkeuring en onderhoudsvensters. Een node zonder subscriptie gaat eerst over op de
+no-subscription-repository's.
+
+**Plaatsing** (fase 7B): gasten uit elkaar houden, bij elkaar houden, of nodes voorkeur geven —
+getoetst aan de inventaris, gecorrigeerd door migratiejobs, en op Proxmox VE 9 weggeschreven in de
+eigen HA-regels van Proxmox.
+
+**Major upgrades** (fase 8, 9A en 9B): een playbook-engine met preflightcontroles, remediaties die de
+exacte wijziging tonen voordat die wordt doorgevoerd, en een verslag achteraf. Daarop draaien Ceph
+Quincy → Reef en Reef → Squid, en Proxmox VE 8 → 9: pve8to9 regel voor regel gelezen, een node die
+daar te oud voor is eerst naar de laatste 8 gebracht, en de eerste node als canary.
+
+> **Dit is nog steeds een build in aanbouw, geen afgerond product.** Velnox wijzigt je infrastructuur
+> alleen via jobs die iemand met het recht daarvoor startte, of die een beleid van zo iemand toeliet:
+> bestanden op de opslag van een cluster, nieuwe VM's, pakketten en herstarts, waar gasten draaien, en
+> de release die een cluster draait. Aanmelden met Microsoft Entra ID is alleen configuratie — de flow
+> zelf is niet geschreven. Credentialrotatie en de migratieassistenten voor VMware en Hyper-V zijn
+> fase 10–12.
 
 Wat elke fase toevoegt, en wat er vandaag bewust ontbreekt:
 [roadmap.md](roadmap.md) · [known-gaps.md](known-gaps.md)
@@ -163,6 +196,14 @@ Beheerdersgidsen — taakgericht, en dezelfde pagina's die offline in het produc
 | [getting-started.md](getting-started.md) | Het eerste uur: installeren, de eerste beheerder aanmaken, de weg vinden, gezondheid controleren |
 | [managing-access.md](managing-access.md) | Accounts, rollen, meervoudige authenticatie, Entra ID single sign-on, het auditlog |
 | [permissions.md](permissions.md) | Elke rol tegen elk recht, wat elk recht toestaat, en welke fase het echt maakt |
+| [organising-your-fleet.md](organising-your-fleet.md) | Tenants, subtenants en locaties |
+| [managing-infrastructure.md](managing-infrastructure.md) | Clusters toevoegen, SSH, de inventaris, clusters en nodes, twee registraties samenvoegen |
+| [working-with-jobs.md](working-with-jobs.md) | Jobs volgen, annuleren en goedkeuren |
+| [managing-the-library.md](managing-the-library.md) | De ISO-bibliotheek: ophalen, uploaden, naar en van een cluster kopiëren |
+| [building-vms.md](building-vms.md) | Autoconfig-templates en onbeheerd VM's bouwen |
+| [updating-nodes.md](updating-nodes.md) | Openstaande updates, een node bijwerken, rolling updates, beleid en onderhoudsvensters |
+| [placement.md](placement.md) | Gasten uit elkaar of bij elkaar houden, voorkeursnodes, balanceren |
+| [major-upgrades.md](major-upgrades.md) | Upgradeplannen, preflight, remediaties, Ceph en Proxmox VE 8 → 9 |
 
 Referentie — hoe het systeem is gebouwd, en waarom:
 

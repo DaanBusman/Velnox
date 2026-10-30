@@ -1,6 +1,7 @@
 # Velnox — Technology Decisions (ADR log)
 
-**Status:** Phase 0. These decisions are proposals awaiting approval; nothing is implemented yet.
+**Status:** kept as decisions are made. The Phase 0 entries were proposals when written and are built now;
+later ones record decisions as each phase made them, and a changed decision is amended in place.
 Each entry states the decision, the alternatives considered, and why the alternative lost.
 
 ---

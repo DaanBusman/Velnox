@@ -11,7 +11,18 @@ permission-based RBAC, Microsoft Entra ID SSO and full audit logging.
 
 ---
 
-## Project status: Phase 5 of 15
+## Project status
+
+Velnox is built in fifteen phases. Where each one stands, as [docs/roadmap.md](docs/roadmap.md)
+records it — the dashboard reads the same roadmap, and `pnpm run validate:version` fails when these
+three lines disagree with it:
+
+- **Complete:** 1, 2, 3, 4, 5, 5A, 6, 7, 7B
+- **Built, awaiting proof on a real cluster:** 5B, 5C, 8, 9A, 9B
+- **Not started:** 10, 11, 12, 13, 14, 15
+
+"Complete" for 6, 7 and 7B is the owner's call with 0.7.0: like everything since Phase 5A, they
+are proven against a fixture Proxmox API, not yet against a real cluster.
 
 **The foundation** runs: six services under Docker Compose, PostgreSQL with migrations, Redis, a
 worker with no listening port, English/Dutch localization, structured logging with secret redaction,
@@ -22,13 +33,17 @@ there are no default credentials at any point. Sign-in uses Argon2id, a short-li
 a rotating refresh token whose reuse revokes the whole session family. Optional TOTP two-factor
 authentication, with a policy that can require it. Every endpoint that is not deliberately public
 requires a session, and every authentication and authorization event is written to an append-only
-audit log the database itself refuses to modify.
+audit log the database itself refuses to modify. The MSP can make its own roles, area by area,
+as "can change" or "can only read", and no one can grant more than they hold.
 
-**Customers** (Phase 3): tenants, sites, and grants scoped to what they cover, with isolation
-enforced in the data layer rather than remembered by each endpoint.
+**Customers** (Phases 3 and 5C): tenants, sites, and grants scoped to what they cover, with isolation
+enforced in the data layer rather than remembered by each endpoint. Main tenants and sub-tenants,
+support logs per tenant, and the installation's own certificate — Caddy's, Let's Encrypt or an
+uploaded one — chosen in the interface.
 
 **Proxmox** (Phase 4): clusters added against a confirmed certificate fingerprint, and their nodes,
-guests, storage, networks and Ceph inventoried on a schedule.
+guests, storage, networks and Ceph inventoried on a schedule. Two registrations of one Proxmox
+cluster can be merged into one.
 
 **Jobs** (Phase 5): work that takes time runs as a recorded job with steps, a live event stream,
 cancellation at safe boundaries, approval gates with an optional four-eyes rule, and a dead worker
@@ -43,10 +58,26 @@ from them unattended — Windows from its ISO with a generated answer file, Linu
 with every password generated or stored encrypted, shown only through an audited reveal, and an
 installation record mailed when the VM is ready.
 
-> **This is still a build in progress, not a finished product.** Velnox reads your infrastructure,
-> and changes it in two ways only: it copies ISOs and disk images onto a cluster's storage, and it
-> builds new VMs from templates. Update management arrives in Phase 6. Roles cannot be edited, and signing in with Microsoft
-> Entra ID is configuration only — the flow itself is not written.
+**Updates** (Phases 6 and 7): pending packages per node, classified as security, kernel and
+Proxmox; one node updated as a job with live output, or the whole cluster as a rolling update that
+moves guests away first and never takes more nodes down than quorum allows; policies with approval
+and maintenance windows. A node without a subscription is moved to the no-subscription repositories
+first.
+
+**Placement** (Phase 7B): keep guests apart, keep them together, or prefer nodes — checked against
+the inventory, corrected by migration jobs, and on Proxmox VE 9 written into Proxmox's own HA rules.
+
+**Major upgrades** (Phases 8, 9A and 9B): a playbook engine with preflight checks, remediations that
+show the exact change before it is made, and a report after. On it run Ceph Quincy → Reef and
+Reef → Squid, and Proxmox VE 8 → 9: pve8to9 read line by line, a node too old for it brought to the
+latest 8 first, and the first node a canary.
+
+> **This is still a build in progress, not a finished product.** Velnox changes your
+> infrastructure only through jobs someone with the permission started, or a policy they set
+> allowed: files on a cluster's storage, new VMs, packages and reboots, where guests run, and the
+> release a cluster runs. Signing in with Microsoft Entra ID is configuration only — the flow itself
+> is not written. Credential rotation and the VMware and Hyper-V migration assistants are Phases
+> 10–12.
 
 What each phase adds, and what is deliberately missing today:
 [docs/roadmap.md](docs/roadmap.md) · [docs/known-gaps.md](docs/known-gaps.md)
@@ -164,6 +195,14 @@ Operator guides — task-shaped, and the same pages that ship offline inside the
 | [getting-started.md](docs/getting-started.md) | The first hour: installing, creating the first administrator, finding your way around, checking health |
 | [managing-access.md](docs/managing-access.md) | Accounts, roles, two-factor authentication, Entra ID single sign-on, the audit log |
 | [permissions.md](docs/permissions.md) | Every role against every permission, what each permission allows, and which phase makes it real |
+| [organising-your-fleet.md](docs/organising-your-fleet.md) | Tenants, sub-tenants and sites |
+| [managing-infrastructure.md](docs/managing-infrastructure.md) | Adding clusters, SSH, the inventory, clusters and nodes, merging two registrations |
+| [working-with-jobs.md](docs/working-with-jobs.md) | Watching, cancelling and approving jobs |
+| [managing-the-library.md](docs/managing-the-library.md) | The ISO library: fetching, uploading, copying onto and off a cluster |
+| [building-vms.md](docs/building-vms.md) | Autoconfig templates and unattended VM builds |
+| [updating-nodes.md](docs/updating-nodes.md) | Pending updates, updating a node, rolling updates, policies and maintenance windows |
+| [placement.md](docs/placement.md) | Keeping guests apart or together, preferred nodes, balancing |
+| [major-upgrades.md](docs/major-upgrades.md) | Upgrade plans, preflight, remediations, Ceph and Proxmox VE 8 → 9 |
 
 Reference — how the system is built, and why:
 
@@ -181,9 +220,9 @@ Reference — how the system is built, and why:
 
 Nederlandse vertalingen: [docs/nl/](docs/nl/). English is canonical.
 
-Written per the phase that implements them: `security.md`, `rbac.md`, `multi-tenancy.md`,
-`proxmox-integration.md`, `update-engine.md`, `major-upgrades.md`, `migrations.md`,
-`build-system.md`, `microsoft-sso.md`.
+Still to be written, each by the phase that needs it: `security.md`, `rbac.md`, `multi-tenancy.md`,
+`proxmox-integration.md`, `update-engine.md`, `migrations.md`, `build-system.md`,
+`microsoft-sso.md`.
 
 ---
 

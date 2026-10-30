@@ -3,7 +3,8 @@
 > **Vertaling.** Bron: [docs/risks.md](../risks.md) @ `91dd484`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Phase 0. Risico's zijn gerangschikt op *verwachte schade*, niet op waarschijnlijkheid
+**Status:** geschreven in fase 0, als de risico's waar het ontwerp een antwoord op moest hebben, en
+bijgewerkt waar een latere fase er een veranderde. Risico's zijn gerangschikt op *verwachte schade*, niet op waarschijnlijkheid
 alleen: dit product bewaart root-credentials van productie-hypervisors van andere bedrijven en herstart
 ze.
 

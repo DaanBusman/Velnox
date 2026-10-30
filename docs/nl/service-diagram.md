@@ -3,7 +3,9 @@
 > **Vertaling.** Bron: [docs/service-diagram.md](../service-diagram.md) @ `5d8f049`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Phase 0 ontwerpvoorstel.
+**Status:** ontworpen in fase 0. De zes services, hun netwerken en hun volgorde zijn zoals gebouwd;
+de verbindingen met VMware, Hyper-V en Entra ID komen nog (fase 11 en 12, en de aanmeldflow). Waar
+dit afwijkt van wat draait, hebben `deploy/compose/` en [architecture.md](architecture.md) gelijk.
 
 ---
 

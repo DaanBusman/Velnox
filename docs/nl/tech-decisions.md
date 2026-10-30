@@ -3,8 +3,9 @@
 > **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `dce032c`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Phase 0. Deze keuzes zijn voorstellen in afwachting van goedkeuring; er is nog niets
-geïmplementeerd. Elke ADR benoemt de keuze, de overwogen alternatieven, en waarom die afvielen.
+**Status:** bijgehouden zodra een keuze wordt gemaakt. De fase 0-keuzes waren voorstellen toen ze
+werden geschreven en zijn nu gebouwd; latere leggen keuzes vast zoals elke fase ze maakte, en een gewijzigde keuze wordt ter
+plekke aangevuld. Elke ADR benoemt de keuze, de overwogen alternatieven, en waarom die afvielen.
 
 ---
 

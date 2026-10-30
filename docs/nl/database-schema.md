@@ -3,10 +3,11 @@
 > **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `f224c8c`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
-**Status:** Phase 0 ontwerpvoorstel. PostgreSQL 16, Prisma-migraties.
+**Status:** ontworpen in fase 0, en uitgebreid naarmate elke fase haar tabellen opleverde — de secties
+hieronder zeggen welke fase wat bouwde. PostgreSQL 16, Prisma-migraties.
 Dit is het model op hoofdlijnen: entiteiten, belangrijkste velden, relaties en de regels die tenancy en
-secretbeheer veilig maken. Detail op kolomniveau wordt per fase vastgelegd in het werkelijke
-Prisma-schema.
+secretbeheer veilig maken. Detail op kolomniveau staat in het Prisma-schema
+(`packages/db/prisma/schema.prisma`), dat leidend is waar de twee verschillen.
 
 ---
 

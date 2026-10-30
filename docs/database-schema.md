@@ -1,8 +1,10 @@
 # Velnox — Database Schema Proposal
 
-**Status:** Phase 0 design proposal. PostgreSQL 16, Prisma migrations.
+**Status:** designed in Phase 0, and extended as each phase landed its tables — the sections below say
+which phase built what. PostgreSQL 16, Prisma migrations.
 This is the high-level model: entities, key fields, relationships and the rules that make tenancy
-and secret handling safe. Column-level detail is finalised per phase in the actual Prisma schema.
+and secret handling safe. Column-level detail lives in the Prisma schema
+(`packages/db/prisma/schema.prisma`), which is authoritative where the two differ.
 
 ---
 

@@ -131,6 +131,60 @@ export function completedPhase() {
   return highest;
 }
 
+/**
+ * The phase lists at the top of the READMEs, which GitHub shows first.
+ *
+ * The README said "Phase 5 of 15" for four phases after it stopped being true,
+ * for the same reason the dashboard once did: it was a sentence nobody had to
+ * touch when the roadmap moved. Each list is a labelled line of phase ids, and
+ * has to name exactly the phases the roadmap gives that status — read the way
+ * apps/web/lib/roadmap.ts reads it, so the README and the dashboard agree.
+ */
+const README_STATUS = {
+  'README.md': {
+    complete: 'Complete',
+    built: 'Built, awaiting proof on a real cluster',
+    planned: 'Not started',
+  },
+  'docs/nl/README.md': {
+    complete: 'Afgerond',
+    built: 'Gebouwd, wacht op bewijs op een echt cluster',
+    planned: 'Nog niet begonnen',
+  },
+};
+
+export function phaseStatuses() {
+  const statuses = { complete: [], built: [], planned: [] };
+  for (const line of read(ROADMAP).split('\n')) {
+    const match = /^##\s+Phase\s+(\d+[A-Z]?)\s+—/.exec(line);
+    if (!match) continue;
+    const status = /✅/.test(line) ? 'complete' : /\bbuilt\b/i.test(line) ? 'built' : 'planned';
+    statuses[status].push(match[1]);
+  }
+  return statuses;
+}
+
+function readmeDrift() {
+  const statuses = phaseStatuses();
+  const problems = [];
+  for (const [file, labels] of Object.entries(README_STATUS)) {
+    const text = read(file);
+    for (const [status, label] of Object.entries(labels)) {
+      const line = text.split('\n').find((l) => l.startsWith(`- **${label}:**`));
+      const expected = statuses[status].join(', ');
+      if (!line) {
+        problems.push(`${file} has no "- **${label}:**" line; it should say: ${expected}`);
+        continue;
+      }
+      const listed = line.slice(`- **${label}:**`.length).trim();
+      if (listed !== expected) {
+        problems.push(`${file} says "${label}: ${listed}", the roadmap says: ${expected}`);
+      }
+    }
+  }
+  return problems;
+}
+
 function check() {
   const expected = currentVersion();
   const drifted = findAll().filter((entry) => entry.version !== expected);
@@ -151,6 +205,13 @@ function check() {
   const parts = SEMVER.exec(expected);
   const major = Number(parts?.[1]);
   const minor = Number(parts?.[2]);
+
+  const drift = readmeDrift();
+  if (drift.length > 0) {
+    console.error('The README does not match the roadmap:');
+    for (const problem of drift) console.error(`  ${problem}`);
+    process.exit(1);
+  }
 
   if (major === 0) {
     const phase = completedPhase();
