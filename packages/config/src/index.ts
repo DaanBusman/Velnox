@@ -75,7 +75,7 @@ const baseSchema = z.object({
   VELNOX_DEFAULT_LOCALE: z.enum(['en', 'nl']).default('en'),
   VELNOX_DEFAULT_TIMEZONE: z.string().min(1).default('Europe/Amsterdam'),
 
-  METRICS_ENABLED: booleanish.default('false'),
+  METRICS_ENABLED: booleanish.prefault('false'),
 });
 
 const redisSchema = z.object({

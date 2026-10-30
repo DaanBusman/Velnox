@@ -58,3 +58,18 @@ allowBuilds:
   sharp: true
   ssh2: false
   unrs-resolver: true
+
+# Security fixes for versions a dependency pins exactly, each inside the major
+# that dependency asks for, so nothing it relies on changes shape. Remove an
+# entry once the dependency itself requires the fixed version.
+#
+#   multer   @nestjs/platform-express 11 pins 2.4.0; 2.5.0 fixes a crash from
+#            an aborted request during an async fileFilter (GHSA-q7qp-rjg7-q26m).
+#            Velnox registers no multer handler, so this is hygiene.
+#   js-yaml  @nestjs/swagger 11 pins 5.3.0; 5.4.1 bounds the CPU of merge keys
+#            (GHSA-r3ph-w7gj-g6xm). Swagger only parses its own YAML. Held at
+#            5.4.x: 5.5 moves to argparse 3, which is PSF-2.0, a licence
+#            scripts/check-licenses.mjs does not yet allow.
+overrides:
+  multer: ^2.5.0
+  js-yaml: ~5.4.1

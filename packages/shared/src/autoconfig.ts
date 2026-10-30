@@ -389,7 +389,7 @@ export const windowsTemplateSchema = z
           .enum(WINDOWS_TIME_ZONES.map((t) => t.id) as [WindowsTimeZone, ...WindowsTimeZone[]])
           .default('W. Europe Standard Time'),
       })
-      .default({}),
+      .prefault({}),
     /** Windows Server always requires it; desktop editions get it set and disabled. */
     administratorPassword: passwordMode.exclude(['NONE']).default('GENERATE'),
     accounts: z.array(windowsAccount).max(10).default([]),
@@ -405,7 +405,7 @@ export const windowsTemplateSchema = z
      * `DURING_SETUP` lets Setup fetch updates first, which can take an hour.
      */
     windowsUpdate: z.enum(['DEFERRED', 'DURING_SETUP']).default('DEFERRED'),
-    hardware: hardware.default({}),
+    hardware: hardware.prefault({}),
     /** Run in this order after Setup, from a CD of their own (Phase 5C). */
     packages: z.array(templatePackage).max(PACKAGES_PER_TEMPLATE_MAX).default([]),
   })
@@ -509,7 +509,7 @@ export const linuxTemplateSchema = z
         allowLogin: z.boolean().default(false),
         password: passwordMode.default('NONE'),
       })
-      .default({}),
+      .prefault({}),
     /**
      * The SSH switch, on by default: the server installed and enabled, keys
      * placed, password authentication off unless turned on here.
@@ -519,7 +519,7 @@ export const linuxTemplateSchema = z
         enabled: z.boolean().default(true),
         passwordAuthentication: z.boolean().default(false),
       })
-      .default({}),
+      .prefault({}),
     guestAgent: z.boolean().default(true),
     unattendedUpgrades: z.boolean().default(true),
     /** Extra packages at first boot, by Debian package name. */
@@ -528,7 +528,7 @@ export const linuxTemplateSchema = z
       .max(50)
       .default([]),
     swapMb: z.number().int().min(0).max(65536).default(0),
-    hardware: hardware.default({ diskGb: 20, memoryMb: 2048 }),
+    hardware: hardware.prefault({ diskGb: 20, memoryMb: 2048 }),
   })
   .superRefine((value, ctx) => {
     const names = value.users.map((u) => u.name.toLowerCase());
