@@ -1847,6 +1847,56 @@ wijziging doet heeft geen verzoek om hem aan toe te schrijven, en de job noemt a
 
 ---
 
+## ADR-057 — Dependencies bijgewerkt: wat er meeging, wat er werd tegengehouden, en waarom
+
+**Keuze:** op 30 oktober 2026 is elke dependency vergeleken met zijn registry en met `pnpm audit`,
+dat 50 meldingen gaf — 6 kritiek, 16 hoog. Daarop volgden drie soorten wijzigingen.
+
+- **Alles binnen de huidige major**, transitieve dependencies inbegrepen, ververst
+  (`pnpm update -r`). Waaronder Next.js 16.3.6 → 16.4.3, dat twee meldingen van remote code execution
+  zonder aanmelding dicht, in de image-optimizer en in `use cache`; `proxy-addr`, `body-parser` en `qs`
+  onder Express; nodemailer 10.3; sharp 0.35.5.
+- **Twee majors, omdat de fix alleen daar bestaat.** zod 3 → 4: de API valideert elk verzoek met zod,
+  en 4.6.6 is de eerste release die voorkomt dat een grote array het geheugen uitput. vitest 2 → 5:
+  alleen testgereedschap, nooit in een image, maar het droeg drie van de kritieke meldingen.
+- **Twee overrides** in `pnpm-workspace.yaml`, voor versies die NestJS en zijn Swagger-module exact
+  vastpinnen: multer 2.5 en js-yaml 5.4, elk binnen de major die de bovenliggende dependency vraagt.
+  js-yaml blijft op 5.4.x omdat 5.5 overstapt op argparse 3, onder PSF-2.0, een licentie die de
+  licentiecontrole nog niet toestaat — een licentiebesluit is aan de eigenaar, geen bijwerking van een
+  update.
+
+Daarna meldt de audit nog één advisory, zie hieronder. De GitHub Actions gingen naar hun huidige majors
+(checkout 7, setup-node 7, pnpm/action-setup 6), die op Node 24 draaien in plaats van het verouderde 20.
+En de installer haalt PostgreSQL, Redis en Caddy nu bij elke run op: `docker compose up` haalt alleen
+een ontbrekende image, dus tot nu toe hield een installatie door elke upgrade heen de patchreleases
+waarmee ze ooit was geïnstalleerd. Elk volgt nog steeds alleen zijn major-tag.
+
+**Wat zod 4 hier veranderde.** Een `.default()` wordt niet meer geparsed: `.default({})` op een object
+vulde vroeger de eigen defaults van dat object in, en geeft nu `{}` terug zoals het is. De zes plekken
+die daarop leunden gebruiken `.prefault()`, de naam die zod 4 aan het oude gedrag geeft. zod 4 past ook
+een default binnen een optioneel veld toe; daardoor zou een lege PATCH opgeslagen waarden met defaults
+hebben overschreven, maar het ene schema dat met `.partial()` is gebouwd — een locatie bijwerken — heeft
+geen defaults, en nergens omhult een optioneel veld een default. De issue-codes in de `details` van een
+validatiefout kregen andere namen (`invalid_string` heet nu `invalid_format`); niets in Velnox leest ze.
+
+**Wat werd tegengehouden, en waarom.** Geen van deze bevat een securityfix die Velnox nodig heeft; elk
+verandert gedrag, en elk verdient een eigen wijziging met de harnesses ertegen gedraaid in plaats van
+een plek in een bundel.
+
+| Tegengehouden | Reden |
+|---|---|
+| NestJS 12, BullMQ 6, ioredis 6, pino 10 | Brekende majors van de runtime-frameworks |
+| Prisma 7 | Een andere client en generator; Prisma 8 is nog een release candidate |
+| TypeScript 7, ESLint 10 en zijn plugins | De toolchain; typescript-eslint moet eerst TypeScript 7 ondersteunen |
+| `@types/node` 26 | De types volgen de runtime, en dat is Node 22 |
+| Node.js 22 zelf | Maintenance-LTS tot 30 april 2027; de stap naar 24 of 26 is gepland werk |
+
+**Wat er overblijft.** `deepmerge-ts` 7 onder de configuratielader van Prisma kan met een recursief
+object de stack laten uitputten. Het voegt alleen ooit Velnox' eigen Prisma-configuratie samen, nooit
+invoer uit een verzoek, en de fix is een major van die bibliotheek; die gaat mee met Prisma 7.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |
@@ -1854,12 +1904,13 @@ wijziging doet heeft geen verzoek om hem aan toe te schrijven, en de job noemt a
 | Node.js | 22 LTS |
 | pnpm | 12.x (fase 0 noemde 9.x; zie ADR-029 voor de stap 10 → 12) |
 | NestJS | 11.x |
-| Next.js | 15.x |
+| Next.js | 16.x |
 | React | 19.x |
 | Tailwind CSS | 4.x |
 | PostgreSQL | 16 |
 | Redis | 7.x |
 | Prisma | 6.x |
+| zod | 4.x (ADR-057) |
 | Caddy | 2.x |
 | Debian base image | bookworm-slim |
 | Proxmox VE-ondersteuning | 8.x en 9.x (upgradepad 8 → 9) |

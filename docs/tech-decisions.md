@@ -1733,6 +1733,55 @@ change has no request to attribute it to, and the job already names who started 
 
 ---
 
+## ADR-057 — Dependencies brought up to date: what moved, what was held, and why
+
+**Decision:** On 30 October 2026 every dependency was checked against its registry and `pnpm audit`,
+which reported 50 advisories — 6 critical, 16 high. Three kinds of change followed.
+
+- **Everything inside its current major**, transitive dependencies included, refreshed
+  (`pnpm update -r`). Among them Next.js 16.3.6 → 16.4.3, which closes two unauthenticated remote code
+  execution advisories in the image optimiser and `use cache`; `proxy-addr`, `body-parser` and `qs`
+  under Express; nodemailer 10.3; sharp 0.35.5.
+- **Two majors, because the fix exists only there.** zod 3 → 4: the API validates every request with
+  zod, and 4.6.6 is the first release that stops a large array from exhausting memory. vitest 2 → 5:
+  test tooling only, never in an image, but it carried three of the critical advisories.
+- **Two overrides** in `pnpm-workspace.yaml`, for versions NestJS and its Swagger module pin
+  exactly: multer 2.5 and js-yaml 5.4, each within the major its parent asks for. js-yaml is held at
+  5.4.x because 5.5 moves to argparse 3, under PSF-2.0, which the licence check does not yet allow —
+  a licence decision is the owner's, not a side effect of an update.
+
+The audit then reports one advisory, below. The GitHub Actions moved to their current majors
+(checkout 7, setup-node 7, pnpm/action-setup 6), which run on Node 24 rather than the deprecated 20.
+And the installer now pulls PostgreSQL, Redis and Caddy on every run: `docker compose up` fetches only
+a missing image, so until now an installation kept the patch releases it was first installed with
+through every upgrade. Each still follows only its major tag.
+
+**What zod 4 changed here.** A `.default()` is no longer parsed: `.default({})` on an object used to
+fill in that object's own defaults, and now returns `{}` as it is. The six places relying on it use
+`.prefault()`, which is zod 4's name for the old behaviour. zod 4 also applies a default inside an
+optional field; that would have made an empty PATCH overwrite stored values with defaults, but the
+one schema built with `.partial()` — a site update — has no defaults, and no field anywhere wraps a
+default in an optional. The issue codes in a validation error's `details` changed names
+(`invalid_string` is now `invalid_format`); nothing in Velnox reads them.
+
+**What was held, and why.** None of these carries a security fix Velnox needs; each changes
+behaviour, and each deserves a change of its own with the harnesses run against it rather than a
+place in a batch.
+
+| Held | Reason |
+|---|---|
+| NestJS 12, BullMQ 6, ioredis 6, pino 10 | Breaking majors of the runtime frameworks |
+| Prisma 7 | A different client and generator; Prisma 8 is still a release candidate |
+| TypeScript 7, ESLint 10 and its plugins | The toolchain; typescript-eslint has to support TypeScript 7 first |
+| `@types/node` 26 | The types follow the runtime, which is Node 22 |
+| Node.js 22 itself | Maintenance LTS until 30 April 2027; moving to 24 or 26 is planned work |
+
+**What is left.** `deepmerge-ts` 7 under Prisma's configuration loader can be made to exhaust the
+stack by a recursive object. It only ever merges Velnox's own Prisma configuration, never input from
+a request, and the fix is a major of that library; it goes with Prisma 7.
+
+---
+
 ## Version targets
 
 | Component | Version |
@@ -1740,12 +1789,13 @@ change has no request to attribute it to, and the job already names who started 
 | Node.js | 22 LTS |
 | pnpm | 12.x (Phase 0 said 9.x; see ADR-029 for the 10 → 12 move) |
 | NestJS | 11.x |
-| Next.js | 15.x |
+| Next.js | 16.x |
 | React | 19.x |
 | Tailwind CSS | 4.x |
 | PostgreSQL | 16 |
 | Redis | 7.x |
 | Prisma | 6.x |
+| zod | 4.x (ADR-057) |
 | Caddy | 2.x |
 | Debian base image | bookworm-slim |
 | Proxmox VE support | 8.x and 9.x (upgrade path 8 → 9) |

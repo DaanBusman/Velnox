@@ -41,8 +41,11 @@ INTERACTIVE=1
 SKIP_DOCKER=0
 SKIP_VERIFY=0
 
-MIN_DISK_GB=20
-MIN_MEM_MB=3500
+# The evaluation row of docs/deployment.md: 25 GB of disk leaves about 20 free
+# after the operating system, and a first install needs about 12 of it while it
+# builds. A 3 GB machine reports a little under 2900 MB, kernel reserved.
+MIN_DISK_GB=15
+MIN_MEM_MB=2800
 
 # ---------------------------------------------------------------------------
 # Terminal capabilities
@@ -562,11 +565,19 @@ generate_configuration() {
   chmod 600 "$ENV_FILE"
 }
 
-# Which images this stack actually builds. The other four services run stock
-# upstream images and are pulled, not built.
+# Which images this stack actually builds. migrate and worker run the api's
+# image; the other three run stock upstream images.
 BUILT_SERVICES=(api web)
+UPSTREAM_SERVICES=(postgres redis caddy)
 
 build_images() {
+  # Pulled explicitly, every run. `up` only fetches an image that is missing,
+  # so without this an installation kept the PostgreSQL, Redis and Caddy it was
+  # first installed with — and none of their security releases — through every
+  # upgrade. The tags stay on their major (postgres:16, redis:7, caddy:2), so a
+  # pull brings patch releases, never a new major or a data-format change.
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull "${UPSTREAM_SERVICES[@]}" || return
+
   # `--progress=plain` rather than the default grouped renderer: the output is
   # streamed through a reader, so stdout is a pipe and BuildKit would fall back
   # to plain anyway — asking for it explicitly means the same lines land in the
@@ -576,12 +587,25 @@ build_images() {
   # Both services are named in one invocation so BuildKit still builds them in
   # parallel. Building them as two steps would have read more tidily and roughly
   # doubled the longest part of the installation.
-  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build     --pull --progress=plain "${BUILT_SERVICES[@]}"
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build     --pull --progress=plain "${BUILT_SERVICES[@]}" || return
+
+  # One build leaves about 5 GB of build cache, and every upgrade added another
+  # layer of it on top: the disk requirement was mostly cache nobody asked for.
+  # What is worth keeping is the pnpm store mount (under 1 GB), so the next
+  # upgrade does not download every package again; the rest is removed. Images
+  # in use are never build cache, so this cannot touch the running stack.
+  docker builder prune --force --filter 'type!=exec.cachemount'
 }
 
 start_services() {
   docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up \
-    --detach --wait --wait-timeout 600
+    --detach --wait --wait-timeout 600 || return
+
+  # Only once the new stack is healthy: the images the upgrade replaced — the
+  # previous velnox-* builds and the upstream images a pull superseded — are now
+  # untagged and used by no container, about 3 GB a time. Untagged only, never
+  # `-a`: a tagged image someone keeps on this host is not Velnox's to remove.
+  docker image prune --force
 }
 
 verify_installation() {
@@ -668,7 +692,7 @@ main() {
 
   step "Enabling time synchronisation" enable_time_sync
   step "Generating configuration and secrets" generate_configuration
-  step_streamed "Building images (this takes a few minutes)" build_images
+  step_streamed "Fetching and building images (this takes a few minutes)" build_images
   step "Starting services and waiting for health" start_services
 
   [[ $SKIP_VERIFY -eq 1 ]] || step "Verifying the installation" verify_installation

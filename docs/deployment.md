@@ -14,17 +14,29 @@ host.
 
 | | vCPU | RAM | Disk |
 |---|---|---|---|
-| Evaluation | 2 | 4 GB | 40 GB |
-| Up to ~10 clusters / ~50 nodes | 4 | 8 GB | 80 GB |
-| Up to ~50 clusters / ~300 nodes | 8 | 16 GB | 200 GB |
+| Evaluation | 2 | 3 GB | 25 GB |
+| Up to ~10 clusters / ~50 nodes | 2 | 4 GB | 40 GB |
+| Up to ~50 clusters / ~300 nodes | 4 | 6 GB | 80 GB |
 
 Debian 12 or 13, or Ubuntu 22.04 or 24.04 LTS. 64-bit x86 only. A minimal server install, with
 nothing else listening on ports 80 and 443.
 
-Disk is dominated by the container images (~2.3 GB) and, if you build on the host, the Docker build
-cache, which grows to well over 10 GB. `sudo docker builder prune -f` reclaims it. After that, disk grows
-with audit records, job logs and inventory history — and with the ISO library, which is usually the
-largest of all. See [The ISO library's disk](#the-iso-librarys-disk).
+**What these are based on** (measured on 0.7.8). Running, Velnox is small: the six services together
+use about 350 MB at rest, and 390 MB at their peak with 50 clusters of three nodes each discovered
+*every minute* — thirty times the default — with the worker at most a fifth of one core. What sets the
+floor is building the images, which the installer does on the host at every install and upgrade: that
+needs about 2 GB of memory for a few minutes, and fails below 1.75 GB. The memory above is that, the
+operating system and Docker, and the stack still running beside the build during an upgrade — with
+room for PostgreSQL's cache to grow with history. The fixture clusters are small and answer
+instantly; real ones with hundreds of guests make each discovery heavier, which is what the margin
+in the larger rows is for.
+
+Disk: the operating system, about 3 GB of images, and under 1 GB of package cache kept between builds.
+An upgrade needs about 8 GB more while it runs — the new images and their build cache — and the
+installer removes both the build cache and the images it replaced once the new stack is healthy.
+What grows after that is audit records, job logs and history, your database backups, and the ISO
+library, which is usually the largest of all: the disk above leaves room for a few ISOs, not a
+library. See [The ISO library's disk](#the-iso-librarys-disk).
 
 ### Ports
 
@@ -349,6 +361,12 @@ certificate with a self-signed one. Named volumes are untouched, so the database
 
 **What it refreshes.** The build commit, which the source link under Settings → About reports. That is
 build metadata rather than configuration, so it always follows the code that is actually running.
+And the software underneath: the Node.js base image of Velnox's own images, and the PostgreSQL, Redis
+and Caddy images, each fetched again at the latest release of the major it is pinned to
+(`postgres:16`, `redis:7`, `caddy:2`). An upgrade is therefore also how their security fixes arrive —
+running it now and then is worth it even when Velnox itself has not changed. A new major of any of
+the three is never taken on its own: PostgreSQL's in particular changes the data format and needs a
+dump and restore.
 
 ### What to expect
 
@@ -356,11 +374,8 @@ Five to ten minutes, most of it rebuilding images. Services restart at the end, 
 interruption — roughly a minute — while containers are recreated. The installer only returns once
 every health check passes, so if the command completes, the upgrade worked.
 
-Reclaim the build cache afterwards, or it grows without limit:
-
-```bash
-sudo docker builder prune -f
-```
+Afterwards the installer removes the build cache, keeping only the package downloads the next
+upgrade can reuse, and the images the upgrade replaced. Neither grows from one upgrade to the next.
 
 ### If an upgrade goes wrong
 
@@ -406,7 +421,7 @@ so Velnox enforces two limits itself, set in `.env`:
 
 Whichever is reached first refuses the transfer, and the refusal names the limit and the numbers.
 The floor matters more than the ceiling: the volume is on the same disk as PostgreSQL unless you move
-it, and a full disk stops the whole installation, not only the upload. On the 40 GB evaluation size
+it, and a full disk stops the whole installation, not only the upload. On the 25 GB evaluation size
 the floor is what you will hit first, which is the point of it.
 
 Change either value, then `sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env up -d`
@@ -522,8 +537,8 @@ had run for months they could be gigabytes.
 
 ### Cleaning up
 
-**The Docker build cache** is usually the largest, and always safe to remove. The next upgrade
-rebuilds a little more slowly.
+**The Docker build cache.** The installer already removes all of it but the package downloads after
+each build. This removes those too — always safe; the next upgrade downloads them again.
 
 ```bash
 sudo docker builder prune -af

@@ -12,8 +12,8 @@ For server requirements, the install command itself and the upgrade path, see
 
 ## What you need before you start
 
-- A Debian 12/13 or Ubuntu 22.04/24.04 machine, 4 vCPU / 8 GB RAM / 60 GB disk, reachable on ports
-  80 and 443. [Deployment](deployment.md) has the full requirements and the hypervisor settings that
+- A Debian 12/13 or Ubuntu 22.04/24.04 machine, at least 2 vCPU / 3 GB RAM / 25 GB disk to evaluate,
+  reachable on ports 80 and 443. [Deployment](deployment.md) has the full requirements and the hypervisor settings that
   matter.
 - The address operators will type. A DNS name is better than an IP address: an IP cannot carry a
   publicly trusted certificate, and the address is the thing you are least likely to be able to

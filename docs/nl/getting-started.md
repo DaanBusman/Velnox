@@ -15,8 +15,8 @@ Voor de serververeisten, het installatiecommando zelf en het upgradepad, zie
 
 ## Wat je nodig hebt voordat je begint
 
-- Een machine met Debian 12/13 of Ubuntu 22.04/24.04, 4 vCPU / 8 GB RAM / 60 GB schijf, bereikbaar
-  op poort 80 en 443. [Deployment](deployment.md) bevat de volledige vereisten en de
+- Een machine met Debian 12/13 of Ubuntu 22.04/24.04, minstens 2 vCPU / 3 GB RAM / 25 GB schijf om te
+  evalueren, bereikbaar op poort 80 en 443. [Deployment](deployment.md) bevat de volledige vereisten en de
   hypervisorinstellingen die ertoe doen.
 - Het adres dat beheerders gaan intypen. Een DNS-naam is beter dan een IP-adres: een IP kan geen
   publiek vertrouwd certificaat dragen, en het adres is nu juist het onderdeel dat je later het

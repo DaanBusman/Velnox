@@ -56,7 +56,7 @@ step "Installing prerequisites" fake_work
 step_skip "Installing Docker Engine" "already present"
 step "Enabling time synchronisation" fake_work
 step "Generating configuration and secrets" fake_work
-step_streamed "Building images (this takes a few minutes)" fake_build
+step_streamed "Fetching and building images (this takes a few minutes)" fake_build
 step "Starting services and waiting for health" fake_work
 
 clear_bar

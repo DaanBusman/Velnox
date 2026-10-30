@@ -17,17 +17,29 @@ of een aparte host.
 
 | | vCPU | RAM | Schijf |
 |---|---|---|---|
-| Evaluatie | 2 | 4 GB | 40 GB |
-| Tot ~10 clusters / ~50 nodes | 4 | 8 GB | 80 GB |
-| Tot ~50 clusters / ~300 nodes | 8 | 16 GB | 200 GB |
+| Evaluatie | 2 | 3 GB | 25 GB |
+| Tot ~10 clusters / ~50 nodes | 2 | 4 GB | 40 GB |
+| Tot ~50 clusters / ~300 nodes | 4 | 6 GB | 80 GB |
 
 Debian 12 of 13, of Ubuntu 22.04 of 24.04 LTS. Uitsluitend 64-bits x86. Een minimale
 serverinstallatie, met verder niets dat op poort 80 en 443 luistert.
 
-De schijf gaat vooral op aan de container-images (~2,3 GB) en, als je op de host bouwt, aan de Docker
-build cache, die ruim boven de 10 GB uitkomt. `sudo docker builder prune -f` ruimt die op. Daarna groeit de
-schijf mee met auditrecords, joblogs en inventarishistorie — en met de ISO-bibliotheek, meestal de
-grootste van allemaal. Zie [De schijf van de ISO-bibliotheek](#de-schijf-van-de-iso-bibliotheek).
+**Waar deze getallen op rusten** (gemeten op 0.7.8). Draaiend is Velnox klein: de zes services samen
+gebruiken in rust zo'n 350 MB, en op hun piek 390 MB met 50 clusters van drie nodes die *elke minuut*
+worden uitgelezen — dertig keer de standaard — met de worker op hooguit een vijfde van één core. Wat
+de ondergrens bepaalt is het bouwen van de images, wat de installer bij elke installatie en upgrade op
+de host doet: dat vraagt een paar minuten lang zo'n 2 GB geheugen, en mislukt onder de 1,75 GB. Het
+geheugen hierboven is dat, plus het besturingssysteem en Docker, plus de stack die tijdens een upgrade
+naast de build blijft draaien — met ruimte voor de cache van PostgreSQL om mee te groeien met de
+historie. De nagebootste clusters zijn klein en antwoorden direct; echte clusters met honderden gasten
+maken elke uitlezing zwaarder, en daarvoor is de marge in de grotere rijen.
+
+Schijf: het besturingssysteem, zo'n 3 GB aan images, en minder dan 1 GB pakketcache die tussen builds
+bewaard blijft. Een upgrade heeft terwijl hij loopt zo'n 8 GB extra nodig — de nieuwe images en hun
+build cache — en de installer verwijdert zowel die build cache als de images die vervangen zijn zodra
+de nieuwe stack gezond is. Wat daarna groeit zijn auditrecords, joblogs en historie, je databaseback-ups,
+en de ISO-bibliotheek, meestal de grootste van allemaal: de schijf hierboven laat ruimte voor een paar
+ISO's, niet voor een bibliotheek. Zie [De schijf van de ISO-bibliotheek](#de-schijf-van-de-iso-bibliotheek).
 
 ### Poorten
 
@@ -358,6 +370,12 @@ niet aangeraakt, dus de database en de wachtrij blijven intact.
 
 **Wat wél ververst wordt.** De build-commit, die de bronlink onder Instellingen → Over toont. Dat is
 buildinformatie en geen configuratie, dus die volgt altijd de code die werkelijk draait.
+En de software eronder: de Node.js-basisimage van Velnox' eigen images, en de images van PostgreSQL,
+Redis en Caddy, elk opnieuw opgehaald op de nieuwste release van de major waarop ze vastliggen
+(`postgres:16`, `redis:7`, `caddy:2`). Een upgrade is dus ook de manier waarop hun securityfixes
+binnenkomen — af en toe draaien loont, ook als Velnox zelf niet veranderd is. Een nieuwe major van een
+van de drie wordt nooit vanzelf genomen: die van PostgreSQL verandert bovendien het dataformaat en
+vraagt om een dump en restore.
 
 ### Wat je kunt verwachten
 
@@ -366,11 +384,8 @@ services, dus er is een korte onderbreking — ruwweg een minuut — terwijl de 
 aangemaakt. De installer keert pas terug als elke health check slaagt; komt het commando succesvol
 terug, dan is de upgrade geslaagd.
 
-Ruim daarna de build cache op, anders groeit die eindeloos:
-
-```bash
-sudo docker builder prune -f
-```
+Daarna verwijdert de installer de build cache — op de pakketdownloads na, die de volgende upgrade kan
+hergebruiken — en de images die de upgrade verving. Geen van beide groeit van upgrade tot upgrade.
 
 ### Als een upgrade misgaat
 
@@ -417,7 +432,7 @@ quotum, dus Velnox handhaaft zelf twee grenzen, ingesteld in `.env`:
 De grens die het eerst wordt bereikt weigert de overdracht, en de weigering noemt de grens en de
 getallen. De ondergrens is belangrijker dan het plafond: het volume staat op dezelfde schijf als
 PostgreSQL tenzij je het verplaatst, en een volle schijf legt de hele installatie stil, niet alleen de
-upload. Op de evaluatiegrootte van 40 GB loop je eerst tegen de ondergrens aan, en daar is hij voor.
+upload. Op de evaluatiegrootte van 25 GB loop je eerst tegen de ondergrens aan, en daar is hij voor.
 
 Verander een van beide waarden en voer dan
 `sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env up -d` uit, zodat de API en de
@@ -539,8 +554,8 @@ die maanden draaide konden ze gigabytes groot worden.
 
 ### Opruimen
 
-**De Docker build cache** is meestal het grootst, en altijd veilig om te verwijderen. De volgende
-upgrade bouwt iets langzamer.
+**De Docker build cache.** De installer verwijdert na elke build al alles behalve de pakketdownloads.
+Dit verwijdert die ook — altijd veilig; de volgende upgrade downloadt ze opnieuw.
 
 ```bash
 sudo docker builder prune -af
