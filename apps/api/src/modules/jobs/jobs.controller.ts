@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   Req,
   Sse,
@@ -17,7 +18,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import type { Observable } from 'rxjs';
 import { z } from 'zod';
-import { JOB_STATUSES, PERMISSIONS, SELFTEST_LIMITS } from '@velnox/shared';
+import { JOBS_VISIBLE_DAYS_MAX, JOB_STATUSES, PERMISSIONS, SELFTEST_LIMITS } from '@velnox/shared';
 import { RequirePermission, RequirePermissionSomewhere } from '../../common/auth.guard';
 import { zodBody, zodQuery } from '../../common/zod-validation.pipe';
 import { actorOf } from '../../common/actor';
@@ -36,6 +37,11 @@ const listSchema = z.object({
   active: z.enum(['true', 'false']).optional(),
   finishedSince: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
+});
+
+const visibilitySchema = z.object({
+  /** Null hides nothing. */
+  visibleDays: z.number().int().min(1).max(JOBS_VISIBLE_DAYS_MAX).nullable(),
 });
 
 const selftestSchema = z
@@ -100,6 +106,28 @@ export class JobsController {
     return this.jobs
       .list({ ...query, active: query.active === 'true' }, actorOf(request))
       .then((jobs) => ({ jobs }));
+  }
+
+  @RequirePermissionSomewhere(PERMISSIONS.jobsRead)
+  @Get('visibility')
+  @ApiOperation({ summary: 'After how many days finished jobs are out of sight for this reader' })
+  visibility(@Req() request: Request) {
+    return this.jobs.visibility(actorOf(request));
+  }
+
+  @RequirePermission(PERMISSIONS.systemManage)
+  @Put('visibility')
+  @ApiOperation({
+    summary: 'Hide finished jobs older than a number of days',
+    description:
+      'From everyone without jobs.history. Null hides nothing. Unfinished jobs are never ' +
+      'hidden, and nothing is deleted.',
+  })
+  setVisibility(
+    @Body(zodBody(visibilitySchema)) body: z.infer<typeof visibilitySchema>,
+    @Req() request: Request,
+  ) {
+    return this.jobs.setVisibleDays(body.visibleDays, actorOf(request));
   }
 
   @RequirePermission(PERMISSIONS.systemManage)

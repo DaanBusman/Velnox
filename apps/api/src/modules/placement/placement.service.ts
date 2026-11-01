@@ -22,6 +22,7 @@ import {
 } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { jobsInSight } from '../jobs/job-history';
 import { JobsService } from '../jobs/jobs.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
 
@@ -79,7 +80,11 @@ export class PlacementService {
     const rules: PlacementRuleLike[] = rows.map((r) => ({ ...r }));
     const violations = placementViolations(rules, positions);
     const jobs = await this.prisma.client.job.findMany({
-      where: { type: JOB_TYPES.placement, targetIds: { has: clusterId } },
+      where: {
+        type: JOB_TYPES.placement,
+        targetIds: { has: clusterId },
+        AND: [await jobsInSight(this.prisma, actor)],
+      },
       orderBy: { queuedAt: 'desc' },
       take: 10,
       select: { id: true, status: true, params: true, queuedAt: true },

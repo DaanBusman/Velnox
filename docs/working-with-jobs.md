@@ -24,6 +24,28 @@ jobs that are not finished, and those that finished in the last half hour, with 
 progress, and uploads to the ISO library. Click it to open or close it; it remembers which, in this
 browser.
 
+### Older jobs out of sight
+
+The MSP Super Administrator can hide finished jobs after a number of days from everyone without
+`jobs.history`. On the **Jobs** screen, the **Older jobs** card at the top takes the number of
+days, from 1 to 3650; leave it empty, or choose **Show every job again**, to hide nothing. That is
+the default.
+
+- A job counts from when it **finished**. A job that is still queued, running or waiting for
+  approval is never hidden, however old.
+- **Nothing is deleted.** The job, its steps and its output stay in the database, for the support
+  logs of whoever may see them and for anyone with `jobs.history`.
+- A hidden job is hidden everywhere: in the list, in **Running jobs**, in a cluster's placement
+  history and in a support-log export. Its address reads as not found, the same as a job of
+  another customer.
+- Someone it applies to sees a line above the list saying after how many days jobs are hidden, so
+  an empty list never looks like nothing happened.
+
+`jobs.history` belongs to the **MSP Super Administrator** and the **MSP Administrator**. A custom
+MSP role can hold it too: in the role editor it is under *Jobs*. Setting the number of days needs
+`system.manage`. Every change is recorded in the audit log as `jobs.visibility_changed`, with
+the old and the new value.
+
 ## What the statuses mean
 
 | Status | Meaning |
@@ -145,5 +167,7 @@ real work.
 | See jobs | `jobs.read` for the job's tenant |
 | Cancel a job | `jobs.cancel` for the job's tenant |
 | Approve or reject | `jobs.approve` for the job's tenant, plus the gate's own permission |
+| See finished jobs past the period set for them | `jobs.history` for the job's tenant |
+| Set that period | `system.manage` |
 | Retry a job | Whatever starting that kind of job needs — `system.manage` for a diagnostic job |
 | Start a diagnostic job | `system.manage` |

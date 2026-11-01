@@ -676,6 +676,18 @@
       "rolling_update": "Rolling update",
       "placement": "Plaatsing",
       "run": "Grote upgrade"
+    },
+    "visibility": {
+      "title": "Oudere jobs",
+      "description": "Verberg afgeronde jobs na een aantal dagen voor iedereen zonder jobs.history — standaard blijven de MSP Super Administrator en de MSP Administrator ze zien. Er wordt niets verwijderd, en jobs die nog niet klaar zijn worden nooit verborgen.",
+      "days": "Verbergen na (dagen)",
+      "daysHint": "Van 1 tot {max}. Leeg verbergt niets.",
+      "invalid": "Een heel aantal dagen van 1 tot {max}, of leeg.",
+      "off": "Niets verborgen",
+      "nowOff": "Elk account met jobs.read ziet elke job.",
+      "nowOn": "Jobs die meer dan {days} dagen geleden klaar waren, zijn verborgen voor accounts zonder jobs.history.",
+      "turnOff": "Weer elke job tonen",
+      "hidden": "Jobs die meer dan {days} dagen geleden klaar waren, worden niet getoond."
     }
   },
   "layout": {
@@ -859,6 +871,7 @@
       "migrations_execute": "Migraties draaien",
       "jobs_cancel": "Jobs annuleren",
       "jobs_approve": "Jobs goedkeuren",
+      "jobs_history": "Afgeronde jobs zien die ouder zijn dan de ingestelde periode",
       "alerts_manage": "Meldingen bevestigen en oplossen",
       "support_manage": "Hoe lang supportlogs bewaard blijven"
     }

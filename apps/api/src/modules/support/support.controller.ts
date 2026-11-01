@@ -6,6 +6,9 @@ import { ERROR_CODES, PERMISSIONS, VelnoxError, isAllowed } from '@velnox/shared
 import { RequirePermission, RequirePermissionSomewhere } from '../../common/auth.guard';
 import { zodBody, zodQuery } from '../../common/zod-validation.pipe';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
+import { actorOf } from '../../common/actor';
+import { PrismaService } from '../infrastructure/prisma.service';
+import { jobsInSight } from '../jobs/job-history';
 import { SUPPORT_RETENTION_MAX_DAYS, SupportService } from './support.service';
 
 const exportSchema = z.object({
@@ -32,6 +35,7 @@ export class SupportController {
   constructor(
     private readonly support: SupportService,
     private readonly audit: AuditService,
+    private readonly prisma: PrismaService,
   ) {}
 
   private scope(request: Request, requested: string | undefined): string[] | null {
@@ -120,7 +124,8 @@ export class SupportController {
         if (response.write(chunk)) resolve();
         else response.once('drain', resolve).once('error', reject);
       });
-    await this.support.export({ tenantIds, from, to }, write);
+    const jobs = await jobsInSight(this.prisma, actorOf(request));
+    await this.support.export({ tenantIds, from, to, jobsInSight: jobs }, write);
     response.end();
   }
 }

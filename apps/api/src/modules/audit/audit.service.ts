@@ -45,6 +45,8 @@ export const AUDIT_ACTIONS = {
   supportExported: 'support.exported',
   /** How long Proxmox tasks are kept for support was changed. */
   supportRetentionChanged: 'support.retention_changed',
+  /** After how many days finished jobs are out of sight was changed. */
+  jobsVisibilityChanged: 'jobs.visibility_changed',
 
   userCreated: 'user.created',
   userUpdated: 'user.updated',

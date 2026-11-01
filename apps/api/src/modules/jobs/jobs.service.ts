@@ -4,6 +4,7 @@ import { appendJobEvent, type JobChange, type JobEventWrite, type Prisma } from 
 import {
   ACTIVE_JOB_STATUSES,
   ERROR_CODES,
+  JOBS_VISIBLE_DAYS_MAX,
   JOB_EVENT_KEYS,
   JOB_TYPES,
   PERMISSIONS,
@@ -14,6 +15,7 @@ import {
   isTerminal,
   jobCancelKey,
   jobEventChannel,
+  jobOutOfSight,
   parseSelftestParams,
   rootRedactor,
   type ApprovalSummary,
@@ -22,6 +24,7 @@ import {
   type JobLogLine,
   type JobStatus,
   type JobSummary,
+  type JobsVisibility,
   type Permission,
 } from '@velnox/shared';
 import { assertAllowedAt, type Actor } from '../../common/actor';
@@ -29,6 +32,7 @@ import { AUDIT_ACTIONS, AuditService } from '../audit/audit.service';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { QueueService } from '../infrastructure/queue.service';
 import { RedisService } from '../infrastructure/redis.service';
+import { jobsHiddenBefore, jobsInSight, jobsVisibleDays } from './job-history';
 import { JobStreamHub } from './job-stream.hub';
 
 /**
@@ -280,6 +284,33 @@ export class JobsService {
   // Reading
   // -------------------------------------------------------------------------
 
+  /** After how many days finished jobs are out of sight, and whether this reader is affected. */
+  async visibility(actor: Actor): Promise<JobsVisibility> {
+    return {
+      visibleDays: await jobsVisibleDays(this.prisma),
+      maxDays: JOBS_VISIBLE_DAYS_MAX,
+      seesAll: isAllowed(actor.grants, PERMISSIONS.jobsHistory),
+    };
+  }
+
+  /** Set the period, or null to hide nothing. The controller holds system.manage. */
+  async setVisibleDays(days: number | null, actor: Actor): Promise<JobsVisibility> {
+    const before = await jobsVisibleDays(this.prisma);
+    await this.prisma.client.systemSettings.update({
+      where: { id: 1 },
+      data: { jobsVisibleDays: days },
+    });
+    await this.audit.success(AUDIT_ACTIONS.jobsVisibilityChanged, {
+      actorType: 'USER',
+      actorId: actor.id,
+      actorLabel: actor.email,
+      tenantId: actor.tenantId,
+      resourceType: 'jobs',
+      metadata: { from: before, to: days },
+    });
+    return this.visibility(actor);
+  }
+
   async list(
     filter: {
       status?: JobStatus;
@@ -292,8 +323,10 @@ export class JobsService {
     actor: Actor,
   ): Promise<JobSummary[]> {
     const unfinished = { status: { notIn: [...TERMINAL_JOB_STATUSES] } };
+    const inSight = await jobsInSight(this.prisma, actor);
     const rows = await this.prisma.client.job.findMany({
       where: {
+        AND: [inSight],
         ...(filter.status ? { status: filter.status } : {}),
         ...(filter.type ? { type: filter.type } : {}),
         ...(filter.tenantId ? { tenantId: filter.tenantId } : {}),
@@ -323,7 +356,7 @@ export class JobsService {
       this.prisma.client.jobStep.findMany({ where: { jobId: id }, orderBy: { sequence: 'asc' } }),
       this.prisma.client.approval.findMany({ where: { jobId: id }, orderBy: { requestedAt: 'asc' } }),
       this.prisma.client.job.findMany({
-        where: { parentJobId: id },
+        where: { parentJobId: id, AND: [await jobsInSight(this.prisma, actor)] },
         select: { id: true, status: true, queuedAt: true },
         orderBy: { queuedAt: 'asc' },
       }),
@@ -696,6 +729,11 @@ export class JobsService {
     const job = await this.prisma.client.job.findUnique({ where: { id }, include: jobInclude });
     if (!job) throw new VelnoxError(ERROR_CODES.jobNotFound, { status: 404 });
     assertAllowedAt(actor, permission, { tenantId: job.tenantId });
+    // Past the period set in Server management, a job reads as not found too.
+    const hidden = await jobsHiddenBefore(this.prisma, actor);
+    if (hidden && !hidden.keep.includes(job.tenantId) && jobOutOfSight(job, hidden.since)) {
+      throw new VelnoxError(ERROR_CODES.jobNotFound, { status: 404 });
+    }
     return job;
   }
 

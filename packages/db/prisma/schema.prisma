@@ -96,6 +96,11 @@ model SystemSettings {
   /// (`system_settings_support_retention_range`). Shortened with support.manage.
   supportLogRetentionDays Int @default(30) @map("support_log_retention_days")
 
+  /// After how many days a finished job is out of sight for everyone without
+  /// jobs.history: 1 to 3650 (`system_settings_jobs_visible_days_range`), or
+  /// null to hide nothing. Set with system.manage; nothing is deleted.
+  jobsVisibleDays Int? @map("jobs_visible_days")
+
   /// The certificate chosen in Server management (Phase 5C, ADR-045). Null
   /// serves the installer's choice (VELNOX_TLS); scripts/tls.sh sets it back to
   /// null. The API writes Caddy's files from these at start-up and on a change.

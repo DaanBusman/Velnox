@@ -395,3 +395,28 @@ export interface JobLogLine {
   content: string;
   truncated: boolean;
 }
+
+/**
+ * Older jobs out of sight (0.7.16). The MSP Super Administrator may set a
+ * number of days, at most this many, after which a finished job is hidden from
+ * everyone without `jobs.history`. Nothing is deleted.
+ */
+export const JOBS_VISIBLE_DAYS_MAX = 3650;
+
+/** Whether this job is past the period: finished, and finished before it began. */
+export function jobOutOfSight(
+  job: { status: JobStatus; finishedAt: Date | null; queuedAt: Date },
+  since: Date,
+): boolean {
+  // A job never started still ended: its queue time is all it has.
+  return isTerminal(job.status) && (job.finishedAt ?? job.queuedAt) < since;
+}
+
+/** What the jobs settings say to whoever reads them. */
+export interface JobsVisibility {
+  /** Null hides nothing. */
+  visibleDays: number | null;
+  maxDays: number;
+  /** Whether the reader holds jobs.history everywhere, and so sees every job. */
+  seesAll: boolean;
+}

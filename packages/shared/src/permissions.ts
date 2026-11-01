@@ -123,6 +123,12 @@ export const PERMISSIONS = {
   jobsRead: 'jobs.read',
   jobsCancel: 'jobs.cancel',
   jobsApprove: 'jobs.approve',
+  /**
+   * Jobs older than the period set in Server management (0.7.16): without it, a
+   * finished job past that many days is out of sight. The MSP Super
+   * Administrator and the MSP Administrator hold it; a custom MSP role may.
+   */
+  jobsHistory: 'jobs.history',
   alertsRead: 'alerts.read',
   alertsManage: 'alerts.manage',
   reportsRead: 'reports.read',

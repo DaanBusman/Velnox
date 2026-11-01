@@ -13,6 +13,8 @@ export interface SupportExportQuery {
   tenantIds: string[] | null;
   from: Date;
   to: Date;
+  /** Jobs past the period set in Server management, for an exporter without jobs.history. */
+  jobsInSight?: Prisma.JobWhereInput;
 }
 
 /**
@@ -68,7 +70,11 @@ export class SupportService {
     let cursor: string | undefined;
     for (;;) {
       const jobs = await this.prisma.client.job.findMany({
-        where: { ...tenant, queuedAt: { gte: query.from, lt: query.to } },
+        where: {
+          ...tenant,
+          queuedAt: { gte: query.from, lt: query.to },
+          AND: [query.jobsInSight ?? {}],
+        },
         include: {
           tenant: { select: { name: true } },
           createdBy: { select: { email: true } },

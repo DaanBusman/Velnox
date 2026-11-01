@@ -58,8 +58,8 @@ organisation.
 
 | Role | Key | MSP only | Grants | For |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | yes | 46 of 46 | The first administrator. The only role with installation-wide settings. |
-| MSP Administrator | `msp_administrator` | yes | 43 | Runs the MSP day to day, including people. Not installation settings, not how long support logs are kept, and not a colleague’s second factor. |
+| MSP Super Administrator | `msp_super_administrator` | yes | 47 of 47 | The first administrator. The only role with installation-wide settings. |
+| MSP Administrator | `msp_administrator` | yes | 44 | Runs the MSP day to day, including people. Not installation settings, not how long support logs are kept, and not a colleague’s second factor. |
 | MSP Engineer | `msp_engineer` | yes | 37 | Runs the fleet, and can reset a customer’s second factor. No identity administration, no audit log. |
 | MSP Read Only | `msp_read_only` | yes | 22 | Sees everything across all tenants, changes nothing. |
 | Tenant Administrator | `tenant_administrator` | no | 40 | Full control within one tenant, including that tenant's own people. |
@@ -122,6 +122,7 @@ Administrator, MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operato
 | `jobs.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `jobs.cancel` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `jobs.approve` | ✓ | ✓ | · | · | ✓ | · | · |
+| `jobs.history` | ✓ | ✓ | · | · | · | · | · |
 | `alerts.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `alerts.manage` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `reports.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -182,6 +183,7 @@ granted today and guards nothing yet.
 | `jobs.read` | See queued, running and finished jobs | 5 |
 | `jobs.cancel` | Cancel a running job | 5 |
 | `jobs.approve` | Approve a job that is waiting on a human | 5 |
+| `jobs.history` | See finished jobs older than the period set on the Jobs screen; without it, they are out of sight | 0.7.16 |
 | `alerts.read` | See alerts | 4 |
 | `alerts.manage` | Acknowledge and resolve alerts | 4 |
 | `reports.read` | See and export reports | 8 |

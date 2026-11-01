@@ -675,6 +675,18 @@
       "rolling_update": "Rolling update",
       "placement": "Placement",
       "run": "Major upgrade"
+    },
+    "visibility": {
+      "title": "Older jobs",
+      "description": "Hide finished jobs after a number of days from everyone without jobs.history — by default the MSP Super Administrator and the MSP Administrator keep seeing them. Nothing is deleted, and unfinished jobs are never hidden.",
+      "days": "Hide after (days)",
+      "daysHint": "From 1 to {max}. Empty hides nothing.",
+      "invalid": "A whole number of days from 1 to {max}, or empty.",
+      "off": "Nothing hidden",
+      "nowOff": "Every account with jobs.read sees every job.",
+      "nowOn": "Jobs that finished more than {days} days ago are hidden from accounts without jobs.history.",
+      "turnOff": "Show every job again",
+      "hidden": "Jobs that finished more than {days} days ago are not shown."
     }
   },
   "layout": {
@@ -858,6 +870,7 @@
       "migrations_execute": "Run migrations",
       "jobs_cancel": "Cancel jobs",
       "jobs_approve": "Approve jobs",
+      "jobs_history": "See finished jobs older than the period set for them",
       "alerts_manage": "Acknowledge and resolve alerts",
       "support_manage": "How long support logs are kept"
     }

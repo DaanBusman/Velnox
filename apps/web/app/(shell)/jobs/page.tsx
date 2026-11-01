@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { JOB_STATUSES } from '@velnox/shared';
 import { JobList } from '@/components/jobs/job-list';
+import { JobsVisibilityPanel } from '@/components/jobs/jobs-visibility';
 import { Notice, PageHeader } from '@/components/ui/primitives';
 import { refreshSeconds } from '@/lib/preferences';
 import { getSession, listJobs, listTenants } from '@/lib/session';
@@ -51,6 +52,7 @@ export default async function JobsPage({ searchParams }: Props) {
   return (
     <>
       <PageHeader title={t('nav.jobs')} description={t('job.subtitle')} />
+      <JobsVisibilityPanel canManage={permissions.has('system.manage')} />
       <JobList
         jobs={jobs.data.jobs}
         status={status}
