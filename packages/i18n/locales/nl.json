@@ -1987,5 +1987,15 @@
     "cephMdsHint": "Alleen met CephFS: max_mds is 1 en standby replay staat uit voor elk bestandssysteem, zoals de handleiding van Proxmox vraagt. Velnox herstart de MDS-daemons één voor één en wijzigt die instellingen niet.",
     "pveCephFirst": "Eerst Ceph naar Squid upgraden",
     "pveCephFirstHint": "Proxmox VE 9 vraagt Ceph Squid. Aangevinkt is het plan samengesteld: de Ceph-upgrade, dan — alleen als die voltooid is — Proxmox VE, node voor node. Velnox leest zelf welke release Ceph draait en plant de stappen naar Squid; draait Ceph al Squid, of heeft het cluster geen Ceph, dan is er geen Ceph-stap."
+  },
+  "pwa": {
+    "description": "Zelf gehost beheer voor Proxmox VE-omgevingen",
+    "install": "Installeren als app",
+    "untrusted": "Installeren als app vraagt een certificaat dat deze browser vertrouwt. Zie de handleiding “Velnox als app installeren”.",
+    "updated": "Velnox is bijgewerkt. Herlaad om de nieuwe versie te gebruiken.",
+    "reload": "Herladen",
+    "offlineTitle": "Velnox is niet bereikbaar",
+    "offlineBody": "Deze computer heeft nu geen verbinding met de Velnox-server. Er wordt niets van eerder getoond: Velnox bewaart geen gegevens op deze computer.",
+    "offlineRetry": "Opnieuw proberen"
   }
 }

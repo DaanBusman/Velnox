@@ -509,6 +509,12 @@ responsive behaviour.
 honest empty state; the dashboard shows the specified counters; bulk actions respect permissions
 per item; contrast and focus order pass an a11y audit.
 
+**Delivered ahead of the phase (0.7.12):** Velnox installable as an app from Edge or Chrome, with
+**Install as app** in the user menu — a manifest and a service worker that keeps static files only
+(ADR-058, [the guide](installing-as-an-app.md), `scripts/verify-pwa.sh`). **Next:** screens that
+read their data again only when something changed, from a stream the API sends, in place of reading
+it on an interval.
+
 ## Phase 14 — Installer and build artifacts · **L**
 
 `install.sh` (interactive and `--non-interactive`), Docker/Compose auto-install, secret generation,

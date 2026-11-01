@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { apiPost } from '@/lib/client-api';
+import { clearAppCaches } from '@/components/pwa';
 
 /**
  * Signing out.
@@ -29,6 +30,9 @@ export function SignOutLink({ className }: { className?: string }) {
         // sending the user to the sign-in page is better than leaving them on a
         // screen they were trying to leave.
         await apiPost('/auth/logout');
+        // Only static files are ever cached (ADR-058); they go too, so a shared
+        // workstation keeps nothing of the session.
+        await clearAppCaches().catch(() => {});
         router.replace('/login');
         router.refresh();
       }}

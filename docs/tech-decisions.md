@@ -1782,6 +1782,50 @@ a request, and the fix is a major of that library; it goes with Prisma 7.
 
 ---
 
+## ADR-058 — Velnox as an installable web app, not a separate desktop program
+
+**Decision:** Velnox installs as an app from Edge or Chrome — a progressive web app: a manifest and a
+service worker on the interface it already has, and **Install as app** in the user menu. Asked for
+was a Windows program that would connect to the server over HTTPS, show its data live, and spare
+the web server when many people use Velnox at once.
+
+**Why not a desktop program.** It would not spare the server. A program reads the same API and the
+same database as the browser does; what the web server alone does — sending the interface's program
+files — is the cheapest part of a session, and a browser already caches it. Electron (each install
+100 MB and more) or Tauri (small, on Windows' own WebView2) would still bring what a web app is spared:
+code signing, or SmartScreen blocks it; its own update channel, kept in step with the server's
+version; a sign-in flow of its own, because the interface's session cookies are not a program's. The
+owner chose the web app, and, separately, the change that does take load away (below).
+
+**What is cached, and what never is.** Velnox is multi-tenant and used on shared workstations. The
+service worker keeps `/_next/static/*` only — files Next names by their content hash, so a cached one
+is never stale — and among them the manifest's icons, which are imported assets for that reason. A
+page navigation goes to the network, and when that fails the worker answers with its own page,
+written in the worker, with no data on it. Everything else — the API, pages' data, Next's RSC
+payloads — the worker does not answer at all. The cache is named after the build; a new build is a
+new worker, which removes the old caches when it takes over. Signing out clears them.
+
+**Hand-written, not a library.** next-pwa is unmaintained; Serwist would bring a precache manifest
+and a build step for a policy of three rules. The worker is about eighty lines served by a route
+handler (`/sw.js`), so the build can be written into it, and its test runs that very text in a
+sandbox. Nothing goes in `public/`, which the standalone image does not carry.
+
+**A trusted certificate is required.** Browsers register a service worker — and so install an app —
+only on HTTPS they trust. With the self-signed default, workstations must trust Caddy's root first;
+the guide says how, and that it is a decision. The menu says why when the browser refuses.
+
+**Proven** by `scripts/verify-pwa.sh`: a real headless Chromium in a container, reaching the stack's
+own `https://localhost`, driven over the DevTools protocol — Chromium's own installability check,
+the cache's contents after a user's screens, the button asking the browser's prompt, no network, and
+signing out. Not proven there: the refusal on an untrusted certificate, and installing on a real
+Windows desktop.
+
+**What takes the load away** is the next change: every open screen re-reads its data on an interval
+(`useAutoRefresh`, a full server render each time); a stream from the API saying *what* changed lets
+a screen read again only then.
+
+---
+
 ## Version targets
 
 | Component | Version |

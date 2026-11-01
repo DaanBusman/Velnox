@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import type { SessionUser } from '@/lib/session-types';
 import { SignOutLink } from '@/components/sign-out-link';
 import { PreferencesDialog, type ViewerPreferences } from '@/components/preferences-dialog';
+import { usePwa } from '@/components/pwa';
 
 /**
  * The account menu.
@@ -28,6 +29,7 @@ export function UserMenu({
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const pwa = usePwa();
 
   useEffect(() => {
     if (!open) return;
@@ -118,6 +120,27 @@ export function UserMenu({
           >
             {t('nav.security')}
           </Link>
+
+          {/*
+            Offered only when the browser offers it; when it refused, said why,
+            because "where is the install button" has an answer the user can act on.
+          */}
+          {pwa.state === 'available' && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                void pwa.install();
+              }}
+              className="block w-full rounded px-3 py-2 text-left text-xs text-ink hover:bg-surface-2"
+            >
+              {t('pwa.install')}
+            </button>
+          )}
+          {pwa.state === 'untrusted' && (
+            <p className="px-3 py-2 text-xs text-ink-muted">{t('pwa.untrusted')}</p>
+          )}
 
           <div className="px-3 py-2">
             <SignOutLink className="text-xs text-ink-muted underline underline-offset-2 hover:text-ink" />

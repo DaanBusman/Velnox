@@ -1897,6 +1897,54 @@ invoer uit een verzoek, en de fix is een major van die bibliotheek; die gaat mee
 
 ---
 
+## ADR-058 — Velnox als installeerbare webapp, niet als apart desktopprogramma
+
+**Beslissing:** Velnox installeert als app vanuit Edge of Chrome — een progressive web app: een
+manifest en een service worker op de interface die er al is, en **Installeren als app** in het
+gebruikersmenu. Gevraagd was een Windows-programma dat over HTTPS met de server verbindt, de gegevens
+live toont, en de webserver ontziet als veel mensen Velnox tegelijk gebruiken.
+
+**Waarom geen desktopprogramma.** Het zou de server niet ontzien. Een programma leest dezelfde API en
+dezelfde database als de browser; wat alleen de webserver doet — de programmabestanden van de
+interface versturen — is het goedkoopste deel van een sessie, en een browser cachet het al. Electron
+(elke installatie 100 MB en meer) of Tauri (klein, op de eigen WebView2 van Windows) zou nog steeds
+meebrengen wat een webapp bespaard blijft: codeondertekening, anders blokkeert SmartScreen het; een
+eigen updatekanaal, gelijk te houden met de versie van de server; een eigen aanmeldflow, omdat de
+sessiecookies van de interface niet die van een programma zijn. De eigenaar koos de webapp, en,
+apart, de wijziging die de belasting wel wegneemt (hieronder).
+
+**Wat gecachet wordt, en wat nooit.** Velnox is multi-tenant en wordt op gedeelde werkplekken
+gebruikt. De service worker bewaart alleen `/_next/static/*` — bestanden die Next naar hun
+inhoudshash noemt, dus een gecachet exemplaar is nooit verouderd — en daaronder de iconen van het
+manifest, die daarom geïmporteerde assets zijn. Een paginanavigatie gaat naar het netwerk, en als dat
+mislukt antwoordt de worker met zijn eigen pagina, in de worker geschreven, zonder gegevens erop.
+Al het andere — de API, de gegevens van pagina's, de RSC-payloads van Next — beantwoordt de worker
+helemaal niet. De cache is genoemd naar de build; een nieuwe build is een nieuwe worker, die bij het
+overnemen de oude caches verwijdert. Afmelden wist ze.
+
+**Zelf geschreven, geen bibliotheek.** next-pwa wordt niet meer onderhouden; Serwist zou een
+precache-manifest en een buildstap meebrengen voor een beleid van drie regels. De worker is zo'n
+tachtig regels, geserveerd door een route handler (`/sw.js`), zodat de build erin geschreven kan
+worden, en zijn test draait precies die tekst in een sandbox. Niets gaat in `public/`, dat de
+standalone-image niet meeneemt.
+
+**Een vertrouwd certificaat is nodig.** Browsers registreren een service worker — en installeren dus
+een app — alleen op HTTPS dat ze vertrouwen. Met de zelfondertekende standaard moeten werkplekken
+eerst de root van Caddy vertrouwen; de handleiding zegt hoe, en dat het een beslissing is. Het menu
+zegt waarom als de browser weigert.
+
+**Bewezen** door `scripts/verify-pwa.sh`: een echte headless Chromium in een container, die de eigen
+`https://localhost` van de stack bereikt, aangestuurd over het DevTools-protocol — de eigen
+installeerbaarheidscontrole van Chromium, de inhoud van de cache na de schermen van een gebruiker,
+de knop die de prompt van de browser vraagt, geen netwerk, en afmelden. Daar niet bewezen: de
+weigering bij een onvertrouwd certificaat, en installeren op een echte Windows-desktop.
+
+**Wat de belasting wegneemt** is de volgende wijziging: elk open scherm leest zijn gegevens met een
+interval opnieuw (`useAutoRefresh`, telkens een volledige server-render); een stroom van de API die
+zegt *wat* er veranderde, laat een scherm alleen dan opnieuw lezen.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

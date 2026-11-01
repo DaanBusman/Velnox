@@ -290,6 +290,13 @@ On a node that runs no Ceph daemon, the Ceph repository is moved to Squid by rew
 `/debian/ceph-<release>` in its apt sources — proven in the fixture and in a Debian container, not
 yet on a real node. See ADR-052.
 
+### Installing as an app: proven in Chromium, not on a Windows desktop
+`scripts/verify-pwa.sh` proves the app installable in a real headless Chromium, and what it keeps,
+but not an installation on a real Windows desktop, and not the browser's refusal on an untrusted
+certificate: Chromium there ignores certificate errors, as the stack's own CA is not in it. The
+menu's message on that refusal rests on Chromium's documented `SecurityError`. Only Edge and Chrome
+offer to install; Firefox keeps Velnox in a tab. See ADR-058.
+
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
 Let's Encrypt's test server — not yet against Let's Encrypt on a public host. HTTP-01 only, as Caddy

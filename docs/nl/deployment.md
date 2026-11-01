@@ -228,7 +228,7 @@ cd /opt/velnox && sudo bash scripts/tls.sh --status
 
 | Modus | Wat het is | Vernieuwing |
 |---|---|---|
-| `internal` | Een certificaat van de eigen CA van Caddy. Browsers waarschuwen eenmalig. De standaard van het installatieprogramma. | Automatisch |
+| `internal` | Een certificaat van de eigen CA van Caddy. Browsers waarschuwen eenmalig, en installeren Velnox pas als app als de werkplek die CA vertrouwt ([hoe](installing-as-an-app.md#als-installeren-als-app-er-niet-staat)). De standaard van het installatieprogramma. | Automatisch |
 | Let's Encrypt | Een publiek vertrouwd certificaat, verkregen via ACME. | Automatisch |
 | Je eigen | Een certificaat dat je al hebt, van je eigen CA of een commerciële uitgever. | **Van jou** |
 

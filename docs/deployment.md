@@ -224,7 +224,7 @@ cd /opt/velnox && sudo bash scripts/tls.sh --status
 
 | Mode | What it is | Renewal |
 |---|---|---|
-| `internal` | A certificate from Caddy's own CA. Browsers warn once. The installer's default. | Automatic |
+| `internal` | A certificate from Caddy's own CA. Browsers warn once, and do not install Velnox as an app until the workstation trusts that CA ([how](installing-as-an-app.md#when-there-is-no-install-as-app)). The installer's default. | Automatic |
 | Let's Encrypt | A publicly trusted certificate obtained over ACME. | Automatic |
 | Your own | A certificate you already hold, from your CA or a commercial issuer. | **Yours** |
 

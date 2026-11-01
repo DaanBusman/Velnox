@@ -203,6 +203,7 @@ Operator guides — task-shaped, and the same pages that ship offline inside the
 | [updating-nodes.md](docs/updating-nodes.md) | Pending updates, updating a node, rolling updates, policies and maintenance windows |
 | [placement.md](docs/placement.md) | Keeping guests apart or together, preferred nodes, balancing |
 | [major-upgrades.md](docs/major-upgrades.md) | Upgrade plans, preflight, remediations, Ceph and Proxmox VE 8 → 9 |
+| [installing-as-an-app.md](docs/installing-as-an-app.md) | Velnox in a window of its own: installing it from Edge or Chrome, the certificate it needs, what is kept on the computer |
 
 Reference — how the system is built, and why:
 

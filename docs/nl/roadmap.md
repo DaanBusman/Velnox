@@ -546,6 +546,12 @@ responsief gedrag.
 een eerlijke lege toestand; het dashboard toont de gespecificeerde tellers; bulkacties respecteren rechten
 per item; contrast en focusvolgorde doorstaan een toegankelijkheidscontrole.
 
+**Vooruit op de fase opgeleverd (0.7.12):** Velnox als app te installeren vanuit Edge of Chrome, met
+**Installeren als app** in het gebruikersmenu — een manifest en een service worker die alleen
+statische bestanden bewaart (ADR-058, [de handleiding](installing-as-an-app.md),
+`scripts/verify-pwa.sh`). **Hierna:** schermen die hun gegevens alleen opnieuw lezen als er iets
+veranderde, uit een stroom die de API stuurt, in plaats van met een interval.
+
 ## Phase 14 — Installer en build-artefacten · **L**
 
 `install.sh` (interactief en `--non-interactive`), automatische installatie van Docker en Compose,

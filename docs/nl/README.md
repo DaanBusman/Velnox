@@ -204,6 +204,7 @@ Beheerdersgidsen — taakgericht, en dezelfde pagina's die offline in het produc
 | [updating-nodes.md](updating-nodes.md) | Openstaande updates, een node bijwerken, rolling updates, beleid en onderhoudsvensters |
 | [placement.md](placement.md) | Gasten uit elkaar of bij elkaar houden, voorkeursnodes, balanceren |
 | [major-upgrades.md](major-upgrades.md) | Upgradeplannen, preflight, remediaties, Ceph en Proxmox VE 8 → 9 |
+| [installing-as-an-app.md](installing-as-an-app.md) | Velnox in een eigen venster: installeren vanuit Edge of Chrome, het certificaat dat nodig is, wat er op de computer bewaard wordt |
 
 Referentie — hoe het systeem is gebouwd, en waarom:
 

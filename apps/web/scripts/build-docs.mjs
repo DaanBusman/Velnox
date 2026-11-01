@@ -46,6 +46,7 @@ const DOCUMENTS = [
   'updating-nodes',
   'placement',
   'major-upgrades',
+  'installing-as-an-app',
   'working-with-jobs',
   'permissions',
   'deployment',
