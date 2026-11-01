@@ -314,6 +314,14 @@ Op een node die geen Ceph-daemon draait, wordt de Ceph-repository naar Squid gez
 `/debian/ceph-<release>` in zijn apt-bronnen te herschrijven — bewezen in de fixture en in een
 Debian-container, nog niet op een echte node. Zie ADR-052.
 
+### Schermen die bij een wijziging verversen: wat niet gesignaleerd wordt
+Open schermen lezen opnieuw als een job of de inventaris van een cluster verandert (ADR-059). Andere
+wijzigingen — een cluster of tenant hernoemd, een site toegevoegd, een rol die iemand anders
+aanpaste — geven geen signaal; een scherm toont ze bij zijn herlezing eens per minuut, of bij de
+volgende navigatie. Een wijziging die gesignaleerd wordt terwijl er een formulier op het scherm
+openstaat, wordt pas verwerkt als het formulier sluit, zoals voorheen. Bewezen in een echte headless
+Chromium door `scripts/verify-changes.sh`, nog niet op een drukke productie-installatie.
+
 ### Installeren als app: bewezen in Chromium, niet op een Windows-desktop
 `scripts/verify-pwa.sh` bewijst in een echte headless Chromium dat de app installeerbaar is, en wat
 hij bewaart, maar niet een installatie op een echte Windows-desktop, en niet de weigering van de

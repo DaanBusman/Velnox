@@ -77,10 +77,15 @@ Tot dan werkt het verder met de versie waarmee het geopend is.
 
 ## Ontlast het de server?
 
-Nauwelijks. De app leest dezelfde gegevens van dezelfde server als een browsertabblad; alleen zijn
-programmabestanden komen van de schijf in plaats van het netwerk, wat de cache van een browser
-grotendeels al deed. Wat de server kost, is dat elk open scherm zijn gegevens met een interval
-opnieuw leest; dat vervangen door bijwerken alleen als er iets veranderd is, is het volgende werk.
+Het installeren zelf niet: de app leest dezelfde gegevens van dezelfde server als een
+browsertabblad, en alleen zijn programmabestanden komen van de schijf in plaats van het netwerk, wat
+de cache van een browser grotendeels al deed.
+
+Wat wel helpt, is hoe open schermen actueel blijven, in de app en in een tabblad. Een scherm leest
+zijn gegevens niet meer om de paar seconden opnieuw: de server laat weten wanneer er iets veranderde
+wat het toont — een job, een gast, een node — en dan leest het opnieuw, nooit vaker dan jouw
+verversinstelling. Een scherm waarop niets gebeurt, kost de server vrijwel niets. Zie ADR-059 in
+[Technologische keuzes](tech-decisions.md).
 
 ## Problemen oplossen
 

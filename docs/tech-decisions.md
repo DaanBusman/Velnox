@@ -1820,9 +1820,62 @@ the cache's contents after a user's screens, the button asking the browser's pro
 signing out. Not proven there: the refusal on an untrusted certificate, and installing on a real
 Windows desktop.
 
-**What takes the load away** is the next change: every open screen re-reads its data on an interval
-(`useAutoRefresh`, a full server render each time); a stream from the API saying *what* changed lets
-a screen read again only then.
+**What takes the load away** is ADR-059: screens that read their data again only when something
+changed, instead of on an interval.
+
+---
+
+## ADR-059 — Screens refresh when something changed, from one stream per tab
+
+**Decision:** an open screen re-reads its data when the API says something it shows has changed,
+never more often than the viewer's refresh setting, instead of on that interval regardless. One
+server-sent stream per browser tab (`GET /api/v1/changes`) carries the signals for the page and the
+running-jobs bar together. The interval stays, as the fallback.
+
+**Why.** Every open screen re-read its page — a full server render, several API reads — every two
+seconds by default, and the running-jobs bar on every page read the job list as often. Ten people
+with Velnox open was ten of each, whether anything moved or not. That, not the interface's program
+files, was what a desktop program had been meant to spare the server (ADR-058).
+
+**What is signalled.** Two topics. *Jobs*: from the per-job event channels the job system already
+publishes on; the API looks up a job's tenant once and keeps it. Library items change through jobs,
+so the library listens to jobs. *Inventory*: the worker publishes after a discovery run (on every
+way out of it), a credential check, and a live-status read — the last only when the read differs
+from the one before in what a screen shows: uptime and counters are left out, CPU compared in whole
+percent, memory and disk in 16 MiB steps. Otherwise a watched cluster would signal on every read,
+which is the polling this replaces.
+
+**What a viewer hears.** A change is passed on only to a viewer who could read what changed, at its
+scope: jobs with `jobs.read` in the job's tenant, as the job list checks it; inventory with
+`clusters.read`, `nodes.read` or `workloads.read` at the cluster's tenant, site or itself. The
+stream carries no data — a topic, and for inventory the cluster's id — so the screen still reads
+through the endpoints that check. Permissions are read when the stream opens; the API ends every
+stream after ten minutes, and the browser reconnects, authenticated again.
+
+**Live status had depended on the polling.** The worker reads a cluster's live status while someone
+watches it, and "watching" was recorded by the screen's own re-reads. A screen that re-reads only on
+a change would have stopped the reads that tell it so. The stream now records the watch itself,
+every five seconds while open, for the clusters on screen that the viewer may read — the rest of
+the list is ignored, as the interceptor that records watches from responses does — and the watch
+lapses about ten seconds after the stream closes.
+
+**In the browser.** One `EventSource` per tab, opened while something subscribes and the tab is
+visible, asking for the union of what the subscribers want; reopened when that changes. A burst of
+changes is gathered — by the API to one signal a second per topic and cluster, by the screen to one
+re-read per interval. While the stream is open a screen still re-reads once a minute, for what no
+signal covers; when the stream is refused or does not come back within ten seconds, it re-reads on
+the interval as before. A form open on the screen still pauses everything.
+
+**Not chosen.** WebSockets: the traffic is one-way, and server-sent events reconnect by themselves
+and pass through Caddy as they are. Pushing the data itself: every screen would need a second,
+event-shaped way to read what it already reads through the API, with its own permission checks.
+
+**Proven** by `scripts/verify-changes.sh`: with curl, the stream's refusals, the watch it keeps
+(and only for clusters the viewer may read), a quiet cluster sending nothing and a guest shutting
+down sending one change, jobs gathered, and a user of another customer hearing none of it; in a
+real headless Chromium, the jobs page at a two-second refresh re-reading nothing in twenty idle
+seconds, nor the running-jobs bar, over one stream; a job started from the page on it within
+seconds; and with the stream refused, the page back on its interval.
 
 ---
 

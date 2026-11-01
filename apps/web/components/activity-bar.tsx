@@ -7,6 +7,7 @@ import type { JobSummary } from '@velnox/shared';
 import { TERMINAL_JOB_STATUSES } from '@velnox/shared';
 import { apiGet } from '@/lib/client-api';
 import { refreshSecondsInBrowser } from '@/lib/refresh-preference';
+import { useRefreshOn } from '@/lib/changes';
 import { JobStatusBadge, ProgressBar, useJobTypeLabel } from '@/components/jobs/primitives';
 import { useUploads } from '@/components/library/uploads-provider';
 
@@ -77,14 +78,10 @@ export function ActivityBar() {
     };
   }, [nonce]);
 
-  useEffect(() => {
-    const seconds = refreshSecondsInBrowser();
-    if (seconds === 0) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') load();
-    }, seconds * 1000);
-    return () => clearInterval(timer);
-  }, [load]);
+  // On every page, so it shares the page's change stream rather than polling
+  // the job list beside it.
+  const [seconds] = useState(refreshSecondsInBrowser);
+  useRefreshOn(load, seconds * 1000, seconds > 0, { topics: ['jobs'] });
 
   const list = jobs ?? [];
   const running = list.filter((job) => !TERMINAL_JOB_STATUSES.has(job.status));

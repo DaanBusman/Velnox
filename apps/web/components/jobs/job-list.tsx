@@ -43,7 +43,7 @@ export function JobList({
   const typeLabel = useJobTypeLabel();
   const [launching, setLaunching] = useState(false);
 
-  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !launching);
+  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !launching, { topics: ['jobs'] });
 
   const showTenant = new Set(jobs.map((job) => job.tenantId)).size > 1;
 

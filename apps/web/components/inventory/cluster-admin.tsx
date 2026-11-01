@@ -53,7 +53,11 @@ export function ClusterAdmin({
   // compare against another screen, so it is exactly the thing someone leaves
   // and comes back to — and a refresh landing on the way back took the form
   // with it.
-  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !adding);
+  const onScreen = useMemo(() => clusters.map((cluster) => cluster.id), [clusters]);
+  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !adding, {
+    topics: ['inventory', 'jobs'],
+    clusters: onScreen,
+  });
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();

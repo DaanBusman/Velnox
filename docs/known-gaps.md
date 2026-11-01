@@ -297,6 +297,13 @@ certificate: Chromium there ignores certificate errors, as the stack's own CA is
 menu's message on that refusal rests on Chromium's documented `SecurityError`. Only Edge and Chrome
 offer to install; Firefox keeps Velnox in a tab. See ADR-058.
 
+### Screens that update on change: what is not signalled
+Open screens re-read when a job or a cluster's inventory changes (ADR-059). Other changes — a
+cluster or tenant renamed, a site added, a role edited by someone else — send no signal; a screen
+shows them at its once-a-minute re-read, or on the next navigation. A change signalled while a form
+is open on the screen is not applied until the form closes, as before. Proven in a real headless
+Chromium by `scripts/verify-changes.sh`, not yet on a busy production installation.
+
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
 Let's Encrypt's test server — not yet against Let's Encrypt on a public host. HTTP-01 only, as Caddy

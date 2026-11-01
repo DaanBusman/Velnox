@@ -22,6 +22,7 @@ export * from './pve-major';
 export * from './rrule';
 export * from './slug';
 export * from './ssh-key';
+export * from './changes';
 export * from './cluster-merge';
 export * from './system';
 export * from './updates';

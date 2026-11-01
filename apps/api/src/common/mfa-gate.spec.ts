@@ -16,6 +16,7 @@ import { SystemController } from '../modules/system/system.controller';
 import { RolesController } from '../modules/roles/roles.controller';
 import { ClustersController } from '../modules/inventory/clusters.controller';
 import { JobsController } from '../modules/jobs/jobs.controller';
+import { ChangesController } from '../modules/changes/changes.controller';
 import { NodesController } from '../modules/inventory/nodes.controller';
 import { WorkloadsController } from '../modules/inventory/workloads.controller';
 import { ResourcesController } from '../modules/inventory/resources.controller';
@@ -105,6 +106,7 @@ const CONTROLLERS = [
   SitesController,
   ClustersController,
   JobsController,
+  ChangesController,
   NodesController,
   WorkloadsController,
   ResourcesController,

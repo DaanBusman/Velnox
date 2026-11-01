@@ -1939,9 +1939,69 @@ installeerbaarheidscontrole van Chromium, de inhoud van de cache na de schermen 
 de knop die de prompt van de browser vraagt, geen netwerk, en afmelden. Daar niet bewezen: de
 weigering bij een onvertrouwd certificaat, en installeren op een echte Windows-desktop.
 
-**Wat de belasting wegneemt** is de volgende wijziging: elk open scherm leest zijn gegevens met een
-interval opnieuw (`useAutoRefresh`, telkens een volledige server-render); een stroom van de API die
-zegt *wat* er veranderde, laat een scherm alleen dan opnieuw lezen.
+**Wat de belasting wegneemt** is ADR-059: schermen die hun gegevens alleen opnieuw lezen als er
+iets veranderde, in plaats van met een interval.
+
+---
+
+## ADR-059 — Schermen verversen als er iets veranderde, uit één stroom per tabblad
+
+**Besluit:** een open scherm leest zijn gegevens opnieuw als de API zegt dat er iets veranderde wat
+het toont, nooit vaker dan de verversinstelling van de kijker, in plaats van hoe dan ook op dat
+interval. Eén server-sent stroom per browsertabblad (`GET /api/v1/changes`) brengt de signalen voor
+de pagina en de balk met lopende jobs samen. Het interval blijft, als terugval.
+
+**Waarom.** Elk open scherm las zijn pagina opnieuw — een volledige server-render, meerdere
+API-lezingen — standaard elke twee seconden, en de balk met lopende jobs op elke pagina las de
+joblijst even vaak. Tien mensen met Velnox open was tien van elk, of er nu iets bewoog of niet. Dat,
+en niet de programmabestanden van de interface, was wat een desktopprogramma de server had moeten
+besparen (ADR-058).
+
+**Wat gesignaleerd wordt.** Twee onderwerpen. *Jobs*: uit de gebeurteniskanalen per job waarop het
+jobsysteem al publiceert; de API zoekt de tenant van een job één keer op en onthoudt die.
+Bibliotheekitems veranderen via jobs, dus de bibliotheek luistert naar jobs. *Inventaris*: de worker
+publiceert na een inventarisatieronde (langs elke uitgang ervan), een controle van de credential, en
+een uitlezing van de live status — dat laatste alleen als de uitlezing verschilt van de vorige in
+wat een scherm toont: uptime en tellers blijven buiten beschouwing, CPU wordt vergeleken in hele
+procenten, geheugen en schijf in stappen van 16 MiB. Anders zou een bekeken cluster bij elke
+uitlezing een signaal geven, en dat is precies het pollen dat dit vervangt.
+
+**Wat een kijker hoort.** Een wijziging gaat alleen naar een kijker die zou mogen lezen wat er
+veranderde, op dat niveau: jobs met `jobs.read` in de tenant van de job, zoals de joblijst het
+controleert; inventaris met `clusters.read`, `nodes.read` of `workloads.read` op de tenant, de site
+of het cluster zelf. De stroom bevat geen gegevens — een onderwerp, en bij inventaris het id van het
+cluster — dus het scherm leest nog steeds via de endpoints die controleren. Rechten worden gelezen
+bij het openen van de stroom; de API beëindigt elke stroom na tien minuten, en de browser maakt
+opnieuw verbinding, opnieuw geauthenticeerd.
+
+**De live status hing van het pollen af.** De worker leest de live status van een cluster zolang
+iemand ernaar kijkt, en dat "kijken" werd vastgelegd door de eigen herlezingen van het scherm. Een
+scherm dat alleen bij een wijziging opnieuw leest, zou de uitlezingen die het daarover vertellen
+hebben stilgelegd. De stroom legt het kijken nu zelf vast, elke vijf seconden zolang hij open is,
+voor de clusters op het scherm die de kijker mag lezen — de rest van de lijst wordt genegeerd, zoals
+de interceptor die kijken uit antwoorden vastlegt dat doet — en het kijken vervalt ongeveer tien
+seconden nadat de stroom sluit.
+
+**In de browser.** Eén `EventSource` per tabblad, open zolang er iets op geabonneerd is en het
+tabblad zichtbaar is, en vragend om de vereniging van wat de abonnees willen; opnieuw geopend als
+dat verandert. Een reeks wijzigingen wordt samengenomen — door de API tot één signaal per seconde per
+onderwerp en cluster, door het scherm tot één herlezing per interval. Zolang de stroom open is,
+leest een scherm nog eens per minuut opnieuw, voor wat geen signaal dekt; wordt de stroom geweigerd
+of komt hij niet binnen tien seconden terug, dan leest het weer op het interval zoals voorheen. Een
+open formulier op het scherm pauzeert nog steeds alles.
+
+**Niet gekozen.** WebSockets: het verkeer gaat één kant op, en server-sent events maken zelf opnieuw
+verbinding en gaan ongewijzigd door Caddy. De gegevens zelf meesturen: elk scherm zou dan een
+tweede, op gebeurtenissen gebaseerde manier nodig hebben om te lezen wat het al via de API leest,
+met eigen rechtencontroles.
+
+**Bewezen** door `scripts/verify-changes.sh`: met curl de weigeringen van de stroom, het kijken dat
+hij vasthoudt (en alleen voor clusters die de kijker mag lezen), een stil cluster dat niets stuurt
+en een gast die afsluit die één wijziging stuurt, samengenomen jobs, en een gebruiker van een andere
+klant die er niets van hoort; in een echte headless Chromium de jobspagina met verversen elke twee
+seconden die in twintig stille seconden niets opnieuw leest, net zo min als de balk met lopende
+jobs, over één stroom; een job die vanaf de pagina gestart wordt en binnen enkele seconden op de
+pagina staat; en met de stroom geweigerd de pagina terug op haar interval.
 
 ---
 

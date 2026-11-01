@@ -80,7 +80,11 @@ export function ClusterDetail({
   // pauses it: a refresh can unmount the tree, and a confirmation that vanishes
   // is one an operator answers twice. The SSH form likewise — it holds a pasted
   // private key, and losing that to a refresh means pasting it again.
-  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !confirmingRemoval && !editingSsh);
+  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !confirmingRemoval && !editingSsh, {
+    topics: ['inventory', 'jobs'],
+    clusters: [cluster.id],
+    onlyTheseClusters: true,
+  });
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'nodes', label: t('nav.nodes') },

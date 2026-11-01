@@ -8,6 +8,6 @@ import { useAutoRefresh } from '@/lib/use-auto-refresh';
  * nothing under way costs the API nothing.
  */
 export function RefreshWhile({ active, seconds }: { active: boolean; seconds: number }) {
-  useAutoRefresh(seconds * 1000, active && seconds > 0);
+  useAutoRefresh(seconds * 1000, active && seconds > 0, { topics: ['inventory', 'jobs'] });
   return null;
 }

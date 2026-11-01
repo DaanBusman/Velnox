@@ -1,6 +1,6 @@
 import type { Redis } from 'ioredis';
 import { withSystemScope } from '@velnox/db';
-import type { ProxmoxClient } from '@velnox/proxmox';
+import type { ClusterResource, ProxmoxClient } from '@velnox/proxmox';
 import { LIVE_WATCH_KEY, rootRedactor } from '@velnox/shared';
 import { clientFor, type InventoryContext } from './inventory.processor';
 import { persistLive } from './persist';
@@ -30,6 +30,50 @@ export function watchedIntervals(members: string[]): Map<string, number> {
   return wanted;
 }
 
+/** Usage is compared in steps this size: a screen shows megabytes, not bytes. */
+const BYTES_STEP = 16 * 1024 * 1024;
+
+/**
+ * What a screen would show of one `/cluster/resources` answer, as a string to
+ * compare with the last.
+ *
+ * Every read is written, but only a read that differs from the last tells open
+ * screens to refresh — otherwise a watched cluster would refresh them on every
+ * read whether anything moved or not, which is the polling this replaces.
+ * Uptime moves every second and the counters only ever grow, so they are left
+ * out; CPU is compared in whole percent and memory and disk in 16 MiB steps,
+ * so jitter below what a screen shows is not a change. Anything else — a guest
+ * started, moved, renamed, tagged; a node going offline — is.
+ */
+export function liveFingerprint(resources: readonly ClusterResource[]): string {
+  const step = (bytes: number | undefined) =>
+    typeof bytes === 'number' ? Math.round(bytes / BYTES_STEP) : null;
+  return JSON.stringify(
+    resources
+      .map((r) => [
+        r.id,
+        r.type,
+        r.node ?? null,
+        r.status ?? null,
+        r.name ?? null,
+        r.vmid ?? null,
+        typeof r.cpu === 'number' ? Math.round(r.cpu * 100) : null,
+        r.maxcpu ?? null,
+        step(r.mem),
+        r.maxmem ?? null,
+        step(r.disk),
+        r.maxdisk ?? null,
+        r.template ?? null,
+        r.tags ?? null,
+        r.pool ?? null,
+        r.storage ?? null,
+        r.shared ?? null,
+        r.content ?? null,
+      ])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+  );
+}
+
 /**
  * Live status for the clusters someone is looking at.
  *
@@ -44,6 +88,8 @@ export class LivePoller {
   private readonly last = new Map<string, number>();
   private readonly inFlight = new Set<string>();
   private readonly clients = new Map<string, { client: ProxmoxClient; until: number }>();
+  /** Per cluster, what its last read looked like to a screen. */
+  private readonly seen = new Map<string, string>();
 
   constructor(
     private readonly context: InventoryContext,
@@ -69,6 +115,10 @@ export class LivePoller {
         this.clients.delete(clusterId);
       }
     }
+    // A cluster nobody watches is compared afresh when someone does again.
+    for (const clusterId of this.seen.keys()) {
+      if (!wanted.has(clusterId)) this.seen.delete(clusterId);
+    }
   }
 
   private async read(clusterId: string): Promise<void> {
@@ -78,10 +128,15 @@ export class LivePoller {
         const resources = await client.clusterResources();
         const cluster = await this.context.prisma.cluster.findUnique({
           where: { id: clusterId },
-          select: { id: true, tenantId: true },
+          select: { id: true, tenantId: true, siteId: true },
         });
         if (!cluster) return;
         await persistLive(this.context.prisma, cluster, resources, new Date());
+        const fingerprint = liveFingerprint(resources);
+        if (this.seen.get(clusterId) !== fingerprint) {
+          this.seen.set(clusterId, fingerprint);
+          await this.context.changed?.(cluster);
+        }
       });
     } catch (error) {
       this.clients.get(clusterId)?.client.close();

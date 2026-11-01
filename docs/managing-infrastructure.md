@@ -265,12 +265,16 @@ Two kinds of reading, and they are different:
   set it to **Only when asked** to turn the schedule off for one customer without affecting anyone
   else.
 - **Live status** — whether each node and guest is up, CPU, memory, uptime, storage use, and guests
-  created or removed — is read while someone is looking. Every screen showing a cluster's inventory
-  asks for it at the viewer's own refresh interval (your name → **Settings → Refresh screens automatically**,
-  two seconds by default); the most eager viewer of a cluster sets its pace, and about ten seconds
-  after the last viewer leaves it stops. It is one call to Proxmox (`/cluster/resources`) per
-  cluster. With refreshing switched off, a screen asks for none. The cluster page shows which
-  applies under *Live status*.
+  created or removed — is read while someone is looking. Every open screen showing a cluster's
+  inventory asks for it at the viewer's own refresh interval (your name → **Settings → Refresh
+  screens automatically**, two seconds by default); the most eager viewer of a cluster sets its
+  pace, and about ten seconds after the last viewer leaves it stops. It is one call to Proxmox
+  (`/cluster/resources`) per cluster. With refreshing switched off, a screen asks for none. The
+  cluster page shows which applies under *Live status*.
+
+  The screen itself re-reads only when what it shows has changed — a guest started or stopped, a
+  node offline, a figure moved by a whole percent of CPU or by more than a few megabytes — and
+  otherwise once a minute. A cluster where nothing moves costs the screens watching it nothing.
 
 Proxmox itself recalculates those figures about every ten seconds, so between two of its updates
 several reads in a row show the same numbers. There is no button that starts a full inventory on

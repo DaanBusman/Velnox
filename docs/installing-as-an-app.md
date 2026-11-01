@@ -71,10 +71,15 @@ An open window notices the new version when it is next brought to the front, and
 
 ## Does it take load off the server?
 
-Hardly. The app reads the same data from the same server as a browser tab; only its program files
-come from the disk instead of the network, which a browser's own cache mostly did already. What
-costs the server is each open screen reading its data again on an interval; replacing that with
-updates only when something changed is the next piece of work.
+Installing it does not: the app reads the same data from the same server as a browser tab, and
+only its program files come from the disk instead of the network, which a browser's own cache
+mostly did already.
+
+What does is how open screens stay current, in the app and in a tab alike. A screen no longer reads
+its data again every few seconds: the server tells it when something it shows has changed — a job,
+a guest, a node — and it reads again then, never more often than your refresh setting. A screen
+where nothing happens costs the server next to nothing. See ADR-059 in
+[Technology decisions](tech-decisions.md).
 
 ## Troubleshooting
 

@@ -41,6 +41,12 @@ export interface InventoryContext {
   prisma: VelnoxPrismaClient;
   credentials: CredentialReader;
   log: (fields: Record<string, unknown>, message: string) => void;
+  /**
+   * Tell open screens this cluster's inventory moved (see CHANGE_CHANNEL).
+   * Never throws and is never waited on for correctness: a screen that misses
+   * one still refreshes on its fallback interval.
+   */
+  changed?: (cluster: { id: string; tenantId: string; siteId: string | null }) => Promise<void>;
 }
 
 /**
@@ -69,7 +75,13 @@ export async function clientFor(
   context: InventoryContext,
   clusterId: string,
 ): Promise<{
-  cluster: { id: string; tenantId: string; name: string; authPrincipal: string | null };
+  cluster: {
+    id: string;
+    tenantId: string;
+    siteId: string | null;
+    name: string;
+    authPrincipal: string | null;
+  };
   client: ProxmoxClient;
 }> {
   const cluster = await context.prisma.cluster.findUnique({ where: { id: clusterId } });
@@ -101,6 +113,7 @@ export async function clientFor(
     cluster: {
       id: cluster.id,
       tenantId: cluster.tenantId,
+      siteId: cluster.siteId,
       name: cluster.name,
       authPrincipal: cluster.authPrincipal,
     },
@@ -129,6 +142,7 @@ export function processVerify(job: Job<DiscoverJobData>, context: InventoryConte
         lastErrorDetail: null,
       },
     });
+    await context.changed?.(cluster);
 
     return { version: version.version, auth: client.authDescription };
   });
@@ -264,6 +278,9 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
     } finally {
       // Closed after the task history is read too, and on every path out.
       client.close();
+      // Every way out wrote something a screen shows: the inventory, or the
+      // run that failed and the cluster's state.
+      await context.changed?.(cluster);
     }
   });
 }

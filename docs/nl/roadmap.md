@@ -549,8 +549,9 @@ per item; contrast en focusvolgorde doorstaan een toegankelijkheidscontrole.
 **Vooruit op de fase opgeleverd (0.7.12):** Velnox als app te installeren vanuit Edge of Chrome, met
 **Installeren als app** in het gebruikersmenu — een manifest en een service worker die alleen
 statische bestanden bewaart (ADR-058, [de handleiding](installing-as-an-app.md),
-`scripts/verify-pwa.sh`). **Hierna:** schermen die hun gegevens alleen opnieuw lezen als er iets
-veranderde, uit een stroom die de API stuurt, in plaats van met een interval.
+`scripts/verify-pwa.sh`). En (0.7.14) schermen die hun gegevens alleen opnieuw lezen als er iets
+veranderde, uit één stroom per tabblad die de API stuurt, in plaats van met een interval (ADR-059,
+`scripts/verify-changes.sh`).
 
 ## Phase 14 — Installer en build-artefacten · **L**
 

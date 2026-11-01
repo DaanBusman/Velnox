@@ -278,12 +278,17 @@ Er zijn twee soorten uitlezen, en ze verschillen:
   clusterpagina, of zet het op **Alleen op verzoek** om het schema voor één klant uit te zetten zonder
   iemand anders te raken.
 - **Live status** — of elke node en gast draait, CPU, geheugen, uptime, opslaggebruik, en gasten die
-  zijn aangemaakt of verwijderd — wordt uitgelezen zolang iemand kijkt. Elk scherm met de inventaris
-  van een cluster vraagt erom op het verversinterval van de kijker (je naam → **Instellingen → Schermen
+  zijn aangemaakt of verwijderd — wordt uitgelezen zolang iemand kijkt. Elk open scherm met de
+  inventaris van een cluster vraagt erom op het verversinterval van de kijker (je naam → **Instellingen → Schermen
   automatisch verversen**, standaard twee seconden); de kijker die het vaakst ververst bepaalt het
   tempo, en ongeveer tien seconden nadat de laatste kijker weg is stopt het. Het is één aanroep naar
   Proxmox (`/cluster/resources`) per cluster. Staat verversen uit, dan vraagt een scherm er niet om.
   De clusterpagina toont onder *Live status* wat er geldt.
+
+  Het scherm zelf leest alleen opnieuw als er iets veranderde wat het toont — een gast gestart of
+  gestopt, een node offline, een cijfer dat een hele procent CPU of meer dan een paar megabyte
+  verschoof — en verder eens per minuut. Een cluster waarop niets beweegt, kost de schermen die
+  ernaar kijken niets.
 
 Proxmox rekent die cijfers zelf ongeveer elke tien seconden opnieuw uit, dus tussen twee van zijn
 updates tonen meerdere uitlezingen achter elkaar dezelfde getallen. Er is geen knop die een volledige

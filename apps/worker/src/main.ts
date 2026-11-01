@@ -14,7 +14,14 @@ import { Redis } from 'ioredis';
 import pino from 'pino';
 import { loadWorkerConfig, redisConnection, secretValues } from '@velnox/config';
 import { createPrismaClient, ensureLibraryDirs, withSystemScope } from '@velnox/db';
-import { JOB_NAMES, JOB_QUEUE, QUEUE_NAMES, rootRedactor } from '@velnox/shared';
+import {
+  CHANGE_CHANNEL,
+  JOB_NAMES,
+  JOB_QUEUE,
+  QUEUE_NAMES,
+  rootRedactor,
+  type ChangeMessage,
+} from '@velnox/shared';
 import { Heartbeat } from './heartbeat';
 import { processPing, type PingJobData, type PingJobResult } from './processors/ping.processor';
 import { CredentialReader } from './inventory/credentials';
@@ -149,10 +156,30 @@ async function bootstrap(): Promise<void> {
   // ------------------------------------------------------------------
 
   const credentials = new CredentialReader(prisma, config.MASTER_ENCRYPTION_KEY);
+  /*
+   * "Something changed", for open screens (CHANGE_CHANNEL). Its own connection,
+   * short-fused: a publish that cannot be made is dropped, never waited out —
+   * the screens it was for refresh on their fallback interval.
+   */
+  const changesRedis = new Redis({
+    ...redisConnection(config),
+    maxRetriesPerRequest: 1,
+    retryStrategy: (times) => Math.min(times * 200, 5_000),
+  });
+  changesRedis.on('error', (error) => logger.debug({ err: error }, 'Changes Redis error'));
   const inventoryContext: InventoryContext = {
     prisma,
     credentials,
     log: (fields, message) => logger.info(fields, message),
+    changed: async (cluster) => {
+      const message: ChangeMessage = {
+        topic: 'inventory',
+        tenantId: cluster.tenantId,
+        siteId: cluster.siteId,
+        clusterId: cluster.id,
+      };
+      await changesRedis.publish(CHANGE_CHANNEL, JSON.stringify(message)).catch(() => undefined);
+    },
   };
 
   // Before any queue worker starts: a test mail can be asked for at once.
@@ -495,6 +522,7 @@ async function bootstrap(): Promise<void> {
     clearInterval(liveTimer);
     livePoller.close();
     liveRedis.disconnect();
+    changesRedis.disconnect();
     await worker.close();
     await inventoryWorker.close();
     await jobsWorker.close();

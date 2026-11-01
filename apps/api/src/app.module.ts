@@ -15,6 +15,7 @@ import { UsersModule } from './modules/users/users.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { ChangesModule } from './modules/changes/changes.module';
 import { AutoconfigModule } from './modules/autoconfig/autoconfig.module';
 import { LibraryModule } from './modules/library/library.module';
 import { MailModule } from './modules/mail/mail.module';
@@ -45,6 +46,7 @@ import { UpgradesModule } from './modules/upgrades/upgrades.module';
     TenancyModule,
     InventoryModule,
     JobsModule,
+    ChangesModule,
     LibraryModule,
     AutoconfigModule,
     MailModule,

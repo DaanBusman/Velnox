@@ -71,7 +71,8 @@ export function LibraryView({
   const interacting = pushing !== null || renaming !== null || removing !== null;
   // Paused while a dialog or form is open: a refresh can remount the tree, and
   // a half-filled form that vanishes is work lost.
-  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !interacting);
+  // Library items change through jobs: downloads, pushes, imports.
+  useAutoRefresh(refreshSeconds * 1000, refreshSeconds > 0 && !interacting, { topics: ['jobs'] });
 
   const { capacity } = data;
   const usedPct = Math.min(100, (capacity.usedBytes / capacity.ceilingBytes) * 100);

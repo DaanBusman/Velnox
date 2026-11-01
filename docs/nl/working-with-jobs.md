@@ -18,8 +18,9 @@ in ADR-035 en ADR-036 in [Technologiekeuzes](tech-decisions.md).
 **Jobs** in de zijbalk toont elke job die dit account mag zien, nieuwste eerst, met de status, hoe
 ver hij is, wie hem startte en hoe lang hij duurde. Filter bovenaan de lijst op status.
 
-De lijst leest zichzelf opnieuw in volgens jouw verversinstelling (je naam → **Instellingen → Schermen
-automatisch verversen**) en pauzeert zolang er een formulier op openstaat. Een job openen toont hem
+De lijst leest zichzelf opnieuw in als er een job verandert, nooit vaker dan jouw verversinstelling
+(je naam → **Instellingen → Schermen automatisch verversen**), en pauzeert zolang er een formulier op
+openstaat. Staat verversen uit, dan doet hij geen van beide. Een job openen toont hem
 **live**: gebeurtenissen komen binnen op het moment dat ze plaatsvinden, niet pas bij herladen.
 
 **Lopende jobs**, onderin elke pagina, is dezelfde lijst beperkt tot wat er nu gebeurt: jobs die nog

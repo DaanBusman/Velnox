@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useRefreshOn, type RefreshOn } from '@/lib/changes';
 
 /**
- * Re-read the page from the server on an interval.
+ * Re-read the page from the server when what it shows changes, or on an
+ * interval.
+ *
+ * Given `on`, it refreshes when the change stream says something it shows
+ * moved, never more often than the interval (see useRefreshOn), and falls back
+ * to the interval whenever no stream is open. Without `on` it is the interval.
  *
  * The inventory screens are Server Components over `force-dynamic` pages, so
  * `router.refresh()` re-runs the page's own data fetch and swaps the result in
@@ -19,7 +24,7 @@ import { useRouter } from 'next/navigation';
  * back empty — which unmounts everything below it, half-filled forms included.
  * Refreshing every two seconds turns that from a rare event into a routine one.
  *
- * Two more things it deliberately does not do:
+ * Two more things it deliberately does not do (nor does the stream):
  *
  * - **It does not poll a hidden tab.** An operator with six Velnox tabs open
  *   would otherwise have six of these running for as long as the browser is up,
@@ -29,40 +34,7 @@ import { useRouter } from 'next/navigation';
  * - **It does not talk to Proxmox.** This re-reads what Velnox already knows.
  *   Discovery runs on its own schedule, per cluster; nothing here shortens it.
  */
-export function useAutoRefresh(intervalMs: number, enabled = true): void {
+export function useAutoRefresh(intervalMs: number, enabled = true, on?: RefreshOn): void {
   const router = useRouter();
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    let timer: ReturnType<typeof setInterval> | null = null;
-
-    const stop = () => {
-      if (timer !== null) {
-        clearInterval(timer);
-        timer = null;
-      }
-    };
-
-    const start = () => {
-      if (timer === null) timer = setInterval(() => router.refresh(), intervalMs);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        router.refresh();
-        start();
-      } else {
-        stop();
-      }
-    };
-
-    if (document.visibilityState === 'visible') start();
-    document.addEventListener('visibilitychange', onVisibility);
-
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [router, intervalMs, enabled]);
+  useRefreshOn(() => router.refresh(), intervalMs, enabled, on);
 }
