@@ -2013,5 +2013,10 @@
     "offlineTitle": "Velnox is niet bereikbaar",
     "offlineBody": "Deze computer heeft nu geen verbinding met de Velnox-server. Er wordt niets van eerder getoond: Velnox bewaart geen gegevens op deze computer.",
     "offlineRetry": "Opnieuw proberen"
+  },
+  "timeZone": {
+    "placeholder": "Typ een plaats, zoals Amsterdam",
+    "none": "Geen tijdzone voor die plaats",
+    "typeToSearch": "Typ een plaats om te zoeken"
   }
 }

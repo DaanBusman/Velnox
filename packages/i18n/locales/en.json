@@ -2012,5 +2012,10 @@
     "offlineTitle": "Velnox cannot be reached",
     "offlineBody": "This computer has no connection to the Velnox server right now. Nothing is shown from earlier: Velnox keeps no data on this computer.",
     "offlineRetry": "Try again"
+  },
+  "timeZone": {
+    "placeholder": "Type a place, such as Amsterdam",
+    "none": "No time zone for that place",
+    "typeToSearch": "Type a place to search"
   }
 }

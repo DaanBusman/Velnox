@@ -139,7 +139,8 @@ already installed it keep it.
   password logins are allowed as well.
 - **The SSH switch**, on by default: the server installed and running, the keys placed, password
   logins off unless allowed, and port 22 opened where the image runs a firewall.
-- Locale, keyboard and time zone, extra packages, a swap file, unattended security upgrades.
+- Locale, keyboard and time zone, extra packages, a swap file, unattended security upgrades. The
+  time zone is found by typing a place, as in your own settings.
 
 ### How the passwords reach the requester
 

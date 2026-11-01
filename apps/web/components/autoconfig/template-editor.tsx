@@ -22,6 +22,7 @@ import { apiPatch, apiPost, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
 import type { TenantSummary } from '@/lib/session-types';
 import { Button, Field, FormError, TextInput } from '@/components/ui/form';
+import { TimeZoneSearch } from '@/components/ui/time-zone-search';
 import { Card, Notice } from '@/components/ui/primitives';
 import { TemplatePackages } from './template-packages';
 
@@ -904,11 +905,11 @@ export function TemplateEditor({
               />
               <Field label={t('autoconfig.timeZone')} hint={t('autoconfig.ianaHint')}>
                 {(props) => (
-                  <TextInput
+                  <TimeZoneSearch
                     {...props}
-                    value={settings.timeZone}
+                    value={settings.timeZone || null}
                     disabled={!editable}
-                    onChange={(e) => set('timeZone', e.target.value)}
+                    onChange={(zone) => set('timeZone', zone ?? '')}
                   />
                 )}
               </Field>

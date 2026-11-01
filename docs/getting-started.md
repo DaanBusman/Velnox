@@ -171,8 +171,11 @@ enforced.
 
 **Your own time zone.** Under **your name → Settings → Time zone**, every date and time on the screens —
 *Last read*, job times, the audit log — is shown in the zone you choose: the installation's, your
-browser's, or any other. Like the language, it is kept in this browser and changes nothing for
-anyone else.
+browser's, or any other. Type a place to find a zone: *Amsterdam* offers **Europe/Amsterdam**
+with the time it is there now, so the right zone is the one whose clock you recognise. A capital
+that keeps another city's time is found too — *Den Haag* gives Europe/Amsterdam, *Bern*
+Europe/Zurich, *Washington* America/New York — and so are Dutch city names such as *Parijs* or
+*Londen*. Like the language, it is kept in this browser and changes nothing for anyone else.
 
 The installation-wide defaults for new accounts are `VELNOX_DEFAULT_LOCALE` and
 `VELNOX_DEFAULT_TIMEZONE` in `.env`.

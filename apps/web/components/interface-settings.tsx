@@ -6,6 +6,8 @@ import { LOCALES, LOCALE_LABELS, type Locale } from '@velnox/i18n';
 import { setLocale, setMotionBackground, setRefreshInterval, setTimeZone } from '@/app/actions';
 import { Card } from '@/components/ui/primitives';
 import { Field } from '@/components/ui/form';
+import { TimeZoneSearch, type ZoneChoice } from '@/components/ui/time-zone-search';
+import { zoneLabel } from '@/lib/time-zones';
 
 /**
  * The interface preferences: language, how often screens re-read themselves,
@@ -39,19 +41,19 @@ export function InterfaceSettings({
   const t = useTranslations();
   const format = useFormatter();
   const [pending, startTransition] = useTransition();
-  // Known only in the browser: its own zone and every zone it can name.
+  // Known only in the browser: its own zone.
   const [browserZone, setBrowserZone] = useState<string | null>(null);
-  const [zones, setZones] = useState<string[]>([]);
   useEffect(() => {
     setBrowserZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-    const supported = (
-      Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
-    ).supportedValuesOf?.('timeZone');
-    setZones(supported ?? []);
   }, []);
-  const shownZones = [...new Set([...(timeZone ? [timeZone] : []), ...zones])].sort((a, b) =>
-    a.localeCompare(b),
-  );
+  // What the zone search offers before anything is typed.
+  const zoneSuggestions: ZoneChoice[] = [
+    { zone: null, label: t('settings.timeZoneDefault', { zone: installationTimeZone }) },
+    ...(browserZone && browserZone !== timeZone
+      ? [{ zone: browserZone, label: t('settings.timeZoneBrowser', { zone: browserZone }) }]
+      : []),
+    ...(timeZone ? [{ zone: timeZone, label: zoneLabel(timeZone) }] : []),
+  ];
 
   const selectClass =
     'h-9 w-full max-w-xs rounded border border-line bg-surface px-2.5 text-sm text-ink disabled:opacity-60';
@@ -114,32 +116,17 @@ export function InterfaceSettings({
           })}
         >
           {(props) => (
-            <select
+            <TimeZoneSearch
               {...props}
-              value={timeZone ?? ''}
+              value={timeZone}
+              suggestions={zoneSuggestions}
               disabled={pending}
-              className={selectClass}
-              onChange={(event) => {
-                const next = event.target.value || null;
+              onChange={(next) => {
                 startTransition(async () => {
                   await setTimeZone(next);
                 });
               }}
-            >
-              <option value="">
-                {t('settings.timeZoneDefault', { zone: installationTimeZone })}
-              </option>
-              {browserZone && browserZone !== timeZone && (
-                <option value={browserZone}>
-                  {t('settings.timeZoneBrowser', { zone: browserZone })}
-                </option>
-              )}
-              {shownZones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
+            />
           )}
         </Field>
 
