@@ -1,6 +1,6 @@
 # Velnox als app installeren
 
-> **Vertaling.** Bron: [docs/installing-as-an-app.md](../installing-as-an-app.md) @ `0000000`.
+> **Vertaling.** Bron: [docs/installing-as-an-app.md](../installing-as-an-app.md) @ `95fd8d5`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Velnox in een eigen venster, met een eigen icoon in het Startmenu en de taakbalk — geïnstalleerd
