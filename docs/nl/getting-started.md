@@ -1,6 +1,6 @@
 # Aan de slag met Velnox
 
-> **Vertaling.** Bron: [docs/getting-started.md](../getting-started.md) @ `aa2d6c4`.
+> **Vertaling.** Bron: [docs/getting-started.md](../getting-started.md) @ `ebe1db9`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Deze handleiding is voor wie Velnox zojuist heeft geïnstalleerd en naar een leeg scherm kijkt.**
@@ -175,8 +175,12 @@ melding in de taal van de lezer wordt weergegeven en niet in die van de server.
 
 **Je eigen tijdzone.** Onder **je naam → Instellingen → Tijdzone** wordt elke datum en tijd op de schermen —
 *Laatst uitgelezen*, tijden van jobs, het auditlog — getoond in de zone die je kiest: die van de
-installatie, die van je browser, of een andere. Net als de taal wordt die in deze browser bewaard en
-verandert die voor niemand anders iets.
+installatie, die van je browser, of een andere. Typ een plaats om een zone te vinden: *Amsterdam*
+geeft **Europe/Amsterdam** met de tijd die het daar nu is, zodat de juiste zone die is waarvan je de
+klok herkent. Een hoofdstad die de tijd van een andere stad aanhoudt, vind je ook — *Den Haag* geeft
+Europe/Amsterdam, *Bern* Europe/Zurich, *Washington* America/New York — en Nederlandse plaatsnamen
+zoals *Parijs* of *Londen* ook. Net als de taal wordt die in deze browser bewaard en verandert die
+voor niemand anders iets.
 
 De installatiebrede standaarden voor nieuwe accounts zijn `VELNOX_DEFAULT_LOCALE` en
 `VELNOX_DEFAULT_TIMEZONE` in `.env`.

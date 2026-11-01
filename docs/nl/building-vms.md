@@ -1,6 +1,6 @@
 # VM's bouwen vanuit templates
 
-> **Vertaling.** Bron: [docs/building-vms.md](../building-vms.md) @ `fec1f7c`.
+> **Vertaling.** Bron: [docs/building-vms.md](../building-vms.md) @ `ebe1db9`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Een template zegt wat een VM moet zijn; Velnox bouwt hem en ziet de installatie tot het eind.**
@@ -150,7 +150,7 @@ templates. VM's die het al installeerden houden het.
 - **De SSH-schakelaar**, standaard aan: de server geïnstalleerd en actief, de sleutels geplaatst,
   aanmelden met wachtwoord uit tenzij toegestaan, en poort 22 open waar het image een firewall draait.
 - Landinstelling, toetsenbord en tijdzone, extra pakketten, een wisselbestand, automatische
-  beveiligingsupdates.
+  beveiligingsupdates. De tijdzone vind je door een plaats te typen, net als in je eigen instellingen.
 
 ### Hoe de wachtwoorden de aanvrager bereiken
 
