@@ -1987,6 +1987,7 @@
     "cephMds": "CephFS is voorbereid",
     "cephMdsHint": "Alleen met CephFS: max_mds is 1 en standby replay staat uit voor elk bestandssysteem, zoals de handleiding van Proxmox vraagt. Velnox herstart de MDS-daemons één voor één en wijzigt die instellingen niet.",
     "notApplicable": "Niet van toepassing — draait al Proxmox VE {version}",
+    "someNotApplicable": "Draait al Proxmox VE 9 en blijft buiten het plan: {nodes}.",
     "pveCephFirst": "Eerst Ceph naar Squid upgraden",
     "pveCephFirstHint": "Proxmox VE 9 vraagt Ceph Squid. Aangevinkt is het plan samengesteld: de Ceph-upgrade, dan — alleen als die voltooid is — Proxmox VE, node voor node. Velnox leest zelf welke release Ceph draait en plant de stappen naar Squid; draait Ceph al Squid, of heeft het cluster geen Ceph, dan is er geen Ceph-stap."
   },

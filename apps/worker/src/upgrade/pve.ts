@@ -21,7 +21,7 @@ import {
   type PvePlanOptions,
 } from '@velnox/shared';
 import { StepError, type StepContext } from '../jobs/steps';
-import { PVE_COMMANDS, microcodeCommand } from '../remote/commands';
+import { PVE_COMMANDS, microcodeCommand, microcodeFor } from '../remote/commands';
 import {
   assessGuests,
   chooseTarget,
@@ -285,15 +285,37 @@ const isSetting = (line: string) => line.trim() !== '' && !/^\s*[#;]/.test(line)
 
 export const PVE_REMEDIATION_IMPLS: Record<string, RemediationImpl> = {
   'pve.microcode': {
-    plan: async (_rt, _row, _targetId, finding) => {
-      const pkg =
-        finding.params?.package === 'amd64-microcode' ? 'amd64-microcode' : 'intel-microcode';
-      return change(
-        `enable Debian's non-free-firmware component and install ${pkg}`,
-        [microcodeCommand(pkg).argv.join(' ')],
-        { install: [pkg] },
-      );
-    },
+    // The package follows the CPU, read from the node itself before anything
+    // is planned. pve8to9 names one too; when the two disagree, or the vendor
+    // is neither Intel nor AMD, nothing is installed.
+    plan: async (rt, row, targetId, finding) =>
+      withPve(rt, async (pve) => {
+        const node = targetNode(row, targetId);
+        const cpuinfo = (
+          await runRegistered(handleFor(rt, pve, node, quiet()), PVE_COMMANDS.cpuVendor, false)
+        ).stdout;
+        const { vendor, pkg } = microcodeFor(cpuinfo);
+        if (!pkg) {
+          throw new StepError(
+            ERROR_CODES.upgradeTargetFailed,
+            `${node}: the CPU vendor is ${vendor ?? 'not readable from /proc/cpuinfo'}; Velnox installs microcode for Intel and AMD only`,
+            { target: node },
+          );
+        }
+        const named = finding.params?.package;
+        if (named && named !== pkg) {
+          throw new StepError(
+            ERROR_CODES.upgradeTargetFailed,
+            `${node}: the CPU is ${vendor}, which takes ${pkg}, but pve8to9 named ${named}; nothing installed`,
+            { target: node },
+          );
+        }
+        return change(
+          `the CPU is ${vendor}: enable Debian's non-free-firmware component and install ${pkg}`,
+          [microcodeCommand(pkg).argv.join(' ')],
+          { install: [pkg] },
+        );
+      }),
     apply: async (rt, row, targetId, approved) => {
       // The package in the stored change set — what was routed is what runs.
       const pkg =

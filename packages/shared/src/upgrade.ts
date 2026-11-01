@@ -641,6 +641,20 @@ export interface UpgradeJobParams {
   targets: { id: string; label: string; sequence?: number }[];
 }
 
+/**
+ * Whether a playbook applies to a cluster's targets, read from the inventory
+ * before a plan is made — what the form shows as soon as cluster and playbook
+ * are chosen. The plan itself decides the same way, so the two cannot differ.
+ */
+export interface UpgradeApplicability {
+  /** Targets the playbook would have on this cluster. */
+  targets: number;
+  /** Those it does not apply to, and the version that says so. */
+  notApplicable: { label: string; version: string }[];
+  /** False when there are no targets, or none it applies to: no plan can be made. */
+  applies: boolean;
+}
+
 export interface UpgradePlanSummary {
   id: string;
   name: string;

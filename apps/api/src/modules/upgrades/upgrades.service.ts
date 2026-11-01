@@ -21,6 +21,7 @@ import {
   type ChangeSet,
   type CreateUpgradePlanInput,
   type JobDetail,
+  type UpgradeApplicability,
   type UpgradeJobParams,
   type UpgradePlanDetail,
   type UpgradePlanSummary,
@@ -53,6 +54,11 @@ const DAEMON_ORDER = ['MON', 'MGR', 'OSD', 'MDS', 'RGW'];
 const onNine = (version: string | null) =>
   Number(/(?:^|\/)(\d+)\.\d+/.exec(version ?? '')?.[1] ?? 0) >= 9;
 /** Just the version: `9.0.10`. */
+/** The targets a plan leaves out, with the version that says why. */
+const skippedOf = (targets: readonly PlannedTarget[]) =>
+  targets
+    .filter((t) => t.status === 'NOT_APPLICABLE')
+    .map((t) => ({ label: t.label, version: String((t.preState as { version?: unknown }).version) }));
 const versionOf = (version: string | null) =>
   /(?:^|\/)(\d+\.\d+(?:\.\d+)?)/.exec(version ?? '')?.[1] ?? version;
 
@@ -267,6 +273,28 @@ export class UpgradesService {
       }));
   }
 
+  /** What a plan of this playbook on this cluster would leave out, before it is made. */
+  async applicability(
+    clusterId: string,
+    playbookId: string,
+    actor: Actor,
+  ): Promise<UpgradeApplicability> {
+    const cluster = await this.prisma.client.cluster.findUnique({ where: { id: clusterId } });
+    if (!cluster) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
+    assertAllowedAt(actor, PERMISSIONS.upgradesRead, {
+      tenantId: cluster.tenantId,
+      clusterId: cluster.id,
+    });
+    const def = this.playbook(playbookId, actor, cluster.tenantId);
+    const targets = await this.targetsFor(cluster.id, def);
+    const notApplicable = skippedOf(targets);
+    return {
+      targets: targets.length,
+      notApplicable,
+      applies: targets.length > notApplicable.length,
+    };
+  }
+
   async create(input: CreateUpgradePlanInput, actor: Actor): Promise<UpgradePlanDetail> {
     const cluster = await this.prisma.client.cluster.findUnique({ where: { id: input.clusterId } });
     if (!cluster) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
@@ -311,8 +339,8 @@ export class UpgradesService {
         throw new VelnoxError(ERROR_CODES.upgradeNotApplicable, {
           status: 409,
           params: {
-            nodes: targets
-              .map((t) => `${t.label} ${(t.preState as { version: string }).version}`)
+            nodes: skippedOf(targets)
+              .map((t) => `${t.label} ${t.version}`)
               .join(', '),
           },
         });

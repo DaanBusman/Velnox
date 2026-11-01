@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PVE_COMMANDS, commandLine, microcodeCommand } from './commands';
+import { PVE_COMMANDS, commandLine, microcodeCommand, microcodeFor } from './commands';
 
 describe('Proxmox VE 8 → 9 commands', () => {
   it('runs pve8to9 with the expensive checks, as root through sudo when not root', () => {
@@ -20,6 +20,28 @@ describe('Proxmox VE 8 → 9 commands', () => {
     );
     expect(script).toMatch(/apt-get install -y intel-microcode$/);
     expect(microcodeCommand('amd64-microcode').id).toBe('pve.microcode.amd64-microcode');
+  });
+
+  it('reads the CPU vendor from the node, and takes the package from it', () => {
+    expect(commandLine(PVE_COMMANDS.cpuVendor, 'pve1', 'velnox')).toMatch(
+      /grep -m1 '\^vendor_id' \/proc\/cpuinfo$/,
+    );
+    expect(microcodeFor('vendor_id\t: AuthenticAMD\n')).toEqual({
+      vendor: 'AuthenticAMD',
+      pkg: 'amd64-microcode',
+    });
+    expect(microcodeFor('vendor_id\t: GenuineIntel\n')).toEqual({
+      vendor: 'GenuineIntel',
+      pkg: 'intel-microcode',
+    });
+  });
+
+  it('guesses nothing for another vendor or an unreadable line', () => {
+    expect(microcodeFor('vendor_id\t: HygonGenuine\n')).toEqual({
+      vendor: 'HygonGenuine',
+      pkg: null,
+    });
+    expect(microcodeFor('')).toEqual({ vendor: null, pkg: null });
   });
 
   it('moves sysctl settings with a backreference the shell receives intact', () => {

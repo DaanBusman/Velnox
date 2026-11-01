@@ -15,6 +15,7 @@
  *   `{"pve8Latest": "8.4.14"}`      apt on bookworm offers that pve-manager (nothing otherwise)
  *   `{"microcode": true}`           microcode already installed
  *   `{"cpuVendor": "AuthenticAMD"}` the CPU (GenuineIntel otherwise)
+ *   `{"pve8to9Microcode": "…"}` pve8to9 names that package, whatever the CPU
  *   `{"sysctlConf": false}`         /etc/sysctl.conf holds only comments
  *   `{"systemdBoot": true}`         the systemd-boot meta-package installed
  *   `{"rootFreeGb": 3}`             free space on /
@@ -142,7 +143,8 @@ export function installMajor({ nodes, log, control }) {
     if (sysctlHasSettings(s)) log2('warn', "Deprecated config '/etc/sysctl.conf' contains settings - move them to a dedicated file in '/etc/sysctl.d/'.");
     else log2('pass', "Legacy file '/etc/sysctl.conf' is not present or contains no settings.");
     log2('info', 'Checking if matching CPU microcode package is installed.');
-    const pkg = microcodePkg(s);
+    // Normally the package for this CPU; `pve8to9Microcode` makes it name another.
+    const pkg = control().pve8to9Microcode ?? microcodePkg(s);
     if (s.microcode) log2('pass', `Found matching CPU microcode package '${pkg}' installed.`);
     else {
       log2(
@@ -176,12 +178,24 @@ export function installMajor({ nodes, log, control }) {
       return ok(pve8to9(node, context));
     }
     if (body === 'cat /etc/sysctl.conf') return ok(s.sysctl);
-    if (body.includes('apt-get install -y intel-microcode') || body.includes('apt-get install -y amd64-microcode')) {
+    if (body === "grep -m1 '^vendor_id' /proc/cpuinfo") {
+      log(`major: ${node} cpu vendor read: ${s.vendor}`);
+      return ok(`vendor_id\t: ${s.vendor}\n`);
+    }
+    const microcodeInstall = /apt-get install -y ((?:intel|amd64)-microcode)/.exec(body);
+    if (microcodeInstall) {
       if (!/non-free-firmware/.test(body)) return false;
+      const pkg = microcodeInstall[1];
       s.sources = s.sources.replace(/^(deb .*(?:deb|security)\.debian\.org.*?)$/gm, (l) => (l.includes('non-free-firmware') ? l : `${l} non-free-firmware`));
-      s.microcode = true;
-      log(`major: ${node} microcode installed, sources now ${s.sources.trim().split('\n').length} lines with non-free-firmware`);
-      return ok('Setting up intel-microcode ...\n');
+      // Only the package for this CPU is the one pve8to9 looks for: the other
+      // installs, and changes nothing it reports.
+      if (pkg === microcodePkg(s)) {
+        s.microcode = true;
+        log(`major: ${node} microcode installed (${pkg}), sources now ${s.sources.trim().split('\n').length} lines with non-free-firmware`);
+      } else {
+        log(`major: ${node} ${pkg} installed on a ${s.vendor} CPU, which does not use it`);
+      }
+      return ok(`Setting up ${pkg} ...\n`);
     }
     if (body.includes('sysctl.conf.velnox-before')) {
       const settings = s.sysctl.split('\n').filter((l) => l.trim() && !/^\s*[#;]/.test(l));

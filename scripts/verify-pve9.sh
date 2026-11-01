@@ -324,7 +324,7 @@ D1="$(plan "$P1")"
 check "preflight: every node's pve8to9, structured" "pve8to9.microcode-missing WARNING pve.microcode,pve8to9.microcode-missing WARNING pve.microcode,pve8to9.microcode-missing WARNING pve.microcode,pve8to9.sysctl-conf WARNING pve.sysctl-move,pve8to9.sysctl-conf WARNING pve.sysctl-move,pve8to9.sysctl-conf WARNING pve.sysctl-move,pve8to9.systemd-boot BLOCKER pve.remove-systemd-boot,pve8to9.systemd-boot BLOCKER pve.remove-systemd-boot,pve8to9.systemd-boot BLOCKER pve.remove-systemd-boot" "$(checks_of "$P1" 0)"
 contains "preflight: the raw line kept" "WARN: The matching CPU microcode package 'intel-microcode' could not be found!" "$(printf '%s' "$D1" | pick 'd.checks.map(c=>c.rawLine||"").join("\n")')"
 check "microcode: installed by Velnox by itself, on every node, before anyone was asked" "AUTOMATIC VALIDATED,AUTOMATIC VALIDATED,AUTOMATIC VALIDATED" "$(printf '%s' "$D1" | pick 'd.remediations.filter(r=>r.remediationId==="pve.microcode").map(r=>r.mode+" "+r.status).join(",")')"
-check "microcode: non-free-firmware enabled, the package installed" 3 "$(FIXLOG | grep -c 'microcode installed, sources now')"
+check "microcode: non-free-firmware enabled, intel-microcode installed for these Intel CPUs" 3 "$(FIXLOG | grep -c 'microcode installed (intel-microcode), sources now')"
 check "the others: waiting, routed to approval by their risk" "APPROVED PLANNED HIGH,APPROVED PLANNED HIGH,APPROVED PLANNED HIGH,APPROVED PLANNED MEDIUM,APPROVED PLANNED MEDIUM,APPROVED PLANNED MEDIUM" "$(printf '%s' "$D1" | pick 'd.remediations.filter(r=>r.remediationId!=="pve.microcode").map(r=>r.mode+" "+r.status+" "+r.risk).sort().join(",")')"
 CS="$(call GET "/api/v1/jobs/${J1}" | pick 'JSON.stringify(d.approvals[0].changeSet)')"
 contains "approval: the exact sysctl.conf change" "- net.ipv4.ip_forward=1" "$CS"
@@ -407,12 +407,15 @@ info "Nodes already on Proxmox VE 9: the upgrade does not apply to them."
 # The fixture's log since its nodes were last made fresh.
 major_log() { FIXLOG | awk '/major: fresh at/{n=0} {line[n++]=$0} END{for(i=0;i<n;i++)print line[i]}'; }
 check "fresh: every node on 9" yes "$(fresh '{"pve":"9.0.10","cephAbsent":true,"cephReset":8,"majorReset":8}' '' 9.0.10)"
+applies() { call GET "/api/v1/upgrades/applicability?clusterId=${CLUSTER_ID}&playbookId=velnox.pve-8-to-9" | pick 'd.applies+" "+d.targets+" "+d.notApplicable.map(n=>n.label+" "+n.version).join(",")'; }
+check "every node on 9: said before any plan is asked for" "false 3 pve1 9.0.10,pve2 9.0.10,pve3 9.0.10" "$(applies)"
 R="$(pve_plan "${RUN} all on nine")"
 check "every node on 9: no plan, and why" "409 upgrade.not_applicable" "$(last_status) $(printf '%s' "$R" | json error.code)"
 check "every node on 9: each named with its version" "pve1 9.0.10, pve2 9.0.10, pve3 9.0.10" "$(printf '%s' "$R" | json error.params.nodes)"
 # pve1, the first in the plan: the run starts at pve2, its canary is pve2,
 # and every step keeps the name of its node's place in the plan.
 check "fresh: pve1 already on 9, pve2 and pve3 on 8" yes "$(fresh '{"pve":"8.4.14","cephAbsent":true,"cephReset":9,"majorReset":9,"microcode":true,"sysctlConf":false,"pveNine":["pve1"]}' '' "9.0.10 8.4.14 8.4.14")"
+check "one on 9: said before any plan is asked for" "true 3 pve1 9.0.10" "$(applies)"
 P6="$(pve_plan "${RUN} one on nine" | json id)"
 check "one on 9: planned, that node said not to apply" "201 pve1 NOT_APPLICABLE,pve2 PENDING,pve3 PENDING 9.0.10" "$(last_status) $(plan "$P6" | pick 'd.targetList.map(t=>t.label+" "+t.status).join(",")+" "+d.targetList[0].preState.version')"
 J6="$(run_plan "$P6")"
@@ -424,6 +427,28 @@ check "one on 9: nothing was done to pve1 — no sources, no packages, no reboot
 check "one on 9: every node on 9" "9.0.10 9.0.10 9.0.10" "$(node_version pve1) $(node_version pve2) $(node_version pve3)"
 # Steps are named by the node's place in the plan: pve1's would end in -1.
 check "one on 9: no step for pve1; pve2's and pve3's keep their names" "evacuate-2 evacuate-3 none" "$(job_field "$J6" steps | pick 'const k=d.map(s=>s.key);["evacuate-2","evacuate-3"].filter(x=>k.includes(x)).join(" ")+" "+(k.some(x=>/-1$/.test(x))?"some":"none")')"
+
+info "An AMD CPU: amd64-microcode, the package pve8to9 names for it."
+check "fresh: AMD CPUs, microcode missing, sysctl settings to approve" yes "$(fresh '{"pve":"8.4.14","cephAbsent":true,"cephReset":10,"majorReset":10,"cpuVendor":"AuthenticAMD"}' '')"
+P7="$(pve_plan "${RUN} amd" | json id)"
+J7="$(run_plan "$P7")"
+check "amd: preflight runs to the approval of the sysctl move" WAITING_APPROVAL "$(wait_for "$J7" 240 WAITING_APPROVAL SUCCEEDED FAILED)"
+D7="$(plan "$P7")"
+contains "amd: pve8to9 named amd64-microcode" "WARN: The matching CPU microcode package 'amd64-microcode' could not be found!" "$(printf '%s' "$D7" | pick 'd.checks.map(c=>c.rawLine||"").join("\n")')"
+check "amd: the fix planned amd64-microcode, on every node" "amd64-microcode,amd64-microcode,amd64-microcode" "$(printf '%s' "$D7" | pick 'd.remediations.filter(r=>r.remediationId==="pve.microcode").map(r=>(r.changeSet&&r.changeSet.packages.install||[]).join("+")).join(",")')"
+check "amd: installed by Velnox by itself, and proven by pve8to9 after" "AUTOMATIC VALIDATED,AUTOMATIC VALIDATED,AUTOMATIC VALIDATED" "$(printf '%s' "$D7" | pick 'd.remediations.filter(r=>r.remediationId==="pve.microcode").map(r=>r.mode+" "+r.status).join(",")')"
+check "amd: Velnox read each node's CPU itself, before planning" 3 "$(major_log | grep -c 'cpu vendor read: AuthenticAMD')"
+contains "amd: the plan says why: the CPU it read" "the CPU is AuthenticAMD: enable Debian's non-free-firmware component and install amd64-microcode" "$(printf '%s' "$D7" | pick 'd.remediations.filter(r=>r.remediationId==="pve.microcode").map(r=>r.changeSet&&r.changeSet.summary).join("\n")')"
+check "amd: amd64-microcode installed on each node, intel-microcode on none" "3 0" "$(major_log | grep -c 'microcode installed (amd64-microcode)') $(major_log | grep -c 'intel-microcode')"
+call POST "/api/v1/jobs/${J7}/cancel" '{}' >/dev/null
+check "amd: cancelled before the sysctl move — that was all this was for" CANCELLED "$(wait_for "$J7" 60 CANCELLED FAILED)"
+
+check "fresh: AMD CPUs, with pve8to9 naming intel-microcode" yes "$(fresh '{"pve":"8.4.14","cephAbsent":true,"cephReset":11,"majorReset":11,"cpuVendor":"AuthenticAMD","pve8to9Microcode":"intel-microcode"}' '')"
+P8="$(pve_plan "${RUN} amd disagree" | json id)"
+J8="$(run_plan "$P8")"
+check "disagree: the preflight stops" FAILED "$(wait_for "$J8" 240 FAILED WAITING_APPROVAL SUCCEEDED)"
+contains "disagree: and says why" "the CPU is AuthenticAMD, which takes amd64-microcode, but pve8to9 named intel-microcode; nothing installed" "$(logs_of "$J8")$(job_field "$J8" errorDetail)"
+check "disagree: no microcode package installed anywhere" 0 "$(major_log | grep -cE 'microcode installed|-microcode installed on')"
 
 info "Ceph to Squid first, then Proxmox VE, as one composite."
 check "reef, clean otherwise" yes "$(fresh '{"pve":"8.4.14","cephStart":"18.2.4","cephReset":5,"majorReset":5,"microcode":true,"sysctlConf":false}' 18.2.4)"

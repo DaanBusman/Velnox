@@ -142,7 +142,9 @@ the cluster has no Ceph. The repository channel is automatic too, unless one is 
 **A node already on Proxmox VE 9** — read from the inventory when the plan is made — is in the plan
 as **Not applicable**, and the run leaves it alone: no checks, no evacuation, no packages, no reboot.
 The canary is then the first node that is upgraded. When every node already runs 9, there is no plan:
-*This upgrade does not apply*, with each node and its version. A node the inventory still had on 8,
+*This upgrade does not apply*, with each node and its version. The form says both as soon as cluster
+and playbook are chosen — which nodes will be left out, or that none needs it, with **Create plan**
+then unavailable — read from the inventory the same way the plan is. A node the inventory still had on 8,
 found on 9 when its turn comes, is skipped the same way and ends as **Not applicable** too.
 
 **First, every node on the latest Proxmox VE 8.** pve8to9 only exists from pve-manager 8.4.2 on; on
@@ -160,7 +162,7 @@ harmless. What Velnox does about the findings:
 
 | pve8to9 says | Velnox |
 |---|---|
-| The matching CPU microcode package could not be found | **Fixes it by itself:** enables Debian's `non-free-firmware` component on the Debian sources (keeping the old file) and installs `intel-microcode` or `amd64-microcode`. Low risk, and it can be undone. |
+| The matching CPU microcode package could not be found | **Fixes it by itself:** enables Debian's `non-free-firmware` component on the Debian sources (keeping the old file) reads the node's CPU vendor from `/proc/cpuinfo` first and installs the package for it — `intel-microcode` for Intel, `amd64-microcode` for AMD. When pve8to9 names another package, or the CPU is neither, it stops with nothing installed and says why. Low risk, and it can be undone. |
 | Deprecated config `/etc/sysctl.conf` contains settings | After approval, moves every setting to `/etc/sysctl.d/99-velnox-from-sysctl-conf.conf` and comments it where it was. The approval shows both files line by line. |
 | systemd-boot meta-package installed | After approval, removes `systemd-boot` (`systemd-boot-efi` and `systemd-boot-tools` stay). |
 | grub-efi-amd64 meta-package not installed | After approval, installs it. |

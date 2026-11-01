@@ -10,6 +10,7 @@ import {
   fileDiff,
   type CheckSeverity,
   type JobStatus,
+  type UpgradeApplicability,
   type UpgradePlanDetail,
   type UpgradePlanSummary,
   type UpgradePlaybookDef,
@@ -150,6 +151,21 @@ function NewPlan({
   const ceph = kind === 'CEPH';
   const pveMajor = kind === 'PVE_MAJOR';
   const options = { markerMissing: true, configOld, unfixable, failTarget: null };
+  // Read as soon as cluster and playbook are chosen, so a plan that would be
+  // refused is said to be before anyone fills in the rest of the form.
+  const applicability = useApiResource<UpgradeApplicability>(
+    pveMajor && clusterId
+      ? `/upgrades/applicability?clusterId=${encodeURIComponent(clusterId)}&playbookId=${encodeURIComponent(playbookId)}`
+      : null,
+  );
+  const skipped =
+    applicability.state === 'ready'
+      ? applicability.data.notApplicable.map((n) => `${n.label} ${n.version}`).join(', ')
+      : '';
+  const doesNotApply =
+    applicability.state === 'ready' &&
+    applicability.data.targets > 0 &&
+    !applicability.data.applies;
 
   async function create() {
     setPending(true);
@@ -243,7 +259,13 @@ function NewPlan({
             )}
           </Field>
         </div>
-        {pveMajor && (
+        {pveMajor && doesNotApply && (
+          <Notice tone="warn">{t('errors.upgrade.not_applicable', { nodes: skipped })}</Notice>
+        )}
+        {pveMajor && !doesNotApply && skipped && (
+          <Notice>{t('upgrades.someNotApplicable', { nodes: skipped })}</Notice>
+        )}
+        {pveMajor && !doesNotApply && (
           <div className="grid gap-3 md:grid-cols-3">
             <Field label={t('nodeUpdates.nonMigratable')} hint={t('nodeUpdates.nonMigratableHint')}>
               {(props) => (
@@ -365,7 +387,7 @@ function NewPlan({
         <Button
           onClick={() => void create()}
           pending={pending}
-          disabled={pending || !name || !clusterId}
+          disabled={pending || !name || !clusterId || doesNotApply}
         >
           {t('upgrades.create')}
         </Button>

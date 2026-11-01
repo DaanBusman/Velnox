@@ -20,7 +20,8 @@ export type ResourceState<T> =
   | { state: 'ready'; data: T; error: null }
   | { state: 'failed'; data: null; error: ApiFailure };
 
-export function useApiResource<T>(path: string): ResourceState<T> & { reload: () => void } {
+/** `null` reads nothing, and stays `loading`: for a read that only some choices need. */
+export function useApiResource<T>(path: string | null): ResourceState<T> & { reload: () => void } {
   const [result, setResult] = useState<ResourceState<T>>({
     state: 'loading',
     data: null,
@@ -31,6 +32,7 @@ export function useApiResource<T>(path: string): ResourceState<T> & { reload: ()
   useEffect(() => {
     let live = true;
     setResult({ state: 'loading', data: null, error: null });
+    if (path === null) return;
 
     void apiGet<T>(path).then((response) => {
       // The tab may have been switched, or the window closed, while this was in

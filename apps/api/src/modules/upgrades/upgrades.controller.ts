@@ -21,6 +21,10 @@ import { UpgradesService } from './upgrades.service';
 
 const uuidParam = new ParseUUIDPipe({ version: '4' });
 const listQuery = z.object({ clusterId: z.string().uuid().optional() });
+const applicabilityQuery = z.object({
+  clusterId: z.string().uuid(),
+  playbookId: z.string().trim().min(1).max(80),
+});
 
 /**
  * Major upgrade plans (Phase 8). The decorators say the caller holds the
@@ -45,6 +49,20 @@ export class UpgradesController {
   })
   async list(@Query(zodQuery(listQuery)) query: z.infer<typeof listQuery>) {
     return { plans: await this.upgrades.list(query) };
+  }
+
+  @RequirePermissionSomewhere(PERMISSIONS.upgradesRead)
+  @Get('applicability')
+  @ApiOperation({
+    summary: 'Whether a playbook applies to a cluster, before a plan is made',
+    description:
+      'From the inventory, as planning decides it: Proxmox VE 8 → 9 does not apply to a node already on 9.',
+  })
+  applicability(
+    @Query(zodQuery(applicabilityQuery)) query: z.infer<typeof applicabilityQuery>,
+    @Req() request: Request,
+  ) {
+    return this.upgrades.applicability(query.clusterId, query.playbookId, actorOf(request));
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.upgradesExecute)

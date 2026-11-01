@@ -156,6 +156,15 @@ export const PVE_COMMANDS = {
     interruptible: true,
     argv: ['pve8to9', '--full'],
   },
+  /** The CPU's vendor, as the kernel reports it: what decides the microcode package. */
+  cpuVendor: {
+    id: 'pve.cpu_vendor',
+    readOnly: true,
+    privileged: false,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: ['grep', '-m1', '^vendor_id', '/proc/cpuinfo'],
+  },
   sysctlRead: {
     id: 'pve.sysctl_read',
     readOnly: true,
@@ -250,12 +259,30 @@ export const PVE_COMMANDS = {
   },
 } as const satisfies Record<string, CommandSpec>;
 
+export type MicrocodePackage = 'intel-microcode' | 'amd64-microcode';
+
+/**
+ * The vendor in a `/proc/cpuinfo` `vendor_id` line, and the microcode
+ * package Debian has for it — the choice pve8to9 makes (`get_cpu_microcode_pkg`),
+ * made by Velnox from the node itself. Null for a line it cannot read and for
+ * any other vendor: nothing is guessed.
+ */
+export function microcodeFor(cpuinfo: string): {
+  vendor: string | null;
+  pkg: MicrocodePackage | null;
+} {
+  const vendor = /^vendor_id\s*:\s*(\S+)/m.exec(cpuinfo)?.[1] ?? null;
+  const pkg =
+    vendor === 'GenuineIntel' ? 'intel-microcode' : vendor === 'AuthenticAMD' ? 'amd64-microcode' : null;
+  return { vendor, pkg };
+}
+
 /**
  * The CPU's microcode, as pve8to9 advises: Debian's `non-free-firmware`
  * component enabled on the Debian sources, then the package for this CPU —
  * one fixed command per vendor.
  */
-export function microcodeCommand(pkg: 'intel-microcode' | 'amd64-microcode'): CommandSpec {
+export function microcodeCommand(pkg: MicrocodePackage): CommandSpec {
   return {
     id: `pve.microcode.${pkg}`,
     readOnly: false,

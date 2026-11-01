@@ -55,6 +55,19 @@ describe('parsePve8to9 on 8.4.1 with problems', () => {
       package: 'intel-microcode',
     });
   });
+
+  // pve8to9 names the package for the CPU it finds (`get_cpu_microcode_package`
+  // in pve8to9.pm): the same lines, with amd64-microcode, on an AMD node.
+  it('names amd64-microcode on an AMD node, for the fix to install', () => {
+    const amd = parsePve8to9(
+      golden('8.4.1-problems.txt').replaceAll('intel-microcode', 'amd64-microcode'),
+    )
+      .lines.map(classifyPve8to9)
+      .find((c) => c?.key === 'pve8to9.microcode-missing');
+    expect(amd?.severity).toBe('WARNING');
+    expect(amd?.remediationId).toBe('pve.microcode');
+    expect(amd?.params).toEqual({ package: 'amd64-microcode' });
+  });
 });
 
 describe('parsePve8to9 on a clean 8.4.14 with Ceph Squid', () => {
