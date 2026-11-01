@@ -1,6 +1,6 @@
 # Grote upgrades
 
-> **Vertaling.** Bron: [docs/major-upgrades.md](../major-upgrades.md) @ `45cdee2`.
+> **Vertaling.** Bron: [docs/major-upgrades.md](../major-upgrades.md) @ `a716fb5`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Plannen die een cluster doel voor doel upgraden, de controles vooraf, de herstelacties, en het
@@ -153,7 +153,9 @@ automatisch, tenzij er een gekozen wordt.
 staat in het plan als **Niet van toepassing**, en de run laat hem met rust: geen controles, geen
 evacuatie, geen pakketten, geen herstart. De canary is dan de eerste node die wel geüpgraded wordt.
 Draait elke node al 9, dan komt er geen plan: *Deze upgrade is niet van toepassing*, met elke node en
-zijn versie. Een node die de inventaris nog op 8 had en op 9 blijkt als hij aan de beurt is, wordt
+zijn versie. Het formulier zegt beide zodra cluster en playbook gekozen zijn — welke nodes buiten het
+plan blijven, of dat geen enkele het nodig heeft, en dan is **Plan maken** niet beschikbaar —
+gelezen uit de inventaris op dezelfde manier als het plan. Een node die de inventaris nog op 8 had en op 9 blijkt als hij aan de beurt is, wordt
 net zo overgeslagen en eindigt ook als **Niet van toepassing**.
 
 **Eerst elke node op de laatste Proxmox VE 8.** pve8to9 bestaat pas vanaf pve-manager 8.4.2; op een
@@ -172,7 +174,7 @@ de upgrade tegen: hij wordt nooit onschuldig verondersteld. Wat Velnox met de be
 
 | pve8to9 zegt | Velnox |
 |---|---|
-| Het passende CPU-microcodepakket is niet gevonden | **Verhelpt het zelf:** zet het onderdeel `non-free-firmware` van Debian aan op de Debian-bronnen (het oude bestand blijft bewaard) en installeert `intel-microcode` of `amd64-microcode`. Laag risico, en ongedaan te maken. |
+| Het passende CPU-microcodepakket is niet gevonden | **Verhelpt het zelf:** zet het onderdeel `non-free-firmware` van Debian aan op de Debian-bronnen (het oude bestand blijft bewaard) leest eerst de CPU-fabrikant van de node uit `/proc/cpuinfo` en installeert het pakket daarvoor — `intel-microcode` voor Intel, `amd64-microcode` voor AMD. Noemt pve8to9 een ander pakket, of is de CPU geen van beide, dan stopt het zonder iets te installeren en zegt waarom. Laag risico, en ongedaan te maken. |
 | Verouderde config `/etc/sysctl.conf` bevat instellingen | Na goedkeuring: elke instelling naar `/etc/sysctl.d/99-velnox-from-sysctl-conf.conf`, en uitgecommentarieerd waar ze stond. De goedkeuring toont beide bestanden regel voor regel. |
 | Meta-pakket systemd-boot geïnstalleerd | Na goedkeuring: `systemd-boot` verwijderd (`systemd-boot-efi` en `systemd-boot-tools` blijven). |
 | Meta-pakket grub-efi-amd64 niet geïnstalleerd | Na goedkeuring: geïnstalleerd. |
