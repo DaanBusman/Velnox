@@ -109,6 +109,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
   const ceph = installCeph({ nodes, log, control, storage, extraWarn: () => cephWarn });
   const pve9 = installMajor({ nodes, log, control });
   const cephRelease = () => {
+    if (control().cephAbsent) return null;
     const mon = ceph.stats().daemons.find((d) => d.kind === 'mon');
     return { 17: 'quincy', 18: 'reef', 19: 'squid' }[Number(String(mon?.running ?? '').split('.')[0])] ?? null;
   };
@@ -291,6 +292,13 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
         r.digest = `d${++repoDigest}`;
         send(response, 200, { data: null });
       });
+      return true;
+    }
+    // A Ceph repository on a release without trixie, once the sources moved.
+    const aptRefusal = rest === 'apt/update' && method === 'POST' ? pve9.aptRefusal(node) : null;
+    if (aptRefusal) {
+      log(`ops: ${node} apt-get update refused: ${aptRefusal.at(-1)}`);
+      send(response, 200, { data: storage.newTask(node, 'aptupdate', "command 'apt-get update' failed: exit code 100", aptRefusal) });
       return true;
     }
     if (rest === 'apt/update' && method === 'POST' && control().repos && blockedByEnterprise(node)) {

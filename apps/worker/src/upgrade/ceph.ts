@@ -1,8 +1,14 @@
-import { subscriptionActive, waitForTask, type ProxmoxClient } from '@velnox/proxmox';
+import {
+  cephChannelOf,
+  subscriptionActive,
+  waitForTask,
+  type ProxmoxClient,
+} from '@velnox/proxmox';
 import {
   ERROR_CODES,
   assessCephHealth,
   cephPlanOptionsSchema,
+  CEPH_LATEST,
   checkMatrix,
   compareVersions,
   releaseMajor,
@@ -45,7 +51,11 @@ interface CephFacts {
   nooutBefore: boolean;
 }
 
-const optionsOf = (row: PlanRow): CephPlanOptions => cephPlanOptionsSchema.parse(row.options ?? {});
+/** Every plan the API stores has a target; an older one without falls back to the newest. */
+const optionsOf = (row: PlanRow): CephPlanOptions & { target: string } => {
+  const options = cephPlanOptionsSchema.parse(row.options ?? {});
+  return { ...options, target: options.target ?? CEPH_LATEST };
+};
 const cephFacts = (row: PlanRow): CephFacts | null =>
   ((row.facts as Facts).cephUpgrade as CephFacts) ?? null;
 
@@ -212,10 +222,26 @@ export const CEPH_ACTIONS: Record<string, UpgradeAction> = {
     const facts = cephFacts(row);
     if (!facts)
       throw new StepError(ERROR_CODES.upgradeMatrixMismatch, 'No matrix entry for this plan', {});
-    const channel = optionsOf(row).channel;
+    const planned = optionsOf(row).channel;
     await withPve(rt, async (pve) => {
       for (const node of await nodesOf(rt)) {
         const handle = handleFor(rt, pve, node.name, context);
+        // No channel in the plan: the node keeps the one its Ceph repository
+        // is on now, read from the node itself.
+        let channel = planned;
+        if (!channel) {
+          const current = await pve
+            .nodeRepositories(node.name)
+            .then(cephChannelOf)
+            .catch(() => undefined);
+          channel = current ?? 'no-subscription';
+          await handle.log(
+            'STDOUT',
+            current
+              ? `${node.name}: its Ceph repository is ${current}, and stays so`
+              : `${node.name}: ${current === null ? 'no Ceph repository is enabled' : 'its repositories could not be read'}; its Ceph repository is no-subscription`,
+          );
+        }
         // The enterprise repository needs a subscription: a node without one
         // gets no-subscription, as every other repository does (ADR-056).
         const subscribed = subscriptionActive(

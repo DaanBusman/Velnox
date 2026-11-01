@@ -151,10 +151,22 @@ export async function refreshLists(handle: NodeHandle): Promise<void> {
     timeoutMs: 10 * 60_000,
   });
   if (!outcome.succeeded) {
+    // The task's exit status only says "exit code 100"; why is in its log —
+    // a repository without a Release file, a 401, a name that does not
+    // resolve. Carried into the job's output and the error, so nobody has to
+    // open the node's task history to find it.
+    const log = await handle.pve.taskLog(handle.node, upid).catch(() => []);
+    const lines = log.map((line) => line.t);
+    const reasons = lines.filter((l) => /^(E:|Err:|W:)/.test(l.trim()));
+    if (lines.length > 0) await handle.log('STDERR', lines.join('\n').slice(-4000));
+    const first = reasons.find((l) => l.trim().startsWith('E:'))?.trim();
     throw new StepError(
       ERROR_CODES.updateCommandFailed,
-      `apt-get update on ${handle.node} failed: ${outcome.exitStatus}`,
-      { command: 'apt.update', exitCode: -1 },
+      `apt-get update on ${handle.node} failed: ${outcome.exitStatus}${first ? ` — ${first}` : ''}`,
+      {
+        command: 'apt.update',
+        exitCode: Number(/exit code (\d+)/.exec(outcome.exitStatus)?.[1] ?? -1),
+      },
     );
   }
   await handle.log('STDOUT', 'Package lists refreshed');

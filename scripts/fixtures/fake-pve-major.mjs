@@ -20,6 +20,11 @@
  *   `{"rootFreeGb": 3}`             free space on /
  *   `{"pve8to9Unknown": "…"}`       pve8to9 prints that line, unprefixed
  *   `{"majorReset": 1}`             any new value starts the nodes over
+ *
+ * With `{"cephAbsent": true}` each node also has the Ceph repository Proxmox VE 8
+ * ships even where Ceph was never set up, on ceph-quincy. Moved to trixie
+ * without first moving to Squid, `apt-get update` fails with exit code 100, as
+ * on a real node: Ceph publishes only Squid for trixie.
  */
 
 const PVE9 = '9.0.10';
@@ -45,6 +50,7 @@ export function installMajor({ nodes, log, control }) {
           installedPve: null,
           sources: 'deb http://deb.debian.org/debian bookworm main contrib\ndeb http://deb.debian.org/debian bookworm-updates main contrib\ndeb http://security.debian.org/debian-security bookworm-security main contrib\n',
           pveRepo: 'deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription\n',
+          cephRepo: 'deb http://download.proxmox.com/debian/ceph-quincy bookworm no-subscription\n',
           microcode: Boolean(c.microcode),
           vendor: String(c.cpuVendor ?? 'GenuineIntel'),
           sysctl: c.sysctlConf === false ? SYSCTL_COMMENTS : SYSCTL_SETTINGS,
@@ -170,9 +176,15 @@ export function installMajor({ nodes, log, control }) {
       log(`major: ${node} systemd-boot removed`);
       return ok('Removing systemd-boot ...\n');
     }
+    if (body.includes('.velnox-ceph') && body.includes('ceph-squid')) {
+      s.cephRepo = s.cephRepo.replace(/\/debian\/ceph-[a-z]+/g, '/debian/ceph-squid');
+      log(`major: ${node} ceph repository on squid`);
+      return ok(s.cephRepo);
+    }
     if (body.includes('.velnox-bookworm') && body.includes('trixie')) {
       s.sources = s.sources.replace(/\bbookworm\b/g, 'trixie');
       s.pveRepo = s.pveRepo.replace(/\bbookworm\b/g, 'trixie');
+      s.cephRepo = s.cephRepo.replace(/\bbookworm\b/g, 'trixie');
       log(`major: ${node} sources on trixie`);
       return ok();
     }
@@ -222,5 +234,19 @@ export function installMajor({ nodes, log, control }) {
     }
   }
 
-  return { exec, pendingFor, installAll, rebooted, versionOf: (node) => current()[node]?.pve ?? null, stats: () => current() };
+  /** apt-get update's output when it fails, as apt prints it; null when it does not. */
+  function aptRefusal(node) {
+    const s = current()[node];
+    if (!s || !control().cephAbsent) return null;
+    const release = /\/debian\/(ceph-[a-z]+) trixie/.exec(s.cephRepo)?.[1];
+    if (!release || release === 'ceph-squid') return null;
+    return [
+      `Ign:5 http://download.proxmox.com/debian/${release} trixie InRelease`,
+      `Err:6 http://download.proxmox.com/debian/${release} trixie Release`,
+      '  404  Not Found [IP: 212.224.123.70 80]',
+      `E: The repository 'http://download.proxmox.com/debian/${release} trixie Release' does not have a Release file.`,
+    ];
+  }
+
+  return { exec, pendingFor, installAll, rebooted, aptRefusal, versionOf: (node) => current()[node]?.pve ?? null, stats: () => current() };
 }

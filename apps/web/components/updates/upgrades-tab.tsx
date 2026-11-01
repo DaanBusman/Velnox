@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import {
   CEPH_CHANNELS,
+  CEPH_LATEST,
   CEPH_MATRIX,
   fileDiff,
   type CheckSeverity,
@@ -136,8 +137,9 @@ function NewPlan({
   const [composite, setComposite] = useState(false);
   const [configOld, setConfigOld] = useState(true);
   const [unfixable, setUnfixable] = useState(false);
-  const [target, setTarget] = useState('squid');
-  const [channel, setChannel] = useState<'no-subscription' | 'enterprise'>('no-subscription');
+  // Empty: Velnox reads the running release and each node's repository.
+  const [target, setTarget] = useState('');
+  const [channel, setChannel] = useState<'' | 'no-subscription' | 'enterprise'>('');
   const [mdsPrepared, setMdsPrepared] = useState(false);
   const [nonMigratable, setNonMigratable] = useState<'BLOCK' | 'SHUTDOWN'>('BLOCK');
   const [cephFirst, setCephFirst] = useState(false);
@@ -153,6 +155,11 @@ function NewPlan({
     setPending(true);
     setFailure(null);
     const pveOptions = { nonMigratable };
+    const cephOptions = {
+      ...(target ? { target } : {}),
+      ...(channel ? { channel } : {}),
+      mdsPrepared,
+    };
     const body =
       pveMajor && cephFirst
         ? {
@@ -163,7 +170,7 @@ function NewPlan({
               {
                 name: `${name} — Ceph → Squid`,
                 playbookId: 'velnox.ceph-major',
-                options: { target: 'squid', channel, mdsPrepared },
+                options: { ...(channel ? { channel } : {}), mdsPrepared },
               },
               { name: `${name} — Proxmox VE 8 → 9`, playbookId, options: pveOptions },
             ],
@@ -183,13 +190,7 @@ function NewPlan({
               clusterId,
               name,
               playbookId,
-              options: selftest
-                ? options
-                : ceph
-                  ? { target, channel, mdsPrepared }
-                  : pveMajor
-                    ? pveOptions
-                    : {},
+              options: selftest ? options : ceph ? cephOptions : pveMajor ? pveOptions : {},
             };
     const result = await apiPost<UpgradePlanDetail>('/upgrades/plans', body);
     setPending(false);
@@ -278,23 +279,31 @@ function NewPlan({
         )}
         {(ceph || (pveMajor && cephFirst)) && (
           <div className="grid gap-3 md:grid-cols-3">
-            <Field label={t('upgrades.cephTarget')} hint={t('upgrades.cephTargetHint')}>
-              {(props) => (
-                <select
-                  {...props}
-                  className={select}
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                >
-                  {CEPH_MATRIX.map((m) => (
-                    <option key={m.to} value={m.to}>
-                      {t('upgrades.cephStep', { from: m.from, to: m.to })}
+            {ceph && (
+              <Field
+                label={t('upgrades.cephTarget')}
+                hint={t('upgrades.cephTargetHint', { latest: CEPH_LATEST })}
+              >
+                {(props) => (
+                  <select
+                    {...props}
+                    className={select}
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                  >
+                    <option value="">
+                      {t('upgrades.cephTargetAuto', { latest: CEPH_LATEST })}
                     </option>
-                  ))}
-                </select>
-              )}
-            </Field>
-            <Field label={t('upgrades.cephChannel')}>
+                    {CEPH_MATRIX.map((m) => (
+                      <option key={m.to} value={m.to}>
+                        {t('upgrades.cephStep', { from: m.from, to: m.to })}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+            )}
+            <Field label={t('upgrades.cephChannel')} hint={t('upgrades.cephChannelHint')}>
               {(props) => (
                 <select
                   {...props}
@@ -302,6 +311,7 @@ function NewPlan({
                   value={channel}
                   onChange={(e) => setChannel(e.target.value as typeof channel)}
                 >
+                  <option value="">{t('upgrades.cephChannelAuto')}</option>
                   {CEPH_CHANNELS.map((c) => (
                     <option key={c} value={c}>
                       {c}

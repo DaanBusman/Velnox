@@ -9,11 +9,15 @@ import {
   VelnoxError,
   isAllowed,
   selftestOptionsSchema,
+  CEPH_LATEST,
+  CEPH_MATRIX,
   CEPH_MATRIX_VERSION,
+  cephPath,
   pvePlanOptionsSchema,
   releaseOf,
   cephPlanOptionsSchema,
   checkMatrix,
+  type CephRelease,
   type ChangeSet,
   type CreateUpgradePlanInput,
   type JobDetail,
@@ -54,8 +58,16 @@ interface PlannedTarget {
   sequence: number;
 }
 
+interface PlanChild {
+  name: string;
+  playbookId: string;
+  options: Record<string, unknown>;
+  /** A Ceph step that follows another in the same plan: the release that one leaves. */
+  after?: CephRelease;
+}
+
 interface PlannedPlan {
-  child: { name: string; playbookId: string; options: Record<string, unknown> };
+  child: PlanChild;
   def: UpgradePlaybookDef;
   targets: PlannedTarget[];
   options: Record<string, unknown>;
@@ -100,18 +112,71 @@ export class UpgradesService {
     return def;
   }
 
+  /**
+   * A Ceph plan without a target goes to the newest release the matrix
+   * reaches, from the release the inventory says runs: one plan per step,
+   * each after the one before. Beside other plans in a composite it is left
+   * out when there is nothing to do first — Ceph already on that release, or
+   * no Ceph at all. Whatever else the inventory does not settle (mixed
+   * releases, an unknown version, the newest already) is left to the matrix
+   * check, whose refusal says what is unexpected.
+   */
+  private async cephSteps(
+    child: PlanChild,
+    clusterId: string,
+    besideOthers: boolean,
+  ): Promise<PlanChild[]> {
+    const daemons = await this.prisma.client.cephDaemon.findMany({
+      where: { clusterId },
+      select: { version: true },
+    });
+    const releases = [...new Set(daemons.map((d) => releaseOf(d.version)))];
+    const from = releases.length === 1 ? releases[0] : null;
+    if (besideOthers && (daemons.length === 0 || from === CEPH_LATEST)) return [];
+    const path = from ? cephPath(from) : [];
+    if (path.length === 0)
+      return [{ ...child, options: { ...child.options, target: CEPH_LATEST } }];
+    return path.map((step, i) => ({
+      name: path.length > 1 ? `${child.name} (${step.from} → ${step.to})` : child.name,
+      playbookId: child.playbookId,
+      options: { ...child.options, target: step.to },
+      ...(i > 0 ? { after: step.from } : {}),
+    }));
+  }
+
   private async options(
     def: UpgradePlaybookDef,
     raw: Record<string, unknown>,
     clusterId: string,
+    after?: CephRelease,
   ): Promise<{ options: Record<string, unknown>; facts: Record<string, unknown> }> {
     if (def.kind === 'CEPH') {
       const parsed = cephPlanOptionsSchema.safeParse(raw);
       if (!parsed.success) {
         throw new VelnoxError(ERROR_CODES.validation, {
           status: 400,
-          message: 'A Ceph plan needs a target release, and a channel if not no-subscription',
+          message: 'Ceph upgrade options are not valid',
         });
+      }
+      const target = parsed.data.target ?? CEPH_LATEST;
+      // A step after another starts from the release that one leaves, which
+      // the inventory cannot show yet; the worker checks it again before it
+      // runs, against what then runs.
+      if (after) {
+        const entry = CEPH_MATRIX.find((e) => e.from === after && e.to === target);
+        if (!entry) {
+          throw new VelnoxError(ERROR_CODES.upgradeMatrixMismatch, {
+            status: 409,
+            params: {
+              unexpected: 'matrix',
+              reason: `the version matrix has no upgrade from ${after} to ${target}`,
+            },
+          });
+        }
+        return {
+          options: { ...parsed.data, target },
+          facts: { matrix: { version: CEPH_MATRIX_VERSION, from: after, entry } },
+        };
       }
       // The running release, the target and the matrix must agree before a
       // plan exists; when they do not, the refusal says which is unexpected.
@@ -121,7 +186,7 @@ export class UpgradesService {
       });
       const outcome = checkMatrix(
         daemons.map((d) => d.version),
-        parsed.data.target,
+        target,
       );
       if (!outcome.ok) {
         throw new VelnoxError(ERROR_CODES.upgradeMatrixMismatch, {
@@ -130,7 +195,7 @@ export class UpgradesService {
         });
       }
       return {
-        options: parsed.data,
+        options: { ...parsed.data, target },
         facts: {
           matrix: { version: CEPH_MATRIX_VERSION, from: outcome.from, entry: outcome.entry },
         },
@@ -195,10 +260,25 @@ export class UpgradesService {
       clusterId: cluster.id,
     });
 
-    const children =
+    const requested: PlanChild[] =
       input.kind === 'COMPOSITE'
         ? input.children
         : [{ name: input.name, playbookId: input.playbookId, options: input.options }];
+    const children: PlanChild[] = [];
+    for (const child of requested) {
+      const def = this.playbook(child.playbookId, actor, cluster.tenantId);
+      children.push(
+        ...(def.kind === 'CEPH' && child.options.target === undefined
+          ? await this.cephSteps(child, cluster.id, requested.length > 1)
+          : [child]),
+      );
+    }
+    if (!children.length) {
+      throw new VelnoxError(ERROR_CODES.validation, {
+        status: 400,
+        message: 'Nothing to plan: Ceph already runs the newest release, or the cluster has none',
+      });
+    }
     const planned: PlannedPlan[] = [];
     for (const child of children) {
       const def = this.playbook(child.playbookId, actor, cluster.tenantId);
@@ -216,7 +296,7 @@ export class UpgradesService {
         child,
         def,
         targets,
-        ...(await this.options(def, child.options, cluster.id)),
+        ...(await this.options(def, child.options, cluster.id, child.after)),
       });
     }
 
@@ -264,7 +344,9 @@ export class UpgradesService {
             targets: { create: p.targets.map((t) => ({ ...t, tenantId: cluster.tenantId })) },
           },
         });
-      if (input.kind === 'PLAYBOOK') return (await make(planned[0]!, null, 1)).id;
+      // A Ceph plan of more than one step is a composite of its steps.
+      if (planned.length === 1 && input.kind === 'PLAYBOOK')
+        return (await make(planned[0]!, null, 1)).id;
       const parent = await tx.upgradePlan.create({
         data: { ...common, name: input.name, kind: 'COMPOSITE', playbookId: null },
       });

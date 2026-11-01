@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CEPH_MAJOR_PLAYBOOK,
   assessCephHealth,
+  cephPath,
+  cephPlanOptionsSchema,
   cephRepoLine,
   checkMatrix,
   releaseOf,
@@ -50,6 +52,23 @@ describe('checkMatrix', () => {
       unexpected: 'matrix',
       reason: expect.stringContaining('from quincy it goes to reef'),
     });
+  });
+});
+
+describe('cephPath', () => {
+  it('walks the matrix one release at a time to the newest', () => {
+    expect(cephPath('quincy').map((e) => `${e.from}>${e.to}`)).toEqual([
+      'quincy>reef',
+      'reef>squid',
+    ]);
+    expect(cephPath('reef').map((e) => e.to)).toEqual(['squid']);
+    expect(cephPath('squid')).toEqual([]);
+  });
+
+  it('lets a plan leave the target and channel to Velnox', () => {
+    const options = cephPlanOptionsSchema.parse({});
+    expect(options.target).toBeUndefined();
+    expect(options.channel).toBeUndefined();
   });
 });
 

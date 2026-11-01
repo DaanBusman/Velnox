@@ -1977,12 +1977,15 @@
     "report": "Rapport",
     "downloadReport": "Downloaden als Markdown",
     "cephTarget": "Upgraden naar",
-    "cephTargetHint": "Uit de versiematrix: de release die nu draait, moet die zijn waar de stap van uitgaat.",
+    "cephTargetHint": "Automatisch leest welke release Ceph draait en plant elke stap naar {latest}, de een na de ander. Kies je hier zelf een release, dan moet dat de eerstvolgende zijn na wat nu draait.",
+    "cephTargetAuto": "Automatisch: van wat nu draait naar {latest}",
     "cephStep": "{from} → {to}",
     "cephChannel": "Repository",
+    "cephChannelHint": "Enterprise alleen op een node met een actief abonnement; elke andere node krijgt no-subscription.",
+    "cephChannelAuto": "Automatisch: zoals de Ceph-repository van elke node nu staat",
     "cephMds": "CephFS is voorbereid",
     "cephMdsHint": "Alleen met CephFS: max_mds is 1 en standby replay staat uit voor elk bestandssysteem, zoals de handleiding van Proxmox vraagt. Velnox herstart de MDS-daemons één voor één en wijzigt die instellingen niet.",
     "pveCephFirst": "Eerst Ceph naar Squid upgraden",
-    "pveCephFirstHint": "Proxmox VE 9 vraagt Ceph Squid. Aangevinkt is het plan samengesteld: de Ceph-upgrade, dan — alleen als die voltooid is — Proxmox VE, node voor node."
+    "pveCephFirstHint": "Proxmox VE 9 vraagt Ceph Squid. Aangevinkt is het plan samengesteld: de Ceph-upgrade, dan — alleen als die voltooid is — Proxmox VE, node voor node. Velnox leest zelf welke release Ceph draait en plant de stappen naar Squid; draait Ceph al Squid, of heeft het cluster geen Ceph, dan is er geen Ceph-stap."
   }
 }

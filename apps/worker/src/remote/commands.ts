@@ -213,6 +213,28 @@ export const PVE_COMMANDS = {
     interruptible: false,
     argv: ['/usr/share/pve-manager/migrations/pve-lvm-disable-autoactivation'],
   },
+  /**
+   * Every Ceph repository to Squid, each changed file kept as `*.velnox-ceph`.
+   *
+   * Only Squid is published for trixie: a node still pointing at ceph-quincy
+   * or ceph-reef — the default on Proxmox VE 8 even where Ceph was never set
+   * up — makes `apt-get update` fail with exit code 100 once its sources move
+   * to trixie. Run on a node without Ceph daemons, before the move; a node with
+   * them is on Squid already, which the preflight insists on. The channel —
+   * enterprise or no-subscription — is left as it is.
+   */
+  cephSquid: {
+    id: 'pve.ceph_squid',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 5 * MINUTE,
+    interruptible: true,
+    argv: [
+      'sh',
+      '-c',
+      'set -e; for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do [ -f "$f" ] || continue; grep -E "/debian/ceph-[a-z]+" "$f" | grep -qv "/debian/ceph-squid" || continue; cp -p "$f" "$f.velnox-ceph"; sed -i -E "s#/debian/ceph-[a-z]+#/debian/ceph-squid#g" "$f"; done; for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do [ -f "$f" ] && grep -hE "/debian/ceph-" "$f"; done | grep -v "^ *#" || true',
+    ],
+  },
   /** Debian and Proxmox sources from bookworm to trixie, each file kept as `*.velnox-bookworm`. */
   sourcesTrixie: {
     id: 'pve.sources_trixie',

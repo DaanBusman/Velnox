@@ -1976,12 +1976,15 @@
     "report": "Report",
     "downloadReport": "Download as Markdown",
     "cephTarget": "Upgrade to",
-    "cephTargetHint": "From the version matrix: the release that runs now must be the one each step starts from.",
+    "cephTargetHint": "Automatic reads the release Ceph runs and plans each step to {latest}, one after the other. A release chosen here must be the next one after what runs now.",
+    "cephTargetAuto": "Automatic: from what runs now to {latest}",
     "cephStep": "{from} → {to}",
     "cephChannel": "Repository",
+    "cephChannelHint": "Enterprise only on a node with an active subscription; any other node gets no-subscription.",
+    "cephChannelAuto": "Automatic: as each node’s Ceph repository is now",
     "cephMds": "CephFS is prepared",
     "cephMdsHint": "Only with CephFS: max_mds is 1 and standby replay is off for every file system, as Proxmox’s guide asks. Velnox restarts the MDS daemons one at a time and does not change those settings.",
     "pveCephFirst": "Upgrade Ceph to Squid first",
-    "pveCephFirstHint": "Proxmox VE 9 needs Ceph Squid. Ticked, the plan is a composite: the Ceph upgrade, then — only if it completed — Proxmox VE, node by node."
+    "pveCephFirstHint": "Proxmox VE 9 needs Ceph Squid. Ticked, the plan is a composite: the Ceph upgrade, then — only if it completed — Proxmox VE, node by node. Velnox reads which release Ceph runs and plans the steps to Squid itself; when Ceph already runs Squid, or the cluster has none, there is no Ceph step."
   }
 }

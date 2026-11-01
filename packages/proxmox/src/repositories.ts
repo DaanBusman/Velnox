@@ -104,5 +104,25 @@ export function planNoSubscription(
   return change;
 }
 
+/**
+ * The channel a node's enabled Ceph repositories are on now: enterprise when
+ * one is on Proxmox's enterprise host, no-subscription when one is that
+ * channel, null when the node has neither (none at all, or only `test`).
+ */
+export function cephChannelOf(info: RepositoryInfo): 'enterprise' | 'no-subscription' | null {
+  let channel: 'enterprise' | 'no-subscription' | null = null;
+  for (const file of info.files ?? []) {
+    for (const repo of file.repositories ?? []) {
+      if (repo.Enabled !== 1) continue;
+      for (const uri of repo.URIs ?? []) {
+        if (productOf(uri)?.kind !== 'ceph') continue;
+        if (uri.includes(ENTERPRISE_HOST)) return 'enterprise';
+        if ((repo.Components ?? []).includes('no-subscription')) channel = 'no-subscription';
+      }
+    }
+  }
+  return channel;
+}
+
 export const isEmptyChange = (change: RepositoryChange) =>
   change.toggle.length === 0 && change.add.length === 0;

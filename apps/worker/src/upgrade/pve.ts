@@ -85,6 +85,9 @@ async function nodeVersion(pve: ProxmoxClient, node: string) {
     kernel: status['current-kernel']?.release ?? null,
   };
 }
+/** A host name as Ceph and Proxmox may each write it: short, any case. */
+const shortHost = (host: string | null | undefined) => (host ?? '').split('.')[0]!.toLowerCase();
+
 const onNine = (version: string | null) => Boolean(version && Number(version.split('.')[0]) >= 9);
 /** pve8to9 exists from pve-manager 8.4.2 on; below it, running it is "command not found". */
 const hasPve8to9 = (version: string | null) =>
@@ -610,6 +613,26 @@ export const PVE_ACTIONS: Record<string, UpgradeAction> = {
       // the no-subscription repository it adds is then moved to trixie with
       // the rest (ADR-056).
       await useNoSubscriptionRepositories(handle);
+      // Ceph publishes only Squid for trixie, so a Ceph repository on any
+      // other release breaks `apt-get update` once the sources move — and
+      // Proxmox VE 8 has one even where Ceph was never set up. A node running
+      // Ceph daemons is on Squid already (the preflight insists); one without
+      // has its repository moved to Squid here, as the owner asked.
+      const daemons = [...(await runningVersions(pve).catch(() => new Map())).entries()]
+        .filter(([, d]) => shortHost(d.host) === shortHost(target.label))
+        .map(([name]) => name);
+      if (daemons.length === 0) {
+        const ceph = await runRegistered(handle, PVE_COMMANDS.cephSquid, false);
+        await context.log(
+          'STDOUT',
+          `${target.label} runs no Ceph daemons: its Ceph repository follows Squid\n${ceph.stdout.trim()}`,
+        );
+      } else {
+        await context.log(
+          'STDOUT',
+          `${target.label} runs Ceph (${daemons.join(', ')}): its Ceph repository is left on Squid`,
+        );
+      }
       const out = await runRegistered(handle, PVE_COMMANDS.sourcesTrixie, false);
       await context.log('STDOUT', `${target.label}: sources on trixie\n${out.stdout.trim()}`);
     });

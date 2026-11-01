@@ -36,6 +36,14 @@ describe('Proxmox VE 8 → 9 commands', () => {
     expect(script).toContain('cp -p "$f" "$f.velnox-bookworm"');
   });
 
+  it('moves every Ceph repository to Squid, keeping each file it changes', () => {
+    const script = PVE_COMMANDS.cephSquid.argv[2];
+    expect(script).toContain('sed -i -E "s#/debian/ceph-[a-z]+#/debian/ceph-squid#g" "$f"');
+    expect(script).toContain('cp -p "$f" "$f.velnox-ceph"');
+    // A file already on Squid is not touched, so its backup is never overwritten.
+    expect(script).toContain('grep -qv "/debian/ceph-squid" || continue');
+  });
+
   it('never lets a cancel interrupt apt', () => {
     for (const spec of [
       PVE_COMMANDS.removeSystemdBoot,

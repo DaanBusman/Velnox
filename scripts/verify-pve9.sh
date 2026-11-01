@@ -380,11 +380,31 @@ check "space: blocked — nothing Velnox can fix" "FAILED upgrade.blockers_prese
 contains "space: said as pve8to9 said it" "Less than 5 GB free space on root file system" "$(plan "$P3" | pick 'd.checks.filter(c=>c.severity==="BLOCKER").map(c=>c.title).join(" | ")')"
 check "space: no remediation was offered for it" "" "$(plan "$P3" | pick 'd.remediations.map(r=>r.remediationId).join(",")')"
 
+info "No Ceph at all: the Ceph repository Proxmox VE 8 ships moves to Squid before trixie."
+# Proxmox VE 8 carries a ceph-quincy repository even where Ceph was never set
+# up, and Ceph publishes only Squid for trixie: moved as it is, apt-get update
+# fails with exit code 100 on the first node. Found on a real cluster.
+check "fresh: no Ceph, every node on ceph-quincy" yes "$(fresh '{"pve":"8.4.14","cephAbsent":true,"cephReset":7,"majorReset":7,"microcode":true,"sysctlConf":false}' '')"
+P5="$(pve_plan "${RUN} no ceph" | json id)"
+J5="$(run_plan "$P5")"
+check "no ceph: the first node upgraded, the run at its canary" WAITING_APPROVAL "$(wait_for "$J5" 600 WAITING_APPROVAL SUCCEEDED FAILED)"
+check "no ceph: pve1 on Proxmox VE 9" 9.0.10 "$(node_version pve1)"
+check "no ceph: its Ceph repository moved to Squid" 1 "$(FIXLOG | grep -c 'major: pve1 ceph repository on squid')"
+contains "no ceph: the job says so, and why" "pve1 runs no Ceph daemons: its Ceph repository follows Squid" "$(logs_of "$J5")"
+check "approve the rest" 200 "$(approve "$J5")"
+check "no ceph: succeeds" SUCCEEDED "$(wait_for "$J5" 900 SUCCEEDED FAILED WAITING_APPROVAL)"
+check "no ceph: every node on 9, every Ceph repository on Squid" "9.0.10 9.0.10 9.0.10 3" "$(node_version pve1) $(node_version pve2) $(node_version pve3) $(FIXLOG | grep -c 'ceph repository on squid')"
+check "no ceph: apt-get update never refused" 0 "$(FIXLOG | grep -c 'apt-get update refused: E: The repository')"
+NC="$(call POST /api/v1/upgrades/plans "$(C="$CLUSTER_ID" R="$RUN" body '{ kind: "COMPOSITE", clusterId: e.C, name: e.R + " no ceph first", children: [ { name: "Ceph to Squid", playbookId: "velnox.ceph-major", options: {} }, { name: "Proxmox VE 8 to 9", playbookId: "velnox.pve-8-to-9", options: { nonMigratable: "SHUTDOWN" } } ] }')" | json id)"
+check "no ceph: 'Ceph to Squid first' asked for, no Ceph step planned" "201 velnox.pve-8-to-9" "$(last_status) $(plan "$NC" | pick 'd.children.map(c=>c.playbookId).join(",")')"
+call DELETE "/api/v1/upgrades/plans/${NC}" >/dev/null
+
 info "Ceph to Squid first, then Proxmox VE, as one composite."
 check "reef, clean otherwise" yes "$(fresh '{"pve":"8.4.14","cephStart":"18.2.4","cephReset":5,"majorReset":5,"microcode":true,"sysctlConf":false}' 18.2.4)"
-C="$(call POST /api/v1/upgrades/plans "$(C="$CLUSTER_ID" R="$RUN" body '{ kind: "COMPOSITE", clusterId: e.C, name: e.R + " both", children: [ { name: "Ceph to Squid", playbookId: "velnox.ceph-major", options: { target: "squid", settleSeconds: 60 } }, { name: "Proxmox VE 8 to 9", playbookId: "velnox.pve-8-to-9", options: { nonMigratable: "SHUTDOWN" } } ] }')" | json id)"
+C="$(call POST /api/v1/upgrades/plans "$(C="$CLUSTER_ID" R="$RUN" body '{ kind: "COMPOSITE", clusterId: e.C, name: e.R + " both", children: [ { name: "Ceph to Squid", playbookId: "velnox.ceph-major", options: { settleSeconds: 60 } }, { name: "Proxmox VE 8 to 9", playbookId: "velnox.pve-8-to-9", options: { nonMigratable: "SHUTDOWN" } } ] }')" | json id)"
 check "composite: accepted, Ceph before Proxmox VE" 201 "$(last_status)"
 read -r K1 K2 <<<"$(plan "$C" | pick 'd.children.map(c=>c.id).join(" ")')"
+check "composite: no target given — Velnox read reef and planned squid" "squid" "$(plan "$K1" | pick 'd.options.target')"
 call POST "/api/v1/upgrades/plans/${C}/run" >/dev/null
 check "composite: Ceph completes first" yes "$(wait_until 600 plan_is "$K1" COMPLETED)"
 child_waits() { local j; j="$(plan "$K2" | json jobId)"; [[ -n "$j" && "$(job_field "$j" status)" == WAITING_APPROVAL ]] && printf yes; }

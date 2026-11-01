@@ -295,7 +295,10 @@ stoppen de run, zoals het hoort). Velnox brengt CephFS voor de upgrade niet teru
 de beheerder doet dat en zegt het bij het plan. RGW-daemons worden niet ontdekt, dus niet herstart. De
 repository wordt naar `ceph.list` geschreven; een node die in plaats daarvan het deb822-bestand
 `ceph.sources` gebruikt, houdt dat bestand ook. De exacte sudoregel voor de omschakeling van de
-repository laat Velnox aan de beheerder om uit de job te lezen; root is het eenvoudigst. Zie ADR-051.
+repository laat Velnox aan de beheerder om uit de job te lezen; root is het eenvoudigst. Op
+**Automatisch** wordt het kanaal van elke node gelezen via de repository-API van Proxmox, die
+`Sys.Audit` op de node vraagt: zonder dat krijgt de node no-subscription, en de job zegt dat lezen niet
+lukte. Zie ADR-051.
 
 ### Proxmox VE 8 → 9: bewezen tegen de fixture, pve8to9 tegen zijn eigen bron
 De upgrade is bewezen tegen de fixture, waarvan de nodes pve8to9 beantwoorden met de eigen meldingen
@@ -307,7 +310,9 @@ maintainer neemt; het pint geen NIC-namen vast en zet apt-bronnen niet om naar d
 LVM-autoactivatiescript van Proxmox wordt gedraaid zoals het is. Een node die te oud is voor pve8to9
 wordt eerst binnen 8 bijgewerkt; een node zonder abonnement gaat daarvoor naar de
 no-subscription-repositories (zie [Een node zonder abonnement](updating-nodes.md#een-node-zonder-abonnement)).
-Zie ADR-052.
+Op een node die geen Ceph-daemon draait, wordt de Ceph-repository naar Squid gezet door
+`/debian/ceph-<release>` in zijn apt-bronnen te herschrijven — bewezen in de fixture en in een
+Debian-container, nog niet op een echte node. Zie ADR-052.
 
 ### Certificaten vanuit de interface: wat het bewijst, en wat het kost
 Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is bewezen tegen Pebble,

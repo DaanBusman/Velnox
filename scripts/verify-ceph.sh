@@ -284,6 +284,9 @@ pick() { # js expression over the JSON on stdin, as `d`
   node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{try{const d=JSON.parse(r);const v=eval(process.argv[1]);process.stdout.write(typeof v==="object"?JSON.stringify(v):String(v))}catch(e){}})' "$1"
 }
 plan() { call GET "/api/v1/upgrades/plans/$1"; }
+plan_is() { [[ "$(plan "$1" | json status)" == "$2" ]] && printf yes; }
+# The fixture's log since Ceph was last made fresh.
+log_since_fresh() { FIXLOG | awk '/ceph: fresh at/{n=0} {line[n++]=$0} END{for(i=0;i<n;i++)print line[i]}'; }
 ceph_plan() { # name target → response
   call POST /api/v1/upgrades/plans "$(N="$1" T="$2" C="$CLUSTER_ID" body '{ kind: "PLAYBOOK", clusterId: e.C, name: e.N, playbookId: "velnox.ceph-major", options: { target: e.T, settleSeconds: 60 } }')"
 }
@@ -396,6 +399,23 @@ check "killed: noout is still set, with nobody to clear it" 1 "$(noout)"
 check "killed: the job is reconciled as lost" "FAILED job.worker_lost" "$(wait_for "$J8" 120 FAILED SUCCEEDED CANCELLED) $(job_field "$J8" errorCode)"
 check "killed: noout is cleared" yes "$(wait_until 60 noout_is 0)"
 check "killed: the plan failed" FAILED "$(plan "$P8" | json status)"
+
+info "No target, no channel: Velnox reads both — quincy to squid in two steps, each node's channel kept."
+control '{"pve":"8.4.1","cephReset":9,"cephStart":"17.2.7","cephRestartSeconds":1,"cephEnterprise":"pve1"}'
+check "quincy, fresh, pve1 on the enterprise channel" yes "$(rediscover_until 17.2.7)"
+P9="$(call POST /api/v1/upgrades/plans "$(N="${RUN} automatic" C="$CLUSTER_ID" body '{ kind: "PLAYBOOK", clusterId: e.C, name: e.N, playbookId: "velnox.ceph-major", options: { settleSeconds: 60 } }')" | json id)"
+check "automatic: a composite of the matrix's steps" "201 COMPOSITE 2" "$(last_status) $(plan "$P9" | pick 'd.kind+" "+d.children.length')"
+check "automatic: quincy to reef, then reef to squid" "quincy>reef,reef>squid" "$(psql_at "SELECT string_agg((facts->'matrix'->>'from') || '>' || (options->>'target'), ',' ORDER BY sequence) FROM upgrade_plans WHERE parent_plan_id = '${P9}';")"
+check "automatic: no channel stored — each node's is read" "" "$(psql_at "SELECT string_agg(options->>'channel', ',') FROM upgrade_plans WHERE parent_plan_id = '${P9}';")"
+call POST "/api/v1/upgrades/plans/${P9}/run" >/dev/null
+check "automatic: both steps complete" yes "$(wait_until 900 plan_is "$P9" COMPLETED)"
+check "automatic: Ceph runs squid everywhere" yes "$(rediscover_until 19.2.0)"
+check "automatic: pve1 stayed on enterprise, through reef to squid" "2 0" "$(log_since_fresh | grep -cE 'ceph: pve1 repository deb https://enterprise.proxmox.com/debian/ceph-(reef|squid) bookworm enterprise') $(log_since_fresh | grep -c 'ceph: pve1 repository deb http://download')"
+check "automatic: pve2 and pve3 stayed on no-subscription" 4 "$(log_since_fresh | grep -cE 'ceph: pve[23] repository deb http://download.proxmox.com/debian/ceph-(reef|squid) bookworm no-subscription')"
+read -r K91 _ <<<"$(plan "$P9" | pick 'd.children.map(c=>c.jobId).join(" ")')"
+contains "automatic: the job says which channel it read" "pve1: its Ceph repository is enterprise, and stays so" "$(logs_of "$K91")"
+R="$(call POST /api/v1/upgrades/plans "$(N="${RUN} nothing left" C="$CLUSTER_ID" body '{ kind: "PLAYBOOK", clusterId: e.C, name: e.N, playbookId: "velnox.ceph-major", options: {} }')")"
+check "automatic on squid: refused, nothing is newer" "409 target" "$(last_status) $(printf '%s' "$R" | json error.params.unexpected)"
 control '{}'
 
 printf '\n'

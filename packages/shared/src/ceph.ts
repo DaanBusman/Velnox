@@ -81,6 +81,27 @@ export function cephRepoLine(
     : `deb http://download.proxmox.com/debian/${entry.repo} ${entry.suite} no-subscription`;
 }
 
+/** The newest release the matrix reaches. */
+export const CEPH_LATEST: CephRelease = CEPH_MATRIX.at(-1)!.to;
+
+/**
+ * The matrix's steps from a release to the newest it reaches, in order:
+ * quincy gives quincy → reef and reef → squid; the newest gives none. Ceph
+ * skips no release, so each step is a plan of its own.
+ */
+export function cephPath(
+  from: CephRelease,
+  matrix: readonly CephMatrixEntry[] = CEPH_MATRIX,
+): CephMatrixEntry[] {
+  const path: CephMatrixEntry[] = [];
+  for (let entry = matrix.find((e) => e.from === from); entry;) {
+    path.push(entry);
+    const to = entry.to;
+    entry = matrix.find((e) => e.from === to);
+  }
+  return path;
+}
+
 export type MatrixOutcome =
   | { ok: true; entry: CephMatrixEntry; from: CephRelease }
   | {
@@ -278,9 +299,18 @@ export const CEPH_MAJOR_PLAYBOOK: UpgradePlaybookDef = {
 
 export const cephPlanOptionsSchema = z
   .object({
-    /** A release name; checked against the matrix, which names what is wrong. */
-    target: z.string().trim().min(1).max(20),
-    channel: z.enum(CEPH_CHANNELS).default('no-subscription'),
+    /**
+     * A release name; checked against the matrix, which names what is wrong.
+     * Absent: Velnox reads the running release and goes to the newest one the
+     * matrix reaches, a plan per step (`cephPath`). Every stored plan has one,
+     * so the worker never guesses.
+     */
+    target: z.string().trim().min(1).max(20).optional(),
+    /**
+     * Absent: each node keeps the channel its Ceph repository is on now, read
+     * from the node; no-subscription when it has none.
+     */
+    channel: z.enum(CEPH_CHANNELS).optional(),
     /**
      * CephFS only: the operator has set `max_mds 1` and switched standby replay
      * off for every file system, as Proxmox's guide asks. Velnox restarts MDS

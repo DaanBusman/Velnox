@@ -56,14 +56,25 @@ Elk playbook gaat door dezelfde fasen, als één job die je stap voor stap kunt 
 
 ## Ceph: een grote upgrade
 
-Het playbook **Ceph major upgrade** upgradet een hypergeconvergeerd Ceph-cluster één release, zoals
-de handleidingen van Proxmox het doen. **Nieuw plan** met dit playbook vraagt naar de release waarnaar
-geüpgraded wordt en het repositorykanaal (no-subscription of enterprise). Een node zonder actief
-abonnement krijgt no-subscription, wat het plan ook zegt: de enterprise-repository zou hem weigeren
-([waarom](updating-nodes.md#een-node-zonder-abonnement)).
+Het playbook **Ceph major upgrade** upgradet een hypergeconvergeerd Ceph-cluster release voor release,
+zoals de handleidingen van Proxmox het doen. **Nieuw plan** met dit playbook heeft twee velden, en
+beide kunnen op **Automatisch** blijven staan:
 
-**De versiematrix.** Velnox upgradet alleen langs stappen die het kent, elk zoals Proxmox het
-documenteert:
+- **Upgraden naar** — automatisch leest welke release de Ceph-daemons van het cluster draaien, uit de
+  inventaris, en plant vandaar elke stap van [de matrix](#de-versiematrix) naar Squid, de een na de
+  ander: vanaf Reef één plan, vanaf Quincy een samengesteld plan van Quincy → Reef en daarna Reef →
+  Squid. Kies je hier zelf een release, dan moet dat de eerstvolgende zijn na wat nu draait.
+- **Repository** — automatisch houdt het kanaal aan waarop de Ceph-repository van elke node nu staat,
+  gelezen van de node wanneer de repositorystap draait: enterprise blijft enterprise, no-subscription
+  blijft no-subscription, en een node met geen van beide krijgt no-subscription. Kies je een kanaal,
+  dan krijgt elke node dat.
+
+Hoe dan ook krijgt een node zonder actief abonnement no-subscription: de enterprise-repository zou
+hem weigeren ([waarom](updating-nodes.md#een-node-zonder-abonnement)).
+
+### De versiematrix
+
+Velnox upgradet alleen langs stappen die het kent, elk zoals Proxmox het documenteert:
 
 | Van | Naar | Vraagt minstens |
 |---|---|---|
@@ -75,7 +86,10 @@ tegenspreken, en de weigering zegt welke van de drie onverwacht is: een cluster 
 verschillende releases draaien — al midden in een upgrade — of een release die Velnox niet kent, is
 *de release die draait*; een release die niet nieuwer is, is *het doel*; een stap die de matrix niet
 heeft, zoals Quincy rechtstreeks naar Squid, is *de matrix*. Het plan legt vast welke matrixversie het
-maakte.
+maakte. Op **Automatisch** heeft een cluster dat al Squid draait niets nieuwers om naartoe te gaan, en
+wordt het plan om zijn doel geweigerd. De tweede stap van een automatisch Quincy-plan gaat uit van Reef,
+wat de inventaris nog niet kan tonen: die wordt opnieuw gecontroleerd, tegen wat dan draait, voordat
+hij start — zoals elke stap.
 
 **Voordat er iets verandert**, leest de preflight Ceph zoals Proxmox het dan geeft, en blokkeert op:
 Ceph niet `HEALTH_OK`, een placement group niet `active+clean`, een monitor buiten quorum, daemons op
@@ -130,7 +144,10 @@ Het playbook **Proxmox VE 8 → 9** upgradet een cluster node voor node, zoals d
 [upgradehandleiding](https://pve.proxmox.com/wiki/Upgrade_from_8_to_9) van Proxmox het doet. Proxmox
 VE 9 vraagt Ceph Squid: op een Ceph-cluster dat nog op Reef staat, vink **Eerst Ceph naar Squid
 upgraden** aan en het plan wordt samengesteld — de [Ceph-upgrade](#ceph-een-grote-upgrade), dan,
-alleen als die voltooid is, Proxmox VE. Een los Proxmox VE-plan wordt daar geweigerd.
+alleen als die voltooid is, Proxmox VE. Een los Proxmox VE-plan wordt daar geweigerd. Er valt geen
+release te kiezen: Velnox leest welke Ceph draait en plant zelf de stappen naar Squid, en laat de
+Ceph-stap weg als Ceph al Squid draait of het cluster geen Ceph heeft. Ook het repositorykanaal is
+automatisch, tenzij er een gekozen wordt.
 
 **Eerst elke node op de laatste Proxmox VE 8.** pve8to9 bestaat pas vanaf pve-manager 8.4.2; op een
 oudere node valt er niets te draaien. Daarom leest Velnox eerst de versie van elke node, en een node
@@ -167,7 +184,12 @@ aangeraakt.
    [plaatsingsregels](placement.md); een gast die niet kan verhuizen wordt geweigerd, of afgesloten als
    het plan dat zegt.
 2. **repositories** — elke apt-bron van bookworm naar trixie, elk bestand bewaard als
-   `*.velnox-bookworm`.
+   `*.velnox-bookworm`. Een node die geen Ceph-daemon draait, heeft toch een Ceph-repository —
+   Proxmox VE 8 zet er een voor Quincy neer, of Ceph nu gebruikt wordt of niet — en alleen Squid heeft
+   een trixie-suite; elke andere release laat `apt-get update` mislukken met exitcode 100. Daarom
+   wordt op zo'n node eerst de Ceph-repository naar Squid gezet, elk bestand dat verandert bewaard als
+   `*.velnox-ceph`. Een node die Ceph draait, wordt hier niet gewijzigd: zijn Ceph staat volgens de
+   regel hierboven al op Squid.
 3. **packages** — `apt-get update` en de dist-upgrade, met behoud van de eigen configuratiebestanden
    van de node.
 4. **reboot** — met `noout` van Ceph eromheen, en alleen zolang het cluster quorum houdt.
@@ -218,6 +240,7 @@ doel dat mislukt — gekozen als het plan wordt gemaakt.
 | *De upgrade van … is mislukt* | De upgrade of de validatie van een doel mislukte. De doelen ervoor zijn klaar. |
 | *Alleen een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden* | Maak een nieuw plan. |
 | *Er is geen playbook …, of het wordt jou niet aangeboden* | Zelftests vragen `system.manage`. |
-| *De draaiende release, het doel en de versiematrix spreken elkaar tegen* | De weigering noemt welke; zie [de versiematrix](#ceph-een-grote-upgrade). |
+| *De draaiende release, het doel en de versiematrix spreken elkaar tegen* | De weigering noemt welke; zie [de versiematrix](#de-versiematrix). |
 | *Ceph draait …, en Proxmox VE 9 vraagt Squid* | Maak het plan met **Eerst Ceph naar Squid upgraden**. |
 | *Ceph is niet heel: …* | Na de herstart van een daemon kwam Ceph niet binnen de stabilisatietijd gezond terug, of toonde een waarschuwing die Velnox niet kent. `noout` is uitgezet. |
+| *apt.update eindigde met exitcode 100* | `apt-get update` mislukte op de node. Het technisch detail bevat de eerste `E:`-regel van apt, en de uitvoer van de job alles van apt — een repository zonder Release-bestand, een 401, een naam die niet resolvet. |

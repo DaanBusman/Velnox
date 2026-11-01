@@ -51,13 +51,25 @@ Every playbook goes through the same phases, as one job you can follow step by s
 
 ## Ceph: a major upgrade
 
-The playbook **Ceph major upgrade** upgrades a hyper-converged Ceph cluster one release, as Proxmox's
-own guides do it. **New plan** with this playbook asks for the release to upgrade to and the
-repository channel (no-subscription or enterprise). A node without an active subscription gets
-no-subscription whatever the plan says: the enterprise repository would refuse it
-([why](updating-nodes.md#a-node-without-a-subscription)).
+The playbook **Ceph major upgrade** upgrades a hyper-converged Ceph cluster one release at a time, as
+Proxmox's own guides do it. **New plan** with this playbook has two fields, and both can be left on
+**Automatic**:
 
-**The version matrix.** Velnox upgrades only along steps it knows, each as Proxmox documents it:
+- **Upgrade to** — automatic reads the release the cluster's Ceph daemons run, from the inventory,
+  and plans every step of [the matrix](#the-version-matrix) from there to Squid, one after the
+  other: from Reef one plan, from Quincy a composite of Quincy → Reef and then Reef → Squid. A
+  release picked here instead must be the next one after what runs.
+- **Repository** — automatic keeps the channel each node's Ceph repository is on now, read from the
+  node when the repository step runs: enterprise stays enterprise, no-subscription stays
+  no-subscription, and a node with neither gets no-subscription. Picking a channel sets it on every
+  node.
+
+Either way, a node without an active subscription gets no-subscription: the enterprise repository
+would refuse it ([why](updating-nodes.md#a-node-without-a-subscription)).
+
+### The version matrix
+
+Velnox upgrades only along steps it knows, each as Proxmox documents it:
 
 | From | To | Needs at least |
 |---|---|---|
@@ -68,7 +80,10 @@ A plan is not made when the release that runs, the release asked for and the mat
 the refusal says which of the three is the unexpected one: a cluster whose daemons run different
 releases — already mid-upgrade — or a release Velnox does not know is *the release that runs*; a
 release that is not newer is *the target*; a step the matrix does not have, such as Quincy straight to
-Squid, is *the matrix*. The plan records the matrix version that made it.
+Squid, is *the matrix*. The plan records the matrix version that made it. On **Automatic**, a cluster
+already on Squid has nothing newer to go to, and the plan is refused for its target. The second step of
+an automatic Quincy plan starts from Reef, which the inventory cannot show yet: it is checked again,
+against what then runs, before it starts — as every step is.
 
 **Before anything changes**, the preflight reads Ceph from Proxmox as it is then and blocks on: Ceph
 not `HEALTH_OK`, any placement group not `active+clean`, any monitor out of quorum, daemons on
@@ -120,7 +135,9 @@ The playbook **Proxmox VE 8 → 9** upgrades a cluster node by node, as Proxmox'
 [upgrade guide](https://pve.proxmox.com/wiki/Upgrade_from_8_to_9) does it. Proxmox VE 9 needs Ceph
 Squid: on a Ceph cluster still on Reef, tick **Upgrade Ceph to Squid first** and the plan becomes a
 composite — the [Ceph upgrade](#ceph-a-major-upgrade), then, only if it completed, Proxmox VE. A
-Proxmox VE plan on its own is refused there.
+Proxmox VE plan on its own is refused there. There is no release to pick: Velnox reads which one Ceph
+runs and plans the steps to Squid itself, and leaves the Ceph step out when Ceph already runs Squid or
+the cluster has no Ceph. The repository channel is automatic too, unless one is picked.
 
 **First, every node on the latest Proxmox VE 8.** pve8to9 only exists from pve-manager 8.4.2 on; on
 an older node there is nothing to run. So Velnox reads every node's version first, and a node below
@@ -154,6 +171,11 @@ anything that still stops the upgrade ends the run before any node is touched.
 1. **evacuate** — the node's running guests moved live to the others, within the
    [placement rules](placement.md); one that cannot move is refused, or shut down if the plan says so.
 2. **repositories** — every apt source from bookworm to trixie, each file kept as `*.velnox-bookworm`.
+   A node that runs no Ceph daemon still has a Ceph repository — Proxmox VE 8 adds one for Quincy
+   whether Ceph is used or not — and only Squid has a trixie suite; any other release would make
+   `apt-get update` fail with exit code 100. So on such a node the Ceph repository is moved to
+   Squid first, each file it changes kept as `*.velnox-ceph`. A node that runs Ceph is not changed
+   here: its Ceph is on Squid already, by the rule above.
 3. **packages** — `apt-get update` and the dist-upgrade, keeping the node's own configuration files.
 4. **reboot** — with Ceph's `noout` set around it, and only while the cluster keeps quorum.
 5. **validate** — the node back on Proxmox VE 9 and its new kernel, Ceph whole, `noout` cleared,
@@ -202,6 +224,7 @@ when the plan is made.
 | *The upgrade of … failed* | A target's upgrade or its validation failed. The targets before it are done. |
 | *Only a plan that has not run yet can be started or removed* | Make a new plan. |
 | *There is no playbook …, or it is not offered to you* | Self-tests need `system.manage`. |
-| *The running release, the target and the version matrix disagree* | The refusal names which; see [the version matrix](#ceph-a-major-upgrade). |
+| *The running release, the target and the version matrix disagree* | The refusal names which; see [the version matrix](#the-version-matrix). |
 | *Ceph runs …, and Proxmox VE 9 needs Squid* | Make the plan with **Upgrade Ceph to Squid first**. |
 | *Ceph is not whole: …* | After a daemon's restart Ceph did not come back healthy within the settle time, or showed a warning Velnox does not know. `noout` has been cleared. |
+| *apt.update ended with exit code 100* | `apt-get update` failed on the node. The technical detail carries apt's first `E:` line, and the job's output all of apt's — a repository without a Release file, a 401, a name that does not resolve. |

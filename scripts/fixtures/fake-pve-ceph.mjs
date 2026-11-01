@@ -16,6 +16,9 @@
  *   `{"cephRestartSeconds": 6}`      how long a restarted daemon is down
  *   `{"cephFailRestart": "osd.3"}`   that restart fails
  *   `{"cephReset": 2}`               any new value starts Ceph over
+ *   `{"cephAbsent": true}`          no Ceph daemons at all: a cluster where Ceph was never set up
+ *   `{"cephEnterprise": "pve1"}`    that node's Ceph repository starts on the enterprise
+ *                                    channel, and `/apt/repositories` shows each node's
  */
 
 const RELEASES = { 17: 'quincy', 18: 'reef', 19: 'squid' };
@@ -43,7 +46,14 @@ export function installCeph({ nodes, log, control, storage, extraWarn = () => fa
     state = {
       daemons,
       installed: Object.fromEntries(names.map((n) => [n, start])),
-      repo: Object.fromEntries(names.map((n) => [n, `deb http://download.proxmox.com/debian/ceph-${release} bookworm no-subscription`])),
+      repo: Object.fromEntries(
+        names.map((n) => [
+          n,
+          c.cephEnterprise === n
+            ? `deb https://enterprise.proxmox.com/debian/ceph-${release} bookworm enterprise`
+            : `deb http://download.proxmox.com/debian/ceph-${release} bookworm no-subscription`,
+        ]),
+      ),
       noout: false,
       requireOsdRelease: release,
     };
@@ -110,6 +120,7 @@ export function installCeph({ nodes, log, control, storage, extraWarn = () => fa
       };
     },
     '/api2/json/cluster/ceph/metadata': () => {
+      if (control().cephAbsent) return {};
       const s = current();
       const entry = (d) => ({ name: d.kind === 'osd' ? undefined : d.id, id: d.kind === 'osd' ? d.id : undefined, hostname: d.host, ceph_version_short: d.running });
       const of = (kind) => Object.fromEntries(s.daemons.filter((d) => d.kind === kind).map((d) => [String(d.id), entry(d)]));
@@ -136,6 +147,23 @@ export function installCeph({ nodes, log, control, storage, extraWarn = () => fa
 
   /** POST /nodes/{node}/ceph/restart service=…. */
   function handleNode(request, response, node, rest, send, readForm) {
+    // The node's Ceph repository as Proxmox's repository API reports it.
+    if (rest === 'apt/repositories' && request.method === 'GET' && control().cephEnterprise && !control().repos) {
+      const [, uri, suite, component] = /^deb (\S+) (\S+) (\S+)/.exec(current().repo[node]) ?? [];
+      send(response, 200, {
+        data: {
+          digest: 'ceph',
+          files: [
+            {
+              path: '/etc/apt/sources.list.d/ceph.list',
+              'file-type': 'list',
+              repositories: [{ Enabled: 1, Types: ['deb'], URIs: [uri], Suites: [suite], Components: [component] }],
+            },
+          ],
+        },
+      });
+      return true;
+    }
     if (rest !== 'ceph/restart' || request.method !== 'POST') return false;
     readForm(request).then((form) => {
       const s = current();

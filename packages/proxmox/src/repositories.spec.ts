@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RepositoryInfo } from './client';
-import { isEmptyChange, planNoSubscription } from './repositories';
+import { cephChannelOf, isEmptyChange, planNoSubscription } from './repositories';
 
 /**
  * Proxmox VE 8 writes one-line .list files, 9 writes deb822 .sources; the API
@@ -126,5 +126,35 @@ describe('a node with a subscription', () => {
   it('is never touched', () => {
     expect(isEmptyChange(planNoSubscription(pve8, { status: 'active', level: 'c' }))).toBe(true);
     expect(isEmptyChange(planNoSubscription(pve9, { status: 'active' }))).toBe(true);
+  });
+});
+
+describe('the channel a node’s Ceph repository is on', () => {
+  const ceph = (uri: string, components: string[], enabled = 1): RepositoryInfo => ({
+    files: [
+      {
+        path: '/etc/apt/sources.list.d/ceph.list',
+        repositories: [
+          { Enabled: enabled, URIs: [uri], Suites: ['bookworm'], Components: components },
+        ],
+      },
+    ],
+  });
+
+  it('is read from the enabled Ceph repository, enterprise or no-subscription', () => {
+    expect(cephChannelOf(pve8)).toBe('enterprise');
+    expect(
+      cephChannelOf(ceph('http://download.proxmox.com/debian/ceph-quincy', ['no-subscription'])),
+    ).toBe('no-subscription');
+  });
+
+  it('is none for a disabled one, a test one, or none at all', () => {
+    expect(
+      cephChannelOf(ceph('https://enterprise.proxmox.com/debian/ceph-reef', ['enterprise'], 0)),
+    ).toBeNull();
+    expect(
+      cephChannelOf(ceph('http://download.proxmox.com/debian/ceph-squid', ['test'])),
+    ).toBeNull();
+    expect(cephChannelOf({ files: [] })).toBeNull();
   });
 });

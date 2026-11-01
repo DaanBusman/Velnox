@@ -273,7 +273,9 @@ run, as they should). Velnox does not reduce CephFS to one active MDS for the up
 does, and says so on the plan. RGW daemons are not discovered, so not restarted. The repository is
 written to `ceph.list`; a node that uses the deb822 `ceph.sources` instead keeps that file as well.
 The exact sudo rule for the repository switch is left to the operator to read from the job; root is
-simplest. See ADR-051.
+simplest. On **Automatic**, each node's channel is read through Proxmox's repository API, which needs
+`Sys.Audit` on the node: without it the node gets no-subscription, and the job says it could not
+read. See ADR-051.
 
 ### Proxmox VE 8 → 9: proven against the fixture, pve8to9 against its own source
 The upgrade is proven against the fixture, whose nodes answer pve8to9 with pve8to9.pm's own messages
@@ -284,7 +286,9 @@ dist-upgrade where the guide would sometimes take the maintainer's; it does not 
 modernise apt sources to deb822. Proxmox's LVM autoactivation script is run as it is. A node too old
 for pve8to9 is updated within 8 first; one without a subscription is moved to the no-subscription
 repositories before that (see [A node without a subscription](updating-nodes.md#a-node-without-a-subscription)).
-See ADR-052.
+On a node that runs no Ceph daemon, the Ceph repository is moved to Squid by rewriting
+`/debian/ceph-<release>` in its apt sources — proven in the fixture and in a Debian container, not
+yet on a real node. See ADR-052.
 
 ### Certificates from the interface: what it proves, and what it costs
 Every mode is switched and read back over a real handshake, and ACME is proven against Pebble,
