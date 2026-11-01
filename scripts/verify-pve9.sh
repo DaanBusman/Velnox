@@ -292,8 +292,12 @@ pve_plan() { # name → response
 }
 run_plan() { call POST "/api/v1/upgrades/plans/$1/run" | json job.id; }
 inventory_ceph_is() { [[ "$(psql_at "SELECT string_agg(DISTINCT version, ',') FROM ceph_daemons WHERE cluster_id = '${CLUSTER_ID}';")" == "$1" ]] && printf yes; }
-inventory_pve_is() { [[ "$(psql_at "SELECT string_agg(DISTINCT pve_version, ',') FROM nodes WHERE cluster_id = '${CLUSTER_ID}';")" == *"$1"* ]] && printf yes; }
-fresh() { # control-json ceph-version [pve-version] → the fixture reset and the inventory reading it
+inventory_pve_is() { # one version for every node, or each node's in name order
+  local want="$1"
+  [[ "$want" == *" "* ]] || want="$want $want $want"
+  [[ "$(psql_at "SELECT string_agg(split_part(pve_version, '/', 2), ' ' ORDER BY name) FROM nodes WHERE cluster_id = '${CLUSTER_ID}';")" == "$want" ]] && printf yes
+}
+fresh() { # control-json ceph-version [pve-version(s)] → the fixture reset and the inventory reading it
   control "$1"
   discover
   [[ "$(wait_until 60 inventory_ceph_is "$2")" == yes && "$(wait_until 60 inventory_pve_is "${3:-8.4.14}")" == yes ]] && printf yes
@@ -398,6 +402,28 @@ check "no ceph: apt-get update never refused" 0 "$(FIXLOG | grep -c 'apt-get upd
 NC="$(call POST /api/v1/upgrades/plans "$(C="$CLUSTER_ID" R="$RUN" body '{ kind: "COMPOSITE", clusterId: e.C, name: e.R + " no ceph first", children: [ { name: "Ceph to Squid", playbookId: "velnox.ceph-major", options: {} }, { name: "Proxmox VE 8 to 9", playbookId: "velnox.pve-8-to-9", options: { nonMigratable: "SHUTDOWN" } } ] }')" | json id)"
 check "no ceph: 'Ceph to Squid first' asked for, no Ceph step planned" "201 velnox.pve-8-to-9" "$(last_status) $(plan "$NC" | pick 'd.children.map(c=>c.playbookId).join(",")')"
 call DELETE "/api/v1/upgrades/plans/${NC}" >/dev/null
+
+info "Nodes already on Proxmox VE 9: the upgrade does not apply to them."
+# The fixture's log since its nodes were last made fresh.
+major_log() { FIXLOG | awk '/major: fresh at/{n=0} {line[n++]=$0} END{for(i=0;i<n;i++)print line[i]}'; }
+check "fresh: every node on 9" yes "$(fresh '{"pve":"9.0.10","cephAbsent":true,"cephReset":8,"majorReset":8}' '' 9.0.10)"
+R="$(pve_plan "${RUN} all on nine")"
+check "every node on 9: no plan, and why" "409 upgrade.not_applicable" "$(last_status) $(printf '%s' "$R" | json error.code)"
+check "every node on 9: each named with its version" "pve1 9.0.10, pve2 9.0.10, pve3 9.0.10" "$(printf '%s' "$R" | json error.params.nodes)"
+# pve1, the first in the plan: the run starts at pve2, its canary is pve2,
+# and every step keeps the name of its node's place in the plan.
+check "fresh: pve1 already on 9, pve2 and pve3 on 8" yes "$(fresh '{"pve":"8.4.14","cephAbsent":true,"cephReset":9,"majorReset":9,"microcode":true,"sysctlConf":false,"pveNine":["pve1"]}' '' "9.0.10 8.4.14 8.4.14")"
+P6="$(pve_plan "${RUN} one on nine" | json id)"
+check "one on 9: planned, that node said not to apply" "201 pve1 NOT_APPLICABLE,pve2 PENDING,pve3 PENDING 9.0.10" "$(last_status) $(plan "$P6" | pick 'd.targetList.map(t=>t.label+" "+t.status).join(",")+" "+d.targetList[0].preState.version')"
+J6="$(run_plan "$P6")"
+check "one on 9: the canary is pve2 — upgraded, pve3 not yet" "WAITING_APPROVAL 9.0.10 8.4.14" "$(wait_for "$J6" 600 WAITING_APPROVAL SUCCEEDED FAILED) $(node_version pve2) $(node_version pve3)"
+check "approve the rest" 200 "$(approve "$J6")"
+check "one on 9: succeeds" SUCCEEDED "$(wait_for "$J6" 900 SUCCEEDED FAILED WAITING_APPROVAL)"
+check "one on 9: pve2 and pve3 upgraded, pve1 left as it was" "NOT_APPLICABLE,DONE,DONE" "$(plan "$P6" | pick 'd.targetList.map(t=>t.status).join(",")')"
+check "one on 9: nothing was done to pve1 — no sources, no packages, no reboot" 0 "$(major_log | grep -cE 'major: pve1 |ops: pve1 rebooting')"
+check "one on 9: every node on 9" "9.0.10 9.0.10 9.0.10" "$(node_version pve1) $(node_version pve2) $(node_version pve3)"
+# Steps are named by the node's place in the plan: pve1's would end in -1.
+check "one on 9: no step for pve1; pve2's and pve3's keep their names" "evacuate-2 evacuate-3 none" "$(job_field "$J6" steps | pick 'const k=d.map(s=>s.key);["evacuate-2","evacuate-3"].filter(x=>k.includes(x)).join(" ")+" "+(k.some(x=>/-1$/.test(x))?"some":"none")')"
 
 info "Ceph to Squid first, then Proxmox VE, as one composite."
 check "reef, clean otherwise" yes "$(fresh '{"pve":"8.4.14","cephStart":"18.2.4","cephReset":5,"majorReset":5,"microcode":true,"sysctlConf":false}' 18.2.4)"

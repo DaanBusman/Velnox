@@ -208,6 +208,8 @@ export const ERROR_CODES = {
   upgradeCephUnhealthy: 'upgrade.ceph_unhealthy',
   /** Proxmox VE 9 needs Ceph Squid: a Ceph cluster on an older release upgrades Ceph first (Phase 9B). */
   upgradeCephFirst: 'upgrade.ceph_first',
+  /** Every node already runs Proxmox VE 9: the upgrade from 8 to 9 does not apply (Phase 9B). */
+  upgradeNotApplicable: 'upgrade.not_applicable',
   /** A maintenance window still used by a policy. */
   maintenanceWindowInUse: 'maintenance.window_in_use',
 

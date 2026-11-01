@@ -382,7 +382,8 @@
       "child_failed": "Een plan van dit samengestelde plan is mislukt; de plannen erna zijn niet gestart.",
       "matrix_mismatch": "De draaiende release, het doel en de versiematrix spreken elkaar tegen; onverwacht is {unexpected, select, running {de release die draait} target {het doel} matrix {de matrix} other {{unexpected}}}: {reason}",
       "ceph_unhealthy": "Ceph is niet heel: {reason}",
-      "ceph_first": "Ceph draait {release}, en Proxmox VE 9 vraagt Squid: upgrade eerst Ceph — maak het plan met “Eerst Ceph naar Squid upgraden”."
+      "ceph_first": "Ceph draait {release}, en Proxmox VE 9 vraagt Squid: upgrade eerst Ceph — maak het plan met “Eerst Ceph naar Squid upgraden”.",
+      "not_applicable": "Deze upgrade is niet van toepassing: elke node draait al Proxmox VE 9 ({nodes})."
     },
     "validation": "Een deel van de ingevoerde waarden is niet geldig.",
     "ssh": {
@@ -1985,6 +1986,7 @@
     "cephChannelAuto": "Automatisch: zoals de Ceph-repository van elke node nu staat",
     "cephMds": "CephFS is voorbereid",
     "cephMdsHint": "Alleen met CephFS: max_mds is 1 en standby replay staat uit voor elk bestandssysteem, zoals de handleiding van Proxmox vraagt. Velnox herstart de MDS-daemons één voor één en wijzigt die instellingen niet.",
+    "notApplicable": "Niet van toepassing — draait al Proxmox VE {version}",
     "pveCephFirst": "Eerst Ceph naar Squid upgraden",
     "pveCephFirstHint": "Proxmox VE 9 vraagt Ceph Squid. Aangevinkt is het plan samengesteld: de Ceph-upgrade, dan — alleen als die voltooid is — Proxmox VE, node voor node. Velnox leest zelf welke release Ceph draait en plant de stappen naar Squid; draait Ceph al Squid, of heeft het cluster geen Ceph, dan is er geen Ceph-stap."
   },

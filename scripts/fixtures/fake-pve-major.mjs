@@ -19,6 +19,7 @@
  *   `{"systemdBoot": true}`         the systemd-boot meta-package installed
  *   `{"rootFreeGb": 3}`             free space on /
  *   `{"pve8to9Unknown": "…"}`       pve8to9 prints that line, unprefixed
+ *   `{"pveNine": ["pve3"]}`         those nodes already run Proxmox VE 9, on trixie
  *   `{"majorReset": 1}`             any new value starts the nodes over
  *
  * With `{"cephAbsent": true}` each node also has the Ceph repository Proxmox VE 8
@@ -41,10 +42,11 @@ export function installMajor({ nodes, log, control }) {
 
   const fresh = () => {
     const c = control();
+    const nine = [].concat(c.pveNine ?? []);
     state = Object.fromEntries(
       Object.keys(nodes).map((n) => [
         n,
-        {
+        nine.includes(n) ? alreadyNine() : {
           // Null until the node is upgraded: until then it follows the control file.
           pve: null,
           installedPve: null,
@@ -63,6 +65,26 @@ export function installMajor({ nodes, log, control }) {
     );
     log(`major: fresh at ${String(c.pve ?? '8.2.4')}`);
   };
+  /** A node upgraded before Velnox saw it: 9 installed and running, its sources on trixie. */
+  const alreadyNine = () => ({
+    pve: PVE9,
+    installedPve: PVE9,
+    sources: [
+      'deb http://deb.debian.org/debian trixie main contrib',
+      'deb http://deb.debian.org/debian trixie-updates main contrib',
+      'deb http://security.debian.org/debian-security trixie-security main contrib',
+      '',
+    ].join('\n'),
+    pveRepo: 'deb http://download.proxmox.com/debian/pve trixie pve-no-subscription\n',
+    cephRepo: 'deb http://download.proxmox.com/debian/ceph-squid trixie no-subscription\n',
+    microcode: true,
+    vendor: 'GenuineIntel',
+    sysctl: SYSCTL_COMMENTS,
+    sysctlD: {},
+    systemdBoot: false,
+    rootFreeGb: 40,
+    kernel9Installed: true,
+  });
   const current = () => {
     const c = control();
     if (!state || c.majorReset !== lastReset) {

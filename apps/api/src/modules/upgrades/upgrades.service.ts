@@ -49,6 +49,13 @@ export const UPGRADE_AUDIT = {
 
 const DAEMON_ORDER = ['MON', 'MGR', 'OSD', 'MDS', 'RGW'];
 
+/** Proxmox VE 9 or later, from the version as the inventory records it: `pve-manager/9.0.10/…`. */
+const onNine = (version: string | null) =>
+  Number(/(?:^|\/)(\d+)\.\d+/.exec(version ?? '')?.[1] ?? 0) >= 9;
+/** Just the version: `9.0.10`. */
+const versionOf = (version: string | null) =>
+  /(?:^|\/)(\d+\.\d+(?:\.\d+)?)/.exec(version ?? '')?.[1] ?? version;
+
 interface PlannedTarget {
   targetKind: 'NODE' | 'CEPH_DAEMON';
   nodeId?: string;
@@ -56,6 +63,9 @@ interface PlannedTarget {
   label: string;
   daemonGroup: string | null;
   sequence: number;
+  /** Set only when the target is left out from the start: `NOT_APPLICABLE`. */
+  status?: string;
+  preState?: Prisma.InputJsonValue;
 }
 
 interface PlanChild {
@@ -234,6 +244,11 @@ export class UpgradesService {
         label: n.name,
         daemonGroup: null,
         sequence: i + 1,
+        // Proxmox VE 8 → 9 does not apply to a node that already runs 9: it
+        // is in the plan, said to be so, and never touched (the run leaves it out).
+        ...(def.kind === 'PVE_MAJOR' && onNine(n.pveVersion)
+          ? { status: 'NOT_APPLICABLE', preState: { version: versionOf(n.pveVersion) } }
+          : {}),
       }));
     }
     const daemons = await this.prisma.client.cephDaemon.findMany({ where: { clusterId } });
@@ -290,6 +305,16 @@ export class UpgradesService {
             def.targetKind === 'NODE'
               ? 'The cluster has no nodes in the inventory'
               : 'The cluster has no Ceph daemons in the inventory',
+        });
+      }
+      if (def.kind === 'PVE_MAJOR' && targets.every((t) => t.status === 'NOT_APPLICABLE')) {
+        throw new VelnoxError(ERROR_CODES.upgradeNotApplicable, {
+          status: 409,
+          params: {
+            nodes: targets
+              .map((t) => `${t.label} ${(t.preState as { version: string }).version}`)
+              .join(', '),
+          },
         });
       }
       planned.push({
@@ -509,7 +534,10 @@ export class UpgradesService {
       clusterId: row.clusterId,
       playbookId: row.playbookId!,
       playbookVersion: row.playbookVersion ?? 1,
-      targets: row.targets.map((t) => ({ id: t.id, label: t.label })),
+      // A target left out from the start is not the run's.
+      targets: row.targets
+        .filter((t) => t.status !== 'NOT_APPLICABLE')
+        .map((t) => ({ id: t.id, label: t.label, sequence: t.sequence })),
     };
     const job = await this.jobs.create(
       {

@@ -82,6 +82,9 @@ const remediationImpls = (): Record<string, RemediationImpl> => ({
   ...PVE_REMEDIATION_IMPLS,
 });
 
+/** One target of a run, as its job carries it. */
+type Unit = UpgradeJobParams['targets'][number];
+
 const labelOf = (row: PlanRow, targetId: string | null) =>
   targetId ? (row.targets.find((t) => t.id === targetId)?.label ?? 'a target') : row.cluster.name;
 
@@ -402,7 +405,11 @@ export function parseUpgradeParams(raw: unknown): UpgradeJobParams {
     playbookVersion: Number(v.playbookVersion ?? 1),
     targets: v.targets
       .filter((t) => t && typeof t.id === 'string')
-      .map((t) => ({ id: t.id, label: String(t.label) })),
+      .map((t, i) => ({
+        id: t.id,
+        label: String(t.label),
+        sequence: typeof t.sequence === 'number' ? t.sequence : i + 1,
+      })),
   };
 }
 
@@ -436,12 +443,11 @@ export function upgradePlaybook(raw: unknown, jobId: string, services: LibrarySe
     };
   };
 
-  const taskFor = (
-    step: PlaybookStepDef,
-    unit: { id: string; label: string } | null,
-  ): StepDefinition => {
+  const taskFor = (step: PlaybookStepDef, unit: Unit | null): StepDefinition => {
     const action = actions[step.action]!;
-    const key = unit ? `${step.key}-${params.targets.indexOf(unit) + 1}` : step.key;
+    const key = unit
+      ? `${step.key}-${unit.sequence ?? params.targets.indexOf(unit) + 1}`
+      : step.key;
     const targetOf = async () =>
       unit ? ((await plan(rt)).targets.find((t) => t.id === unit.id) ?? null) : null;
     return {
@@ -471,10 +477,7 @@ export function upgradePlaybook(raw: unknown, jobId: string, services: LibrarySe
   };
 
   /** Wait for a person after the first target: what it was, what it is now. */
-  const canaryGate = (
-    step: PlaybookStepDef,
-    unit: { id: string; label: string },
-  ): StepDefinition => ({
+  const canaryGate = (step: PlaybookStepDef, unit: Unit): StepDefinition => ({
     kind: 'approval',
     key: step.key,
     phase: step.phase,

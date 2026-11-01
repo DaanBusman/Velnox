@@ -139,6 +139,12 @@ Proxmox VE plan on its own is refused there. There is no release to pick: Velnox
 runs and plans the steps to Squid itself, and leaves the Ceph step out when Ceph already runs Squid or
 the cluster has no Ceph. The repository channel is automatic too, unless one is picked.
 
+**A node already on Proxmox VE 9** — read from the inventory when the plan is made — is in the plan
+as **Not applicable**, and the run leaves it alone: no checks, no evacuation, no packages, no reboot.
+The canary is then the first node that is upgraded. When every node already runs 9, there is no plan:
+*This upgrade does not apply*, with each node and its version. A node the inventory still had on 8,
+found on 9 when its turn comes, is skipped the same way and ends as **Not applicable** too.
+
 **First, every node on the latest Proxmox VE 8.** pve8to9 only exists from pve-manager 8.4.2 on; on
 an older node there is nothing to run. So Velnox reads every node's version first, and a node below
 8.4.2 is brought to the latest Proxmox VE 8 on bookworm — `apt-get update` and the dist-upgrade,
@@ -225,6 +231,7 @@ when the plan is made.
 | *Only a plan that has not run yet can be started or removed* | Make a new plan. |
 | *There is no playbook …, or it is not offered to you* | Self-tests need `system.manage`. |
 | *The running release, the target and the version matrix disagree* | The refusal names which; see [the version matrix](#the-version-matrix). |
+| *This upgrade does not apply: every node already runs Proxmox VE 9* | There is nothing to upgrade. To read versions again first, rediscover the cluster. |
 | *Ceph runs …, and Proxmox VE 9 needs Squid* | Make the plan with **Upgrade Ceph to Squid first**. |
 | *Ceph is not whole: …* | After a daemon's restart Ceph did not come back healthy within the settle time, or showed a warning Velnox does not know. `noout` has been cleared. |
 | *apt.update ended with exit code 100* | `apt-get update` failed on the node. The technical detail carries apt's first `E:` line, and the job's output all of apt's — a repository without a Release file, a 401, a name that does not resolve. |

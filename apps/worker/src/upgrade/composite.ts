@@ -26,6 +26,14 @@ import { runPlaybookCleanup, writeReport } from './engine';
 
 export const UPGRADE_DRIVER_INTERVAL_MS = 10_000;
 
+/** What a run goes through: every target but one left out from the start. */
+const runTargets = (
+  targets: readonly { id: string; label: string; status: string; sequence: number }[],
+) =>
+  targets
+    .filter((t) => t.status !== 'NOT_APPLICABLE')
+    .map((t) => ({ id: t.id, label: t.label, sequence: t.sequence }));
+
 export async function driveUpgrades(
   prisma: VelnoxPrismaClient,
   queue: Queue,
@@ -59,7 +67,7 @@ export async function driveUpgrades(
             clusterId: plan.clusterId,
             playbookId: plan.playbookId,
             playbookVersion: plan.playbookVersion ?? 1,
-            targets: plan.targets.map((t) => ({ id: t.id, label: t.label })),
+            targets: runTargets(plan.targets),
           },
           plan.jobId!,
         ).catch(() => undefined);
@@ -121,7 +129,7 @@ export async function driveUpgrades(
         clusterId: child.clusterId,
         playbookId: child.playbookId!,
         playbookVersion: child.playbookVersion ?? 1,
-        targets: child.targets.map((t) => ({ id: t.id, label: t.label })),
+        targets: runTargets(child.targets),
       };
       let jobId: string;
       try {

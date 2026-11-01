@@ -632,7 +632,13 @@ export interface UpgradeJobParams {
   clusterId: string;
   playbookId: string;
   playbookVersion: number;
-  targets: { id: string; label: string }[];
+  /**
+   * The targets the run goes through, in order. `sequence` is the target's
+   * place in the plan, which names its steps (`evacuate-3`): a target left
+   * out of the run does not shift the others'. Absent in jobs made before it
+   * was: their place in this list, which was the same.
+   */
+  targets: { id: string; label: string; sequence?: number }[];
 }
 
 export interface UpgradePlanSummary {

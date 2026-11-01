@@ -199,7 +199,8 @@ export const PVE_PROVIDERS: Record<string, CheckProvider> = {
   'pve.pve8to9': async (rt, row) =>
     withPve(rt, async (pve) => {
       const out: Finding[] = [];
-      for (const target of row.targets) {
+      // A node already on 9 is not upgraded, so not checked for it either.
+      for (const target of row.targets.filter((t) => t.status !== 'NOT_APPLICABLE')) {
         // Too old to have pve8to9: say so, rather than fail on "command not found".
         const { version } = await nodeVersion(pve, target.label);
         if (!hasPve8to9(version)) {
@@ -480,7 +481,8 @@ export const PVE_ACTIONS: Record<string, UpgradeAction> = {
     });
     const behind: string[] = [];
     await withPve(rt, async (pve) => {
-      for (const target of row.targets) {
+      // A node already on 9 is not upgraded, so not checked for it either.
+      for (const target of row.targets.filter((t) => t.status !== 'NOT_APPLICABLE')) {
         const { version } = await nodeVersion(pve, target.label);
         if (hasPve8to9(version)) continue;
         const finding = pve8to9Missing(target.id, target.label, version);
@@ -782,7 +784,13 @@ export const PVE_ACTIONS: Record<string, UpgradeAction> = {
       }
     });
     for (const line of left) await context.log('STDERR', line);
-    await setTarget(rt, target, { status: 'DONE', finishedAt: new Date() });
+    // One the inventory still had on 8, found on 9 when its turn came: nothing
+    // was done to it, and the plan says why.
+    const before = (target.preState as { version?: string | null } | null)?.version ?? null;
+    await setTarget(rt, target, {
+      status: onNine(before) ? 'NOT_APPLICABLE' : 'DONE',
+      finishedAt: new Date(),
+    });
     return { returned: moves.length + stopped.length - left.length, left: left.length };
   },
 

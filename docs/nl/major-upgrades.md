@@ -149,6 +149,13 @@ release te kiezen: Velnox leest welke Ceph draait en plant zelf de stappen naar 
 Ceph-stap weg als Ceph al Squid draait of het cluster geen Ceph heeft. Ook het repositorykanaal is
 automatisch, tenzij er een gekozen wordt.
 
+**Een node die al Proxmox VE 9 draait** — gelezen uit de inventaris wanneer het plan gemaakt wordt —
+staat in het plan als **Niet van toepassing**, en de run laat hem met rust: geen controles, geen
+evacuatie, geen pakketten, geen herstart. De canary is dan de eerste node die wel geüpgraded wordt.
+Draait elke node al 9, dan komt er geen plan: *Deze upgrade is niet van toepassing*, met elke node en
+zijn versie. Een node die de inventaris nog op 8 had en op 9 blijkt als hij aan de beurt is, wordt
+net zo overgeslagen en eindigt ook als **Niet van toepassing**.
+
 **Eerst elke node op de laatste Proxmox VE 8.** pve8to9 bestaat pas vanaf pve-manager 8.4.2; op een
 oudere node valt er niets te draaien. Daarom leest Velnox eerst de versie van elke node, en een node
 onder 8.4.2 wordt naar de laatste Proxmox VE 8 op bookworm gebracht — `apt-get update` en de
@@ -241,6 +248,7 @@ doel dat mislukt — gekozen als het plan wordt gemaakt.
 | *Alleen een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden* | Maak een nieuw plan. |
 | *Er is geen playbook …, of het wordt jou niet aangeboden* | Zelftests vragen `system.manage`. |
 | *De draaiende release, het doel en de versiematrix spreken elkaar tegen* | De weigering noemt welke; zie [de versiematrix](#de-versiematrix). |
+| *Deze upgrade is niet van toepassing: elke node draait al Proxmox VE 9* | Er valt niets te upgraden. Wil je de versies eerst opnieuw laten lezen, ontdek het cluster dan opnieuw. |
 | *Ceph draait …, en Proxmox VE 9 vraagt Squid* | Maak het plan met **Eerst Ceph naar Squid upgraden**. |
 | *Ceph is niet heel: …* | Na de herstart van een daemon kwam Ceph niet binnen de stabilisatietijd gezond terug, of toonde een waarschuwing die Velnox niet kent. `noout` is uitgezet. |
 | *apt.update eindigde met exitcode 100* | `apt-get update` mislukte op de node. Het technisch detail bevat de eerste `E:`-regel van apt, en de uitvoer van de job alles van apt — een repository zonder Release-bestand, een 401, een naam die niet resolvet. |

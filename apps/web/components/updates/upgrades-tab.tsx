@@ -492,7 +492,13 @@ function PlanDetail({
                         <span className="text-xs text-ink-muted"> ({x.group})</span>
                       ) : null}
                     </td>
-                    <td>{x.status}</td>
+                    <td>
+                      {x.status === 'NOT_APPLICABLE'
+                        ? t('upgrades.notApplicable', {
+                            version: String(x.preState?.version ?? '9'),
+                          })
+                        : x.status}
+                    </td>
                     <td>{x.preState ? JSON.stringify(x.preState) : '—'}</td>
                     <td>{x.postState ? JSON.stringify(x.postState) : '—'}</td>
                   </tr>
