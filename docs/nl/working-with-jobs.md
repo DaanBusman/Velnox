@@ -1,6 +1,6 @@
 # Jobs volgen, annuleren en goedkeuren
 
-> **Vertaling.** Bron: [docs/working-with-jobs.md](../working-with-jobs.md) @ `af7e616`.
+> **Vertaling.** Bron: [docs/working-with-jobs.md](../working-with-jobs.md) @ `68b85aa`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Alles wat Velnox doet en langer duurt dan het laden van een pagina, is een job.** Een job heeft
@@ -27,6 +27,28 @@ openstaat. Staat verversen uit, dan doet hij geen van beide. Een job openen toon
 niet klaar zijn, en die in het afgelopen half uur zijn afgerond, met hun status en voortgang, plus
 uploads naar de ISO-bibliotheek. Klik erop om hem te openen of te sluiten; dat onthoudt hij in deze
 browser.
+
+### Oudere jobs uit beeld
+
+De MSP Super Administrator kan afgeronde jobs na een aantal dagen verbergen voor iedereen zonder
+`jobs.history`. Op het scherm **Jobs** neemt de kaart **Oudere jobs** bovenaan het aantal dagen,
+van 1 tot 3650; laat het leeg, of kies **Weer elke job tonen**, om niets te verbergen. Dat is de
+standaard.
+
+- Een job telt vanaf het moment dat hij **klaar** was. Een job die nog in de wachtrij staat, loopt of
+  op goedkeuring wacht, wordt nooit verborgen, hoe oud ook.
+- **Er wordt niets verwijderd.** De job, zijn stappen en zijn uitvoer blijven in de database, voor de
+  supportlogs van wie ze mag zien en voor iedereen met `jobs.history`.
+- Een verborgen job is overal verborgen: in de lijst, in **Lopende jobs**, in de placementgeschiedenis
+  van een cluster en in een export van de supportlogs. Zijn adres geeft 'niet gevonden', net als een
+  job van een andere klant.
+- Wie het treft, ziet boven de lijst een regel die zegt na hoeveel dagen jobs verborgen worden, zodat
+  een lege lijst nooit lijkt alsof er niets gebeurd is.
+
+`jobs.history` hoort bij de **MSP Super Administrator** en de **MSP Administrator**. Een eigen
+MSP-rol kan het ook krijgen: in de rolbewerker staat het onder *Jobs*. Het aantal dagen instellen
+vereist `system.manage`. Elke wijziging komt in het auditlog als `jobs.visibility_changed`, met de
+oude en de nieuwe waarde.
 
 ## Wat de statussen betekenen
 
@@ -156,5 +178,7 @@ testinstallatie, niet op een die echt werk doet.
 | Jobs te zien | `jobs.read` voor de tenant van de job |
 | Een job te annuleren | `jobs.cancel` voor de tenant van de job |
 | Goed te keuren of af te wijzen | `jobs.approve` voor de tenant van de job, plus het eigen recht van het goedkeuringspunt |
+| Afgeronde jobs te zien die ouder zijn dan de ingestelde periode | `jobs.history` voor de tenant van de job |
+| Die periode in te stellen | `system.manage` |
 | Een job opnieuw te proberen | Wat het starten van dat soort job vereist — `system.manage` voor een diagnostische job |
 | Een diagnostische job te starten | `system.manage` |

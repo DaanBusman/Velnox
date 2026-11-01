@@ -1,6 +1,6 @@
 # Rollen en rechten
 
-> **Vertaling.** Bron: [docs/permissions.md](../permissions.md) @ `03ad728`.
+> **Vertaling.** Bron: [docs/permissions.md](../permissions.md) @ `68b85aa`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **De volledige specificatie van wat elke rol toekent.** Dit is de referentie; het scherm
@@ -62,8 +62,8 @@ in je eigen organisatie.
 
 | Rol | Sleutel | Alleen MSP | Kent toe | Voor |
 |---|---|:-:|--:|---|
-| MSP Super Administrator | `msp_super_administrator` | ja | 46 van 46 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
-| MSP Administrator | `msp_administrator` | ja | 43 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, niet hoe lang supportlogs bewaard blijven, en niet de tweede factor van een collega. |
+| MSP Super Administrator | `msp_super_administrator` | ja | 47 van 47 | De eerste beheerder. De enige rol met installatiebrede instellingen. |
+| MSP Administrator | `msp_administrator` | ja | 44 | Runt de MSP dagelijks, inclusief mensen. Geen installatie-instellingen, niet hoe lang supportlogs bewaard blijven, en niet de tweede factor van een collega. |
 | MSP Engineer | `msp_engineer` | ja | 37 | Runt het landschap, en kan de tweede factor van een klant resetten. Geen identiteitsbeheer, geen auditlog. |
 | MSP Read Only | `msp_read_only` | ja | 22 | Ziet alles over alle tenants, wijzigt niets. |
 | Tenant Administrator | `tenant_administrator` | nee | 40 | Volledige controle binnen één tenant, inclusief de mensen van die tenant. |
@@ -127,6 +127,7 @@ Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only
 | `jobs.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `jobs.cancel` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `jobs.approve` | ✓ | ✓ | · | · | ✓ | · | · |
+| `jobs.history` | ✓ | ✓ | · | · | · | · | · |
 | `alerts.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `alerts.manage` | ✓ | ✓ | ✓ | · | ✓ | ✓ | · |
 | `reports.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -187,6 +188,7 @@ vandaag toekenbaar en bewaakt nog niets.
 | `jobs.read` | Wachtende, lopende en afgeronde jobs zien | 5 |
 | `jobs.cancel` | Een lopende job annuleren | 5 |
 | `jobs.approve` | Een job goedkeuren die op een mens wacht | 5 |
+| `jobs.history` | Afgeronde jobs zien die ouder zijn dan de periode ingesteld op het scherm Jobs; zonder dit zijn ze uit beeld | 0.7.16 |
 | `alerts.read` | Meldingen zien | 4 |
 | `alerts.manage` | Meldingen bevestigen en afhandelen | 4 |
 | `reports.read` | Rapporten zien en exporteren | 8 |
