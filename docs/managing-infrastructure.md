@@ -240,6 +240,11 @@ nodes in Proxmox itself:** forming the cluster is done in Proxmox, as before. Yo
 Open a cluster for its nodes, its guests, its Ceph and — on the **Discovery runs** tab — what the
 last few attempts could and could not read.
 
+**Read now**, at the top of a cluster's page, asks for a full discovery run straight away instead of
+waiting for the schedule, and opens **Discovery runs** to show it. Pressed while a run is already
+going, it says so and queues nothing. **Refresh** beside it only re-reads what Velnox already has; it
+does not reach Proxmox.
+
 **Nodes**, **Virtual Machines** and **Containers** are the same data across every cluster you can
 see, for when the question is "where is the disk" rather than "how is this cluster".
 
@@ -316,7 +321,7 @@ maintenance somebody was called away from. Clear it unless maintenance is runnin
 
 | What you see | What it usually is |
 |---|---|
-| *Velnox cannot reach…* | Firewall between the Velnox host and port 8006, or DNS. The worker is the only service that connects outward. |
+| *… could not be reached* | The message says which way it failed, with what to check for that one: *no connection within the time limit* — a firewall dropping traffic to port 8006, or the node is off; *connection refused* — nothing listens: `pveproxy` stopped, the wrong port, or a node still starting up; *connected, but Proxmox did not answer in time* — the API is stuck on the node: `systemctl status pveproxy pvedaemon pve-cluster`; *no route to the host*; *the name did not resolve*. The worker is the only service that connects outward, so test from the Velnox host, not from your own machine. |
 | *That does not look like a Proxmox API* | Right host, wrong port — or a reverse proxy in front of Proxmox answering instead. |
 | *Certificate fingerprint mismatch* | The node's certificate changed. That happens legitimately when it is renewed or the node is rebuilt — and it is also exactly what an interception looks like. Check `pvenode cert info` on the node, then remove the cluster and add it again with the new fingerprint. Velnox will not quietly accept a new certificate for you. |
 | *Proxmox refused the credentials* | The token was revoked, or its privilege separation excludes what Velnox reads. `PVEAuditor` on `/` is enough. |

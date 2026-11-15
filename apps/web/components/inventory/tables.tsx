@@ -869,10 +869,14 @@ export function AlertTable({ alerts }: { alerts: AlertRow[] }) {
                       An unknown code falls back to the code itself rather than to
                       a blank cell — a new alert must never be invisible. */}
                   {t.has(`alerts.code.${alert.code.replace(/\./g, '_')}`)
-                    ? t(
-                        `alerts.code.${alert.code.replace(/\./g, '_')}`,
-                        alert.params as Record<string, never>,
-                      )
+                    ? t(`alerts.code.${alert.code.replace(/\./g, '_')}`, {
+                        ...(alert.params as Record<string, never>),
+                        // A reason is a word to translate, not a value to print.
+                        ...(typeof alert.params.reason === 'string' &&
+                        t.has(`errors.reasons.${alert.params.reason}`)
+                          ? { reason: t(`errors.reasons.${alert.params.reason}`) }
+                          : {}),
+                      } as Record<string, never>)
                     : alert.code}
                 </td>
                 <td className="px-3 py-2.5 text-ink-muted">

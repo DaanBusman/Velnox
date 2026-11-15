@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { clusterFailureReason } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
 
 /**
@@ -70,7 +71,12 @@ export class AlertsService {
           code: 'cluster.unreachable',
           severity: 'CRITICAL',
           subject: cluster.endpointHost,
-          params: { host: cluster.endpointHost, reason: cluster.lastErrorCode ?? 'unknown' },
+          // A word the interface translates. It was the error code itself, which
+          // put "(cluster.unreachable)" in a sentence an operator reads.
+          params: {
+            host: cluster.endpointHost,
+            reason: clusterFailureReason(cluster.lastErrorCode, cluster.lastErrorDetail),
+          },
           since: cluster.lastSeenAt?.toISOString() ?? null,
         });
       }

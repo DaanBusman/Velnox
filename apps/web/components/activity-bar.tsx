@@ -107,6 +107,7 @@ export function ActivityBar() {
         </Link>
         <p className="truncate text-[11px] text-ink-muted">
           {job.tenantName}
+          {job.cluster && ` · ${job.cluster.name}`}
           {job.currentStep && ` · ${job.currentStep}`}
           {' · '}
           {TERMINAL_JOB_STATUSES.has(job.status)

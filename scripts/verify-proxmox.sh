@@ -459,6 +459,27 @@ QUIET="$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastSeenAt)"
 sleep 4
 check "live: once nobody watches, it stops" "$QUIET" "$(call GET "/api/v1/clusters/${CLUSTER_ID}" | json lastSeenAt)"
 
+# Read now (0.7.19): one run at a time. A RUNNING row is planted rather than
+# raced for — a real run against the fixture finishes in well under a second,
+# and a check that depends on catching it mid-run is a check that flakes.
+psql_at() {
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T postgres \
+    psql -U velnox -d velnox -v ON_ERROR_STOP=1 -Atc "$1"
+}
+PLANTED="$(psql_at "INSERT INTO discovery_runs (id, tenant_id, cluster_id, state, started_at) SELECT gen_random_uuid(), tenant_id, id, 'RUNNING', now() FROM clusters WHERE id = '${CLUSTER_ID}' RETURNING id;" | head -1)"
+BUSY="$(call POST "/api/v1/clusters/${CLUSTER_ID}/discover")"
+check "read now: a second press while a run is going queues nothing" false "$(printf '%s' "$BUSY" | json queued)"
+check "read now: and says one is already running" true "$(printf '%s' "$BUSY" | json alreadyRunning)"
+psql_at "UPDATE discovery_runs SET started_at = now() - interval '11 minutes' WHERE id = '${PLANTED}';" >/dev/null
+STALE="$(call POST "/api/v1/clusters/${CLUSTER_ID}/discover")"
+check "read now: a run left RUNNING by a dead worker does not hold the button" true "$(printf '%s' "$STALE" | json queued)"
+psql_at "DELETE FROM discovery_runs WHERE id = '${PLANTED}';" >/dev/null
+# Let the run it queued finish before the plug is pulled.
+for _ in $(seq 1 30); do
+  [[ "$(call GET "/api/v1/clusters/${CLUSTER_ID}/discovery-runs" | json runs.0.state)" != RUNNING ]] && break
+  sleep 1
+done
+
 docker rm -f "$FIXTURE_NAME" >/dev/null 2>&1
 call POST "/api/v1/clusters/${CLUSTER_ID}/discover" >/dev/null
 
@@ -474,6 +495,19 @@ for _ in $(seq 1 30); do
 done
 check "an unreachable cluster is marked failed" FAILED "$(printf '%s' "$GONE" | json connectionState)"
 check "and says why, as a code the interface translates" cluster.unreachable "$(printf '%s' "$GONE" | json lastErrorCode)"
+# The fixture's name went with its container, so the silence is a name that no
+# longer resolves — and the cluster says that, not only "unreachable" (0.7.19).
+check "and which way it failed, as a word the interface translates" dns "$(printf '%s' "$GONE" | json lastErrorReason)"
+contains "with the reason in the stored detail" '[dns]' "$(printf '%s' "$GONE" | json lastErrorDetail)"
+GONE_RUN="$(call GET "/api/v1/clusters/${CLUSTER_ID}/discovery-runs" | json runs.0.errorReason)"
+check "the failed run carries the same reason" dns "$GONE_RUN"
+ALERT_REASON="$(call GET /api/v1/alerts | node -e '
+  let raw = ""; process.stdin.on("data", (c) => (raw += c)).on("end", () => {
+    const body = JSON.parse(raw);
+    const alert = (body.alerts || []).find((a) => a.clusterId === process.argv[1] && a.code === "cluster.unreachable");
+    process.stdout.write(alert ? String(alert.params.reason) : "none");
+  });' "$CLUSTER_ID")"
+check "the alert names the reason, not the error code" dns "$ALERT_REASON"
 check "and keeps the inventory it had" 3 "$(printf '%s' "$GONE" | json nodeCount)"
 
 STILL="$(call GET "/api/v1/nodes?clusterId=${CLUSTER_ID}")"

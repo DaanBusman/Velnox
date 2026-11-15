@@ -344,9 +344,63 @@ export class JobsService {
     // The data layer already limits this to tenants the actor can reach at
     // all. Reaching a tenant is not the same as holding jobs.read there, so
     // each row is checked for that permission too.
-    return rows
-      .filter((row) => isAllowed(actor.grants, PERMISSIONS.jobsRead, { tenantId: row.tenantId }))
-      .map(summarise);
+    const allowed = rows.filter((row) =>
+      isAllowed(actor.grants, PERMISSIONS.jobsRead, { tenantId: row.tenantId }),
+    );
+    const clusters = await this.clustersOf(allowed);
+    return allowed.map((row) => summarise(row, clusters));
+  }
+
+  /**
+   * The cluster each job is about, by name, in two queries for a whole page.
+   *
+   * The jobs screen showed `cluster:6050c72d-…` — the concurrency key — and the
+   * running-jobs bar showed nothing at all, so "which cluster is this updating"
+   * meant opening the job and reading its parameters. A job names its cluster
+   * three ways: the key it holds, a cluster target, or a node target whose node
+   * belongs to one. A name is looked up only within the job's own tenant.
+   */
+  private async clustersOf(rows: JobRow[]): Promise<Map<string, { id: string; name: string }>> {
+    const direct = new Map<string, string>();
+    const viaNode = new Map<string, string>();
+    for (const row of rows) {
+      const fromKey = /^cluster:([0-9a-f-]{36})$/i.exec(row.concurrencyKey ?? '')?.[1];
+      const kind = row.targetKind?.toLowerCase();
+      const first = row.targetIds[0];
+      if (fromKey) direct.set(row.id, fromKey);
+      else if (kind === 'cluster' && first) direct.set(row.id, first);
+      else if (kind === 'node' && first) viaNode.set(row.id, first);
+    }
+
+    const nodes = viaNode.size
+      ? await this.prisma.client.node.findMany({
+          where: { id: { in: [...new Set(viaNode.values())] } },
+          select: { id: true, clusterId: true },
+        })
+      : [];
+    const clusterOfNode = new Map(nodes.map((node) => [node.id, node.clusterId]));
+    for (const [jobId, nodeId] of viaNode) {
+      const clusterId = clusterOfNode.get(nodeId);
+      if (clusterId) direct.set(jobId, clusterId);
+    }
+
+    const ids = [...new Set(direct.values())];
+    const clusters = ids.length
+      ? await this.prisma.client.cluster.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, name: true, tenantId: true },
+        })
+      : [];
+    const byId = new Map(clusters.map((cluster) => [cluster.id, cluster]));
+
+    const result = new Map<string, { id: string; name: string }>();
+    for (const row of rows) {
+      const cluster = byId.get(direct.get(row.id) ?? '');
+      if (cluster && cluster.tenantId === row.tenantId) {
+        result.set(row.id, { id: cluster.id, name: cluster.name });
+      }
+    }
+    return result;
   }
 
   async get(id: string, actor: Actor): Promise<JobDetail> {
@@ -367,7 +421,7 @@ export class JobsService {
     );
 
     return {
-      ...summarise(job),
+      ...summarise(job, await this.clustersOf([job])),
       params: (job.params ?? {}) as Record<string, unknown>,
       steps: steps.map((step) => ({
         key: step.stepKey,
@@ -793,7 +847,7 @@ export class JobsService {
   }
 }
 
-function summarise(job: JobRow): JobSummary {
+function summarise(job: JobRow, clusters: Map<string, { id: string; name: string }>): JobSummary {
   return {
     id: job.id,
     tenantId: job.tenantId,
@@ -812,6 +866,7 @@ function summarise(job: JobRow): JobSummary {
     targetKind: job.targetKind,
     targetIds: job.targetIds,
     concurrencyKey: job.concurrencyKey,
+    cluster: clusters.get(job.id) ?? null,
     parentJobId: job.parentJobId,
     cancelRequested: job.cancelRequestedAt !== null,
     eventSeq: job.eventSeq,

@@ -348,6 +348,12 @@ export interface JobSummary {
   targetKind: string | null;
   targetIds: string[];
   concurrencyKey: string | null;
+  /**
+   * The cluster the job works on, by name — from its `cluster:<id>` key, a
+   * cluster target or the node it targets. Null for a job about no cluster,
+   * and for one whose cluster has since been removed.
+   */
+  cluster: { id: string; name: string } | null;
   parentJobId: string | null;
   cancelRequested: boolean;
   /** The last event sequence number, so a stream can start from here. */

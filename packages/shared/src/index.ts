@@ -26,6 +26,7 @@ export * from './changes';
 export * from './cluster-merge';
 export * from './system';
 export * from './updates';
+export * from './reachability';
 
 /**
  * Queue and job names shared between the API (producer) and the worker (consumer).

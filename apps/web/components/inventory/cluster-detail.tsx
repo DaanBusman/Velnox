@@ -11,7 +11,7 @@ import type {
   NodeSummary,
   WorkloadSummary,
 } from '@/lib/session-types';
-import { apiDelete, type ApiFailure } from '@/lib/client-api';
+import { apiDelete, apiPost, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { Button, FormError } from '@/components/ui/form';
@@ -75,6 +75,8 @@ export function ClusterDetail({
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [confirmingRemoval, setConfirmingRemoval] = useState(false);
   const [editingSsh, setEditingSsh] = useState(false);
+  /** What the last press of Read now did: queued a run, or found one already going. */
+  const [readNow, setReadNow] = useState<'queued' | 'running' | null>(null);
 
   // Paused while a removal is being confirmed, for the same reason the add form
   // pauses it: a refresh can unmount the tree, and a confirmation that vanishes
@@ -116,11 +118,48 @@ export function ClusterDetail({
         title={cluster.name}
         description={`${cluster.endpointHost}:${cluster.endpointPort}`}
         actions={
-          <Button variant="secondary" onClick={() => router.refresh()}>
-            {t('common.refresh')}
-          </Button>
+          <div className="flex gap-2">
+            {/*
+              Read now asks Proxmox; Refresh only re-reads what Velnox already
+              has. Without it, a cluster that came back waited for the next
+              scheduled run — thirty minutes by default — while the screen
+              still said the last attempt failed.
+            */}
+            <Button
+              variant="secondary"
+              pending={pending === 'readNow'}
+              onClick={() => {
+                setReadNow(null);
+                void (async () => {
+                  setPending('readNow');
+                  setFailure(null);
+                  const result = await apiPost<{ queued: boolean; alreadyRunning: boolean }>(
+                    `/clusters/${cluster.id}/discover`,
+                  );
+                  setPending(null);
+                  if (!result.ok) {
+                    setFailure(result.error ?? { code: 'generic', status: 0 });
+                    return;
+                  }
+                  setReadNow(result.data.alreadyRunning ? 'running' : 'queued');
+                  setTab('runs');
+                  router.refresh();
+                })();
+              }}
+            >
+              {t('clusters.readNow')}
+            </Button>
+            <Button variant="secondary" onClick={() => router.refresh()}>
+              {t('common.refresh')}
+            </Button>
+          </div>
         }
       >
+        {readNow && (
+          <p className="mb-2 text-xs text-ink-muted" role="status">
+            {t(readNow === 'running' ? 'clusters.readNowRunning' : 'clusters.readNowQueued')}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <HealthBadge health={cluster.health} />
           <ConnectionBadge state={cluster.connectionState} />
@@ -161,6 +200,10 @@ export function ClusterDetail({
                   })}
                 </p>
               )}
+            {/* Which silence it was, and where to look for that one. */}
+            {cluster.lastErrorReason && t.has(`errors.reasonHints.${cluster.lastErrorReason}`) && (
+              <p className="mb-1">{t(`errors.reasonHints.${cluster.lastErrorReason}`)}</p>
+            )}
             <p className="font-mono text-xs">{cluster.lastErrorDetail ?? cluster.lastErrorCode}</p>
             <p className="mt-2">{t('clusters.staleWarning')}</p>
           </Notice>
@@ -458,6 +501,13 @@ function RunsPanel({ runs }: { runs: DiscoveryRunRow[] }) {
                 )}
               </div>
 
+              {entry.errorReason &&
+                entry.errorReason !== 'other' &&
+                t.has(`errors.reasons.${entry.errorReason}`) && (
+                  <p className="mt-1 text-xs text-error">
+                    {t(`errors.reasons.${entry.errorReason}`)}
+                  </p>
+                )}
               {entry.errorDetail && (
                 <p className="mt-1 font-mono text-[11px] text-error">{entry.errorDetail}</p>
               )}

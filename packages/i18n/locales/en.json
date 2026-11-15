@@ -35,7 +35,7 @@
       "ceph_mixed_versions": "Ceph daemons are running different versions: {versions}.",
       "cluster_mixed_versions": "Nodes are running different Proxmox versions: {versions}.",
       "cluster_quorum_lost": "The cluster has lost quorum across its {nodes} nodes.",
-      "cluster_unreachable": "Velnox cannot reach {host} ({reason}). Everything shown about this cluster is what was last read.",
+      "cluster_unreachable": "Velnox cannot read {host}: {reason}. Everything shown about this cluster is what was last read.",
       "node_offline": "Node {node} is offline.",
       "node_state_unknown": "Node {node} is in a state Proxmox did not name."
     },
@@ -253,7 +253,10 @@
       "carriesBody": "Its SSH set-up and host-key pins, placement rules and settings, update policy, upgrade plans, VM builds, library sources, job and discovery history and site come along — where the kept one has its own, the kept one's stays. The nodes and guests are read again: it is the same cluster.",
       "final": "{remove} is then removed from Velnox. Nothing changes in Proxmox.",
       "submit": "Merge"
-    }
+    },
+    "readNow": "Read now",
+    "readNowQueued": "A discovery run is queued. It appears under Discovery runs as it happens.",
+    "readNowRunning": "A discovery run is already in progress."
   },
   "common": {
     "cancel": "Cancel",
@@ -494,6 +497,29 @@
       "in_use": "{reason, select, customers {{count, plural, one {# customer account holds} other {# customer accounts hold}} this role, so it cannot be made MSP-only.} other {{count, plural, one {# account holds} other {# accounts hold}} this role. Take it away first.}}",
       "beyond_grantor": "You cannot grant {role}: it holds permissions you do not hold there ({permissions}).",
       "msp_only": "{role} is for MSP staff only, and this account belongs to a customer."
+    },
+    "reasons": {
+      "connect_timeout": "no connection within the time limit",
+      "no_answer": "connected, but Proxmox did not answer in time",
+      "refused": "connection refused",
+      "no_route": "no route to the host",
+      "dns": "the name did not resolve",
+      "reset": "the connection was cut off",
+      "tls": "the TLS handshake failed",
+      "cancelled": "the attempt was cancelled",
+      "fingerprint": "the certificate does not match the pinned fingerprint",
+      "auth": "the credentials were refused",
+      "not_proxmox": "what answered is not a Proxmox API",
+      "other": "cause unknown"
+    },
+    "reasonHints": {
+      "connect_timeout": "Nothing answered the connection attempt within the time limit. Usually a firewall that silently drops traffic to the API port, or a node that is switched off.",
+      "no_answer": "The connection and the TLS handshake succeeded, but Proxmox did not answer the request in time. Check on the node whether pveproxy, pvedaemon and pve-cluster are healthy: systemctl status pveproxy pvedaemon pve-cluster.",
+      "refused": "The node refused the connection: nothing listens on the API port. Check that pveproxy is running and that the port is right. A node that is still starting up answers like this too.",
+      "no_route": "The Velnox server has no route to this address. Check the address, the routing in between and whether the node is on.",
+      "dns": "The name could not be looked up from the Velnox server. Check the name, or use an IP address.",
+      "reset": "The connection was cut off part-way. Usually a firewall or proxy in between, or a service on the node restarting.",
+      "tls": "The TLS handshake did not complete. Check that this port is the Proxmox API over HTTPS and nothing else."
     }
   },
   "inventory": {
@@ -687,7 +713,9 @@
       "nowOn": "Jobs that finished more than {days} days ago are hidden from accounts without jobs.history.",
       "turnOff": "Show every job again",
       "hidden": "Jobs that finished more than {days} days ago are not shown."
-    }
+    },
+    "cluster": "Cluster",
+    "onCluster": "Cluster {cluster}"
   },
   "layout": {
     "footerLicense": "{product} {version} — free software under the AGPLv3.",
@@ -1275,7 +1303,9 @@
       "installer": "by the installer"
     },
     "changedBy": "by {who}",
-    "hostTitle": "On the host"
+    "hostTitle": "On the host",
+    "certificateFromFile": "Read the certificate from a file…",
+    "keyFromFile": "Read the key from a file…"
   },
   "users": {
     "chooseRole": "Choose a role…",

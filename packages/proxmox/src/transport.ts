@@ -2,7 +2,14 @@ import { Agent, request as httpsRequest, type RequestOptions } from 'node:https'
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { TLSSocket } from 'node:tls';
-import { fingerprintsMatch, normaliseFingerprint, type Fingerprint } from '@velnox/shared';
+import {
+  fingerprintsMatch,
+  normaliseFingerprint,
+  unreachableReasonFrom,
+  unreachableToken,
+  type Fingerprint,
+  type UnreachableReason,
+} from '@velnox/shared';
 
 /**
  * The HTTPS transport, with certificate pinning.
@@ -94,14 +101,33 @@ export class ProxmoxHttpError extends Error {
   }
 }
 
+/**
+ * A host that could not be read, and why.
+ *
+ * The reason is part of the message as a bracketed token — `Could not reach
+ * pve1 [no_answer]: …` — because the message is the only part that survives
+ * the queue to the API and the cluster's `lastErrorDetail`. `unreachableReasonOf`
+ * in `@velnox/shared` reads it back, and the interface translates it. Before
+ * 0.7.19 the message was "Could not reach pve1" and nothing else: the log knew
+ * "connected, then silence" from "connection refused", the screen did not.
+ */
 export class ProxmoxUnreachableError extends Error {
+  readonly reason: UnreachableReason;
+
   constructor(
     readonly host: string,
     cause: unknown,
+    reason?: UnreachableReason,
   ) {
-    super(`Could not reach ${host}`, { cause });
+    super(unreachableMessage(host, cause, reason ?? unreachableReasonFrom(cause)), { cause });
+    this.reason = reason ?? unreachableReasonFrom(cause);
     this.name = 'ProxmoxUnreachableError';
   }
+}
+
+function unreachableMessage(host: string, cause: unknown, reason: UnreachableReason): string {
+  const why = cause instanceof Error ? cause.message : cause ? String(cause) : '';
+  return `Could not reach ${host} ${unreachableToken(reason)}${why ? `: ${why}` : ''}`;
 }
 
 export interface TransportOptions {
@@ -284,6 +310,15 @@ export function rawRequest(
      * response itself can fail the request.
      */
     let responding = false;
+    /**
+     * How far the connection got, for a timeout to say which silence it was:
+     * nothing answered the SYN (a firewall dropping packets, a node that is
+     * off), TCP connected but TLS never finished, or the handshake completed
+     * and the API never answered. The last is a stuck `pveproxy` or
+     * `pve-cluster` on the node, and it is a different place to look.
+     */
+    let tcpConnected = false;
+    let handshook = false;
 
     const fail = (error: Error): void => {
       if (settled) return;
@@ -309,6 +344,8 @@ export function rawRequest(
       const socket = rawSocket as MarkedSocket;
 
       const inspect = (): void => {
+        tcpConnected = true;
+        handshook = true;
         certificate = describeCertificate(socket);
         if (!pinned) {
           startBody();
@@ -355,11 +392,33 @@ export function rawRequest(
         return;
       }
 
+      socket.once('connect', () => {
+        tcpConnected = true;
+      });
       socket.once('secureConnect', inspect);
     });
 
     request.on('timeout', () => {
-      fail(new ProxmoxUnreachableError(options.host, new Error('Timed out')));
+      const seconds = Math.round((options.timeoutMs ?? DEFAULT_TIMEOUT_MS) / 1000);
+      fail(
+        handshook
+          ? new ProxmoxUnreachableError(
+              options.host,
+              new Error(`connected, then no answer within ${seconds} s`),
+              'no_answer',
+            )
+          : tcpConnected
+            ? new ProxmoxUnreachableError(
+                options.host,
+                new Error(`connected, but the TLS handshake did not finish within ${seconds} s`),
+                'tls',
+              )
+            : new ProxmoxUnreachableError(
+                options.host,
+                new Error(`no connection within ${seconds} s`),
+                'connect_timeout',
+              ),
+      );
     });
 
     request.on('error', (error) => {
@@ -374,7 +433,7 @@ export function rawRequest(
 
     init.signal?.addEventListener(
       'abort',
-      () => fail(new ProxmoxUnreachableError(options.host, new Error('Cancelled'))),
+      () => fail(new ProxmoxUnreachableError(options.host, new Error('Cancelled'), 'cancelled')),
       { once: true },
     );
 
@@ -383,9 +442,11 @@ export function rawRequest(
       // Whatever of the body is left will not be read. Stop sending it.
       if (typeof init.body === 'object') init.body.stream.unpipe(request).destroy();
       const chunks: Buffer[] = [];
-      response.on('error', (error) => fail(new ProxmoxUnreachableError(options.host, error)));
+      response.on('error', (error) =>
+        fail(new ProxmoxUnreachableError(options.host, error, 'reset')),
+      );
       response.on('aborted', () =>
-        fail(new ProxmoxUnreachableError(options.host, new Error('Response cut short'))),
+        fail(new ProxmoxUnreachableError(options.host, new Error('Response cut short'), 'reset')),
       );
       response.on('data', (chunk: Buffer) => chunks.push(chunk));
       response.on('end', () => {

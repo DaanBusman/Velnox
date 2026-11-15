@@ -119,9 +119,16 @@ export function JobList({
                         >
                           {typeLabel(job.type)}
                         </Link>
-                        <span className="block font-mono text-[11px] text-ink-muted">
-                          {job.concurrencyKey ?? job.id.slice(0, 8)}
-                        </span>
+                        {/* The cluster by name; the key or id only for a job about none. */}
+                        {job.cluster ? (
+                          <span className="block text-[11px] text-ink-muted">
+                            {t('job.onCluster', { cluster: job.cluster.name })}
+                          </span>
+                        ) : (
+                          <span className="block font-mono text-[11px] text-ink-muted">
+                            {job.concurrencyKey ?? job.id.slice(0, 8)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5">
                         <JobStatusBadge status={job.status} />

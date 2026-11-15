@@ -5,7 +5,10 @@ import {
   JOB_NAMES,
   PERMISSIONS,
   VelnoxError,
+  clusterFailureReason,
   normaliseFingerprint,
+  unreachableReasonOf,
+  type ClusterFailureReason,
 } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { JobTimeoutError, QueueService } from '../infrastructure/queue.service';
@@ -71,6 +74,11 @@ export interface ClusterSummary {
   lastDiscoveryAt: string | null;
   lastErrorCode: string | null;
   lastErrorDetail: string | null;
+  /**
+   * Why the last run failed, as one word the interface translates — `no_answer`,
+   * `refused`, `fingerprint` and so on. Null while the cluster is not FAILED.
+   */
+  lastErrorReason: ClusterFailureReason | null;
   discoveryIntervalMinutes: number;
   createdAt: string;
 }
@@ -90,6 +98,9 @@ export interface CreateClusterInput {
 /** How long a person will stand in front of a form waiting for a handshake. */
 const PROBE_TIMEOUT_MS = 25_000;
 const VERIFY_TIMEOUT_MS = 30_000;
+
+/** A discovery run still RUNNING after this long is a worker that died, not a run. */
+const STALE_RUN_MS = 10 * 60_000;
 
 @Injectable()
 export class ClustersService {
@@ -409,7 +420,18 @@ export class ClustersService {
   }
 
   /** Ask for a discovery run now. Returns once it is queued, not once it is done. */
-  async discover(id: string, actor: Actor): Promise<{ queued: boolean }> {
+  /**
+   * Ask for a discovery run now — the **Read now** button.
+   *
+   * One run at a time per cluster. A second press while one runs queues
+   * nothing and says so, rather than stacking runs a slow cluster then works
+   * through one after another. A RUNNING row older than {@link STALE_RUN_MS} is
+   * a worker that died mid-run, not a run, and does not hold the button.
+   */
+  async discover(
+    id: string,
+    actor: Actor,
+  ): Promise<{ queued: boolean; alreadyRunning: boolean }> {
     const cluster = await this.prisma.client.cluster.findFirst({ where: { id } });
     if (!cluster) throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
 
@@ -419,12 +441,22 @@ export class ClustersService {
       clusterId: cluster.id,
     });
 
+    const running = await this.prisma.client.discoveryRun.findFirst({
+      where: {
+        clusterId: id,
+        state: 'RUNNING',
+        startedAt: { gte: new Date(Date.now() - STALE_RUN_MS) },
+      },
+      select: { id: true },
+    });
+    if (running) return { queued: false, alreadyRunning: true };
+
     await this.queue.enqueueInventory(JOB_NAMES.inventoryDiscover, {
       clusterId: id,
       requestedBy: actor.id,
     });
 
-    return { queued: true };
+    return { queued: true, alreadyRunning: false };
   }
 
   /** The last few runs, so "when did this last work" is answerable. */
@@ -446,6 +478,7 @@ export class ClustersService {
       problems: Array.isArray(run.problems) ? (run.problems as string[]) : [],
       errorCode: run.errorCode,
       errorDetail: run.errorDetail,
+      errorReason: run.errorCode ? clusterFailureReason(run.errorCode, run.errorDetail) : null,
     }));
   }
 }
@@ -514,10 +547,13 @@ function translate(
     });
   }
 
+  // The reason travels as a param, so the add-cluster form can say which
+  // silence it was rather than only that there was one.
+  const reason = unreachableReasonOf(message);
   return new VelnoxError(ERROR_CODES.clusterUnreachable, {
     status: 502,
     message,
-    params: { host },
+    params: reason ? { host, reason } : { host },
   });
 }
 
@@ -580,6 +616,10 @@ function describe(cluster: {
     lastDiscoveryAt: cluster.lastDiscoveryAt?.toISOString() ?? null,
     lastErrorCode: cluster.lastErrorCode,
     lastErrorDetail: cluster.lastErrorDetail,
+    lastErrorReason:
+      cluster.connectionState === 'FAILED'
+        ? clusterFailureReason(cluster.lastErrorCode, cluster.lastErrorDetail)
+        : null,
     discoveryIntervalMinutes: cluster.discoveryIntervalMinutes,
     createdAt: cluster.createdAt.toISOString(),
   };

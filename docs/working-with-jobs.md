@@ -12,7 +12,9 @@ does, see ADR-035 and ADR-036 in [Technology decisions](tech-decisions.md).
 ## The Jobs screen
 
 **Jobs** in the sidebar lists every job this account may see, newest first, with its status, how
-far it has got, who started it and how long it took. Filter by status at the top of the list.
+far it has got, who started it and how long it took. Filter by status at the top of the list. A job
+about a cluster names it — in the list, in **Running jobs** and on the job's own page, which links to
+the cluster.
 
 The list re-reads itself when a job changes, never more often than your refresh setting (your
 name → **Settings → Refresh screens automatically**), and pauses while a form on it is open. With
@@ -70,6 +72,10 @@ The last five are final. A job never moves again once it reaches one of them.
 A job's page shows, top to bottom: its status and progress, the reason it stopped if it failed,
 the approval waiting for a decision if there is one, its steps, its events, and the raw output of
 its steps.
+
+The output fills in while the job runs: new lines are fetched every two seconds, and the pane
+follows the newest one unless you have scrolled up to read. The same goes for the events. A change
+of status re-reads the page by itself, so the steps and buttons always match the status shown.
 
 **Live** in the corner means the stream is connected. **Reconnecting…** means it dropped and the
 browser is getting it back; nothing is lost, because every event has a sequence number and the

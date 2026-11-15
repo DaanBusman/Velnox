@@ -20,7 +20,12 @@ export function useApiError(): (failure: ApiFailure | null | undefined) => strin
 
     const key = `errors.${failure.code}`;
     if (t.has(key)) {
-      return t(key, messageValues(failure.params));
+      const sentence = t(key, messageValues(failure.params));
+      // A host that could not be reached says which silence it was, and what to
+      // check for that one (0.7.19). The reason is a param, never prose.
+      const reason = failure.params?.reason;
+      const hint = typeof reason === 'string' ? `errors.reasonHints.${reason}` : null;
+      return hint && t.has(hint) ? `${sentence} ${t(hint)}` : sentence;
     }
 
     return t('errors.generic');

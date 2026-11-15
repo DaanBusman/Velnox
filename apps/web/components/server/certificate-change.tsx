@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { TlsChangeRequest, TlsChangeResponse, TlsStatusResponse } from '@velnox/shared';
 import { apiPut, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
-import { Button, Field, FormError, TextInput } from '@/components/ui/form';
+import { Button, Field, FileButton, FormError, TextInput } from '@/components/ui/form';
 import { Card, Notice } from '@/components/ui/primitives';
 
 type Choice = TlsChangeRequest['mode'];
@@ -45,16 +45,20 @@ export function CertificateChange({
   const [caRoot, setCaRoot] = useState('');
   const [certificate, setCertificate] = useState('');
   const [key, setKey] = useState('');
+  /** Which file each field was last read from, shown beside its button. */
+  const [certificateFile, setCertificateFile] = useState<string | null>(null);
+  const [keyFile, setKeyFile] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [result, setResult] = useState<TlsChangeResponse | null>(null);
 
   const isIp = /^[\d.]+$|:/.test(status.siteAddress);
 
-  const load = (set: (text: string) => void) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (file) void file.text().then(set);
+  const load = (set: (text: string) => void, named: (name: string) => void) => (file: File) => {
+    void file.text().then((text) => {
+      set(text);
+      named(file.name);
+    });
   };
 
   async function apply() {
@@ -77,6 +81,7 @@ export function CertificateChange({
     if (!response.ok) return setFailure(response.error);
     // The key is not kept in the page once it is stored.
     setKey('');
+    setKeyFile(null);
     setResult(response.data);
     onChanged(response.data.status);
   }
@@ -210,7 +215,13 @@ export function CertificateChange({
                 />
               )}
             </Field>
-            <input type="file" accept=".pem,.crt,.cer" onChange={load(setCertificate)} />
+            <FileButton
+              accept=".pem,.crt,.cer"
+              chosen={certificateFile}
+              onFile={load(setCertificate, setCertificateFile)}
+            >
+              {t('tls.certificateFromFile')}
+            </FileButton>
             <Field label={t('tls.keyField')} hint={t('tls.keyFieldHint')}>
               {(props) => (
                 <textarea
@@ -224,7 +235,9 @@ export function CertificateChange({
                 />
               )}
             </Field>
-            <input type="file" accept=".pem,.key" onChange={load(setKey)} />
+            <FileButton accept=".pem,.key" chosen={keyFile} onFile={load(setKey, setKeyFile)}>
+              {t('tls.keyFromFile')}
+            </FileButton>
           </div>
         )}
 

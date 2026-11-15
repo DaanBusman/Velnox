@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import {
   isTerminal,
@@ -11,7 +11,7 @@ import {
   type JobLogLine,
   type JobStatus,
 } from '@velnox/shared';
-import { apiPost, type ApiFailure } from '@/lib/client-api';
+import { apiGet, apiPost, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
 import { Button, FormError, TextInput } from '@/components/ui/form';
 import { Card, KeyValue, Mono, Notice, StatusBadge } from '@/components/ui/primitives';
@@ -71,6 +71,12 @@ export function JobDetail({
   const [pending, setPending] = useState<string | null>(null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [note, setNote] = useState('');
+  const [liveLogs, setLiveLogs] = useState<JobLogLine[]>(logs);
+  const lastStatus = useRef<JobStatus>(job.status);
+
+  // A re-read of the page brings the server's lines; keep whatever the tail
+  // already added on top of them.
+  useEffect(() => setLiveLogs((current) => mergeLines(current, logs)), [logs]);
 
   // The server-rendered status is newer than the live one after a refresh.
   useEffect(() => setLiveStatus(job.status), [job.status]);
@@ -96,7 +102,12 @@ export function JobDetail({
       if (event.progressPct !== null) setLivePct(event.progressPct);
       setConnection('live');
 
-      if (event.key !== 'step.progress') scheduleRefresh();
+      // Anything structural re-reads the page — and so does any change of
+      // status, whatever event carried it, so the steps, the output and the
+      // buttons on screen always belong to the status the badge shows.
+      const statusChanged = event.status !== lastStatus.current;
+      lastStatus.current = event.status;
+      if (event.key !== 'step.progress' || statusChanged) scheduleRefresh();
     });
 
     source.addEventListener('done', () => {
@@ -118,10 +129,54 @@ export function JobDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id]);
 
+  /*
+   * The output, live.
+   *
+   * Lines are written by the worker as a step produces them, and they carry no
+   * event: before 0.7.19 the output pane showed what was there when the page
+   * was last read, and a step printing for ten minutes looked like one that
+   * printed nothing. While the job runs, new lines are fetched every two
+   * seconds from the last one seen — never the whole log again — and not at
+   * all in a hidden tab. The page's own re-read when the job finishes brings
+   * the last of them.
+   */
+  const lastLogId = liveLogs.length > 0 ? liveLogs[liveLogs.length - 1]?.id : undefined;
+  const lastLogRef = useRef(lastLogId);
+  lastLogRef.current = lastLogId;
+  const tailing = !isTerminal(liveStatus);
+  useEffect(() => {
+    if (!tailing) return;
+    let stopped = false;
+    let busy = false;
+    const tick = async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
+      const after = lastLogRef.current;
+      const result = await apiGet<{ lines: JobLogLine[] }>(
+        `/jobs/${job.id}/logs?limit=500${after ? `&after=${after}` : ''}`,
+      );
+      busy = false;
+      if (!stopped && result.ok && result.data.lines.length > 0) {
+        setLiveLogs((current) => mergeLines(current, result.data.lines));
+      }
+    };
+    const timer = setInterval(() => void tick(), LOG_TAIL_MS);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [tailing, job.id]);
+
+  const logPane = useRef<HTMLPreElement>(null);
+  const eventPane = useRef<HTMLOListElement>(null);
+
   const visibleEvents = useMemo(
     () => (showProgress ? events : events.filter((event) => event.key !== 'step.progress')),
     [events, showProgress],
   );
+
+  useStickToBottom(logPane, liveLogs.length);
+  useStickToBottom(eventPane, visibleEvents.length);
 
   const pendingApproval = job.approvals.find((approval) => approval.decision === null);
   const active = !isTerminal(liveStatus);
@@ -149,7 +204,7 @@ export function JobDetail({
 
       <Card
         title={typeLabel(job.type)}
-        description={job.concurrencyKey ?? job.id}
+        description={job.cluster ? t('job.onCluster', { cluster: job.cluster.name }) : (job.concurrencyKey ?? job.id)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {connection !== 'closed' && (
@@ -205,6 +260,13 @@ export function JobDetail({
           )}
 
           <dl>
+            {job.cluster && (
+              <KeyValue label={t('job.cluster')}>
+                <Link href={`/clusters/${job.cluster.id}`} className="text-accent underline underline-offset-2">
+                  {job.cluster.name}
+                </Link>
+              </KeyValue>
+            )}
             <KeyValue label={t('job.colTenant')}>{job.tenantName}</KeyValue>
             <KeyValue label={t('job.colBy')}>{job.createdBy?.email ?? '—'}</KeyValue>
             <KeyValue label={t('job.queuedAt')}>{format.dateTime(new Date(job.queuedAt), 'medium')}</KeyValue>
@@ -335,7 +397,7 @@ export function JobDetail({
           </label>
         }
       >
-        <ol className="max-h-[50vh] divide-y divide-line/70 overflow-auto" aria-live="polite">
+        <ol ref={eventPane} className="max-h-[50vh] divide-y divide-line/70 overflow-auto" aria-live="polite">
           {visibleEvents.map((event) => (
             <li key={event.seq} className="flex gap-3 px-4 py-1.5 text-xs">
               <span className="w-8 shrink-0 text-right font-mono text-ink-muted">{event.seq}</span>
@@ -359,11 +421,14 @@ export function JobDetail({
       </Card>
 
       <Card title={t('job.logs')} bodyClassName="">
-        {logs.length === 0 ? (
+        {liveLogs.length === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-muted">{t('job.noLogs')}</p>
         ) : (
-          <pre className="max-h-[40vh] overflow-auto px-4 py-3 font-mono text-[11px] leading-relaxed text-ink">
-            {logs
+          <pre
+            ref={logPane}
+            className="max-h-[40vh] overflow-auto px-4 py-3 font-mono text-[11px] leading-relaxed text-ink"
+          >
+            {liveLogs
               .map((line) => `${line.stream === 'STDERR' ? '! ' : '  '}${line.content}${line.truncated ? ' …' : ''}`)
               .join('\n')}
           </pre>
@@ -375,4 +440,43 @@ export function JobDetail({
       </Card>
     </div>
   );
+}
+
+/** How often a running job's output is asked for new lines. */
+const LOG_TAIL_MS = 2_000;
+
+/** Two sets of output lines as one, in order, each line once. */
+function mergeLines(current: JobLogLine[], incoming: JobLogLine[]): JobLogLine[] {
+  if (incoming.length === 0) return current;
+  const byId = new Map(current.map((line) => [line.id, line]));
+  for (const line of incoming) byId.set(line.id, line);
+  return [...byId.values()].sort((a, b) => {
+    const left = BigInt(a.id);
+    const right = BigInt(b.id);
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
+}
+
+/**
+ * Keep a scrolling pane at its newest line as lines arrive — unless the reader
+ * scrolled up to read something, which a pane that jumps back down would take
+ * away from them. Whether it is at the bottom is decided before the new lines
+ * render, by the last scroll.
+ */
+function useStickToBottom(ref: RefObject<HTMLElement | null>, count: number): void {
+  const atBottom = useRef(true);
+  const present = count > 0;
+  useEffect(() => {
+    const pane = ref.current;
+    if (!pane) return;
+    const onScroll = () => {
+      atBottom.current = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 24;
+    };
+    pane.addEventListener('scroll', onScroll, { passive: true });
+    return () => pane.removeEventListener('scroll', onScroll);
+  }, [ref, present]);
+  useLayoutEffect(() => {
+    const pane = ref.current;
+    if (pane && atBottom.current) pane.scrollTop = pane.scrollHeight;
+  }, [ref, count]);
 }

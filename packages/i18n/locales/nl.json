@@ -36,7 +36,7 @@
       "ceph_mixed_versions": "Ceph-daemons draaien verschillende versies: {versions}.",
       "cluster_mixed_versions": "Nodes draaien verschillende Proxmox-versies: {versions}.",
       "cluster_quorum_lost": "Het cluster heeft geen quorum meer over zijn {nodes} nodes.",
-      "cluster_unreachable": "Velnox kan {host} niet bereiken ({reason}). Alles wat over dit cluster wordt getoond is wat er het laatst is gelezen.",
+      "cluster_unreachable": "Velnox kan {host} niet uitlezen: {reason}. Alles wat over dit cluster wordt getoond is wat er het laatst is gelezen.",
       "node_offline": "Node {node} is offline.",
       "node_state_unknown": "Node {node} verkeert in een status die Proxmox niet benoemt."
     },
@@ -254,7 +254,10 @@
       "carriesBody": "De SSH-instelling en vastgepinde hostsleutels, plaatsingsregels en -instellingen, updatebeleid, upgradeplannen, VM-builds, bibliotheekbronnen, job- en uitleesgeschiedenis en locatie gaan mee — waar de behouden registratie een eigen heeft, blijft die. De nodes en gasten worden opnieuw uitgelezen: het is hetzelfde cluster.",
       "final": "{remove} wordt daarna uit Velnox verwijderd. In Proxmox verandert niets.",
       "submit": "Samenvoegen"
-    }
+    },
+    "readNow": "Nu uitlezen",
+    "readNowQueued": "Er staat een uitleesronde klaar. Je ziet hem onder Uitleesrondes zodra hij loopt.",
+    "readNowRunning": "Er loopt al een uitleesronde."
   },
   "common": {
     "cancel": "Annuleren",
@@ -495,6 +498,29 @@
       "in_use": "{reason, select, customers {{count, plural, one {# klantaccount heeft} other {# klantaccounts hebben}} deze rol, dus hij kan niet alleen voor de MSP worden.} other {{count, plural, one {# account heeft} other {# accounts hebben}} deze rol. Neem hem eerst weg.}}",
       "beyond_grantor": "Je kunt {role} niet toekennen: die bevat rechten die je daar zelf niet hebt ({permissions}).",
       "msp_only": "{role} is alleen voor MSP-medewerkers, en dit account hoort bij een klant."
+    },
+    "reasons": {
+      "connect_timeout": "geen verbinding binnen de wachttijd",
+      "no_answer": "verbonden, maar Proxmox antwoordde niet op tijd",
+      "refused": "verbinding geweigerd",
+      "no_route": "geen route naar de host",
+      "dns": "de naam is niet gevonden",
+      "reset": "de verbinding werd verbroken",
+      "tls": "de TLS-handshake mislukte",
+      "cancelled": "de poging is afgebroken",
+      "fingerprint": "het certificaat wijkt af van de vastgelegde vingerafdruk",
+      "auth": "de inloggegevens zijn geweigerd",
+      "not_proxmox": "wat antwoordde is geen Proxmox-API",
+      "other": "oorzaak onbekend"
+    },
+    "reasonHints": {
+      "connect_timeout": "Niets beantwoordde de verbindingspoging binnen de wachttijd. Meestal een firewall die verkeer naar de API-poort stil laat vallen, of een node die uit staat.",
+      "no_answer": "De verbinding en de TLS-handshake lukten, maar Proxmox beantwoordde het verzoek niet op tijd. Controleer op de node of pveproxy, pvedaemon en pve-cluster gezond zijn: systemctl status pveproxy pvedaemon pve-cluster.",
+      "refused": "De node weigerde de verbinding: er luistert niets op de API-poort. Controleer of pveproxy draait en of de poort klopt. Een node die nog aan het opstarten is, antwoordt ook zo.",
+      "no_route": "De Velnox-server heeft geen route naar dit adres. Controleer het adres, de routering ertussen en of de node aan staat.",
+      "dns": "De naam kon vanaf de Velnox-server niet worden opgezocht. Controleer de naam of gebruik een IP-adres.",
+      "reset": "De verbinding werd halverwege verbroken. Meestal een firewall of proxy ertussen, of een dienst op de node die herstart.",
+      "tls": "De TLS-handshake werd niet afgerond. Controleer of deze poort de Proxmox-API over HTTPS is en niets anders."
     }
   },
   "inventory": {
@@ -688,7 +714,9 @@
       "nowOn": "Jobs die meer dan {days} dagen geleden klaar waren, zijn verborgen voor accounts zonder jobs.history.",
       "turnOff": "Weer elke job tonen",
       "hidden": "Jobs die meer dan {days} dagen geleden klaar waren, worden niet getoond."
-    }
+    },
+    "cluster": "Cluster",
+    "onCluster": "Cluster {cluster}"
   },
   "layout": {
     "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
@@ -1276,7 +1304,9 @@
       "installer": "door de installatie"
     },
     "changedBy": "door {who}",
-    "hostTitle": "Op de host"
+    "hostTitle": "Op de host",
+    "certificateFromFile": "Certificaat uit een bestand lezen…",
+    "keyFromFile": "Sleutel uit een bestand lezen…"
   },
   "users": {
     "chooseRole": "Kies een rol…",

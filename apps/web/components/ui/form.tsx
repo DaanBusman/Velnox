@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import { useId, type ReactNode } from 'react';
+import { useId, useRef, type ReactNode } from 'react';
 
 /**
  * Form primitives.
@@ -155,6 +155,60 @@ export function Button({
       )}
       {children}
     </button>
+  );
+}
+
+/**
+ * Choose a file, as a button.
+ *
+ * The browser's own file input is a grey "Choose File" and "No file chosen" in
+ * the browser's language, whatever language the page is in — and on a form
+ * that clears the input after reading it, it says "No file chosen" straight
+ * after one was. This is a hidden input behind an ordinary button, and the name
+ * of the file it read, which is the one thing worth showing.
+ */
+export function FileButton({
+  accept,
+  onFile,
+  chosen,
+  disabled,
+  children,
+}: {
+  accept: string;
+  onFile: (file: File) => void;
+  /** The name of the file last read, shown beside the button. */
+  chosen?: string | null;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input
+        ref={input}
+        type="file"
+        accept={accept}
+        className="hidden"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          // Cleared so choosing the same file again still reads it.
+          event.target.value = '';
+          if (file) onFile(file);
+        }}
+      />
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-8 text-xs"
+        disabled={disabled}
+        onClick={() => input.current?.click()}
+      >
+        {children}
+      </Button>
+      {chosen && <span className="truncate font-mono text-xs text-ink-muted">{chosen}</span>}
+    </div>
   );
 }
 

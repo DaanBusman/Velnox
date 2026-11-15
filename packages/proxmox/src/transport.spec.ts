@@ -1,3 +1,4 @@
+import { createServer, type Socket } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_RETRY,
@@ -5,6 +6,7 @@ import {
   ProxmoxHttpError,
   ProxmoxUnreachableError,
   isRetryable,
+  rawRequest,
   withRetries,
 } from './transport';
 import { parseData } from './client';
@@ -129,5 +131,55 @@ describe('the response envelope', () => {
 
   it('refuses a JSON body with no envelope', () => {
     expect(() => parseData('{"version":"8.2.4"}', '/version')).toThrow(/data envelope/);
+  });
+});
+
+/**
+ * Which silence it was. These open real sockets on loopback, because the reason
+ * is a property of how far a real connection got — a stubbed socket would only
+ * say what the stub was told to.
+ */
+describe('why a host could not be reached', () => {
+  it('names a refused connection', async () => {
+    // Bind and close, so the port is known to be free and nothing listens on it.
+    const server = createServer();
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as { port: number }).port;
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+
+    const error = await rawRequest(
+      { host: '127.0.0.1', port, tls: { mode: 'inspect' }, timeoutMs: 2_000 },
+      { method: 'GET', path: '/api2/json/version' },
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ProxmoxUnreachableError);
+    expect((error as ProxmoxUnreachableError).reason).toBe('refused');
+    expect((error as Error).message).toMatch(/^Could not reach 127\.0\.0\.1 \[refused\]: /);
+  });
+
+  it('tells a stuck handshake from no connection at all', async () => {
+    // Accepts TCP and then says nothing: the TLS handshake never finishes.
+    const sockets: Socket[] = [];
+    const server = createServer((socket) => sockets.push(socket));
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as { port: number }).port;
+
+    const error = await rawRequest(
+      { host: '127.0.0.1', port, tls: { mode: 'inspect' }, timeoutMs: 300 },
+      { method: 'GET', path: '/api2/json/version' },
+    ).catch((caught: unknown) => caught);
+
+    sockets.forEach((socket) => socket.destroy());
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+
+    expect(error).toBeInstanceOf(ProxmoxUnreachableError);
+    expect((error as ProxmoxUnreachableError).reason).toBe('tls');
+    expect((error as Error).message).toContain('[tls]: connected, but the TLS handshake did not finish');
+  });
+
+  it('keeps the reason a caller names', () => {
+    const error = new ProxmoxUnreachableError('pve1', new Error('Cancelled'), 'cancelled');
+    expect(error.reason).toBe('cancelled');
+    expect(error.message).toBe('Could not reach pve1 [cancelled]: Cancelled');
   });
 });

@@ -252,6 +252,11 @@ zelf geen nodes samen in Proxmox:** het cluster vorm je in Proxmox, zoals altijd
 Open een cluster voor de nodes, de gasten, Ceph en — op het tabblad **Uitleesrondes** — wat de laatste
 pogingen wel en niet konden lezen.
 
+**Nu uitlezen**, bovenaan de pagina van een cluster, vraagt meteen om een volledige uitleesronde in
+plaats van op het schema te wachten, en opent **Uitleesrondes** om hem te tonen. Loopt er al een
+ronde, dan zegt de knop dat en zet hij niets in de wachtrij. **Refresh** ernaast leest alleen opnieuw
+wat Velnox al heeft; die benadert Proxmox niet.
+
 **Nodes**, **Virtuele machines** en **Containers** tonen dezelfde gegevens over alle clusters die je
 kunt zien, voor wanneer de vraag "waar staat die schijf" is in plaats van "hoe gaat het met dit
 cluster".
@@ -331,7 +336,7 @@ altijd achter na onderhoud waarvan iemand is weggeroepen. Zet hem uit, tenzij er
 
 | Wat je ziet | Wat het meestal is |
 |---|---|
-| *Velnox kan … niet bereiken* | Een firewall tussen de Velnox-host en poort 8006, of DNS. De worker is de enige service die naar buiten verbindt. |
+| *… is niet bereikbaar* | De melding zegt op welke manier het misging, met wat je daarvoor controleert: *geen verbinding binnen de wachttijd* — een firewall die verkeer naar poort 8006 laat vallen, of de node staat uit; *verbinding geweigerd* — er luistert niets: `pveproxy` is gestopt, de poort klopt niet, of de node is nog aan het opstarten; *verbonden, maar Proxmox antwoordde niet op tijd* — de API hangt op de node: `systemctl status pveproxy pvedaemon pve-cluster`; *geen route naar de host*; *de naam is niet gevonden*. De worker is de enige service die naar buiten verbindt, dus test vanaf de Velnox-host en niet vanaf je eigen computer. |
 | *Dit lijkt geen Proxmox-API* | Juiste host, verkeerde poort — of een reverse proxy vóór Proxmox die antwoordt. |
 | *Vingerafdruk komt niet overeen* | Het certificaat van de node is gewijzigd. Dat gebeurt legitiem bij vernieuwing of het opnieuw opbouwen van een node — en het is ook precies hoe onderschepping eruitziet. Controleer `pvenode cert info` op de node, verwijder daarna het cluster en voeg het opnieuw toe met de nieuwe vingerafdruk. Velnox accepteert een nieuw certificaat niet stilletjes voor je. |
 | *Proxmox weigerde de credentials* | Het token is ingetrokken, of de privilege separation sluit uit wat Velnox leest. `PVEAuditor` op `/` is genoeg. |

@@ -196,6 +196,8 @@ export interface ClusterSummary {
   lastDiscoveryAt: string | null;
   lastErrorCode: string | null;
   lastErrorDetail: string | null;
+  /** Why the last run failed, as a word under `errors.reasons`. Null unless FAILED. */
+  lastErrorReason: string | null;
   discoveryIntervalMinutes: number;
   createdAt: string;
 }
@@ -326,6 +328,8 @@ export interface DiscoveryRunRow {
   problems: string[];
   errorCode: string | null;
   errorDetail: string | null;
+  /** The same word for a failed run. */
+  errorReason: string | null;
 }
 
 export interface AlertRow {

@@ -16,7 +16,9 @@ in ADR-035 en ADR-036 in [Technologiekeuzes](tech-decisions.md).
 ## Het scherm Jobs
 
 **Jobs** in de zijbalk toont elke job die dit account mag zien, nieuwste eerst, met de status, hoe
-ver hij is, wie hem startte en hoe lang hij duurde. Filter bovenaan de lijst op status.
+ver hij is, wie hem startte en hoe lang hij duurde. Filter bovenaan de lijst op status. Een job die
+over een cluster gaat, noemt het — in de lijst, in **Lopende jobs** en op de eigen pagina van de job,
+die naar het cluster linkt.
 
 De lijst leest zichzelf opnieuw in als er een job verandert, nooit vaker dan jouw verversinstelling
 (je naam → **Instellingen → Schermen automatisch verversen**), en pauzeert zolang er een formulier op
@@ -74,6 +76,11 @@ De laatste vijf zijn definitief. Een job verandert nooit meer zodra hij er een b
 De pagina van een job toont, van boven naar beneden: de status en voortgang, de reden waarom hij
 stopte als hij mislukte, de goedkeuring die op een beslissing wacht als die er is, de stappen, de
 gebeurtenissen, en de ruwe uitvoer van de stappen.
+
+De uitvoer vult zich terwijl de job loopt: nieuwe regels worden elke twee seconden opgehaald, en het
+venster volgt de nieuwste, tenzij je omhoog hebt gescrold om iets te lezen. Voor de gebeurtenissen
+geldt hetzelfde. Een statuswijziging leest de pagina vanzelf opnieuw in, zodat de stappen en knoppen
+altijd bij de getoonde status passen.
 
 **Live** in de hoek betekent dat de stroom verbonden is. **Opnieuw verbinden…** betekent dat hij
 wegviel en de browser hem terughaalt; er gaat niets verloren, want elke gebeurtenis heeft een

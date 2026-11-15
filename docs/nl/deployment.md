@@ -246,8 +246,8 @@ weggeschreven maar nooit is opgepakt zichtbaar is in plaats van als succes gemel
 - **Let's Encrypt** — met een accountadres; vernieuwd door Caddy. **Een andere ACME-autoriteit
   gebruiken** noemt een andere directory — een eigen CA zoals step-ca, of een testserver — met de
   root die haar HTTPS ondertekent als die niet publiek vertrouwd is.
-- **Mijn eigen certificaat** — plak of laad het certificaat met zijn keten, en de onversleutelde
-  privésleutel. Dezelfde controles als het script: de sleutel moet bij het certificaat horen, en het
+- **Mijn eigen certificaat** — plak het certificaat met zijn keten, en de onversleutelde
+  privésleutel, of lees ze uit een PEM-bestand met de knop onder het veld. Dezelfde controles als het script: de sleutel moet bij het certificaat horen, en het
   mag niet verlopen zijn; namen die het adres niet dekken, of een ontbrekende keten, zijn
   waarschuwingen. De sleutel wordt versleuteld in de geheimenopslag van Velnox bewaard en wordt
   nooit meer getoond.
