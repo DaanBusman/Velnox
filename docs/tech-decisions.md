@@ -667,6 +667,12 @@ supply-chain policies (626 entries passed). CI's sequence ran in a clean contain
 all passing, including the licence check that cannot run here otherwise. Both images build on it,
 and `pnpm --version` answers 12.14.0 under `--network none`, as root and as `node`.
 
+**Amended, 12.14.0 → 12.21.0** (15 November 2026, with the dependency check in ADR-057; 12.21.0 was
+two days old and the registry's `latest`). Rewritten in a Linux container with `--lockfile-only`
+first, so pnpm's description of itself moved on its own — 71 lines added and 62 removed — before
+`pnpm update -r` moved anything else. CI's sequence ran in a clean container on 12.21.0, and both
+images build on it.
+
 **The general lesson, which is the reason this is written down:** a pinned tool that has not been
 revisited in a while is not a stable dependency, it is a deferred migration. Four behaviours changed
 under a field that looks like a version number, and three of them would have surfaced as a broken
@@ -1779,6 +1785,29 @@ place in a batch.
 **What is left.** `deepmerge-ts` 7 under Prisma's configuration loader can be made to exhaust the
 stack by a recursive object. It only ever merges Velnox's own Prisma configuration, never input from
 a request, and the fix is a major of that library; it goes with Prisma 7.
+
+**Checked again, 15 November 2026 (0.7.18).** `pnpm audit` reported no critical advisory: the
+`deepmerge-ts` one above, and a moderate one in `minimatch` 10 under typescript-eslint — lint tooling,
+never in an image, reached only by globs written in this repository; typescript-eslint 8 still asks
+for minimatch 10, so the fix waits for it. Two security releases had come out that the audit
+database did not report:
+
+- **Next.js 16.4.5** (3 November) closed seven advisories in 16.4.0–16.4.4. Six need something
+  Velnox does not use — Cache Components and `use cache`, Edge routes, or remote images with a
+  native SVG decoder (the one `next/image` here is a local file). The seventh needs a route that
+  returns a fetched `Response` unchanged behind an HTTP/1.1 proxy that pipelines requests. None
+  applied as far as could be found; the update went in anyway, to **16.4.6**, inside the major.
+- **Node.js 22.23.5** (11 November) fixed eleven CVEs on the 22 line, the serious ones in Node's
+  own HTTPS and HTTP/2 servers. Velnox's servers are plain HTTP behind Caddy, which terminates TLS.
+  One is on the client side — an `https.Agent` reusing a TLS session across different CA
+  settings — and the worker is a TLS client of every Proxmox node. Nothing in the source pins a
+  Node patch: the images follow `node:22-bookworm-slim`, and `install.sh` builds with `--pull`,
+  so every install and upgrade from now on runs 22.23.5 or later.
+
+Everything else inside its major moved with `pnpm update -r`: NestJS 11.2.10, nodemailer 10.5,
+next-intl 4.15, Tailwind 4.3.5, vitest 5.1, prettier 3.10 and others, and pnpm itself to 12.21.0
+(ADR-029). The majors in the table above are held for the same reasons; none of them is needed for a
+security fix.
 
 ---
 
