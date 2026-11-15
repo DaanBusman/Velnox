@@ -436,7 +436,9 @@
       "package_not_installer": "{filename} is not an {kind}, whatever its name says.",
       "package_too_large": "A package can be at most 2 GB.",
       "package_unavailable": "The template runs a package that is not ready, or not its owner’s. Open the template and check its packages.",
-      "package_in_use": "This package is still run by: {templates}. Remove it from those templates first."
+      "package_in_use": "This package is still run by: {templates}. Remove it from those templates first.",
+      "language_not_in_iso": "{edition} installs only in {languages}, not in {language}. Choose a display language from the list read from the ISO.",
+      "virtio_fetch_failed": "The VirtIO ISO could not be fetched into the library from the Fedora project. Add one to the library yourself, or choose it in the template."
     },
     "provisioning": {
       "hostname_invalid": "That hostname cannot be used: letters, digits and dashes, not only digits, at most {max} characters, without a domain.",
@@ -1613,7 +1615,13 @@
     },
     "packageResume": "Resume",
     "removePackageTitle": "Remove package",
-    "removePackageBody": "{filename} is removed from Velnox. VMs that already installed it keep it."
+    "removePackageBody": "{filename} is removed from Velnox. VMs that already installed it keep it.",
+    "editionReading": "The editions of this ISO are being read in the background. Reload the page in a minute to choose one from the list, or type the name.",
+    "virtioIsoAuto": "Yes — from the library, downloaded when missing",
+    "virtioIsoNo": "No",
+    "virtioIsoAutoHint": "The library's VirtIO ISO is attached. When the library has none, the first VM fetches the stable one from the Fedora project into it.",
+    "uiLanguageFromIso": "The languages read from the ISO — the chosen edition’s, once one is chosen. Its default comes first.",
+    "languageNotOnIso": "{language} — not on this ISO"
   },
   "provisioning": {
     "subtitle": "Every VM built from an Autoconfig template, with its installation record. VMs still being built also show under Virtual Machines.",

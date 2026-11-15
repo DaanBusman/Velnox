@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildBlockList } from './address-guard';
-import { downloadToFile } from './fetch';
+import { downloadToFile, redirectTarget } from './fetch';
 
 /*
  * Against a real HTTP server on loopback. The guard refuses loopback, so most
@@ -83,6 +83,36 @@ describe('fetching a file into the library', () => {
 
   it('follows a redirect', async () => {
     expect((await fetchTo(`${base}/hop`)).bytes).toBe(ISO.length);
+  });
+
+  it('follows a redirect to plain http on the same host over https instead', () => {
+    const next = redirectTarget(
+      new URL('https://mirror.example/stable/virtio-win.iso'),
+      'http://mirror.example/archive/virtio-win-0.1.302.iso',
+    );
+    expect(next.href).toBe('https://mirror.example/archive/virtio-win-0.1.302.iso');
+    expect(
+      redirectTarget(new URL('https://mirror.example:8443/a.iso'), 'http://mirror.example/b.iso').href,
+    ).toBe('https://mirror.example:8443/b.iso');
+  });
+
+  it('refuses a redirect to plain http on another host', () => {
+    let caught: unknown = null;
+    try {
+      redirectTarget(new URL('https://mirror.example/a.iso'), 'http://elsewhere.example/a.iso');
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toMatchObject({ code: 'library.url_refused' });
+  });
+
+  it('leaves the other redirects as they are', () => {
+    expect(redirectTarget(new URL('http://mirror.example/a.iso'), 'http://other.example/b.iso').href).toBe(
+      'http://other.example/b.iso',
+    );
+    expect(redirectTarget(new URL('https://mirror.example/a/b.iso'), '../c.iso').href).toBe(
+      'https://mirror.example/c.iso',
+    );
   });
 
   it('gives up after five redirects', async () => {

@@ -23,6 +23,15 @@ import { open, type FileHandle } from 'node:fs/promises';
  * list could not be read, and the edition is typed and unchecked.
  */
 
+/**
+ * The reader's version, stored with what it read. Raise it when the reader
+ * learns something new — another field, a UDF feature it used to give up on —
+ * and the next sweep reads every ISO in the library again.
+ *
+ * 1. 0.7.20: languages in order, the image's default first.
+ */
+export const WINDOWS_IMAGES_READER_VERSION = 1;
+
 export interface WindowsImage {
   index: number;
   /** What `/IMAGE/NAME` matches: `Windows 11 Pro`. */
@@ -212,14 +221,21 @@ export function parseWimXml(text: string): WindowsImage[] {
     const name = field(block, 'NAME');
     if (!name) continue;
     const arch = field(block, 'ARCH');
-    const languages = [...block.matchAll(/<LANGUAGE>([^<]+)<\/LANGUAGE>/g)].map((m) => m[1]!.trim());
+    const languages = [...new Set([...block.matchAll(/<LANGUAGE>([^<]+)<\/LANGUAGE>/g)].map((m) => m[1]!.trim()))];
+    // The default first: it is what the template form preselects, and what
+    // Setup falls back to when nothing else is said.
+    const fallback = field(block, 'DEFAULT');
+    if (fallback && languages.includes(fallback)) {
+      languages.splice(languages.indexOf(fallback), 1);
+      languages.unshift(fallback);
+    }
     images.push({
       index: Number(match[1]),
       name,
       displayName: field(block, 'DISPLAYNAME'),
       editionId: field(block, 'EDITIONID'),
       architecture: arch === '9' ? 'x64' : arch === '12' ? 'arm64' : arch === '0' ? 'x86' : arch,
-      languages: [...new Set(languages)],
+      languages,
     });
   }
   return images.sort((a, b) => a.index - b.index);

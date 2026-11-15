@@ -37,6 +37,15 @@ describe('parseWimXml', () => {
     expect(images[2]!.architecture).toBe('arm64');
   });
 
+  it('puts the default language first, so the form preselects it', () => {
+    const [image] = parseWimXml(
+      '<WIM><IMAGE INDEX="1"><NAME>Windows 11 Pro</NAME><WINDOWS><LANGUAGES>' +
+        '<LANGUAGE>en-US</LANGUAGE><LANGUAGE>nl-NL</LANGUAGE><LANGUAGE>en-US</LANGUAGE>' +
+        '<DEFAULT>nl-NL</DEFAULT></LANGUAGES></WINDOWS></IMAGE></WIM>',
+    );
+    expect(image!.languages).toEqual(['nl-NL', 'en-US']);
+  });
+
   it('decodes entities, so the name matches what Setup compares', () => {
     expect(images[2]!.name).toBe('Windows Server 2025 Standard (Desktop Experience) & more');
   });

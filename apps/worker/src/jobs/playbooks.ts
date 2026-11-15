@@ -137,7 +137,7 @@ export function playbookFor(type: string, params: unknown, context: PlaybookCont
       return upgradePlaybook(params, context.jobId, library());
     case JOB_TYPES.vmProvision:
       if (!context.provisioning) throw new StepError('generic', 'This worker cannot provision');
-      return provisionPlaybook(params, context.provisioning);
+      return provisionPlaybook(params, context.provisioning, context.jobId);
     default:
       throw new StepError('generic', `No playbook for job type "${type}"`);
   }

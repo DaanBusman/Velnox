@@ -5,6 +5,7 @@ import {
   perTenantAccount,
   requiredTemplateSecrets,
   tenantSecretKey,
+  VIRTIO_WIN_PATTERN,
   windowsTemplateSchema,
   type TemplateSettings,
 } from './autoconfig';
@@ -77,5 +78,64 @@ describe('a password per tenant', () => {
     expect(parseTenantSecretKey('administrator')).toBeNull();
     expect(parseTenantSecretKey(`tenant:${TENANT}:productKey`)).toBeNull();
     expect(parseTenantSecretKey('tenant:not-a-tenant:root')).toBeNull();
+  });
+});
+
+describe('VirtIO ISO: Yes (0.7.20)', () => {
+  const base = { family: 'WINDOWS', isoFilename: 'win.iso', imageName: 'Windows Server 2025 Standard' };
+
+  it('needs no filename: the library has one or Velnox fetches it', () => {
+    const parsed = windowsTemplateSchema.safeParse({ ...base, virtioIsoAuto: true });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('still needs one or the other for the drivers and the guest agent', () => {
+    const parsed = windowsTemplateSchema.safeParse({ ...base });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('is not both a chosen file and Yes', () => {
+    const parsed = windowsTemplateSchema.safeParse({
+      ...base,
+      virtioIsoAuto: true,
+      virtioIsoFilename: 'virtio-win.iso',
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('defaults to off, so a template saved before keeps its chosen file', () => {
+    expect(windowsTemplateSchema.parse({ ...base, virtioIsoFilename: 'virtio-win.iso' }).virtioIsoAuto).toBe(false);
+  });
+
+  it('recognises the VirtIO ISOs a library may already hold', () => {
+    for (const name of ['virtio-win.iso', 'VirtIO-Win-0.1.271.iso', 'virtio-win-gt.iso']) {
+      expect(VIRTIO_WIN_PATTERN.test(name)).toBe(true);
+    }
+    for (const name of ['virtio.iso', 'win11.iso', 'virtio-win.iso.part']) {
+      expect(VIRTIO_WIN_PATTERN.test(name)).toBe(false);
+    }
+  });
+});
+
+describe('the display language (0.7.20)', () => {
+  const ui = (tag: string) =>
+    windowsTemplateSchema.safeParse({
+      family: 'WINDOWS',
+      isoFilename: 'win.iso',
+      imageName: 'Windows Server 2025 Standard',
+      virtioIsoFilename: 'virtio-win.iso',
+      locale: { uiLanguage: tag },
+    }).success;
+
+  it('takes any language an ISO can carry, not only the fixed list', () => {
+    expect(ui('cs-CZ')).toBe(true);
+    expect(ui('sr-Latn-RS')).toBe(true);
+    expect(ui('nl-NL')).toBe(true);
+  });
+
+  it('refuses what is not a language tag', () => {
+    expect(ui('dutch')).toBe(false);
+    expect(ui('nl')).toBe(false);
+    expect(ui('nl-NL<x>')).toBe(false);
   });
 });

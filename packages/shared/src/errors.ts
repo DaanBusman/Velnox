@@ -107,6 +107,10 @@ export const ERROR_CODES = {
   autoconfigMediaMissing: 'autoconfig.media_missing',
   /** The edition the template names is not in that ISO's image list. */
   autoconfigEditionNotInIso: 'autoconfig.edition_not_in_iso',
+  /** The display language is not one the chosen edition installs with (0.7.20). */
+  autoconfigLanguageNotInIso: 'autoconfig.language_not_in_iso',
+  /** VirtIO ISO: Yes, and fetching it into the library failed (0.7.20). */
+  autoconfigVirtioFetchFailed: 'autoconfig.virtio_fetch_failed',
   /** The library file is the wrong kind for what the template uses it as. */
   autoconfigMediaWrongKind: 'autoconfig.media_wrong_kind',
   /** Offering to chosen tenants, or a password per tenant, on a template a tenant owns. */

@@ -16,6 +16,7 @@ import {
 import type { CredentialReader, GuestCredentials } from '../inventory/credentials';
 import type { LibraryServices } from '../library/services';
 import { StepError, type Playbook, type StepContext } from '../jobs/steps';
+import { ensureVirtioIso, readyVirtioIso } from './virtio';
 import { buildAutounattend, isServerEdition, WINDOWS_DONE_MARKER } from './autounattend';
 import { buildCloudInit, LINUX_DONE_MARKER } from './cloud-init';
 import { buildIso, isoLayout, isoStream, type IsoFile } from './iso9660';
@@ -189,7 +190,11 @@ export function usableAddresses(
   return [...new Set(out)];
 }
 
-export function provisionPlaybook(raw: unknown, services: ProvisioningServices): Playbook {
+export function provisionPlaybook(
+  raw: unknown,
+  services: ProvisioningServices,
+  jobId: string,
+): Playbook {
   const { provisioningId } = parseParams(raw);
   const { prisma } = services;
 
@@ -229,8 +234,15 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
         'The template copy on this record does not validate',
       );
     }
+    const loaded = parsed.data as TemplateSettings;
+    // VirtIO ISO: Yes names no file; the library's VirtIO ISO is the one, read
+    // here so a job resumed after the media step attaches the same file. Still
+    // null when the library has none: the media step fetches it (0.7.20).
+    if (loaded.family === 'WINDOWS' && loaded.virtioIsoAuto && !loaded.virtioIsoFilename) {
+      loaded.virtioIsoFilename = await readyVirtioIso(services.library.prisma);
+    }
     row = found;
-    settings = parsed.data as TemplateSettings;
+    settings = loaded;
     return { row, settings };
   };
 
@@ -554,8 +566,19 @@ export function provisionPlaybook(raw: unknown, services: ProvisioningServices):
           remember(async () => {
             const { settings: s } = await load();
             if (s.family === 'WINDOWS') {
+              // VirtIO ISO: Yes and none in the library: fetch it there first,
+              // as the first third of this step.
+              const fetching = s.virtioIsoAuto && !s.virtioIsoFilename;
+              const base = fetching ? 30 : 0;
+              if (fetching) {
+                s.virtioIsoFilename = await ensureVirtioIso(services.library, jobId, {
+                  ...context,
+                  progress: (pct) => context.progress(pct * 0.3),
+                });
+                await context.log('STDOUT', `Using ${s.virtioIsoFilename} for the VirtIO drivers`);
+              }
               await ensureOnStorage(context, s.isoFilename, 'iso', (pct) =>
-                context.progress(pct * 0.8),
+                context.progress(base + pct * (0.8 - base / 100)),
               );
               if (s.virtioIsoFilename) {
                 await ensureOnStorage(context, s.virtioIsoFilename, 'iso', (pct) =>

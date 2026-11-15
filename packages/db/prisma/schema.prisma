@@ -1069,6 +1069,9 @@ model LibraryItem {
   /// The editions in a Windows install ISO, read from its install.wim when it
   /// was checked. Null for anything else, or when the list could not be read.
   windowsImages Json?   @map("windows_images")
+  /// The version of the reader that produced `windowsImages`. Null: never read.
+  /// The worker re-reads READY ISOs whose version is older than its own.
+  windowsImagesVersion Int? @map("windows_images_version")
 
   /// What an operator corrected the friendly name to. Null means "as parsed".
   titleOverride    String? @map("title_override")

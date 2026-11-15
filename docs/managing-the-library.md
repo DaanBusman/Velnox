@@ -42,7 +42,9 @@ can follow and cancel. Velnox refuses to fetch from:
   `169.254.169.254`;
 - the networks Velnox itself runs on, which is where its database and queue are;
 - a URL with a username or password in it;
-- a redirect from `https` to plain `http`, or a chain of more than five redirects.
+- a redirect from `https` to plain `http` on another host, or a chain of more than five redirects. A
+  redirect to plain `http` on the same host — the Fedora project's VirtIO links do that — is followed
+  over `https` instead, and fails if the host does not serve that path over `https`.
 
 Internal file servers on private addresses are allowed — that is where most MSPs keep their ISOs.
 The address is shown and logged **without its query string**, because that is where download links

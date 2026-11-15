@@ -18,7 +18,10 @@ import { StepError } from '../jobs/steps';
  *
  * - **http and https only**, and never from https down to http on a redirect —
  *   a mirror that bounces to plain HTTP has just handed the download to anyone
- *   on the path.
+ *   on the path. A redirect to plain http on the *same host* is followed over
+ *   https instead (0.7.20): the Fedora project's own VirtIO links do that, and
+ *   the host that answered over TLS is the one asked again over TLS. If it does
+ *   not serve that path over https, the download fails; it never goes plain.
  * - **At most five redirects**, each one judged afresh: a public URL that
  *   redirects to 169.254.169.254 is refused at the redirect.
  * - **No credentials in the URL.** A `user:pass@` URL is refused rather than
@@ -59,6 +62,24 @@ export interface DownloadResult {
 
 const refused = (reason: string, url: string): StepError =>
   new StepError(ERROR_CODES.libraryUrlRefused, `Refused to fetch ${displayUrl(url)}: ${reason}`);
+
+/**
+ * Where a redirect from `current` to `location` leads, or a refusal.
+ *
+ * From https to plain http is refused — unless it is the same host, which is
+ * asked again over https on the port it answered on. Exported for tests.
+ */
+export function redirectTarget(current: URL, location: string): URL {
+  const next = new URL(location, current);
+  if (current.protocol === 'https:' && next.protocol === 'http:') {
+    if (next.hostname !== current.hostname) {
+      throw refused('a redirect from https to plain http', next.href);
+    }
+    next.protocol = 'https:';
+    next.port = current.port;
+  }
+  return next;
+}
 
 /**
  * A resolver that answers only with addresses the guard allows.
@@ -162,11 +183,7 @@ export async function downloadToFile(options: DownloadOptions): Promise<Download
           `More than ${MAX_REDIRECTS} redirects`,
         );
       }
-      const next = new URL(location, current);
-      if (current.protocol === 'https:' && next.protocol === 'http:') {
-        throw refused('a redirect from https to plain http', next.href);
-      }
-      current = next;
+      current = redirectTarget(current, location);
       continue;
     }
 

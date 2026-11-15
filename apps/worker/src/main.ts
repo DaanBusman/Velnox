@@ -54,6 +54,7 @@ import {
   type SshVerifyData,
 } from './library/ssh-setup';
 import { LIBRARY_SWEEP_INTERVAL_MS, sweepLibrary } from './library/sweep';
+import { backfillWindowsImages } from './library/windows-images-backfill';
 import { Mailer } from './mail/mailer';
 import { notifyProvisioned } from './provisioning/notify';
 import type { ProvisioningServices } from './provisioning/playbook';
@@ -414,6 +415,14 @@ async function bootstrap(): Promise<void> {
         })
         .catch((error: unknown) =>
           logger.error({ err: rootRedactor.value(error) }, 'Sweeping the library failed'),
+        ),
+      // ISOs the current Windows image reader has not looked into (0.7.20).
+      backfillWindowsImages(library)
+        .then((result) => {
+          if (result.read > 0) logger.info(result, 'Read the editions of ISOs in the library');
+        })
+        .catch((error: unknown) =>
+          logger.error({ err: rootRedactor.value(error) }, 'Reading ISO editions failed'),
         ),
       sweepProvisionings(prisma, credentials)
         .then((result) => {

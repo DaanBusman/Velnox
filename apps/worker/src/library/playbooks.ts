@@ -25,7 +25,11 @@ import { StepError, type Playbook, type StepContext } from '../jobs/steps';
 import { downloadToFile } from './fetch';
 import type { LibraryServices } from './services';
 import { withSftp } from './ssh';
-import { readWindowsImages, type WindowsImage } from './windows-images';
+import {
+  readWindowsImages,
+  WINDOWS_IMAGES_READER_VERSION,
+  type WindowsImage,
+} from './windows-images';
 
 /**
  * The library's jobs.
@@ -202,6 +206,8 @@ async function publish(
       ...(windowsImages
         ? { windowsImages: windowsImages as unknown as Prisma.InputJsonValue }
         : {}),
+      // An ISO was looked into, whatever was found; anything else never is.
+      ...(item.kind === 'ISO' ? { windowsImagesVersion: WINDOWS_IMAGES_READER_VERSION } : {}),
       readyAt: new Date(),
       jobId: null,
       errorCode: null,
@@ -263,6 +269,112 @@ function remembering<T>(sink: { error: unknown }, run: () => Promise<T>): Promis
 // library.fetch — a URL into the library
 // ---------------------------------------------------------------------------
 
+/**
+ * Download a URL item that is waiting for one into its partial file.
+ *
+ * The first half of `library.fetch`, and of "VirtIO ISO: Yes" (0.7.20), which
+ * fetches the drivers into the library from inside a provisioning job rather
+ * than waiting on a job of its own. `jobId` is whichever job is doing it: the
+ * sweeper fails an item whose job stopped, so it must name a job that runs.
+ */
+async function download(
+  services: LibraryServices,
+  itemId: string,
+  jobId: string,
+  context: StepContext,
+): Promise<{ bytes: number; sha256: string }> {
+  const item = await loadItem(services, itemId);
+  if (item.state !== 'RECEIVING' || item.source !== 'URL' || !item.sourceUrl) {
+    throw new StepError(
+      ERROR_CODES.libraryNotReady,
+      `Item ${itemId} is not waiting for a download`,
+    );
+  }
+  await services.prisma.libraryItem.update({ where: { id: itemId }, data: { jobId } });
+  await rm(services.paths.partial(itemId), { force: true });
+
+  await context.log(
+    'STDOUT',
+    `Fetching ${item.filename} from ${displayUrl(item.sourceUrl)}`,
+  );
+
+  let declared: number | null = null;
+  const reporter = progressReporter(async (bytes) => {
+    await services.prisma.libraryItem.update({
+      where: { id: itemId },
+      data: { receivedBytes: BigInt(bytes) },
+    });
+    await context.progress(percent(bytes, declared));
+  });
+
+  const result = await downloadToFile({
+    url: item.sourceUrl,
+    destination: services.paths.partial(itemId),
+    signal: context.signal,
+    blocked: services.blocked,
+    maxBytes: await headroom(services, itemId),
+    userAgent: services.userAgent,
+    onStart: async (size) => {
+      declared = size;
+      if (size !== null) {
+        await assertCapacity(services, itemId, size);
+        await services.prisma.libraryItem.update({
+          where: { id: itemId },
+          data: { sizeBytes: BigInt(size) },
+        });
+        await context.log('STDOUT', `The server declares ${size} bytes`);
+      } else {
+        await context.log(
+          'STDOUT',
+          'The server did not declare a size; the library limits still apply',
+        );
+      }
+    },
+    onProgress: (bytes) => reporter.update(bytes),
+  });
+  await reporter.flush();
+
+  await services.prisma.libraryItem.update({
+    where: { id: itemId },
+    data: {
+      state: 'VERIFYING',
+      sizeBytes: BigInt(result.bytes),
+      receivedBytes: BigInt(result.bytes),
+      // Nothing needs the query string again, and a signed link's
+      // token is in it. Kept only for as long as the download ran.
+      sourceUrl: displayUrl(item.sourceUrl),
+    },
+  });
+  await context.log(
+    'STDOUT',
+    `Received ${result.bytes} bytes of ${item.filename}, sha256 ${result.sha256}`,
+  );
+  return { bytes: result.bytes, sha256: result.sha256 };
+}
+
+/**
+ * Download a waiting URL item and publish it: the whole of `library.fetch`, as
+ * one call, for a job that needs a file in the library on its way to
+ * something else. On failure the item is failed with the reason and its
+ * partial removed — the same end `library.fetch`'s cleanup gives it.
+ */
+export async function fetchIntoLibrary(
+  services: LibraryServices,
+  itemId: string,
+  jobId: string,
+  context: StepContext,
+): Promise<string> {
+  try {
+    const checked = await download(services, itemId, jobId, context);
+    const item = await loadItem(services, itemId);
+    await publish(services, item, checked);
+    return item.filename;
+  } catch (error) {
+    await inboundCleanup(services, itemId, () => error)('failed');
+    throw error;
+  }
+}
+
 export function fetchPlaybook(raw: unknown, jobId: string, services: LibraryServices): Playbook {
   const { itemId } = parseLibraryItemParams(raw);
   const failure = { error: null as unknown };
@@ -277,74 +389,8 @@ export function fetchPlaybook(raw: unknown, jobId: string, services: LibraryServ
         phase: 'transfer',
         run: (context) =>
           remembering(failure, async () => {
-            const item = await loadItem(services, itemId);
-            if (item.state !== 'RECEIVING' || item.source !== 'URL' || !item.sourceUrl) {
-              throw new StepError(
-                ERROR_CODES.libraryNotReady,
-                `Item ${itemId} is not waiting for a download`,
-              );
-            }
-            await services.prisma.libraryItem.update({ where: { id: itemId }, data: { jobId } });
-            await rm(services.paths.partial(itemId), { force: true });
-
-            await context.log(
-              'STDOUT',
-              `Fetching ${item.filename} from ${displayUrl(item.sourceUrl)}`,
-            );
-
-            let declared: number | null = null;
-            const reporter = progressReporter(async (bytes) => {
-              await services.prisma.libraryItem.update({
-                where: { id: itemId },
-                data: { receivedBytes: BigInt(bytes) },
-              });
-              await context.progress(percent(bytes, declared));
-            });
-
-            const result = await downloadToFile({
-              url: item.sourceUrl,
-              destination: services.paths.partial(itemId),
-              signal: context.signal,
-              blocked: services.blocked,
-              maxBytes: await headroom(services, itemId),
-              userAgent: services.userAgent,
-              onStart: async (size) => {
-                declared = size;
-                if (size !== null) {
-                  await assertCapacity(services, itemId, size);
-                  await services.prisma.libraryItem.update({
-                    where: { id: itemId },
-                    data: { sizeBytes: BigInt(size) },
-                  });
-                  await context.log('STDOUT', `The server declares ${size} bytes`);
-                } else {
-                  await context.log(
-                    'STDOUT',
-                    'The server did not declare a size; the library limits still apply',
-                  );
-                }
-              },
-              onProgress: (bytes) => reporter.update(bytes),
-            });
-            await reporter.flush();
-
-            await services.prisma.libraryItem.update({
-              where: { id: itemId },
-              data: {
-                state: 'VERIFYING',
-                sizeBytes: BigInt(result.bytes),
-                receivedBytes: BigInt(result.bytes),
-                // Nothing needs the query string again, and a signed link's
-                // token is in it. Kept only for as long as the download ran.
-                sourceUrl: displayUrl(item.sourceUrl),
-              },
-            });
-            fetched = { bytes: result.bytes, sha256: result.sha256 };
-            await context.log(
-              'STDOUT',
-              `Received ${result.bytes} bytes of ${item.filename}, sha256 ${result.sha256}`,
-            );
-            return { bytes: result.bytes, sha256: result.sha256 };
+            fetched = await download(services, itemId, jobId, context);
+            return fetched;
           }),
       },
       {

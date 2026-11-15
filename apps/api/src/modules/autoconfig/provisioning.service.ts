@@ -276,6 +276,8 @@ export class ProvisioningService {
       settings.family === 'WINDOWS'
         ? [
             { filename: settings.isoFilename, kind: 'ISO' },
+            // VirtIO ISO: Yes needs nothing in the library yet: the job fetches
+            // it there when it is missing (0.7.20).
             ...(settings.virtioIsoFilename
               ? [{ filename: settings.virtioIsoFilename, kind: 'ISO' as const }]
               : []),
@@ -304,10 +306,28 @@ export class ProvisioningService {
       // template form said so when the edition was typed.
       if (settings.family === 'WINDOWS' && want.filename === settings.isoFilename) {
         const images = item.windowsImages as WindowsImageSummary[] | null;
-        if (images && !images.some((image) => image.name === settings.imageName)) {
+        const image = images?.find((candidate) => candidate.name === settings.imageName);
+        if (images && !image) {
           throw new VelnoxError(ERROR_CODES.autoconfigEditionNotInIso, {
             status: 409,
             params: { edition: settings.imageName, filename: want.filename },
+          });
+        }
+        // Setup stops at a prompt for a display language the edition does not
+        // carry, so it is refused here rather than found by a VM waiting.
+        // An image that lists no languages says nothing either way.
+        if (
+          image &&
+          image.languages.length > 0 &&
+          !image.languages.includes(settings.locale.uiLanguage)
+        ) {
+          throw new VelnoxError(ERROR_CODES.autoconfigLanguageNotInIso, {
+            status: 409,
+            params: {
+              language: settings.locale.uiLanguage,
+              edition: settings.imageName,
+              languages: image.languages.join(', '),
+            },
           });
         }
       }

@@ -249,6 +249,8 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$WORK_NATIVE/media:/out" debian:bookworm-
   mkdir -p /img/Windows /iso/sources && echo x > /img/Windows/a.txt
   wimlib-imagex capture /img /iso/sources/install.wim "Windows 11 Home" >/dev/null
   wimlib-imagex append /img /iso/sources/install.wim "Windows 11 Pro" >/dev/null
+  wimlib-imagex info /iso/sources/install.wim 2 --image-property WINDOWS/LANGUAGES/LANGUAGE=en-US \
+    --image-property "WINDOWS/LANGUAGES/LANGUAGE[2]=nl-NL" --image-property WINDOWS/LANGUAGES/DEFAULT=nl-NL >/dev/null
   genisoimage -quiet -udf -V WIN11 -o /out/win.iso /iso
   chmod a+r /out/win.iso' || { red "could not build the Windows ISO"; exit 1; }
 node -e '
@@ -347,6 +349,25 @@ WIN_ITEM="$(upload "$WORK/media/win.iso" "$WIN_ISO")"
 check "the Windows ISO is ready" READY "$(call GET "/api/v1/library/${WIN_ITEM}" | json state)"
 check "its editions were read from its WIM" '["Windows 11 Home","Windows 11 Pro"]' \
   "$(call GET "/api/v1/library/${WIN_ITEM}" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>process.stdout.write(JSON.stringify((JSON.parse(r).windowsImages||[]).map(i=>i.name))))')"
+check "an edition's languages were read too, its default first" '["nl-NL","en-US"]' \
+  "$(call GET "/api/v1/library/${WIN_ITEM}" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const i=(JSON.parse(r).windowsImages||[]).find(x=>x.name==="Windows 11 Pro");process.stdout.write(JSON.stringify(i?i.languages:null))})')"
+check "and it counts as read" true "$(call GET "/api/v1/library/${WIN_ITEM}" | json windowsImagesRead)"
+
+info "An ISO in the library from before its editions were read (0.7.20)."
+psql_at "UPDATE library_items SET windows_images = NULL, windows_images_version = NULL WHERE id = '${WIN_ITEM}';" >/dev/null
+check "backfill: an ISO never read says so" false "$(call GET "/api/v1/library/${WIN_ITEM}" | json windowsImagesRead)"
+"${COMPOSE[@]}" restart worker >/dev/null 2>&1
+BACKFILLED=""
+for _ in $(seq 1 120); do
+  BACKFILLED="$(psql_at "SELECT windows_images_version FROM library_items WHERE id = '${WIN_ITEM}';")"
+  [[ -n "$BACKFILLED" ]] && break
+  sleep 1
+done
+check "backfill: the worker reads it when it starts" 1 "$BACKFILLED"
+check "backfill: its editions are back" '["Windows 11 Home","Windows 11 Pro"]' \
+  "$(call GET "/api/v1/library/${WIN_ITEM}" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>process.stdout.write(JSON.stringify((JSON.parse(r).windowsImages||[]).map(i=>i.name))))')"
+check "backfill: and it counts as read" true "$(call GET "/api/v1/library/${WIN_ITEM}" | json windowsImagesRead)"
+
 VIRTIO_ISO="${RUN}-virtio.iso"
 VIRTIO_ITEM="$(upload "$WORK/media/virtio.iso" "$VIRTIO_ISO")"
 check "a non-Windows ISO has no edition list" "" "$(call GET "/api/v1/library/${VIRTIO_ITEM}" | json windowsImages)"
@@ -487,6 +508,12 @@ TEMPLATES+=("$(printf '%s' "$NOTPRO" | json id)")
 call POST /api/v1/provisionings "$(TID="$(printf '%s' "$NOTPRO" | json id)" HOST="ws${SHORT}" body "$PROV")" >/tmp/np.$$ 2>/dev/null
 check "an edition the ISO does not have is refused" autoconfig.edition_not_in_iso "$(json error.code </tmp/np.$$)"
 rm -f /tmp/np.$$
+GERMAN="$(call POST /api/v1/autoconfig/templates "$(body "{ tenantId: e.MSP, name: 'German ' + e.RUN, settings: Object.assign(${WIN_SETTINGS}, { administratorPassword: 'GENERATE', locale: { uiLanguage: 'de-DE', systemLocale: 'de-DE', userLocale: 'de-DE', inputLocale: '0407:00000407', timeZone: 'W. Europe Standard Time' } }) }")")"
+TEMPLATES+=("$(printf '%s' "$GERMAN" | json id)")
+call POST /api/v1/provisionings "$(TID="$(printf '%s' "$GERMAN" | json id)" HOST="ws${SHORT}" body "$PROV")" >/tmp/de.$$ 2>/dev/null
+check "a display language the edition does not install with is refused" autoconfig.language_not_in_iso "$(json error.code </tmp/de.$$)"
+check "and the refusal names the languages it does" "nl-NL, en-US" "$(json error.params.languages </tmp/de.$$)"
+rm -f /tmp/de.$$
 
 # ---------------------------------------------------------------------------
 # A Windows VM
@@ -533,6 +560,69 @@ contains "windows: the requester was mailed" "To: ${ADMIN_EMAIL}" "$W_MAIL"
 lacks "windows: the mail has no password in it" "$BEHEER_PW" "$W_MAIL"
 contains "windows: it carries the installation record" "application/pdf" "$W_MAIL"
 check "windows: the requester was mailed once" 1 "$(in_fixture "grep -l 'Subject: ${WIN_HOST} is' /fixture/store/mail/*.eml | wc -l" | tr -d ' ')"
+
+# ---------------------------------------------------------------------------
+# VirtIO ISO: Yes (0.7.20)
+# ---------------------------------------------------------------------------
+
+info "VirtIO ISO: Yes."
+AUTO="$(call POST /api/v1/autoconfig/templates "$(body "{ tenantId: e.MSP, name: 'VirtIO yes ' + e.RUN, settings: Object.assign(${WIN_SETTINGS}, { virtioIsoFilename: null, virtioIsoAuto: true, administratorPassword: 'GENERATE' }) }")")"
+check "virtio yes: a template that names no VirtIO file is created" 201 "$(last_status)"
+AUTO_TID="$(printf '%s' "$AUTO" | json id)"; TEMPLATES+=("$AUTO_TID")
+check "virtio yes: and says Yes" true "$(printf '%s' "$AUTO" | json settings.virtioIsoAuto)"
+call POST /api/v1/autoconfig/templates "$(body "{ tenantId: e.MSP, name: 'VirtIO both ' + e.RUN, settings: Object.assign(${WIN_SETTINGS}, { virtioIsoAuto: true, administratorPassword: 'GENERATE' }) }")" >/dev/null
+check "virtio yes: Yes and a chosen file together are refused" 400 "$(last_status)"
+
+# The download from the Fedora project is not made here: it is hundreds of
+# megabytes from the internet. What is proven is the rest of it — a job that
+# finds another job fetching waits for that one, and fails with it — and that
+# Yes attaches the library's own VirtIO ISO when there is one.
+VIRTIO_READY="$(psql_at "SELECT count(*) FROM library_items WHERE kind = 'ISO' AND state <> 'FAILED' AND filename ILIKE 'virtio-win%';")"
+if [[ "$VIRTIO_READY" == 0 ]]; then
+  PLANTED="$(psql_at "INSERT INTO library_items (id, kind, state, source, filename, source_url, created_by_label, updated_at) VALUES (gen_random_uuid(), 'ISO', 'RECEIVING', 'URL', 'virtio-win.iso', 'https://example.invalid/virtio-win.iso', 'verify-provisioning', now()) RETURNING id;" | head -1)"
+  ITEMS+=("$PLANTED")
+  VA="$(call POST /api/v1/provisionings "$(TID="$AUTO_TID" HOST="va${SHORT}" NOTIFY=no body "$PROV")")"
+  VA_JOB="$(printf '%s' "$VA" | json job.id)"
+  VA_WAITING=""
+  for _ in $(seq 1 120); do
+    VA_WAITING="$(call GET "/api/v1/jobs/${VA_JOB}/logs" | json lines)"
+    [[ "$VA_WAITING" == *"which another job is fetching"* ]] && break
+    sleep 1
+  done
+  contains "virtio yes: a job that finds a fetch under way waits for it" "Waiting for virtio-win.iso, which another job is fetching" "$VA_WAITING"
+  check "virtio yes: and has not fetched one of its own" 1 "$(psql_at "SELECT count(*) FROM library_items WHERE filename ILIKE 'virtio-win.iso' AND state <> 'FAILED';")"
+  psql_at "UPDATE library_items SET state = 'FAILED', error_code = 'library.fetch_failed' WHERE id = '${PLANTED}';" >/dev/null
+  check "virtio yes: when that fetch fails, so does the job" FAILED "$(wait_for "$VA_JOB" 60 SUCCEEDED FAILED CANCELLED)"
+  check "virtio yes: saying why" autoconfig.virtio_fetch_failed "$(job_field "$VA_JOB" errorCode)"
+else
+  info "The library already holds a VirtIO ISO; the wait for another job's fetch is not checked."
+fi
+
+# With VERIFY_VIRTIO_DOWNLOAD=1, and an empty library, the download itself:
+# some 900 MB from the Fedora project, into the library and onto the node.
+if [[ "${VERIFY_VIRTIO_DOWNLOAD:-}" == 1 ]] && [[ "$(psql_at "SELECT count(*) FROM library_items WHERE state <> 'FAILED' AND filename ILIKE 'virtio-win%';")" == 0 ]]; then
+  info "VirtIO ISO: Yes, with nothing in the library: downloading it for real."
+  VD="$(call POST /api/v1/provisionings "$(TID="$AUTO_TID" HOST="vd${SHORT}" NOTIFY=no body "$PROV")")"
+  VD_JOB="$(printf '%s' "$VD" | json job.id)"
+  check "virtio download: the VM is built" SUCCEEDED "$(wait_for "$VD_JOB" 1500 SUCCEEDED FAILED CANCELLED)"
+  VD_LOG="$(call GET "/api/v1/jobs/${VD_JOB}/logs" | json lines)"
+  contains "virtio download: the job fetched it" "fetching virtio-win.iso from the Fedora project" "$VD_LOG"
+  contains "virtio download: and used it" "Using virtio-win.iso for the VirtIO drivers" "$VD_LOG"
+  VD_ITEM="$(psql_at "SELECT id FROM library_items WHERE filename = 'virtio-win.iso' AND state = 'READY';")"
+  [[ -n "$VD_ITEM" ]] && ITEMS+=("$VD_ITEM")
+  check "virtio download: it is in the library" READY "$(call GET "/api/v1/library/${VD_ITEM}" | json state)"
+  check "virtio download: recorded as the template's doing" "Autoconfig (VirtIO ISO: Yes)" "$(call GET "/api/v1/library/${VD_ITEM}" | json createdBy)"
+  contains "virtio download: and on the node" "virtio-win.iso" "$(in_fixture 'ls /fixture/store/node-pve1/local/iso')"
+  info "virtio download: $(call GET "/api/v1/library/${VD_ITEM}" | json sizeBytes) bytes, sha256 $(call GET "/api/v1/library/${VD_ITEM}" | json sha256)"
+fi
+
+LIB_VIRTIO="virtio-win-${RUN}.iso"
+upload "$WORK/media/virtio.iso" "$LIB_VIRTIO" >/dev/null
+VB="$(call POST /api/v1/provisionings "$(TID="$AUTO_TID" HOST="vb${SHORT}" NOTIFY=no body "$PROV")")"
+VB_JOB="$(printf '%s' "$VB" | json job.id)"
+check "virtio yes: a VM is built with the library's VirtIO ISO" SUCCEEDED "$(wait_for "$VB_JOB" 240 SUCCEEDED FAILED CANCELLED)"
+contains "virtio yes: the newest one was put on the node" "${LIB_VIRTIO}" "$(in_fixture 'ls /fixture/store/node-pve1/local/iso')"
+lacks "virtio yes: and nothing was fetched" "fetching virtio-win.iso" "$(call GET "/api/v1/jobs/${VB_JOB}/logs" | json lines)"
 
 # ---------------------------------------------------------------------------
 # A Linux VM, with an encrypted record

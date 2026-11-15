@@ -16,8 +16,9 @@ ADR-039 in [Technologiekeuzes](tech-decisions.md). De installers en cloud images
 
 ## Wat er eerst nodig is
 
-- **De bestanden in de bibliotheek.** Een Windows-ISO, en de ISO met VirtIO-drivers
-  (`virtio-win.iso`, van het Fedora-project) als het template VirtIO of de guest agent gebruikt. Voor
+- **De bestanden in de bibliotheek.** Een Windows-ISO. De ISO met VirtIO-drivers (`virtio-win.iso`,
+  van het Fedora-project) is nodig als het template VirtIO of de guest agent gebruikt, maar met
+  *VirtIO-ISO: Ja* haalt de eerste VM hem in de bibliotheek op als hij er niet is. Voor
   Linux een cloud image: Ubuntu's `*-server-cloudimg-amd64.img` of Debians
   `*-genericcloud-amd64.qcow2`.
 - **Opslag op de node** die `images` accepteert voor de schijven van de VM, en een die `iso` — en voor
@@ -81,16 +82,25 @@ klant te komen. De kloon noemt ze als ontbrekend tot ze zijn ingesteld, en kan t
 
 - **Installer en editie.** Kies de ISO; de genoemde edities zijn uit de ISO zelf gelezen, en Setup
   installeert die met precies die naam. Kon de lijst niet worden gelezen, dan wordt de naam getypt —
-  en moet hij precies met de ISO overeenkomen, anders installeert Setup de eerste editie.
+  en moet hij precies met de ISO overeenkomen, anders installeert Setup de eerste editie. Een ISO
+  die al in de bibliotheek stond voordat Velnox edities las, wordt na een upgrade op de achtergrond
+  gelezen — het formulier zegt dat zolang het bezig is.
+- **VirtIO-ISO.** *Ja* (de standaard voor een nieuw template) koppelt de VirtIO-ISO uit de
+  bibliotheek — de nieuwste, als er meer zijn. Heeft de bibliotheek er geen, dan downloadt de job van
+  de VM eerst de stabiele versie van het Fedora-project in de bibliotheek, en het log van de job
+  vermeldt dat; volgende VM's vinden hem daar. Twee VM's die tegelijk starten downloaden hem één
+  keer. *Nee*, of een bestand uit de bibliotheek op naam, werkt als voorheen.
 - **VirtIO-drivers en de guest agent.** Standaard aan. Ze installeren vanaf de VirtIO-ISO, en Velnox
   heeft de agent nodig om te zien dat de installatie klaar is.
 - **GPT** wordt aangeraden en Windows 11 vereist het: de VM krijgt UEFI, Secure Boot-sleutels en een
   TPM.
 - **Productcode.** Zonder code stopt Setup er niet voor; Windows vraagt er bij activering om als de
   editie er een nodig heeft.
-- **Regio en taal** zijn vier instellingen, niet één: weergavetaal (een taal die de ISO heeft),
-  systeemlandinstelling, notaties, toetsenbord. Nederlandse invoer op US-International is een eigen
-  keuze. De tijdzone staat daar weer los van.
+- **Regio en taal** zijn vier instellingen, niet één: weergavetaal, systeemlandinstelling, notaties,
+  toetsenbord. De aangeboden weergavetalen zijn die waarin de gekozen editie installeert, gelezen uit
+  de ISO, met de standaardtaal bovenaan; een andere ISO of editie kiezen zet een taal die daar niet
+  op staat op de standaardtaal. Zegt de ISO niets, dan wordt de vaste lijst aangeboden en moet de taal
+  er een zijn die de ISO heeft. Nederlandse invoer op US-International is een eigen keuze. De tijdzone staat daar weer los van.
 - **Accounts.** De ingebouwde Administrator krijgt altijd een wachtwoord — Windows Server vereist er
   een. Op een desktop-editie wordt hij na de eerste aanmelding uitgeschakeld, dus minstens één account
   hier moet een beheerder zijn.
@@ -173,7 +183,8 @@ afgekapt — en DHCP of een vast adres.
 
 Velnox weigert voordat er iets begint als iets niet kan: een template met ontbrekende geheimen, een
 naam die een VM op het cluster al heeft, opslag die niet de juiste inhoud accepteert, een bridge die
-de node niet heeft, een editie die de ISO niet heeft, een melding terwijl mail niet is ingesteld.
+de node niet heeft, een editie die de ISO niet heeft, een weergavetaal waarin de editie niet
+installeert, een melding terwijl mail niet is ingesteld.
 
 Daarna loopt het als een job die je kunt volgen en annuleren:
 
@@ -241,6 +252,8 @@ Het wachtwoord wordt nooit meer getoond.
 | *Alleen een MSP-template kan aan gekozen klanten worden aangeboden …* | Een eigen template van een klant wordt aan niemand anders aangeboden, en heeft geen wachtwoorden per klant. |
 | *Kies minstens één klant …* | *Gekozen klanten* zonder aangevinkte klant. Vink er een aan, of kies een andere optie. |
 | *… heeft geen editie met de naam …* | Het template noemt een editie die de ISO niet heeft. Kies er een uit de lijst. |
+| *… installeert alleen in …, niet in …* | De weergavetaal is er geen waarin de editie installeert. Kies er een uit de lijst. |
+| *De VirtIO-ISO kon niet … worden opgehaald* | De worker kon hem niet van het Fedora-project downloaden — geen internet vanaf de Velnox-host, of een proxy. Zet `virtio-win.iso` zelf in de bibliotheek, of kies een VirtIO-ISO op naam. |
 | *Opslag … accepteert geen …-inhoud* | Zet het inhoudstype aan op de opslag in Proxmox, of kies een andere. |
 | *Node … heeft geen bridge met de naam …* | Kies een bridge die op die node bestaat. |
 | *Een VM op dit cluster heet al …* | Kies een andere hostnaam. |

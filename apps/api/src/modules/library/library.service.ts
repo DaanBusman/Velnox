@@ -81,6 +81,7 @@ function describe(item: ItemRow): LibraryItemSummary {
     createdAt: item.createdAt.toISOString(),
     readyAt: item.readyAt?.toISOString() ?? null,
     windowsImages: (item.windowsImages as WindowsImageSummary[] | null) ?? null,
+    windowsImagesRead: item.kind !== 'ISO' || item.windowsImagesVersion !== null,
   };
 }
 

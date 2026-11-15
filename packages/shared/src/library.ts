@@ -622,6 +622,12 @@ export interface LibraryItemSummary {
    * checked. Null for anything that is not one, or whose list could not be read.
    */
   windowsImages: WindowsImageSummary[] | null;
+  /**
+   * Whether the worker has looked inside this ISO for editions yet. False for
+   * an ISO from before 0.7.20 until the worker's next sweep reads it — the
+   * template form then says "being read" rather than "not a Windows ISO".
+   */
+  windowsImagesRead: boolean;
 }
 
 /** One edition in a Windows install ISO, as its install.wim lists it. */
@@ -632,6 +638,7 @@ export interface WindowsImageSummary {
   displayName: string | null;
   editionId: string | null;
   architecture: string | null;
+  /** The display languages this edition installs with, its default first. */
   languages: string[];
 }
 

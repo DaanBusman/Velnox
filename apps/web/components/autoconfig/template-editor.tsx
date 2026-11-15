@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   ALTERNATIVE_MIRRORS,
   LINUX_KEYBOARDS,
@@ -25,6 +25,26 @@ import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { TimeZoneSearch } from '@/components/ui/time-zone-search';
 import { Card, Notice } from '@/components/ui/primitives';
 import { TemplatePackages } from './template-packages';
+
+/** The VirtIO choice that is not a filename: use or fetch the library's own. */
+const VIRTIO_AUTO = '__auto__';
+
+type IsoItem = Pick<LibraryItemSummary, 'windowsImages'>;
+
+/**
+ * The display languages an install can use: the chosen edition's, read from
+ * the ISO, default first; every edition's together while none is chosen; null
+ * when the ISO says nothing, and the fixed list applies.
+ */
+function isoLanguages(iso: IsoItem | undefined, imageName: string): string[] | null {
+  const images = iso?.windowsImages;
+  if (!images || images.length === 0) return null;
+  const image = images.find((candidate) => candidate.name === imageName);
+  const languages = image
+    ? image.languages
+    : [...new Set(images.flatMap((candidate) => candidate.languages))];
+  return languages.length > 0 ? languages : null;
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- the settings object is
    validated by the API against templateSettingsSchema; here it is a form. */
@@ -211,6 +231,7 @@ const defaults = (family: TemplateOsFamily): any =>
         isoFilename: '',
         imageName: '',
         virtioIsoFilename: '',
+        virtioIsoAuto: true,
         virtio: true,
         guestAgent: true,
         diskLayout: 'GPT',
@@ -318,6 +339,46 @@ export function TemplateEditor({
   const images = library.filter((item) => item.kind === 'DISK_IMAGE' && item.state === 'READY');
   const chosenIso = isos.find((item) => item.filename === settings.isoFilename);
   const editions = chosenIso?.windowsImages ?? null;
+  // An ISO already in the library before its editions were read: the worker
+  // reads it in the background, so the list is coming rather than missing.
+  const editionsComing = Boolean(chosenIso && !chosenIso.windowsImagesRead);
+
+  const locale = useLocale();
+  const languageNames = useMemo(() => {
+    try {
+      return new Intl.DisplayNames([locale], { type: 'language' });
+    } catch {
+      return null;
+    }
+  }, [locale]);
+  const languageLabel = (tag: string) => {
+    const name = languageNames?.of(tag);
+    return name && name !== tag ? `${name} (${tag})` : tag;
+  };
+  const isoLanguageList = settings.family === 'WINDOWS' ? isoLanguages(chosenIso, settings.imageName) : null;
+
+  /**
+   * Choose an ISO or an edition, and keep the display language one it has:
+   * a language the new choice does not carry becomes its default one.
+   */
+  const chooseMedia = (field: 'isoFilename' | 'imageName', value: string) =>
+    setSettings((current: any) => {
+      const next = structuredClone(current);
+      next[field] = value;
+      const iso = isos.find((item) => item.filename === next.isoFilename);
+      const languages = isoLanguages(iso, next.imageName);
+      if (languages && !languages.includes(next.locale.uiLanguage)) {
+        next.locale.uiLanguage = languages[0];
+      }
+      return next;
+    });
+
+  const chooseVirtio = (value: string) =>
+    setSettings((current: any) => ({
+      ...current,
+      virtioIsoAuto: value === VIRTIO_AUTO,
+      virtioIsoFilename: value === VIRTIO_AUTO ? '' : value,
+    }));
 
   // Offering by name and passwords per tenant are an MSP template's.
   const mspTenant = tenants.find((tenant) => tenant.kind === 'MSP_ROOT');
@@ -351,7 +412,7 @@ export function TemplateEditor({
     setFailure(null);
     setSaved(false);
     const cleaned = structuredClone(settings);
-    if (cleaned.family === 'WINDOWS' && !cleaned.virtioIsoFilename)
+    if (cleaned.family === 'WINDOWS' && (cleaned.virtioIsoAuto || !cleaned.virtioIsoFilename))
       cleaned.virtioIsoFilename = null;
     // A tenant's password typed before the account stopped being set per tenant
     // is not sent: the API would refuse it.
@@ -538,9 +599,9 @@ export function TemplateEditor({
                   { value: '', label: t('autoconfig.chooseFile') },
                   ...isos.map((item) => ({ value: item.filename, label: item.filename })),
                 ]}
-                onChange={(value) => set('isoFilename', value)}
+                onChange={(value) => chooseMedia('isoFilename', value)}
               />
-              {editions ? (
+              {editions && editions.length > 0 ? (
                 <Choice
                   label={t('autoconfig.edition')}
                   hint={t('autoconfig.editionFromIso')}
@@ -550,10 +611,13 @@ export function TemplateEditor({
                     { value: '', label: t('autoconfig.chooseEdition') },
                     ...editions.map((image) => ({ value: image.name, label: image.name })),
                   ]}
-                  onChange={(value) => set('imageName', value)}
+                  onChange={(value) => chooseMedia('imageName', value)}
                 />
               ) : (
-                <Field label={t('autoconfig.edition')} hint={t('autoconfig.editionTyped')}>
+                <Field
+                  label={t('autoconfig.edition')}
+                  hint={t(editionsComing ? 'autoconfig.editionReading' : 'autoconfig.editionTyped')}
+                >
                   {(props) => (
                     <TextInput
                       {...props}
@@ -566,13 +630,15 @@ export function TemplateEditor({
               )}
               <Choice
                 label={t('autoconfig.virtioIso')}
-                value={settings.virtioIsoFilename ?? ''}
+                hint={settings.virtioIsoAuto ? t('autoconfig.virtioIsoAutoHint') : undefined}
+                value={settings.virtioIsoAuto ? VIRTIO_AUTO : (settings.virtioIsoFilename ?? '')}
                 disabled={!editable}
                 options={[
-                  { value: '', label: t('autoconfig.none') },
+                  { value: VIRTIO_AUTO, label: t('autoconfig.virtioIsoAuto') },
+                  { value: '', label: t('autoconfig.virtioIsoNo') },
                   ...isos.map((item) => ({ value: item.filename, label: item.filename })),
                 ]}
-                onChange={(value) => set('virtioIsoFilename', value)}
+                onChange={chooseVirtio}
               />
               <Choice
                 label={t('autoconfig.diskLayout')}
@@ -618,16 +684,34 @@ export function TemplateEditor({
 
           <Card title={t('autoconfig.region')} description={t('autoconfig.regionHint')}>
             <div className="grid gap-3 md:grid-cols-2">
-              {(['uiLanguage', 'systemLocale', 'userLocale'] as const).map((field) => (
-                <Choice
-                  key={field}
-                  label={t(`autoconfig.${field}`)}
-                  value={settings.locale[field]}
-                  disabled={!editable}
-                  options={WINDOWS_LANGUAGES.map((tag) => ({ value: tag, label: tag }))}
-                  onChange={(value) => set(`locale.${field}`, value)}
-                />
-              ))}
+              {(['uiLanguage', 'systemLocale', 'userLocale'] as const).map((field) => {
+                // The display language is one the ISO installs with, when the
+                // ISO says which; the formats and the user's locale are any.
+                const fromIso = field === 'uiLanguage' ? isoLanguageList : null;
+                const value: string = settings.locale[field];
+                const tags: readonly string[] = fromIso ?? WINDOWS_LANGUAGES;
+                const options = tags.map((tag) => ({ value: tag, label: languageLabel(tag) }));
+                // A saved language the list does not hold is shown, not lost.
+                if (!tags.includes(value)) {
+                  options.unshift({
+                    value,
+                    label: fromIso
+                      ? t('autoconfig.languageNotOnIso', { language: languageLabel(value) })
+                      : languageLabel(value),
+                  });
+                }
+                return (
+                  <Choice
+                    key={field}
+                    label={t(`autoconfig.${field}`)}
+                    hint={fromIso ? t('autoconfig.uiLanguageFromIso') : undefined}
+                    value={value}
+                    disabled={!editable}
+                    options={options}
+                    onChange={(next) => set(`locale.${field}`, next)}
+                  />
+                );
+              })}
               <Choice
                 label={t('autoconfig.keyboard')}
                 value={settings.locale.inputLocale}

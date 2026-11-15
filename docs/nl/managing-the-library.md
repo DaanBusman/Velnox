@@ -46,7 +46,10 @@ volgen en annuleren. Velnox weigert op te halen van:
 - loopback-, link-local- en multicastadressen, waaronder het cloud-metadata-adres `169.254.169.254`;
 - de netwerken waar Velnox zelf op draait, want daar staan de database en de wachtrij;
 - een URL met een gebruikersnaam of wachtwoord erin;
-- een doorverwijzing van `https` naar gewoon `http`, of een keten van meer dan vijf doorverwijzingen.
+- een doorverwijzing van `https` naar gewoon `http` op een andere host, of een keten van meer dan vijf
+  doorverwijzingen. Een doorverwijzing naar gewoon `http` op dezelfde host — de VirtIO-links van het
+  Fedora-project doen dat — wordt in plaats daarvan via `https` gevolgd, en mislukt als de host dat pad
+  niet via `https` aanbiedt.
 
 Interne bestandsservers op privéadressen zijn toegestaan — daar bewaren de meeste MSP's hun ISO's.
 Het adres wordt getoond en gelogd **zonder querystring**, want daar bewaren downloadlinks hun

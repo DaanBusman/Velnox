@@ -13,8 +13,9 @@ see ADR-039 in [Technology decisions](tech-decisions.md). The installers and clo
 
 ## What it needs first
 
-- **The files in the library.** A Windows ISO, and the VirtIO drivers ISO (`virtio-win.iso`, from
-  the Fedora project) if the template uses VirtIO or the guest agent. For Linux, a cloud image:
+- **The files in the library.** A Windows ISO. The VirtIO drivers ISO (`virtio-win.iso`, from the
+  Fedora project) is needed if the template uses VirtIO or the guest agent, but with *VirtIO ISO:
+  Yes* the first VM fetches it into the library when it is not there. For Linux, a cloud image:
   Ubuntu's `*-server-cloudimg-amd64.img` or Debian's `*-genericcloud-amd64.qcow2`.
 - **Storage on the node** that takes `images` for the VM's disks, and one that takes `iso` — and, for
   Linux, `import` — for the installer, the cloud image and the answer CD. The `local` storage takes
@@ -74,15 +75,25 @@ missing until they are set, and cannot build until then.
 ### Windows
 
 - **Installer and edition.** Choose the ISO; the editions listed are read from the ISO itself, and
-  Setup installs the one with exactly that name. If the list could not be read, the name is typed —
-  and must match the ISO exactly, or Setup installs the first edition instead.
+  Setup installs the one with exactly that name. An ISO that was in the library before Velnox read
+  editions is read in the background after an upgrade — the form says so while it is. If the list
+  could not be read, the name is typed — and must match the ISO exactly, or Setup installs the first
+  edition instead.
+- **VirtIO ISO.** *Yes* (the default for a new template) attaches the library's VirtIO ISO — the
+  newest, if there are several. When the library has none, the VM's job downloads the stable one from
+  the Fedora project into the library first and the job's log says so; later VMs find it there. Two
+  VMs started together download it once. *No*, or a file from the library chosen by name, works as
+  before.
 - **VirtIO drivers and the guest agent.** On by default. They install from the VirtIO ISO, and Velnox
   needs the agent to see that the install has finished.
 - **GPT** is recommended and Windows 11 requires it: the VM gets UEFI, Secure Boot keys and a TPM.
 - **Product key.** Without one, Setup does not stop to ask; Windows asks at activation when the
   edition needs a key.
-- **Region and language** are four settings, not one: display language (it must be a language the ISO
-  has), system locale, formats, keyboard. Dutch input on US-International is a choice of its own. The
+- **Region and language** are four settings, not one: display language, system locale, formats,
+  keyboard. The display languages offered are the ones the chosen edition installs with, read from the
+  ISO, its default first; choosing another ISO or edition moves a language it does not have to its
+  default. When the ISO says nothing, the fixed list is offered and the language must be one the ISO
+  has. Dutch input on US-International is a choice of its own. The
   time zone is separate again.
 - **Accounts.** The built-in Administrator always gets a password — Windows Server requires one. On a
   desktop edition it is switched off after the first logon, so at least one account here must be an
@@ -162,7 +173,8 @@ DHCP or a fixed address.
 
 Velnox refuses before anything starts when something cannot work: a template with secrets missing, a
 name a VM on the cluster already has, storage that does not take the right content, a bridge the
-node does not have, an edition the ISO does not have, a notification with mail not set up.
+node does not have, an edition the ISO does not have, a display language the edition does not
+install with, a notification with mail not set up.
 
 Then it runs as a job you can follow and cancel:
 
@@ -226,6 +238,8 @@ The password is never shown again.
 | *Only an MSP template can be offered to chosen customers …* | A customer's own template is offered to nobody else, and has no passwords per customer. |
 | *Choose at least one customer …* | *Chosen customers* with none ticked. Tick one, or choose another option. |
 | *… has no edition called …* | The template names an edition the ISO does not have. Choose one from the list. |
+| *… installs only in …, not in …* | The display language is not one the edition installs with. Choose one from the list. |
+| *The VirtIO ISO could not be fetched …* | The worker could not download it from the Fedora project — no internet from the Velnox host, or a proxy. Add `virtio-win.iso` to the library yourself, or choose a VirtIO ISO by name. |
 | *Storage … does not take … content* | Enable the content type on the storage in Proxmox, or choose another. |
 | *Node … has no bridge called …* | Choose a bridge that exists on that node. |
 | *A VM on this cluster is already called …* | Choose another hostname. |

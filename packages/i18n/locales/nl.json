@@ -437,7 +437,9 @@
       "package_not_installer": "{filename} is geen {kind}, wat de naam ook zegt.",
       "package_too_large": "Een pakket is hoogstens 2 GB.",
       "package_unavailable": "Het template voert een pakket uit dat niet gereed is, of niet van de eigenaar. Open het template en controleer de pakketten.",
-      "package_in_use": "Dit pakket wordt nog uitgevoerd door: {templates}. Haal het eerst uit die templates."
+      "package_in_use": "Dit pakket wordt nog uitgevoerd door: {templates}. Haal het eerst uit die templates.",
+      "language_not_in_iso": "{edition} installeert alleen in {languages}, niet in {language}. Kies een weergavetaal uit de lijst die uit de ISO is gelezen.",
+      "virtio_fetch_failed": "De VirtIO-ISO kon niet van het Fedora-project in de bibliotheek worden opgehaald. Zet er zelf een in de bibliotheek, of kies hem in het template."
     },
     "provisioning": {
       "hostname_invalid": "Die hostnaam kan niet: letters, cijfers en streepjes, niet alleen cijfers, hoogstens {max} tekens, zonder domein.",
@@ -1614,7 +1616,13 @@
     },
     "packageResume": "Hervatten",
     "removePackageTitle": "Pakket verwijderen",
-    "removePackageBody": "{filename} wordt uit Velnox verwijderd. VM’s die het al installeerden houden het."
+    "removePackageBody": "{filename} wordt uit Velnox verwijderd. VM’s die het al installeerden houden het.",
+    "editionReading": "De edities van deze ISO worden op de achtergrond gelezen. Laad de pagina over een minuut opnieuw om er een uit de lijst te kiezen, of typ de naam.",
+    "virtioIsoAuto": "Ja — uit de bibliotheek, gedownload als hij ontbreekt",
+    "virtioIsoNo": "Nee",
+    "virtioIsoAutoHint": "De VirtIO-ISO uit de bibliotheek wordt gekoppeld. Heeft de bibliotheek er geen, dan haalt de eerste VM de stabiele versie van het Fedora-project erin op.",
+    "uiLanguageFromIso": "De talen gelezen uit de ISO — die van de gekozen editie, zodra er een gekozen is. De standaardtaal staat bovenaan.",
+    "languageNotOnIso": "{language} — niet op deze ISO"
   },
   "provisioning": {
     "subtitle": "Elke VM die vanuit een Autoconfig-template is gebouwd, met de installatieregistratie. VM’s die nog worden uitgerold staan ook bij Virtuele machines.",

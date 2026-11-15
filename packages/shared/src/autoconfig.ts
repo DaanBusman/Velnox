@@ -93,6 +93,28 @@ export const WINDOWS_LANGUAGES = [
 export type WindowsLanguage = (typeof WINDOWS_LANGUAGES)[number];
 
 /**
+ * A Windows language tag: `nl-NL`, `sr-Latn-RS`. The display language is
+ * no longer limited to {@link WINDOWS_LANGUAGES}: the template form offers the
+ * languages the chosen ISO actually carries (0.7.20), and an ISO in Czech
+ * should be installable in Czech. Whether the ISO carries it is checked when a
+ * VM is built, against the list read from the ISO.
+ */
+export const WINDOWS_LANGUAGE_TAG = /^[a-z]{2,3}(-[A-Z][a-z]{3})?-[A-Z]{2}$/;
+
+/**
+ * Where "VirtIO ISO: Yes" fetches the drivers from when the library has none:
+ * the stable virtio-win ISO the Fedora project publishes, which is what
+ * Proxmox's own documentation points to. Fixed in the source rather than
+ * configurable, so choosing "Yes" can never point Velnox at another address.
+ */
+export const VIRTIO_WIN_URL =
+  'https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso';
+/** The library filename a fetched VirtIO ISO is stored under. */
+export const VIRTIO_WIN_FILENAME = 'virtio-win.iso';
+/** A library ISO that counts as the VirtIO drivers for "Yes": `virtio-win.iso`, `virtio-win-0.1.271.iso`. */
+export const VIRTIO_WIN_PATTERN = /^virtio-win[\w.-]*\.iso$/i;
+
+/**
  * Windows keyboard layouts, as `InputLocale` values: language id, colon,
  * keyboard layout id.
  *
@@ -369,6 +391,12 @@ export const windowsTemplateSchema = z
     imageName: z.string().trim().min(1).max(200),
     /** The VirtIO drivers ISO, by library filename. Needed for either switch below. */
     virtioIsoFilename: z.string().min(1).max(200).nullable().default(null),
+    /**
+     * "VirtIO ISO: Yes" (0.7.20): use the library's VirtIO ISO, and when it has
+     * none, fetch the stable one from {@link VIRTIO_WIN_URL} into the library
+     * while the VM is built, then attach it. Excludes a chosen filename.
+     */
+    virtioIsoAuto: z.boolean().default(false),
     /** Storage and network drivers during Setup, and the rest after. */
     virtio: z.boolean().default(true),
     /** QEMU Guest Agent, installed at first logon. Velnox uses it to see the install finish. */
@@ -379,7 +407,10 @@ export const windowsTemplateSchema = z
     hasProductKey: z.boolean().default(false),
     locale: z
       .object({
-        uiLanguage: z.enum(WINDOWS_LANGUAGES).default('en-US'),
+        uiLanguage: z
+          .string()
+          .regex(WINDOWS_LANGUAGE_TAG, 'A language tag such as nl-NL')
+          .default('en-US'),
         systemLocale: z.enum(WINDOWS_LANGUAGES).default('en-US'),
         userLocale: z.enum(WINDOWS_LANGUAGES).default('en-US'),
         inputLocale: z
@@ -418,7 +449,14 @@ export const windowsTemplateSchema = z
         message: 'Packages need the guest agent: it is how Velnox learns how they ended',
       });
     }
-    if ((value.virtio || value.guestAgent) && !value.virtioIsoFilename) {
+    if (value.virtioIsoAuto && value.virtioIsoFilename) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['virtioIsoFilename'],
+        message: 'Either a VirtIO ISO from the library or Yes, not both',
+      });
+    }
+    if ((value.virtio || value.guestAgent) && !value.virtioIsoFilename && !value.virtioIsoAuto) {
       ctx.addIssue({
         code: 'custom',
         path: ['virtioIsoFilename'],
