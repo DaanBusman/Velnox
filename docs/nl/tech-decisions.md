@@ -1,6 +1,6 @@
 # Velnox — Technologiekeuzes (ADR-log)
 
-> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `af7e616`.
+> **Vertaling.** Bron: [docs/tech-decisions.md](../tech-decisions.md) @ `a227392`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** bijgehouden zodra een keuze wordt gemaakt. De fase 0-keuzes waren voorstellen toen ze
@@ -700,6 +700,12 @@ draaide in een schone container op 12.14.0 — `install --frozen-lockfile`, `val
 `validate:licenses`, `lint`, `typecheck`, `test` — en slaagde volledig, ook de licentiecontrole die hier
 anders niet kan draaien. Beide images bouwen ermee, en `pnpm --version` antwoordt 12.14.0 onder
 `--network none`, als root en als `node`.
+
+**Herzien, 12.14.0 → 12.21.0** (15 november 2026, samen met de dependencycontrole in ADR-057; 12.21.0
+was twee dagen oud en de `latest` van het register). Eerst in een Linux-container herschreven met
+`--lockfile-only`, zodat pnpm's beschrijving van zichzelf apart verschoof — 71 regels erbij en 62 eraf —
+voordat `pnpm update -r` iets anders verplaatste. De reeks van CI draaide in een schone container op
+12.21.0, en beide images bouwen ermee.
 
 **De algemene les, en de reden dat dit is opgeschreven:** een vastgelegd hulpmiddel dat al een tijd
 niet is herzien is geen stabiele afhankelijkheid, het is een uitgestelde migratie. Vier gedragingen
@@ -1894,6 +1900,29 @@ een plek in een bundel.
 **Wat er overblijft.** `deepmerge-ts` 7 onder de configuratielader van Prisma kan met een recursief
 object de stack laten uitputten. Het voegt alleen ooit Velnox' eigen Prisma-configuratie samen, nooit
 invoer uit een verzoek, en de fix is een major van die bibliotheek; die gaat mee met Prisma 7.
+
+**Opnieuw gecontroleerd, 15 november 2026 (0.7.18).** `pnpm audit` meldde geen kritieke advisory: de
+`deepmerge-ts`-melding hierboven, en een gemiddelde in `minimatch` 10 onder typescript-eslint —
+linttooling, nooit in een image, alleen bereikt door globs die in deze repository staan;
+typescript-eslint 8 vraagt nog om minimatch 10, dus de fix wacht daarop. Er waren twee
+beveiligingsreleases verschenen die de auditdatabase niet meldde:
+
+- **Next.js 16.4.5** (3 november) sloot zeven advisories in 16.4.0–16.4.4. Zes vereisen iets dat Velnox
+  niet gebruikt — Cache Components en `use cache`, Edge-routes, of externe afbeeldingen met een native
+  SVG-decoder (de enige `next/image` hier is een lokaal bestand). De zevende vereist een route die een
+  opgehaalde `Response` ongewijzigd teruggeeft achter een HTTP/1.1-proxy die verzoeken pipelinet. Voor
+  zover na te gaan was, gold geen ervan; de update ging er toch in, naar **16.4.6**, binnen de major.
+- **Node.js 22.23.5** (11 november) loste elf CVE's op in de 22-lijn, de ernstige in Node's eigen
+  HTTPS- en HTTP/2-servers. De servers van Velnox zijn gewoon HTTP achter Caddy, dat TLS afhandelt. Eén
+  zit aan de clientkant — een `https.Agent` die een TLS-sessie hergebruikt over verschillende
+  CA-instellingen — en de worker is een TLS-client van elke Proxmox-node. Niets in de broncode legt een
+  Node-patch vast: de images volgen `node:22-bookworm-slim` en `install.sh` bouwt met `--pull`, dus
+  elke installatie en upgrade draait vanaf nu 22.23.5 of later.
+
+Al het andere binnen zijn major ging mee met `pnpm update -r`: NestJS 11.2.10, nodemailer 10.5,
+next-intl 4.15, Tailwind 4.3.5, vitest 5.1, prettier 3.10 en meer, en pnpm zelf naar 12.21.0
+(ADR-029). De majors in de tabel hierboven blijven om dezelfde redenen tegengehouden; geen ervan is
+nodig voor een beveiligingsfix.
 
 ---
 
