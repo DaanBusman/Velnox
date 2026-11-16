@@ -170,7 +170,8 @@ cluster's **ISOs & images** tab after the next discovery run and can be deleted 
 ### The library cannot fetch through a proxy
 A URL fetch connects directly, so that the address checked is the address connected to. An
 installation whose only way out is an HTTP proxy cannot fetch from the internet; uploading from a
-browser works everywhere.
+browser works everywhere. The update check (ADR-060) connects directly too: behind a proxy it says
+*Could not check*, and `VELNOX_UPDATE_MANIFEST_URL` can name a mirror inside the network.
 
 ### Nothing checks a fetched file against a published checksum
 A file's SHA-256 is computed on the way in and every later copy is checked against it — but when it

@@ -54,6 +54,9 @@ const MANIFESTS = [
   'packages/i18n/package.json',
   'packages/proxmox/package.json',
   'packages/shared/package.json',
+  // What the update check reads from main (0.7.21): the newest version, and
+  // the advisories, which are written by hand when a fix is critical.
+  'release.json',
 ];
 
 /**

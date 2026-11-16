@@ -522,6 +522,9 @@
       "dns": "The name could not be looked up from the Velnox server. Check the name, or use an IP address.",
       "reset": "The connection was cut off part-way. Usually a firewall or proxy in between, or a service on the node restarting.",
       "tls": "The TLS handshake did not complete. Check that this port is the Proxmox API over HTTPS and nothing else."
+    },
+    "velnox_update": {
+      "unanswered": "The worker did not answer in time, so nothing was checked. Is the worker running? Server management > Status says."
     }
   },
   "inventory": {
@@ -954,6 +957,45 @@
       "verifyBody": "The same verification the installer runs at the end. Worth running again on its own after any change to the machine.",
       "verifyLabel": "Verify a running installation",
       "verifyTitle": "Check the result"
+    },
+    "updateCheck": {
+      "title": "Newer versions",
+      "body": "Every six hours the worker reads one file on GitHub: the newest version, and the fixes an installation should not sit on. Nothing is sent but the request.",
+      "off": "Check off",
+      "available": "{version} available",
+      "criticalAvailable": "{version} available — critical fixes",
+      "unknown": "Could not check",
+      "current": "Up to date",
+      "notYet": "Not checked yet",
+      "severity": {
+        "critical": "Critical",
+        "important": "Important"
+      },
+      "fixedIn": "Fixed in {version} ({id}).",
+      "readMore": "Read more",
+      "failedTitle": "The last check did not get an answer",
+      "errors": {
+        "network": "The address could not be reached — no internet from this server, a firewall, or a proxy Velnox does not use.",
+        "timeout": "No answer within twenty seconds.",
+        "http": "The server answered, but not with the file.",
+        "too_large": "The answer was far larger than the file is.",
+        "invalid": "The answer was not the release file — a captive portal or a proxy’s page, most often."
+      },
+      "lastGood": "Last answer: {when}.",
+      "neverGood": "There has been no answer yet, so whether this version is current is not known.",
+      "running": "Running",
+      "latest": "Newest",
+      "checkedAt": "Last checked",
+      "never": "Never",
+      "source": "Read from",
+      "onHint": "Switching the check off stops the reads; Check now still works.",
+      "offHint": "The check is off: nothing is read until it is switched on, or Check now is pressed.",
+      "checkNow": "Check now",
+      "switchOff": "Switch the check off",
+      "switchOn": "Switch the check on",
+      "notice": "Velnox {version} available",
+      "noticeCritical": "Critical update: Velnox {version}",
+      "noticeTitle": "Velnox {version} is available. Open Server management > Updates."
     }
   },
   "setup": {

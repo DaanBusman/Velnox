@@ -18,6 +18,7 @@ import { AuditPanel } from '@/components/server/audit-panel';
 import { CertificatePanel } from '@/components/server/certificate-panel';
 import { StatusPanel } from '@/components/server/status-panel';
 import { UpdatesPanel } from '@/components/server/updates-panel';
+import { OPEN_SERVER_MANAGEMENT_EVENT } from '@/components/server/update-notice';
 
 /**
  * Server management.
@@ -57,12 +58,27 @@ const TABS: { key: TabKey; icon: typeof IconAudit }[] = [
 export function ServerManagement() {
   const t = useTranslations();
   const [open, setOpen] = useState(false);
+  const [startTab, setStartTab] = useState<TabKey>('status');
+
+  // The sidebar's update notice opens this window on Updates (0.7.21).
+  useEffect(() => {
+    const openOn = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: TabKey }>).detail?.tab;
+      setStartTab(tab && TABS.some((entry) => entry.key === tab) ? tab : 'status');
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_SERVER_MANAGEMENT_EVENT, openOn);
+    return () => window.removeEventListener(OPEN_SERVER_MANAGEMENT_EVENT, openOn);
+  }, []);
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setStartTab('status');
+          setOpen(true);
+        }}
         className={clsx(
           'flex w-full items-center gap-2.5 rounded px-2 py-2 text-sm font-medium transition-colors',
           'border border-line bg-surface-2 text-ink shadow-card velnox-lit',
@@ -73,14 +89,14 @@ export function ServerManagement() {
         <span className="min-w-0 flex-1 truncate text-left">{t('server.open')}</span>
       </button>
 
-      {open && <ServerWindow onClose={() => setOpen(false)} />}
+      {open && <ServerWindow initialTab={startTab} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function ServerWindow({ onClose }: { onClose: () => void }) {
+function ServerWindow({ initialTab, onClose }: { initialTab: TabKey; onClose: () => void }) {
   const t = useTranslations();
-  const [tab, setTab] = useState<TabKey>('status');
+  const [tab, setTab] = useState<TabKey>(initialTab);
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);

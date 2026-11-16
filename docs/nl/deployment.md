@@ -322,6 +322,25 @@ niets onderbroken: de worker houdt geen verbinding via Caddy.
 
 ## Bijwerken
 
+### Weten dat er een nieuwere versie is
+
+Elke zes uur leest de worker één bestand, `release.json` op de main-branch van de repository: de
+nieuwste versie, en de advisories — oplossingen waar een installatie niet op moet blijven zitten. Is
+die versie nieuwer dan de draaiende, dan toont de zijbalk boven Serverbeheer **Velnox 0.7.x
+beschikbaar** aan iedereen met `system.manage`, of **Kritieke update: Velnox 0.7.x** in rood als een
+advisory die deze installatie raakt kritiek is. Dat opent **Serverbeheer → Updates**, met die advisories en de
+procedure hieronder.
+
+- **Wat er wordt verstuurd:** het verzoek om dat bestand, en verder niets — geen versie, geen
+  instance-id, geen aantallen. GitHub ziet het adres waar het vandaan komt, zoals bij elke download.
+- **Geen internet:** het paneel zegt *Kon niet controleren* en waarom, nooit *Up-to-date*; de zijbalk
+  toont niets. Een mislukte poging wacht net als een geslaagde zes uur.
+- **Uitzetten:** *Controle uitzetten* in Serverbeheer → Updates (in de audit als
+  `system.update_check_changed`). *Nu controleren* werkt ook als hij uit staat.
+- **Een ander adres:** `VELNOX_UPDATE_MANIFEST_URL` in `.env` noemt een ander https-adres — een
+  mirror binnen het beheernetwerk, of het eigen bestand van een fork. Het wordt direct gelezen, niet
+  via een proxy.
+
 Drie stappen, in deze volgorde. Stap 1 is de stap die je geneigd bent over te slaan, en het is de stap
 die de andere twee terugdraaibaar maakt.
 

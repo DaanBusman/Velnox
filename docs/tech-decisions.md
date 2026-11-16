@@ -1906,6 +1906,39 @@ real headless Chromium, the jobs page at a two-second refresh re-reading nothing
 seconds, nor the running-jobs bar, over one stream; a job started from the page on it within
 seconds; and with the stream refused, the page back on its interval.
 
+## ADR-060 — Velnox says when there is a newer version, and which fixes are critical
+
+**Decision:** the worker reads `release.json` from the repository's main branch every six hours —
+the newest version and its advisories — and the interface tells `system.manage` when it is newer,
+in red when an advisory that concerns the running version is critical. On by default; switched off
+in Server management. Reversing the decision recorded in the Updates panel until 0.7.21, at the
+owner's request.
+
+**Why it was not done, and what answers that.** Two objections stood. *An installation without
+internet would be told it is up to date*: a read that fails is recorded as one, with why, and the
+panel says *Could not check* — up to date is shown only after an answer. The sidebar says nothing
+in that case, so a closed network is not nagged. *An appliance calling a third party on a schedule*:
+the request carries nothing — no version, no instance id, a User-Agent naming only the product — and
+the check is one switch away, audited. Its address can be a mirror (`VELNOX_UPDATE_MANIFEST_URL`).
+
+**What the file is.** `{ "version": "0.7.21", "advisories": [...] }`. `scripts/version.mjs`
+writes the version with every bump, so main always names the newest. An advisory is written by hand
+when a fix should not wait: `id` (VELNOX-2026-001), `severity` (`critical` or `important`),
+`fixedIn`, optionally `introducedIn`, a `title` in English and Dutch, and optionally an https
+`url`. Whether it concerns an installation is worked out by the API against the running version
+each time it is asked — fixed after it, not introduced after it, fixed no later than the version on
+offer — so an upgraded installation stops listing it at once.
+
+**Who reads.** The worker, as all outbound traffic is (ADR-009); *Check now* asks it through the
+queue and waits up to thirty seconds. The answer is validated before it is kept: a captive portal's
+page is *not the file*, not a version. The last good answer survives a failed read.
+
+**Not chosen.** The GitHub releases API: rate-limited per address, and tags are not how Velnox
+ships — every push to main is a version. Telling every user: which version runs is Server
+management's information, and its people are who can act on it.
+
+**Proven** by `scripts/verify-velnox-release.sh` and the worker's tests against a loopback server.
+
 ---
 
 ## Version targets

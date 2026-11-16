@@ -187,7 +187,9 @@ cluster, en kan daar worden verwijderd.
 ### De bibliotheek kan niet via een proxy ophalen
 Ophalen van een URL maakt direct verbinding, zodat het gecontroleerde adres het adres is waarmee
 verbinding wordt gemaakt. Een installatie die alleen via een HTTP-proxy naar buiten kan, kan niets van
-internet ophalen; uploaden vanuit een browser werkt overal.
+internet ophalen; uploaden vanuit een browser werkt overal. De update-controle (ADR-060) maakt ook
+direct verbinding: achter een proxy zegt hij *Kon niet controleren*, en `VELNOX_UPDATE_MANIFEST_URL`
+kan een mirror binnen het netwerk noemen.
 
 ### Niets toetst een opgehaald bestand aan een gepubliceerde checksum
 De SHA-256 van een bestand wordt onderweg naar binnen berekend en elke latere kopie wordt ertegen

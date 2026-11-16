@@ -133,6 +133,8 @@ export const ERROR_CODES = {
   autoconfigPackageInUse: 'autoconfig.package_in_use',
 
   /** Not a PEM certificate, or not one Velnox can read. */
+  /** Check now: the worker did not answer in time (0.7.21). */
+  velnoxUpdateCheckUnanswered: 'velnox_update.unanswered',
   tlsCertificateInvalid: 'tls.certificate_invalid',
   /** Not a readable, unencrypted PEM private key. */
   tlsKeyInvalid: 'tls.key_invalid',

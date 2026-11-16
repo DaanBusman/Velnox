@@ -9,6 +9,7 @@ import { NAVIGATION, activeNavHref, isNavItemVisible, type NavViewer } from '@/l
 import { NAV_ICONS } from '@/components/ui/icons';
 import { ProductMark } from '@/components/ui/product-mark';
 import { ServerManagement } from '@/components/server-management';
+import { UpdateNotice } from '@/components/server/update-notice';
 
 export function Sidebar({
   product,
@@ -118,6 +119,8 @@ export function Sidebar({
       */}
       {held.has('system.manage') && (
         <div className="border-t border-line p-2">
+          {/* A newer Velnox, above the window that says more about it (0.7.21). */}
+          <UpdateNotice />
           <ServerManagement />
         </div>
       )}

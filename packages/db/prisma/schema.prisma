@@ -117,6 +117,16 @@ model SystemSettings {
   tlsChangedAt     DateTime? @map("tls_changed_at") @db.Timestamptz(3)
   tlsChangedBy     String?   @map("tls_changed_by")
 
+  /// The update check (0.7.21): whether the worker reads release.json on
+  /// GitHub, what it last found, and when. The file is kept as it was read;
+  /// what concerns this installation is worked out against the running version.
+  updateCheckEnabled     Boolean   @default(true) @map("update_check_enabled")
+  updateManifest         Json?     @map("update_manifest")
+  updateCheckedAt        DateTime? @map("update_checked_at") @db.Timestamptz(3)
+  updateSucceededAt      DateTime? @map("update_succeeded_at") @db.Timestamptz(3)
+  updateCheckError       String?   @map("update_check_error")
+  updateCheckErrorDetail String?   @map("update_check_error_detail")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

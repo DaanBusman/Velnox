@@ -6,12 +6,13 @@ import { SystemController } from './system.controller';
 import { SystemService } from './system.service';
 import { TlsConfigService } from './tls-config.service';
 import { TlsService } from './tls.service';
+import { UpdateCheckService } from './update-check.service';
 import { MetricsController } from './metrics.controller';
 
 @Module({
   // AuthModule for the secret store: an uploaded certificate's key is kept there.
   imports: [HealthModule, AuthModule],
   controllers: [SystemController, MetricsController],
-  providers: [SystemService, TlsService, CaddyAdminService, TlsConfigService],
+  providers: [SystemService, TlsService, CaddyAdminService, TlsConfigService, UpdateCheckService],
 })
 export class SystemModule {}

@@ -27,6 +27,7 @@ export * from './cluster-merge';
 export * from './system';
 export * from './updates';
 export * from './reachability';
+export * from './velnox-release';
 
 /**
  * Queue and job names shared between the API (producer) and the worker (consumer).
@@ -81,6 +82,11 @@ export const JOB_NAMES = {
    * worker is what may read the mail server's password.
    */
   mailTest: 'mail.test',
+  /**
+   * Read the release file on GitHub now, for Check now in Server management.
+   * The worker reads it, because the API makes no outbound calls (ADR-009).
+   */
+  updateCheck: 'system.update_check',
 } as const;
 
 /** Redis keys owned by the worker. The health check reads the heartbeat. */

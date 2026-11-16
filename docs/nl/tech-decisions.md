@@ -2032,6 +2032,42 @@ seconden die in twintig stille seconden niets opnieuw leest, net zo min als de b
 jobs, over één stroom; een job die vanaf de pagina gestart wordt en binnen enkele seconden op de
 pagina staat; en met de stroom geweigerd de pagina terug op haar interval.
 
+## ADR-060 — Velnox meldt een nieuwere versie, en welke oplossingen kritiek zijn
+
+**Besluit:** de worker leest elke zes uur `release.json` van de main-branch van de repository — de
+nieuwste versie en de advisories — en de interface meldt aan `system.manage` wanneer die nieuwer is,
+in rood als een advisory die de draaiende versie raakt kritiek is. Standaard aan; uit te zetten in
+Serverbeheer. Dit draait het besluit terug dat tot 0.7.21 in het Updates-paneel stond, op verzoek van
+de eigenaar.
+
+**Waarom het niet gebeurde, en wat daarop antwoordt.** Er stonden twee bezwaren. *Een installatie
+zonder internet zou horen dat ze up-to-date is*: een mislukte poging wordt als zodanig vastgelegd, met
+de reden, en het paneel zegt *Kon niet controleren* — up-to-date verschijnt pas na een antwoord. De
+zijbalk zegt in dat geval niets, dus een gesloten netwerk wordt niet lastiggevallen. *Een appliance
+die volgens schema een derde partij aanroept*: het verzoek bevat niets — geen versie, geen
+instance-id, een User-Agent die alleen het product noemt — en de controle staat één schakelaar
+verderop, met audit. Het adres mag een mirror zijn (`VELNOX_UPDATE_MANIFEST_URL`).
+
+**Wat het bestand is.** `{ "version": "0.7.21", "advisories": [...] }`. `scripts/version.mjs`
+schrijft de versie bij elke bump, dus main noemt altijd de nieuwste. Een advisory wordt met de hand
+geschreven als een oplossing niet moet wachten: `id` (VELNOX-2026-001), `severity` (`critical`
+of `important`), `fixedIn`, eventueel `introducedIn`, een `title` in het Engels en Nederlands, en
+eventueel een https-`url`. Of hij een installatie raakt, rekent de API bij elke vraag uit tegen de
+draaiende versie — opgelost na die versie, niet daarna ontstaan, en opgelost uiterlijk in de
+aangeboden versie — dus een bijgewerkte installatie toont hem meteen niet meer.
+
+**Wie leest.** De worker, zoals al het uitgaande verkeer (ADR-009); *Nu controleren* vraagt het via
+de wachtrij en wacht tot dertig seconden. Het antwoord wordt gecontroleerd voordat het bewaard wordt:
+de pagina van een netwerkportaal is *niet het bestand*, geen versie. Het laatste goede antwoord blijft
+staan na een mislukte poging.
+
+**Niet gekozen.** De releases-API van GitHub: per adres beperkt, en tags zijn niet hoe Velnox
+uitkomt — elke push naar main is een versie. Het aan elke gebruiker melden: welke versie draait is
+informatie voor Serverbeheer, en de mensen daar kunnen er iets mee.
+
+**Bewezen** door `scripts/verify-velnox-release.sh` en de tests van de worker tegen een
+loopback-server.
+
 ---
 
 ## Versiedoelen

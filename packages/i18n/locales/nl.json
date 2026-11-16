@@ -523,6 +523,9 @@
       "dns": "De naam kon vanaf de Velnox-server niet worden opgezocht. Controleer de naam of gebruik een IP-adres.",
       "reset": "De verbinding werd halverwege verbroken. Meestal een firewall of proxy ertussen, of een dienst op de node die herstart.",
       "tls": "De TLS-handshake werd niet afgerond. Controleer of deze poort de Proxmox-API over HTTPS is en niets anders."
+    },
+    "velnox_update": {
+      "unanswered": "De worker antwoordde niet op tijd, dus er is niets gecontroleerd. Draait de worker? Serverbeheer > Status laat het zien."
     }
   },
   "inventory": {
@@ -955,6 +958,45 @@
       "verifyBody": "Dezelfde verificatie die het installatieprogramma aan het eind uitvoert. De moeite waard om ook los te draaien na elke wijziging aan de machine.",
       "verifyLabel": "Een draaiende installatie verifiëren",
       "verifyTitle": "Controleer het resultaat"
+    },
+    "updateCheck": {
+      "title": "Nieuwere versies",
+      "body": "Elke zes uur leest de worker één bestand op GitHub: de nieuwste versie, en de oplossingen waar een installatie niet op moet blijven zitten. Er wordt niets meegestuurd behalve het verzoek.",
+      "off": "Controle uit",
+      "available": "{version} beschikbaar",
+      "criticalAvailable": "{version} beschikbaar — kritieke oplossingen",
+      "unknown": "Kon niet controleren",
+      "current": "Up-to-date",
+      "notYet": "Nog niet gecontroleerd",
+      "severity": {
+        "critical": "Kritiek",
+        "important": "Belangrijk"
+      },
+      "fixedIn": "Opgelost in {version} ({id}).",
+      "readMore": "Meer lezen",
+      "failedTitle": "De laatste controle kreeg geen antwoord",
+      "errors": {
+        "network": "Het adres was niet bereikbaar — geen internet vanaf deze server, een firewall, of een proxy die Velnox niet gebruikt.",
+        "timeout": "Geen antwoord binnen twintig seconden.",
+        "http": "De server antwoordde, maar niet met het bestand.",
+        "too_large": "Het antwoord was veel groter dan het bestand is.",
+        "invalid": "Het antwoord was niet het releasebestand — meestal een inlogpagina van een netwerk of een proxy."
+      },
+      "lastGood": "Laatste antwoord: {when}.",
+      "neverGood": "Er is nog geen antwoord geweest, dus of deze versie de nieuwste is, is niet bekend.",
+      "running": "Draait",
+      "latest": "Nieuwste",
+      "checkedAt": "Laatst gecontroleerd",
+      "never": "Nooit",
+      "source": "Gelezen van",
+      "onHint": "De controle uitzetten stopt het lezen; Nu controleren werkt dan nog steeds.",
+      "offHint": "De controle staat uit: er wordt niets gelezen tot hij aan wordt gezet, of tot Nu controleren wordt ingedrukt.",
+      "checkNow": "Nu controleren",
+      "switchOff": "Controle uitzetten",
+      "switchOn": "Controle aanzetten",
+      "notice": "Velnox {version} beschikbaar",
+      "noticeCritical": "Kritieke update: Velnox {version}",
+      "noticeTitle": "Velnox {version} is beschikbaar. Open Serverbeheer > Updates."
     }
   },
   "setup": {

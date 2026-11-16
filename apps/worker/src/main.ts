@@ -65,6 +65,7 @@ import { pruneTasks } from './inventory/tasks';
 import { scheduleUpdates, UPDATE_SCHEDULER_INTERVAL_MS } from './updates/scheduler';
 import { keepPlacement, PLACEMENT_INTERVAL_MS } from './placement/scheduler';
 import { driveUpgrades, UPGRADE_DRIVER_INTERVAL_MS } from './upgrade/composite';
+import { runUpdateCheck, updateCheckDue } from './velnox-release/check';
 
 /**
  * Velnox worker.
@@ -244,6 +245,12 @@ async function bootstrap(): Promise<void> {
         // probe; it talks to a mail server, not a hypervisor.
         case JOB_NAMES.mailTest:
           return sendTestMail(job as Job<{ to: string }>);
+        // Check now, in Server management: the API waits for it. It talks to
+        // GitHub, not a hypervisor, and is here for the same reason as the mail.
+        case JOB_NAMES.updateCheck:
+          return runUpdateCheck(prisma, config.VELNOX_UPDATE_MANIFEST_URL, { force: true }).then(
+            (result) => ({ checked: result.checked, ok: result.outcome?.ok ?? null }),
+          );
         case SCHEDULER_TICK_JOB:
           return runSchedulerTick(prisma, inventoryQueue);
         default:
@@ -502,6 +509,24 @@ async function bootstrap(): Promise<void> {
       );
   const upgradeTimer = setInterval(() => void upgradeTick(), UPGRADE_DRIVER_INTERVAL_MS);
 
+  // Is there a newer Velnox (0.7.21)? Asked every quarter of an hour whether a
+  // check is due; one is, six hours after the last, while it is switched on.
+  const releaseTick = () =>
+    updateCheckDue(prisma)
+      .then(async (due) => {
+        if (!due) return;
+        const result = await runUpdateCheck(prisma, config.VELNOX_UPDATE_MANIFEST_URL);
+        const outcome = result.outcome;
+        if (!outcome) return;
+        if (outcome.ok) logger.info({ latest: outcome.manifest.version }, 'Checked for a newer Velnox');
+        else logger.warn({ error: outcome.error, detail: outcome.detail }, 'Could not check for a newer Velnox');
+      })
+      .catch((error: unknown) =>
+        logger.error({ err: rootRedactor.value(error) }, 'The update check failed'),
+      );
+  void releaseTick();
+  const releaseTimer = setInterval(() => void releaseTick(), 15 * 60_000);
+
   logger.info(
     {
       queue: QUEUE_NAMES.system,
@@ -528,6 +553,7 @@ async function bootstrap(): Promise<void> {
     clearInterval(updateTimer);
     clearInterval(placementTimer);
     clearInterval(upgradeTimer);
+    clearInterval(releaseTimer);
     clearInterval(liveTimer);
     livePoller.close();
     liveRedis.disconnect();

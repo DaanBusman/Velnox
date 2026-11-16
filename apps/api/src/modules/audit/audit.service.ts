@@ -82,6 +82,8 @@ export const AUDIT_ACTIONS = {
 
   /** The certificate was changed in Server management (ADR-045). Never the key. */
   systemTlsChanged: 'system.tls_changed',
+  /** The update check was switched on or off (0.7.21). Metadata: enabled, the address. */
+  systemUpdateCheckChanged: 'system.update_check_changed',
 
   autoconfigTemplateCreated: 'autoconfig.template_created',
   /** Metadata names which secrets changed, never their values. */

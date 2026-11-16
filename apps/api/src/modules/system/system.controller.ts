@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Put, Req } from '@nestjs/common';
 import { Public, RequirePermission } from '../../common/auth.guard';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -9,12 +9,16 @@ import {
   type SystemInfoResponse,
   type TlsChangeResponse,
   type TlsStatusResponse,
+  type UpdateStatusResponse,
 } from '@velnox/shared';
 import { actorOf } from '../../common/actor';
 import { zodBody } from '../../common/zod-validation.pipe';
 import { SystemService } from './system.service';
 import { TlsConfigService } from './tls-config.service';
 import { TlsService } from './tls.service';
+import { UpdateCheckService } from './update-check.service';
+
+const updateCheckSchema = z.object({ enabled: z.boolean() });
 
 /*
  * What goes into Caddy's configuration is checked here to the character: an
@@ -64,6 +68,7 @@ export class SystemController {
     private readonly system: SystemService,
     private readonly tls: TlsService,
     private readonly tlsConfig: TlsConfigService,
+    private readonly updates: UpdateCheckService,
   ) {}
 
   @Public()
@@ -143,5 +148,45 @@ export class SystemController {
     @Req() request: Request,
   ): Promise<TlsChangeResponse> {
     return this.tlsConfig.apply(body, actorOf(request));
+  }
+
+  /*
+   * The update check (0.7.21). Behind system.manage like the rest of Server
+   * management: which version runs and what it is exposed to is not for every
+   * user of the installation to read.
+   */
+  @RequirePermission(PERMISSIONS.systemManage)
+  @Get('update')
+  @ApiOperation({
+    summary: 'Is there a newer Velnox',
+    description:
+      'What the worker last read from the release file (release.json on GitHub, or ' +
+      'VELNOX_UPDATE_MANIFEST_URL), compared with the running version: whether a newer one ' +
+      'exists and which advisories concern this installation. A failed read is reported as one, ' +
+      'never as up to date.',
+  })
+  updateStatus(): Promise<UpdateStatusResponse> {
+    return this.updates.status();
+  }
+
+  @RequirePermission(PERMISSIONS.systemManage)
+  @Put('update')
+  @ApiOperation({ summary: 'Switch the update check on or off', description: 'Audited.' })
+  setUpdateCheck(
+    @Body(zodBody(updateCheckSchema)) body: z.infer<typeof updateCheckSchema>,
+    @Req() request: Request,
+  ): Promise<UpdateStatusResponse> {
+    return this.updates.setEnabled(body.enabled, actorOf(request));
+  }
+
+  @RequirePermission(PERMISSIONS.systemManage)
+  @Post('update/check')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Check for a newer Velnox now',
+    description: 'The worker reads the release file and the result is returned. Works while the check is off.',
+  })
+  checkForUpdate(): Promise<UpdateStatusResponse> {
+    return this.updates.checkNow();
   }
 }

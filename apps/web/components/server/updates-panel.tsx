@@ -6,20 +6,20 @@ import { CopyField } from '@/components/copy-field';
 import { Card, KeyValue, Mono, Notice } from '@/components/ui/primitives';
 import { useApiResource } from './use-api-resource';
 import { PanelError, PanelLoading } from './panel-state';
+import { UpdateCheckCard } from './update-check-card';
 
 /**
- * Which build is running, and how to move to a newer one.
+ * Which build is running, whether a newer one exists, and how to move to it.
  *
- * Deliberately not a check-for-updates button. Velnox is installed on
- * management networks that frequently cannot reach the internet, so a version
- * check would fail on exactly the installations most likely to open this panel —
- * and a "you are up to date" that really means "I could not ask" is worse than
- * no answer. It would also mean the appliance calling out to a third party on a
- * schedule, which is not something an MSP console should start doing without
- * being asked.
+ * Until 0.7.21 this was deliberately not a check for updates: Velnox runs on
+ * management networks that often cannot reach the internet, and a "you are up
+ * to date" that really means "I could not ask" is worse than no answer. The
+ * check that came (ADR-060) answers both objections rather than ignoring them:
+ * "could not ask" is shown as that, with why, and the check can be switched
+ * off here. It sends nothing but the request for one file.
  *
- * So this hands over the procedure, in the order that makes it reversible. Step
- * one is the one people skip and the one that makes the other two safe.
+ * Then the procedure, in the order that makes it reversible. Step one is the
+ * one people skip and the one that makes the other two safe.
  *
  * It names the running version and nothing else about the build. The rest — the
  * commit, when it was built, the licence and the source offer — is About this
@@ -37,6 +37,8 @@ export function UpdatesPanel() {
 
   return (
     <div className="space-y-5">
+      <UpdateCheckCard />
+
       <Card title={t('server.updates.runningTitle')} description={t('server.updates.runningBody')}>
         <dl>
           <KeyValue label={t('about.product')}>{build.product}</KeyValue>

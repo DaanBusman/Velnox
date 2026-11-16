@@ -105,10 +105,26 @@ const librarySchema = z.object({
   VELNOX_LIBRARY_MIN_FREE_GB: z.coerce.number().int().min(1).max(1_000_000).default(10),
 });
 
+/**
+ * Where the update check reads the newest version and its advisories (0.7.21).
+ * The repository's own file unless this names another — a mirror inside the
+ * management network, or a fork's. https only. Read by the worker; the API
+ * shows it, so an operator can see where the installation asks.
+ */
+export const UPSTREAM_UPDATE_MANIFEST_URL =
+  'https://raw.githubusercontent.com/DaanBusman/Velnox/main/release.json';
+const updateSchema = z.object({
+  VELNOX_UPDATE_MANIFEST_URL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().url().startsWith('https://').default(UPSTREAM_UPDATE_MANIFEST_URL),
+  ),
+});
+
 const apiSchema = baseSchema
   .merge(redisSchema)
   .merge(databaseSchema)
   .merge(librarySchema)
+  .merge(updateSchema)
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     APP_URL: z.string().url().default('https://localhost'),
@@ -143,6 +159,7 @@ const workerSchema = baseSchema
   .merge(redisSchema)
   .merge(databaseSchema)
   .merge(librarySchema)
+  .merge(updateSchema)
   .extend({
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(4),
     MASTER_ENCRYPTION_KEY: base64Key32,
