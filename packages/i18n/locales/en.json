@@ -344,7 +344,8 @@
       "quorum_at_risk": "Cluster {cluster} would lose quorum: {available} of {required} voting nodes would remain available.",
       "unreachable": "{host} could not be reached.",
       "merge_not_same": "{keep} and {remove} are not one Proxmox cluster, so they are not merged: one would disappear from Velnox.",
-      "merge_busy": "{count, plural, one {A job is} other {# jobs are}} running against these clusters. Merge once {count, plural, one {it has} other {they have}} finished."
+      "merge_busy": "{count, plural, one {A job is} other {# jobs are}} running against these clusters. Merge once {count, plural, one {it has} other {they have}} finished.",
+      "has_running_jobs": "{count, plural, one {A job is running} other {# jobs are running}} against this cluster or its nodes. Remove it once {count, plural, one {that job has finished, or cancel it} other {those jobs have finished, or cancel them}} under Jobs."
     },
     "credential": {
       "rotation_verify_failed": "The new password was applied but could not be verified. Both versions have been kept and the credential is flagged for attention."
@@ -661,7 +662,8 @@
       "step_started": "Step {step} started",
       "step_succeeded": "Step {step} succeeded",
       "job_cleanup_failed": "Could not clean up everything the job had started. Check what it left behind.",
-      "job_partially_succeeded": "Partially succeeded"
+      "job_partially_succeeded": "Partially succeeded",
+      "job_cancelled_cluster_removed": "Cancelled before it started: {by} removed cluster {cluster}"
     },
     "events": "Events",
     "finishedAt": "Finished",

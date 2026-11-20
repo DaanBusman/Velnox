@@ -130,6 +130,12 @@ next read would simply bring it back.
 Removing a cluster removes its stored credential with it. A secret with no owner is a secret nobody
 is going to rotate.
 
+**Jobs that concern it.** While a job is actually running against the cluster or one of its nodes —
+an update half-way through, say — removal is refused and says how many; let it finish, or cancel it
+under **Jobs**. A job that has not started — queued, or waiting for an approval — is cancelled with
+the removal, and its history says so: *Cancelled before it started: … removed cluster …*. Both are in
+the audit log.
+
 ---
 
 ## SSH: what it is for, and setting it up

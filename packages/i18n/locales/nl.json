@@ -345,7 +345,8 @@
       "quorum_at_risk": "Cluster {cluster} zou quorum verliezen: {available} van {required} stemmende nodes zouden beschikbaar blijven.",
       "unreachable": "{host} is niet bereikbaar.",
       "merge_not_same": "{keep} en {remove} zijn niet één Proxmox-cluster, dus ze worden niet samengevoegd: er zou er een uit Velnox verdwijnen.",
-      "merge_busy": "{count, plural, one {Er draait een job} other {Er draaien # jobs}} tegen deze clusters. Voeg ze samen als {count, plural, one {die klaar is} other {die klaar zijn}}."
+      "merge_busy": "{count, plural, one {Er draait een job} other {Er draaien # jobs}} tegen deze clusters. Voeg ze samen als {count, plural, one {die klaar is} other {die klaar zijn}}.",
+      "has_running_jobs": "{count, plural, one {Er draait een job} other {Er draaien # jobs}} tegen dit cluster of zijn nodes. Verwijder het als {count, plural, one {die job klaar is, of annuleer hem} other {die jobs klaar zijn, of annuleer ze}} onder Jobs."
     },
     "credential": {
       "rotation_verify_failed": "Het nieuwe wachtwoord is toegepast maar kon niet worden geverifieerd. Beide versies zijn bewaard en het credential is gemarkeerd voor opvolging."
@@ -662,7 +663,8 @@
       "step_started": "Stap {step} gestart",
       "step_succeeded": "Stap {step} geslaagd",
       "job_cleanup_failed": "Niet alles wat de job had gestart kon worden opgeruimd. Controleer wat er is achtergebleven.",
-      "job_partially_succeeded": "Gedeeltelijk geslaagd"
+      "job_partially_succeeded": "Gedeeltelijk geslaagd",
+      "job_cancelled_cluster_removed": "Geannuleerd voordat hij begon: {by} heeft cluster {cluster} verwijderd"
     },
     "events": "Gebeurtenissen",
     "finishedAt": "Afgerond",

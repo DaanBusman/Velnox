@@ -137,6 +137,12 @@ uitleesronde zou hem gewoon terugbrengen.
 Een cluster verwijderen verwijdert ook de opgeslagen credential. Een geheim zonder eigenaar is een
 geheim dat niemand gaat roteren.
 
+**Jobs die erover gaan.** Zolang er echt een job loopt tegen het cluster of een van zijn nodes —
+een update halverwege, bijvoorbeeld — wordt verwijderen geweigerd, met hoeveel het er zijn; laat
+hem afmaken, of annuleer hem onder **Jobs**. Een job die nog niet begonnen is — in de wachtrij, of
+wachtend op een goedkeuring — wordt met het verwijderen geannuleerd, en zijn geschiedenis zegt dat:
+*Geannuleerd voordat hij begon: … heeft cluster … verwijderd*. Beide staan in het auditlog.
+
 ---
 
 ## SSH: waarvoor het is, en het instellen

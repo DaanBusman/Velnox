@@ -14,6 +14,7 @@ import { PrismaService } from '../infrastructure/prisma.service';
 import { JobTimeoutError, QueueService } from '../infrastructure/queue.service';
 import { SecretStoreService } from '../auth/secret-store.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
+import { JobsService } from '../jobs/jobs.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
 
 /**
@@ -109,6 +110,7 @@ export class ClustersService {
     private readonly queue: QueueService,
     private readonly secrets: SecretStoreService,
     private readonly audit: AuditService,
+    private readonly jobs: JobsService,
   ) {}
 
   /**
@@ -395,6 +397,36 @@ export class ClustersService {
       });
     }
 
+    /*
+     * The jobs that concern it (0.7.25). One that is actually running — an
+     * update half-way through a node — refuses the removal: taking the cluster
+     * away under it is not a decision to make by accident. One that has not
+     * started — queued, or waiting for an approval — is cancelled, and says
+     * why. Before this, such a job outlived its cluster, waiting for ever,
+     * and counted as running at the bottom of every screen.
+     */
+    const nodeIds = (
+      await this.prisma.client.node.findMany({ where: { clusterId: id }, select: { id: true } })
+    ).map((node) => node.id);
+    const active = await this.jobs.activeForCluster(id, nodeIds);
+    const running = active.filter((job) => job.status !== 'QUEUED' && job.status !== 'WAITING_APPROVAL');
+    if (running.length > 0) {
+      throw new VelnoxError(ERROR_CODES.clusterHasRunningJobs, {
+        status: 409,
+        params: { count: running.length },
+      });
+    }
+    let cancelled = 0;
+    for (const job of active) {
+      const done = await this.jobs.cancelUnstarted(
+        job.id,
+        actor,
+        `Cancelled before it started: ${actor.email} removed cluster ${cluster.name}`,
+        { reason: 'cluster_removed', cluster: cluster.name },
+      );
+      if (done) cancelled += 1;
+    }
+
     await this.prisma.client.cluster.delete({ where: { id } });
 
     if (cluster.credentialId) {
@@ -413,7 +445,10 @@ export class ClustersService {
       resourceType: 'cluster',
       resourceId: cluster.id,
       resourceLabel: cluster.name,
-      metadata: { endpoint: `${cluster.endpointHost}:${cluster.endpointPort}` },
+      metadata: {
+        endpoint: `${cluster.endpointHost}:${cluster.endpointPort}`,
+        cancelledJobs: cancelled,
+      },
     });
 
     return { id };

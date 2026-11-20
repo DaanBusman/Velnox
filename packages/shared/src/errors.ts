@@ -43,6 +43,8 @@ export const ERROR_CODES = {
   clusterMergeNotSame: 'cluster.merge_not_same',
   /** Merging waits while a job runs against either. */
   clusterMergeBusy: 'cluster.merge_busy',
+  /** Removing a cluster waits while a job is actually running against it or its nodes (0.7.25). */
+  clusterHasRunningJobs: 'cluster.has_running_jobs',
   clusterQuorumAtRisk: 'cluster.quorum_at_risk',
   clusterAlreadyDegraded: 'cluster.already_degraded',
 

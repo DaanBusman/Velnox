@@ -99,6 +99,7 @@ export function useEventText(): (event: JobEventMessage) => string {
       by: String(event.data.by ?? ''),
       step: event.stepKey ?? '',
       pct: String(event.data.stepPct ?? ''),
+      cluster: String(event.data.cluster ?? ''),
     });
   };
 }

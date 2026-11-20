@@ -590,10 +590,28 @@ check "and the inventory it had" 3 "$(printf '%s' "$GONE" | json nodeCount)"
 # Put it back
 # ---------------------------------------------------------------------------
 
-info "Cleaning up."
+info "Cleaning up, which settles the jobs that concern the cluster (0.7.25)."
+
+# Two jobs planted on one of its nodes: one running, one waiting for an
+# approval. Before 0.7.25 the waiting one outlived the cluster, for ever.
+CLUSTER_TENANT="$(psql_at "SELECT tenant_id FROM clusters WHERE id = '${CLUSTER_ID}';")"
+A_NODE="$(psql_at "SELECT id FROM nodes WHERE cluster_id = '${CLUSTER_ID}' ORDER BY name LIMIT 1;")"
+RUNNING_JOB="$(psql_at "INSERT INTO jobs (id, tenant_id, type, status, target_kind, target_ids, updated_at) VALUES (gen_random_uuid(), '${CLUSTER_TENANT}', 'node.update', 'RUNNING', 'node', ARRAY['${A_NODE}']::uuid[], now()) RETURNING id;" | head -1)"
+WAITING_JOB="$(psql_at "INSERT INTO jobs (id, tenant_id, type, status, target_kind, target_ids, updated_at) VALUES (gen_random_uuid(), '${CLUSTER_TENANT}', 'node.update', 'WAITING_APPROVAL', 'node', ARRAY['${A_NODE}']::uuid[], now()) RETURNING id;" | head -1)"
+
+REFUSED="$(call DELETE "/api/v1/clusters/${CLUSTER_ID}")"
+check "removal: refused while a job is running against one of its nodes" 409 "$(last_status)"
+check "removal: and says so" cluster.has_running_jobs "$(printf '%s' "$REFUSED" | json error.code)"
+check "removal: the waiting job is left alone by a refusal" WAITING_APPROVAL "$(psql_at "SELECT status FROM jobs WHERE id = '${WAITING_JOB}';")"
+psql_at "UPDATE jobs SET status = 'FAILED', finished_at = now() WHERE id = '${RUNNING_JOB}';" >/dev/null
 
 call DELETE "/api/v1/clusters/${CLUSTER_ID}" >/dev/null
 check "the cluster is removed" 200 "$(last_status)"
+check "removal: the job waiting for an approval is cancelled" CANCELLED "$(psql_at "SELECT status FROM jobs WHERE id = '${WAITING_JOB}';")"
+check "removal: and its history says why" job.cancelled_cluster_removed "$(psql_at "SELECT event_key FROM job_events WHERE job_id = '${WAITING_JOB}' ORDER BY seq DESC LIMIT 1;")"
+check "removal: in the audit log, with the reason" cluster_removed "$(psql_at "SELECT metadata->>'reason' FROM audit_events WHERE resource_id = '${WAITING_JOB}' AND action = 'job.cancelled';")"
+check "removal: and the removal counts it" 1 "$(psql_at "SELECT metadata->>'cancelledJobs' FROM audit_events WHERE resource_id = '${CLUSTER_ID}' AND action = 'cluster.removed';")"
+psql_at "DELETE FROM jobs WHERE id IN ('${RUNNING_JOB}', '${WAITING_JOB}');" >/dev/null
 
 check "and its nodes go with it" 0 \
   "$(call GET "/api/v1/nodes?clusterId=${CLUSTER_ID}" | grep -o '"id"' | wc -l | tr -d ' ')"

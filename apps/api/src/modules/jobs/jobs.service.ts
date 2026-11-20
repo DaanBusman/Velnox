@@ -579,6 +579,87 @@ export class JobsService {
   // Deciding
   // -------------------------------------------------------------------------
 
+  /**
+   * The jobs not finished that concern a cluster: against it, against one of
+   * its nodes, or holding its concurrency key. What removing a cluster has to
+   * settle first (0.7.25).
+   */
+  async activeForCluster(
+    clusterId: string,
+    nodeIds: readonly string[],
+  ): Promise<{ id: string; status: JobStatus; type: string }[]> {
+    const rows = await this.prisma.client.job.findMany({
+      where: {
+        status: { in: [...ACTIVE_JOB_STATUSES] },
+        OR: [
+          { targetIds: { hasSome: [clusterId, ...nodeIds] } },
+          { concurrencyKey: `cluster:${clusterId}` },
+        ],
+      },
+      select: { id: true, status: true, type: true },
+    });
+    return rows.map((row) => ({ ...row, status: row.status as JobStatus }));
+  }
+
+  /**
+   * Cancel a job nobody has started — queued, or parked for approval — for a
+   * reason other than a person pressing Cancel: its cluster is being removed
+   * (0.7.25). The caller has established that the person may do what causes
+   * it; `cancel` below is the button, with its own permission. False when it
+   * had started after all — a worker claimed it between the read and the write.
+   */
+  async cancelUnstarted(
+    id: string,
+    actor: Actor,
+    message: string,
+    metadata: Record<string, unknown>,
+  ): Promise<boolean> {
+    const job = await this.prisma.client.job.findUnique({ where: { id }, include: jobInclude });
+    if (!job) return false;
+    return this.cancelBeforeStart(job, actor, message, metadata, JOB_EVENT_KEYS.cancelledClusterRemoved);
+  }
+
+  private async cancelBeforeStart(
+    job: JobRow,
+    actor: Actor,
+    message: string,
+    metadata: Record<string, unknown>,
+    key: string = JOB_EVENT_KEYS.cancelled,
+  ): Promise<boolean> {
+    const status = job.status as JobStatus;
+    if (status !== 'QUEUED' && status !== 'WAITING_APPROVAL') return false;
+    assertTransition(status, 'CANCELLED');
+    const now = new Date();
+    const moved = await this.event(
+      job.id,
+      {
+        level: 'WARN',
+        key,
+        message,
+        data: { ...metadata, by: actor.email, interrupted: false },
+      },
+      {
+        guard: { status },
+        data: {
+          status: 'CANCELLED',
+          finishedAt: now,
+          cancelRequestedAt: now,
+          cancelRequestedBy: actor.id,
+          currentStep: null,
+        },
+      },
+    );
+    if (!moved) return false;
+
+    await this.prisma.client.jobStep.updateMany({
+      where: { jobId: job.id, status: { in: ['PENDING', 'RUNNING'] } },
+      data: { status: 'SKIPPED' },
+    });
+    await this.queue.dequeueJob(job.id).catch(() => undefined);
+    await this.recordDecision(AUDIT_ACTIONS.jobCancelled, job, actor, { from: status, ...metadata });
+    return true;
+  }
+
   async cancel(id: string, actor: Actor): Promise<JobDetail> {
     const job = await this.visible(id, actor, PERMISSIONS.jobsCancel);
     const status = job.status as JobStatus;
@@ -589,40 +670,15 @@ export class JobsService {
 
     // Not started, or parked: nobody holds it, so the API finishes it here.
     if (status === 'QUEUED' || status === 'WAITING_APPROVAL') {
-      assertTransition(status, 'CANCELLED');
-      const now = new Date();
-      const moved = await this.event(
-        id,
-        {
-          level: 'WARN',
-          key: JOB_EVENT_KEYS.cancelled,
-          message:
-            status === 'QUEUED'
-              ? `Cancelled by ${actor.email} before it started`
-              : `Cancelled by ${actor.email} while waiting for approval`,
-          data: { by: actor.email, interrupted: false },
-        },
-        {
-          guard: { status },
-          data: {
-            status: 'CANCELLED',
-            finishedAt: now,
-            cancelRequestedAt: now,
-            cancelRequestedBy: actor.id,
-            currentStep: null,
-          },
-        },
+      const moved = await this.cancelBeforeStart(
+        job,
+        actor,
+        status === 'QUEUED'
+          ? `Cancelled by ${actor.email} before it started`
+          : `Cancelled by ${actor.email} while waiting for approval`,
+        {},
       );
-
-      if (moved) {
-        await this.prisma.client.jobStep.updateMany({
-          where: { jobId: id, status: { in: ['PENDING', 'RUNNING'] } },
-          data: { status: 'SKIPPED' },
-        });
-        await this.queue.dequeueJob(id).catch(() => undefined);
-        await this.recordDecision(AUDIT_ACTIONS.jobCancelled, job, actor, { from: status });
-        return this.get(id, actor);
-      }
+      if (moved) return this.get(id, actor);
       // A worker claimed it between the read and the write. It is running now,
       // so it is cancelled the way a running job is.
     }

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { JobsModule } from '../jobs/jobs.module';
 import { ClustersController } from './clusters.controller';
 import { NodesController } from './nodes.controller';
 import { WorkloadsController } from './workloads.controller';
@@ -17,7 +18,8 @@ import { InventoryReadService } from './inventory-read.service';
  * infrastructure kind, and only the worker holds a store that does not.
  */
 @Module({
-  imports: [AuthModule],
+  // JobsModule: removing a cluster settles the jobs that concern it (0.7.25).
+  imports: [AuthModule, JobsModule],
   controllers: [ClustersController, NodesController, WorkloadsController, ResourcesController],
   providers: [ClustersService, ClusterMergeService, InventoryReadService, AlertsService],
   exports: [ClustersService, InventoryReadService, AlertsService],

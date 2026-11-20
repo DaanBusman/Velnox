@@ -170,6 +170,8 @@ export const JOB_EVENT_KEYS = {
   rejected: 'approval.rejected',
   cancelRequested: 'job.cancel_requested',
   cancelled: 'job.cancelled',
+  /** Cancelled before it started because its cluster was removed (0.7.25). */
+  cancelledClusterRemoved: 'job.cancelled_cluster_removed',
   succeeded: 'job.succeeded',
   /** Some units finished and one stopped the run (a rolling update's nodes). */
   partiallySucceeded: 'job.partially_succeeded',
