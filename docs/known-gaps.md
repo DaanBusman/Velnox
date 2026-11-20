@@ -84,8 +84,10 @@ their active sessions or end them from the interface. Changing a password alread
 session as a side effect.
 
 ### The backend image carries its build dependencies
-`deploy/docker/backend.Dockerfile` copies the whole workspace, including devDependencies, into the
-runtime layer. pnpm's `node_modules` is a graph of relative symlinks that does not survive being
+`deploy/docker/backend.Dockerfile` copies the backend's workspace, including devDependencies, into
+the runtime layer. Since 0.7.24 it installs only the API's and the worker's graph rather than the
+whole workspace, which took the web app's Next.js, SWC and sharp out and the image from 1.74 GB to
+1.2 GB; the devDependencies — TypeScript, the Prisma CLI's engines, the Nest CLI — are still in it. pnpm's `node_modules` is a graph of relative symlinks that does not survive being
 taken apart, and a naive `pnpm prune --prod` would delete the generated Prisma client. Producing a
 properly slimmed runtime image is Phase 14 packaging work, and it matters there because it is part
 of the ~1 GB air-gapped artifact budget.

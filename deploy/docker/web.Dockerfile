@@ -54,6 +54,10 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     PORT=3000
 
+# The npm that comes with the Node image: nothing here runs it, and its own
+# dependencies were all an image scan found (0.7.24; see backend.Dockerfile).
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
 ARG VELNOX_VERSION=0.0.0-dev
 ARG VELNOX_BUILD_COMMIT=unknown
 ENV VELNOX_VERSION=${VELNOX_VERSION} \

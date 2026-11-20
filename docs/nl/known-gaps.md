@@ -94,8 +94,11 @@ gebruiker kan zijn actieve sessies niet zien of beëindigen vanuit de interface.
 wachtwoordwijziging trekt al elke sessie in als neveneffect.
 
 ### De backend-image draagt zijn buildafhankelijkheden mee
-`deploy/docker/backend.Dockerfile` kopieert de hele workspace, inclusief devDependencies, naar de
-runtime-laag. pnpm's `node_modules` is een graaf van relatieve symlinks die het niet overleeft om
+`deploy/docker/backend.Dockerfile` kopieert de workspace van de backend, inclusief
+devDependencies, naar de runtime-laag. Sinds 0.7.24 installeert hij alleen de graaf van de API en de
+worker in plaats van de hele workspace, wat Next.js, SWC en sharp van de webapp eruit haalde en de
+image van 1,74 GB naar 1,2 GB bracht; de devDependencies — TypeScript, de engines van de Prisma-CLI,
+de Nest-CLI — zitten er nog in. pnpm's `node_modules` is een graaf van relatieve symlinks die het niet overleeft om
 uit elkaar gehaald te worden, en een naïeve `pnpm prune --prod` zou de gegenereerde Prisma-client
 verwijderen. Een fatsoenlijk afgeslankte runtime-image is verpakkingswerk voor fase 14, en daar
 telt het omdat het onderdeel is van het artefactbudget van ~1 GB voor air-gapped installaties.

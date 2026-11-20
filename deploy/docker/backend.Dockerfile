@@ -74,8 +74,11 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/i18n/package.json ./packages/i18n/
 COPY packages/shared/package.json ./packages/shared/
 
+# Only the backend's graph (0.7.24). The whole workspace brought Next.js, its
+# SWC compiler and sharp — over 300 MB the API and the worker never load — into
+# this image, and the runtime stage copies the tree as it is.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+    pnpm install --frozen-lockfile --filter @velnox/api... --filter @velnox/worker...
 
 COPY . .
 
@@ -85,6 +88,11 @@ RUN pnpm --filter @velnox/api... --filter @velnox/worker... run build
 
 # ---------------------------------------------------------------------------
 FROM base AS runtime
+
+# The npm that comes with the Node image (0.7.24). Nothing here runs it — pnpm
+# comes from corepack, baked above — and it was the only thing an image scan
+# found in this image: nine high advisories in npm's own dependencies.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 ARG VELNOX_VERSION=0.0.0-dev
 ARG VELNOX_BUILD_COMMIT=unknown

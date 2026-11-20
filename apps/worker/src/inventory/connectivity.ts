@@ -233,6 +233,24 @@ export class ConnectivityChecker {
       );
       const state = this.states.get(cluster.id) ?? freshState();
       this.states.set(cluster.id, state);
+
+      // A possible transition is decided on the cluster's state now, not on
+      // the list read up to ten seconds ago. The first build decided on the
+      // list: a cluster read back to connected a moment before it went away
+      // still looked failed, so "gone" was nothing to do — and the transition
+      // was spent. One row, and only when the answer differs from the last.
+      if (outcome.ok !== (state.up === true)) {
+        const fresh = await withSystemScope('connectivity checks belong to no request', async () =>
+          await this.deps.prisma.cluster.findUnique({
+            where: { id: cluster.id },
+            select: { connectionState: true, lastErrorCode: true },
+          }),
+        );
+        if (!fresh) return;
+        cluster.connectionState = fresh.connectionState;
+        cluster.lastErrorCode = fresh.lastErrorCode;
+      }
+
       const now = Date.now();
       const action = decide(state, cluster, outcome, now);
 

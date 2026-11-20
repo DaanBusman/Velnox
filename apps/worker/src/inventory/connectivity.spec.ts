@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ERROR_CODES, unreachableReasonOf } from '@velnox/shared';
 import {
+  ConnectivityChecker,
   OFFLINE_AFTER_FAILURES,
   REREAD_FAILED_MS,
   decide,
@@ -98,6 +99,55 @@ describe('decide: a cluster going away', () => {
     const pending = { ...connected, connectionState: 'PENDING' as const };
     decide(state, pending, DOWN, 0);
     expect(decide(state, pending, DOWN, 2_000).kind).toBe('none');
+  });
+});
+
+describe('ConnectivityChecker: a transition is decided on the state now', () => {
+  it('marks a cluster gone even when its list entry still says failed', async () => {
+    // The list was read while the cluster was failed; a run has since read it
+    // back to connected. The first build trusted the list, did nothing, and
+    // spent the transition: the cluster stayed "connected" while gone.
+    const updates: unknown[] = [];
+    const reads: string[] = [];
+    const row = {
+      id: 'c1',
+      tenantId: 't1',
+      siteId: null,
+      endpointHost: 'pve.example',
+      endpointPort: 8006,
+      connectionState: 'FAILED' as const,
+      lastErrorCode: ERROR_CODES.clusterUnreachable,
+    };
+    const prisma = {
+      cluster: {
+        findMany: async () => [{ ...row }],
+        findUnique: async () => ({ connectionState: 'CONNECTED', lastErrorCode: null }),
+        updateMany: async (args: unknown) => {
+          updates.push(args);
+          return { count: 1 };
+        },
+      },
+    };
+    let answering = true;
+    const checker = new ConnectivityChecker({
+      prisma: prisma as never,
+      read: async (_id, jobId) => void reads.push(jobId),
+      log: () => undefined,
+      connect: async () => (answering ? UP : DOWN),
+    });
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+    let now = 1_000_000;
+    await checker.tick(now);
+    await settle();
+    answering = false;
+    for (let i = 0; i < OFFLINE_AFTER_FAILURES; i += 1) {
+      now += 2_000;
+      await checker.tick(now);
+      await settle();
+    }
+    expect(updates).toHaveLength(1);
+    expect(reads.some((id) => id.includes(':silent-'))).toBe(true);
   });
 });
 
