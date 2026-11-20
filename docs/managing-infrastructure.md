@@ -281,9 +281,21 @@ Two kinds of reading, and they are different:
   node offline, a figure moved by a whole percent of CPU or by more than a few megabytes — and
   otherwise once a minute. A cluster where nothing moves costs the screens watching it nothing.
 
+- **Whether the cluster answers at all** is asked every two seconds, for every cluster, whoever is
+  looking: the worker opens a TCP connection to the cluster's API port and closes it again — no
+  login, no request, nothing in the node's logs. A cluster marked as failing whose port answers
+  again is read at once, as if you had pressed **Read now**, so a node that is switched back on
+  shows as connected within seconds of its API starting rather than at the next scheduled run. A
+  connected cluster whose port stops answering twice in a row is marked as failing straight away,
+  with the reason — no route, connection refused, no connection in time — and read at once, which
+  confirms that reason or corrects it within about half a minute. A port that answers proves
+  nothing about who is listening, so it never marks a cluster connected by itself; the run that
+  follows does, with the credential and the pinned certificate, or says why not. A cluster that
+  failed for a refused credential or a different certificate is read again only when its port comes
+  back, never on a timer — retrying a wrong password is how an account gets locked.
+
 Proxmox itself recalculates those figures about every ten seconds, so between two of its updates
-several reads in a row show the same numbers. There is no button that starts a full inventory on
-demand; a run outside the schedule means shortening the interval for that cluster.
+several reads in a row show the same numbers. **Read now** starts a full inventory at any moment.
 
 Three behaviours are worth knowing, because they are what makes the inventory trustworthy:
 

@@ -319,6 +319,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       return true;
     }
     if (rest === 'apt/update' && method === 'POST') {
+      log(`ops: ${node} apt-get update ran`);
       send(response, 200, { data: storage.newTask(node, 'aptupdate', 'OK', ['Reading package lists...', 'TASK OK']) });
       return true;
     }

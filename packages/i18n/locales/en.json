@@ -1919,7 +1919,6 @@
     "historyTitle": "History",
     "historyBody": "Every node update, by a person or by a policy. Open one for its output.",
     "noHistory": "No updates yet.",
-    "byPolicy": "by a policy",
     "aNode": "a node",
     "rollingTitle": "Update {cluster} node by node",
     "rollingBody": "Each node in turn: its running guests moved to the others, updated, rebooted if needed, checked, and the guests moved back. The cluster never loses quorum, and the run does not start on a cluster that is already degraded.",
@@ -1940,7 +1939,15 @@
     "settleHint": "How long a node, the cluster and Ceph may take to be whole again after a reboot before the run stops.",
     "migrateBack": "Move guests back afterwards",
     "migrateBackHint": "Each guest returns to the node it came from once that node is done.",
-    "rollingStart": "Start rolling update"
+    "rollingStart": "Start rolling update",
+    "refresh": "Refresh",
+    "refreshHint": "Run apt-get update on every online node, then read what each would update. Without it the list is what the nodes found at their own daily check.",
+    "refreshStarted": "{count, plural, one {Refreshing the package lists of one cluster.} other {Refreshing the package lists of # clusters.}} Each node runs apt-get update, then the cluster is read again; the list below updates when that ends, usually within a minute. The run shows under the cluster’s discovery runs.",
+    "refreshNone": "There is no cluster here whose packages you may update.",
+    "historyResult": "Result",
+    "historyWhen": "When",
+    "historyBy": "By",
+    "historyPolicy": "A policy"
   },
   "placement": {
     "subtitle": "Which guests of a cluster are kept apart or together, which nodes a guest belongs on, and whether that holds now.",

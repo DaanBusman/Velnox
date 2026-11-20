@@ -159,12 +159,15 @@ cp "$(dirname "$0")/fixtures/fake-pve.mjs" "$WORK/fake-pve.mjs"
 # container-side paths (`/fixture`, and the script's own arguments) into Windows
 # paths that mean nothing inside a Linux container. It is ignored everywhere
 # else.
-MSYS_NO_PATHCONV=1 docker run -d --rm --name "$FIXTURE_NAME" \
-  --network "$NETWORK" --network-alias "$FIXTURE_HOST" \
-  -v "$(cd "$WORK" && { pwd -W 2>/dev/null || pwd; }):/fixture:ro" \
-  node:22-bookworm-slim \
-  node /fixture/fake-pve.mjs --cert /fixture/cert.pem --key /fixture/key.pem --port 8006 \
-  >/dev/null
+start_fixture() {
+  MSYS_NO_PATHCONV=1 docker run -d --rm --name "$FIXTURE_NAME" \
+    --network "$NETWORK" --network-alias "$FIXTURE_HOST" \
+    -v "$(cd "$WORK" && { pwd -W 2>/dev/null || pwd; }):/fixture:ro" \
+    node:22-bookworm-slim \
+    node /fixture/fake-pve.mjs --cert /fixture/cert.pem --key /fixture/key.pem --port 8006 \
+    >/dev/null
+}
+start_fixture
 
 # Give it a moment to bind. A fixed sleep rather than a poll because there is no
 # port published to poll from here.
@@ -481,18 +484,36 @@ for _ in $(seq 1 30); do
 done
 
 docker rm -f "$FIXTURE_NAME" >/dev/null 2>&1
+PULLED_AT=$(date +%s)
 call POST "/api/v1/clusters/${CLUSTER_ID}/discover" >/dev/null
 
 # Polled, not slept. A run against a host that is simply gone takes as long as
 # its retries and their backoff, which is not a number worth hard-coding — and a
 # fixed sleep that is slightly too short reads exactly like the feature being
 # broken.
+#
+# Failed is not the end of it: the connectivity check (0.7.23) marks the
+# cluster failed within seconds with what its short timeout saw, and asks for a
+# run whose longer patience writes the exact reason over it. So the reason is
+# read once the runs since the plug was pulled have finished.
+settle_runs() {
+  local since=$1 finished running
+  for _ in $(seq 1 60); do
+    finished="$(psql_at "SELECT count(*) FROM discovery_runs WHERE cluster_id = '${CLUSTER_ID}' AND started_at >= to_timestamp(${since} - 5) AND state <> 'RUNNING';")"
+    running="$(psql_at "SELECT count(*) FROM discovery_runs WHERE cluster_id = '${CLUSTER_ID}' AND state = 'RUNNING';")"
+    [[ "$finished" -ge 1 && "$running" == 0 ]] && return 0
+    sleep 2
+  done
+  return 1
+}
 GONE=""
 for _ in $(seq 1 30); do
   GONE="$(call GET "/api/v1/clusters/${CLUSTER_ID}")"
   [[ "$(printf '%s' "$GONE" | json connectionState)" == FAILED ]] && break
   sleep 2
 done
+settle_runs "$PULLED_AT"
+GONE="$(call GET "/api/v1/clusters/${CLUSTER_ID}")"
 check "an unreachable cluster is marked failed" FAILED "$(printf '%s' "$GONE" | json connectionState)"
 check "and says why, as a code the interface translates" cluster.unreachable "$(printf '%s' "$GONE" | json lastErrorCode)"
 # The fixture's name went with its container, so the silence is a name that no
@@ -512,6 +533,58 @@ check "and keeps the inventory it had" 3 "$(printf '%s' "$GONE" | json nodeCount
 
 STILL="$(call GET "/api/v1/nodes?clusterId=${CLUSTER_ID}")"
 contains "the nodes are still there, stale rather than erased" '"name":"pve1"' "$STILL"
+
+# ---------------------------------------------------------------------------
+# The connectivity check (0.7.23): nobody presses Read now
+# ---------------------------------------------------------------------------
+#
+# A failed cluster used to stay failed until its next scheduled run — thirty
+# minutes by default — however long ago it had come back. The worker now asks
+# every cluster's port every two seconds and reads one that answers again.
+
+info "Bringing the fixture back, and waiting without pressing Read now."
+start_fixture
+BACK_STARTED=$(date +%s)
+BACK=""
+for _ in $(seq 1 45); do
+  BACK="$(call GET "/api/v1/clusters/${CLUSTER_ID}")"
+  [[ "$(printf '%s' "$BACK" | json connectionState)" == CONNECTED ]] && break
+  sleep 1
+done
+BACK_SECONDS=$(( $(date +%s) - BACK_STARTED ))
+check "a failed cluster that answers again is read by itself" CONNECTED "$(printf '%s' "$BACK" | json connectionState)"
+if (( BACK_SECONDS <= 30 )); then
+  green "within ${BACK_SECONDS} s of coming back, not at the next scheduled run"
+  PASS=$((PASS + 1))
+else
+  red "it took ${BACK_SECONDS} s"
+  FAIL=$((FAIL + 1))
+fi
+BACK_BY="$(psql_at "SELECT coalesce(requested_by::text, 'nobody') FROM discovery_runs WHERE cluster_id = '${CLUSTER_ID}' ORDER BY started_at DESC LIMIT 1;")"
+check "by a run nobody asked for" nobody "$BACK_BY"
+
+info "Taking it away again, and waiting without pressing Read now."
+docker rm -f "$FIXTURE_NAME" >/dev/null 2>&1
+GONE_STARTED=$(date +%s)
+for _ in $(seq 1 30); do
+  GONE="$(call GET "/api/v1/clusters/${CLUSTER_ID}")"
+  [[ "$(printf '%s' "$GONE" | json connectionState)" == FAILED ]] && break
+  sleep 1
+done
+GONE_SECONDS=$(( $(date +%s) - GONE_STARTED ))
+check "a connected cluster that stops answering is marked failed by itself" FAILED "$(printf '%s' "$GONE" | json connectionState)"
+if (( GONE_SECONDS <= 15 )); then
+  green "within ${GONE_SECONDS} s"
+  PASS=$((PASS + 1))
+else
+  red "it took ${GONE_SECONDS} s"
+  FAIL=$((FAIL + 1))
+fi
+settle_runs "$GONE_STARTED"
+GONE="$(call GET "/api/v1/clusters/${CLUSTER_ID}")"
+check "and read at once by itself, which names the reason exactly" dns "$(printf '%s' "$GONE" | json lastErrorReason)"
+check "by a run nobody asked for" nobody "$(psql_at "SELECT coalesce(requested_by::text, 'nobody') FROM discovery_runs WHERE cluster_id = '${CLUSTER_ID}' ORDER BY started_at DESC LIMIT 1;")"
+check "and the inventory it had" 3 "$(printf '%s' "$GONE" | json nodeCount)"
 
 # ---------------------------------------------------------------------------
 # Put it back

@@ -12,6 +12,7 @@ import { ERROR_CODES, rootRedactor } from '@velnox/shared';
 import type { CredentialReader } from './credentials';
 import { persistDiscovery } from './persist';
 import { collectTasks } from './tasks';
+import { refreshPackageLists } from './refresh-packages';
 
 /**
  * The three jobs that talk to a hypervisor.
@@ -35,6 +36,8 @@ export interface ProbeJobData {
 export interface DiscoverJobData {
   clusterId: string;
   requestedBy?: string | null;
+  /** apt-get update on every online node first (Refresh, 0.7.23). */
+  refreshPackages?: boolean;
 }
 
 export interface InventoryContext {
@@ -170,6 +173,11 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
     });
 
     try {
+      // Before the read, so the read sees the fresh lists. Its problems join
+      // the run's; a node whose lists could not be refreshed is still read.
+      const refresh = job.data.refreshPackages
+        ? await refreshPackageLists(client)
+        : { refreshed: [], problems: [] };
       const discovered = await discoverCluster(client);
 
       /*
@@ -210,6 +218,7 @@ export function processDiscover(job: Job<DiscoverJobData>, context: InventoryCon
       }));
 
       const problems = [
+        ...refresh.problems,
         ...discovered.problems,
         ...tasks.problems,
         ...discovered.nodes.flatMap((node) =>

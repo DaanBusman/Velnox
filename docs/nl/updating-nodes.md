@@ -32,6 +32,16 @@ wat apt zou installeren en welke kernels geïnstalleerd zijn:
 **Pakketten** toont ze, beveiligingsupdates eerst. Hiervoor is geen SSH nodig; het is de API van
 Proxmox.
 
+**Wat apt weet, is zo oud als zijn laatste `apt-get update`.** Op een Proxmox-node is dat de
+dagelijkse timer `pve-daily-update`, dus een oplossing die vanochtend uitkwam staat pas morgen in de
+lijst. **Vernieuwen**, naast de clusterkeuze, voert via de API van Proxmox `apt-get update` uit op
+elke online node — van het gekozen cluster, of van elk cluster dat u mag bijwerken — net als de knop
+Refresh in het Updates-paneel van Proxmox zelf, en leest het cluster daarna opnieuw uit. De lijst
+werkt zichzelf bij zodra die ronde klaar is, meestal binnen een minuut; de ronde staat onder
+**Uitleesrondes** van het cluster, met elke node waarvan de lijsten niet vernieuwd konden worden
+bij naam. Vernieuwen wijzigt geen repository en installeert niets. Het vraagt `updates.execute` op
+het cluster en wordt in het auditlog vastgelegd als `updates.lists_refreshed`.
+
 ---
 
 ## Voordat je updates kunt toepassen: SSH

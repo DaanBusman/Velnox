@@ -2070,6 +2070,48 @@ loopback-server.
 
 ---
 
+## ADR-061 — De poort van elk cluster wordt elke twee seconden gevraagd
+
+**Besluit:** de worker opent elke twee seconden een TCP-verbinding naar de API-poort van elk cluster
+en sluit die weer (0.7.23). Een cluster dat als mislukt staat en waarvan de poort antwoordt, wordt
+meteen uitgelezen; een verbonden cluster waarvan de poort twee keer achter elkaar niet antwoordt,
+wordt als mislukt gemarkeerd, met de reden van de socket. Op verzoek van de eigenaar: *elke vijf
+seconden, of minder als dat kan*.
+
+**Waarom.** Een cluster dat uit stond toen zijn geplande ronde langskwam, bleef de rest van zijn
+interval *niet bereikbaar* — standaard dertig minuten — omdat het schema alleen vanaf een geslaagde
+ronde telt. De node antwoordde allang; Nu uitlezen loste het meteen op, en zo is het gevonden.
+
+**Waarom alleen een TCP-connect.** Het kost de node een SYN en een FIN, laat geen regel achter in het
+toegangslog van `pveproxy` en vraagt geen credential, dus het kan zo vaak op elk cluster draaien
+zonder dat iemand het merkt. Een TLS-handshake en een anonieme `/version` zouden meer zeggen, en
+elke twee seconden per cluster een logregel schrijven. Wat de connect niet kan bewijzen — wie er
+luistert — beweert hij ook niet: hij markeert een cluster nooit als verbonden, hij vraagt om een
+uitleesronde, en die beslist met de credential en het vastgepinde certificaat (ADR-031).
+
+**Waarom twee seconden en niet één.** De ronde na een terugkeer duurt zelf seconden, dus een snellere
+check toont een cluster niet eerder. Een check wacht hooguit vijf seconden, en de volgende begint pas
+als hij klaar is.
+
+**Waarom vijf seconden geduld.** Linux geeft ARP voor een adres op zijn eigen netwerk na ongeveer
+drie seconden op en zegt *geen route* — een node die uit staat. De eerste versie wachtte drie, de
+twee liepen tegen elkaar op, en een uitgezette node werd gemeld als *geen verbinding binnen de tijd*,
+wat een beheerder naar de firewall stuurt. En omdat het geduld van de check bewust kort is, vraagt het
+als mislukt markeren van een cluster meteen ook om een uitleesronde, waarvan de twintig seconden en
+herhaalpogingen de precieze reden over die van de check heen schrijven.
+
+**Wat hij niet doet.** Een geweigerde credential of een ander certificaat op een timer opnieuw
+proberen — alleen als de poort terugkomt, want een verkeerd wachtwoord dat elke twee minuten wordt
+geprobeerd is hoe een account geblokkeerd raakt. Een cluster dat zijn laatste ronde niet bereikte
+maar waarvan de poort toch antwoordt (een API die aanneemt en dan blijft hangen), wordt elke twee
+minuten opnieuw uitgelezen. Het geheugen van de checks is dat van het workerproces: een herstarte
+worker leest elk mislukt cluster dat antwoordt één keer uit.
+
+**Bewezen** door `scripts/verify-proxmox.sh`, dat de fixture weghaalt en terugbrengt zonder op Nu
+uitlezen te drukken, en door de tests van de worker voor elke overgang.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

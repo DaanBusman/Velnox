@@ -28,6 +28,7 @@ import { UpdatesService } from './updates.service';
 
 const uuidParam = new ParseUUIDPipe({ version: '4' });
 const nodesQuery = z.object({ clusterId: z.string().uuid().optional() });
+const refreshBody = z.object({ clusterId: z.string().uuid().optional() }).strict();
 const planQuery = z.object({ concurrency: z.coerce.number().int().min(1).max(15).default(1) });
 const windowBody = maintenanceWindowSchema.extend({ tenantId: z.string().uuid() });
 
@@ -48,6 +49,19 @@ export class UpdatesController {
   })
   nodes(@Query(zodQuery(nodesQuery)) query: z.infer<typeof nodesQuery>) {
     return this.updates.nodes(query);
+  }
+
+  @RequirePermissionSomewhere(PERMISSIONS.updatesExecute)
+  @Post('nodes/refresh')
+  @HttpCode(202)
+  @ApiOperation({
+    summary: 'Refresh the package lists: apt-get update on every online node, then read them',
+    description:
+      'For one cluster, or every cluster the caller may update. Returns once the runs are ' +
+      'queued; each shows under the cluster’s discovery runs, and the list updates when it ends.',
+  })
+  refresh(@Body(zodBody(refreshBody)) body: z.infer<typeof refreshBody>, @Req() request: Request) {
+    return this.updates.refreshLists(body, actorOf(request));
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.updatesRead)

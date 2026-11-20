@@ -295,10 +295,24 @@ Er zijn twee soorten uitlezen, en ze verschillen:
   verschoof — en verder eens per minuut. Een cluster waarop niets beweegt, kost de schermen die
   ernaar kijken niets.
 
+- **Of het cluster überhaupt antwoordt** wordt elke twee seconden gevraagd, voor elk cluster, of er
+  nu iemand kijkt of niet: de worker opent een TCP-verbinding naar de API-poort van het cluster en
+  sluit die weer — geen inlog, geen verzoek, niets in de logs van de node. Een cluster dat als
+  mislukt staat en waarvan de poort weer antwoordt, wordt meteen uitgelezen, alsof u op **Nu
+  uitlezen** drukte. Een node die weer aangezet wordt, staat dus binnen enkele seconden nadat zijn
+  API gestart is als verbonden, niet pas bij de volgende geplande ronde. Een verbonden cluster
+  waarvan de poort twee keer achter elkaar niet antwoordt, wordt direct als mislukt gemarkeerd, met
+  de reden — geen route, verbinding geweigerd, geen verbinding binnen de tijd — en meteen
+  uitgelezen, wat die reden binnen ongeveer een halve minuut bevestigt of verbetert. Een poort die
+  antwoordt bewijst niets over wie er luistert, dus de check markeert een cluster nooit zelf als
+  verbonden; de uitlezing die volgt doet dat, met de credential en het vastgepinde certificaat, of
+  zegt waarom niet. Een cluster dat mislukte op een geweigerde credential of een ander certificaat
+  wordt alleen opnieuw uitgelezen als zijn poort terugkomt, nooit op een timer — een verkeerd
+  wachtwoord blijven proberen is hoe een account geblokkeerd raakt.
+
 Proxmox rekent die cijfers zelf ongeveer elke tien seconden opnieuw uit, dus tussen twee van zijn
-updates tonen meerdere uitlezingen achter elkaar dezelfde getallen. Er is geen knop die een volledige
-inventarisatie op verzoek start; een ronde buiten het schema betekent het interval voor dat cluster
-verkorten.
+updates tonen meerdere uitlezingen achter elkaar dezelfde getallen. **Nu uitlezen** start op elk
+moment een volledige inventarisatie.
 
 Drie gedragingen zijn het weten waard, want die maken de inventarisatie betrouwbaar:
 

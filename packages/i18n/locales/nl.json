@@ -1920,7 +1920,6 @@
     "historyTitle": "Geschiedenis",
     "historyBody": "Elke node-update, door een persoon of door een beleid. Open er een voor de uitvoer.",
     "noHistory": "Nog geen updates.",
-    "byPolicy": "door een beleid",
     "aNode": "een node",
     "rollingTitle": "{cluster} node voor node bijwerken",
     "rollingBody": "Elke node om de beurt: zijn draaiende gasten naar de andere verplaatst, bijgewerkt, zo nodig herstart, gecontroleerd, en de gasten teruggezet. Het cluster verliest nooit quorum, en de run begint niet op een cluster dat al gedegradeerd is.",
@@ -1941,7 +1940,15 @@
     "settleHint": "Hoe lang een node, het cluster en Ceph mogen doen om na een herstart weer heel te zijn voordat de run stopt.",
     "migrateBack": "Gasten daarna terugzetten",
     "migrateBackHint": "Elke gast gaat terug naar de node waar hij vandaan kwam zodra die node klaar is.",
-    "rollingStart": "Rolling update starten"
+    "rollingStart": "Rolling update starten",
+    "refresh": "Vernieuwen",
+    "refreshHint": "Voer apt-get update uit op elke online node en lees daarna wat elke node zou bijwerken. Zonder dit is de lijst wat de nodes vonden bij hun eigen dagelijkse controle.",
+    "refreshStarted": "{count, plural, one {De pakketlijsten van één cluster worden vernieuwd.} other {De pakketlijsten van # clusters worden vernieuwd.}} Elke node voert apt-get update uit, daarna wordt het cluster opnieuw uitgelezen; de lijst hieronder werkt zich bij zodra dat klaar is, meestal binnen een minuut. De ronde staat bij de uitleesrondes van het cluster.",
+    "refreshNone": "Er is hier geen cluster waarvan je de pakketten mag bijwerken.",
+    "historyResult": "Resultaat",
+    "historyWhen": "Wanneer",
+    "historyBy": "Door",
+    "historyPolicy": "Een beleid"
   },
   "placement": {
     "subtitle": "Welke gasten van een cluster uit elkaar of bij elkaar worden gehouden, op welke nodes een gast hoort, en of dat nu klopt.",

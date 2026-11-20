@@ -21,6 +21,7 @@ import type { ClusterSummary, TenantSummary } from '@/lib/session-types';
 import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { useApiResource } from '@/components/server/use-api-resource';
+import { useRefreshOn } from '@/lib/changes';
 import { JobStatusBadge } from '@/components/jobs/primitives';
 import { RollingCard } from './rolling-card';
 import { UpgradesTab } from './upgrades-tab';
@@ -98,6 +99,25 @@ function NodesTab({ clusters, canExecute }: { clusters: ClusterSummary[]; canExe
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [started, setStarted] = useState<{ node: string; jobId: string } | null>(null);
   const [pending, setPending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshed, setRefreshed] = useState<number | null>(null);
+
+  // A discovery run that ends — the one Refresh asked for among them — shows
+  // here without a reload.
+  useRefreshOn(nodes.reload, 5_000, true, { topics: ['inventory'] });
+
+  async function refreshLists() {
+    setRefreshing(true);
+    setFailure(null);
+    setRefreshed(null);
+    const result = await apiPost<{ clusters: number }>(
+      '/updates/nodes/refresh',
+      clusterId ? { clusterId } : {},
+    );
+    setRefreshing(false);
+    if (!result.ok) return setFailure(result.error);
+    setRefreshed(result.data.clusters);
+  }
 
   async function run() {
     if (!running) return;
@@ -123,24 +143,47 @@ function NodesTab({ clusters, canExecute }: { clusters: ClusterSummary[]; canExe
           </Link>
         </Notice>
       )}
-      <div className="max-w-sm">
-        <Field label={t('nodeUpdates.cluster')}>
-          {(props) => (
-            <select
-              {...props}
-              className={select}
-              value={clusterId}
-              onChange={(e) => setClusterId(e.target.value)}
-            >
-              <option value="">{t('nodeUpdates.allClusters')}</option>
-              {clusters.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} — {c.tenantName}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
+      {refreshed !== null && (
+        <Notice tone={refreshed > 0 ? 'ok' : 'warn'}>
+          {refreshed > 0
+            ? t('nodeUpdates.refreshStarted', { count: refreshed })
+            : t('nodeUpdates.refreshNone')}
+        </Notice>
+      )}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full max-w-sm">
+          <Field label={t('nodeUpdates.cluster')}>
+            {(props) => (
+              <select
+                {...props}
+                className={select}
+                value={clusterId}
+                onChange={(e) => {
+                  setClusterId(e.target.value);
+                  setRefreshed(null);
+                }}
+              >
+                <option value="">{t('nodeUpdates.allClusters')}</option>
+                {clusters.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — {c.tenantName}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        </div>
+        {canExecute && (
+          <Button
+            variant="secondary"
+            onClick={() => void refreshLists()}
+            pending={refreshing}
+            disabled={refreshing}
+            title={t('nodeUpdates.refreshHint')}
+          >
+            {t('nodeUpdates.refresh')}
+          </Button>
+        )}
       </div>
 
       {running && (
@@ -916,24 +959,41 @@ function HistoryTab() {
       ) : jobs.data.jobs.length === 0 ? (
         <p className="text-sm text-ink-muted">{t('nodeUpdates.noHistory')}</p>
       ) : (
-        <ul className="divide-y divide-line">
-          {jobs.data.jobs.map((job) => (
-            <li
-              key={job.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-            >
-              <Link href={`/jobs/${job.id}`} className="text-accent underline">
-                {nameOf(job.targetIds)}
-              </Link>
-              <span className="flex items-center gap-2 text-ink-muted">
-                <JobStatusBadge status={job.status} />
-                {format.dateTime(new Date(job.queuedAt), 'medium')}
-                {' · '}
-                {job.createdBy ? job.createdBy.email : t('nodeUpdates.byPolicy')}
-              </span>
-            </li>
-          ))}
-        </ul>
+        // A table, not a list of rows that each lay themselves out: the status,
+        // the time and who asked line up down the page, the way the node names
+        // do, however long the name or the date.
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-muted">
+                <th className="py-2 pr-3 font-medium">{t('nodeUpdates.node')}</th>
+                <th className="py-2 pr-3 font-medium">{t('nodeUpdates.historyResult')}</th>
+                <th className="py-2 pr-3 font-medium">{t('nodeUpdates.historyWhen')}</th>
+                <th className="py-2 font-medium">{t('nodeUpdates.historyBy')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {jobs.data.jobs.map((job) => (
+                <tr key={job.id}>
+                  <td className="py-2 pr-3">
+                    <Link href={`/jobs/${job.id}`} className="text-accent underline">
+                      {nameOf(job.targetIds)}
+                    </Link>
+                  </td>
+                  <td className="whitespace-nowrap py-2 pr-3">
+                    <JobStatusBadge status={job.status} />
+                  </td>
+                  <td className="whitespace-nowrap py-2 pr-3 tabular-nums text-ink-muted">
+                    {format.dateTime(new Date(job.queuedAt), 'medium')}
+                  </td>
+                  <td className="py-2 text-ink-muted">
+                    {job.createdBy ? job.createdBy.email : t('nodeUpdates.historyPolicy')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );

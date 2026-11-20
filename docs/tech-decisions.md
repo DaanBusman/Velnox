@@ -1941,6 +1941,45 @@ management's information, and its people are who can act on it.
 
 ---
 
+## ADR-061 — Every cluster's port is asked every two seconds
+
+**Decision:** the worker opens a TCP connection to each cluster's API port every two seconds and
+closes it again (0.7.23). A cluster marked as failing whose port answers is read at once; a
+connected one whose port fails twice in a row is marked as failing, with the socket's reason. At
+the owner's request: *every five seconds, or less if possible*.
+
+**Why.** A cluster that was off when its scheduled run came round stayed *could not be reached* for
+the rest of its interval — thirty minutes by default — because the schedule only counts from a
+success. The node had long been answering; Read now fixed it at once, which is how it was found.
+
+**Why a bare TCP connect.** It costs the node a SYN and a FIN, leaves no line in `pveproxy`'s access
+log, and needs no credential, so it can run this often on every cluster without anyone noticing. A
+TLS handshake and an anonymous `/version` would say more, and write a log line every two seconds per
+cluster. What the connect cannot prove — who is listening — it does not claim: it never marks a
+cluster connected, it asks for a run, and the run decides with the credential and the pinned
+certificate (ADR-031).
+
+**Why two seconds, not one.** The run that follows a return takes seconds itself, so a faster check
+would not show a cluster sooner. A check waits at most five seconds, and the next starts only when
+it has ended.
+
+**Why five seconds' patience.** Linux gives up on ARP for an address on its own network after about
+three seconds and says *no route* — a switched-off node. The first build waited three, the two
+raced, and a switched-off node was reported as *no connection in time*, which sends an operator to
+the firewall. And because the check's patience is short by design, marking a cluster failed also
+asks for a run at once, whose twenty seconds and retries write the exact reason over the check's.
+
+**What it does not do.** Retry a refused credential or a different certificate on a timer — only
+when the port comes back, since a wrong password tried every two minutes is how an account gets
+locked. A cluster unreachable by its last run whose port answers anyway (an API that accepts and
+then hangs) is read again every two minutes. The checks' memory is the worker process's: a
+restarted worker reads every failed cluster that answers once.
+
+**Proven** by `scripts/verify-proxmox.sh`, which takes the fixture away and brings it back without
+pressing Read now, and by the worker's tests of each transition.
+
+---
+
 ## Version targets
 
 | Component | Version |

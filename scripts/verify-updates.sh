@@ -264,6 +264,32 @@ check "updates: libssl3 is the security update" true "$(printf '%s' "$PKGS" | no
 check "updates: and the kernel is known as one" true "$(printf '%s' "$PKGS" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>process.stdout.write(String(JSON.parse(r).some(p=>p.isKernel&&/kernel/.test(p.package)))))')"
 lacks "discovery: reading the kernels records no problem" "versions" "$(call GET "/api/v1/nodes/${PVE1_ID}" | json problems)"
 
+# Refresh (0.7.23): apt-get update on every online node, then the cluster read
+# again. Only ever for this cluster: "all clusters" would reach every cluster
+# the stack knows, and a real one has no business being refreshed by a test.
+info "Refresh: the package lists, then the cluster read again."
+APT_BEFORE="$(FIXLOG | grep -c 'apt-get update ran')"
+REFRESH="$(call POST /api/v1/updates/nodes/refresh "{\"clusterId\":\"${CLUSTER_ID}\"}")"
+check "refresh: accepted" 202 "$(last_status)"
+check "refresh: for the one cluster" 1 "$(printf '%s' "$REFRESH" | json clusters)"
+RUN_STATE=""
+for _ in $(seq 1 60); do
+  RUN_STATE="$(psql_at "SELECT state FROM discovery_runs WHERE cluster_id = '${CLUSTER_ID}' ORDER BY started_at DESC LIMIT 1;")"
+  if [[ "$(FIXLOG | grep -c 'apt-get update ran')" -gt "$APT_BEFORE" && "$RUN_STATE" != RUNNING ]]; then break; fi
+  sleep 1
+done
+check "refresh: apt-get update ran once on each of the three nodes" 3 "$(( $(FIXLOG | grep -c 'apt-get update ran') - APT_BEFORE ))"
+check "refresh: and the cluster was read after it" yes "$([[ "$RUN_STATE" == SUCCEEDED || "$RUN_STATE" == PARTIAL ]] && echo yes || echo "$RUN_STATE")"
+RUN_PROBLEMS="$(psql_at "SELECT problems::text FROM discovery_runs WHERE cluster_id = '${CLUSTER_ID}' ORDER BY started_at DESC LIMIT 1;")"
+lacks "refresh: with no apt-get update problem among its problems ($RUN_PROBLEMS)" "apt-get update" "$RUN_PROBLEMS"
+PREV_PROBLEMS="$(psql_at "SELECT problems::text FROM discovery_runs WHERE cluster_id = '${CLUSTER_ID}' ORDER BY started_at DESC OFFSET 1 LIMIT 1;")"
+check "refresh: and no problem a plain read did not have" "$PREV_PROBLEMS" "$RUN_PROBLEMS"
+check "refresh: in the audit log" 1 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'updates.lists_refreshed' AND resource_id = '${CLUSTER_ID}';")"
+call POST /api/v1/updates/nodes/refresh '{"clusterId":"00000000-0000-4000-8000-000000000000"}' >/dev/null
+check "refresh: a cluster that does not exist is not found" 404 "$(last_status)"
+call POST /api/v1/updates/nodes/refresh "{\"clusterId\":\"${CLUSTER_ID}\",\"node\":\"pve1\"}" >/dev/null
+check "refresh: anything else in the body is refused" 400 "$(last_status)"
+
 # ---------------------------------------------------------------------------
 # A single-node update, live, without and with a reboot
 # ---------------------------------------------------------------------------

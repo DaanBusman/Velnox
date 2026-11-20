@@ -27,6 +27,16 @@ would install and which kernels are installed:
 
 **Packages** lists them, security updates first. Nothing here needs SSH; it is the Proxmox API.
 
+**What apt knows is as old as its last `apt-get update`.** On a Proxmox node that is the daily
+`pve-daily-update` timer, so a fix published this morning is not on the list until tomorrow.
+**Refresh**, beside the cluster choice, runs `apt-get update` on every online node — of the chosen
+cluster, or of every cluster you may update — through Proxmox's API, the same as the Refresh button
+in Proxmox's own Updates panel, and then reads the cluster again. The list updates by itself when
+that run ends, usually within a minute; the run is under the cluster's **Discovery runs**, with any
+node whose lists could not be refreshed named. Refresh changes no repository and installs nothing.
+It needs `updates.execute` on the cluster, and is recorded in the audit log as
+`updates.lists_refreshed`.
+
 ---
 
 ## Before you can apply updates: SSH

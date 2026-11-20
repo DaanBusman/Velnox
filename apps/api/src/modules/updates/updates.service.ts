@@ -3,6 +3,7 @@ import type { Prisma } from '@velnox/db';
 import {
   ACTIVE_JOB_STATUSES,
   ERROR_CODES,
+  JOB_NAMES,
   JOB_TYPES,
   PERMISSIONS,
   VelnoxError,
@@ -24,6 +25,7 @@ import {
   type UpdatePolicySummary,
 } from '@velnox/shared';
 import { PrismaService } from '../infrastructure/prisma.service';
+import { QueueService } from '../infrastructure/queue.service';
 import { AuditService } from '../audit/audit.service';
 import { JobsService } from '../jobs/jobs.service';
 import { assertAllowedAt, type Actor } from '../../common/actor';
@@ -42,6 +44,7 @@ export const UPDATE_AUDIT = {
   windowDeleted: 'updates.window_deleted',
   policySaved: 'updates.policy_saved',
   policyDeleted: 'updates.policy_deleted',
+  listsRefreshed: 'updates.lists_refreshed',
 } as const;
 
 @Injectable()
@@ -50,6 +53,7 @@ export class UpdatesService {
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
     private readonly audit: AuditService,
+    private readonly queue: QueueService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -553,6 +557,65 @@ export class UpdatesService {
     return actor.accessibleTenantIds.some((tenantId) =>
       isAllowed(actor.grants, PERMISSIONS.updatesManage, { tenantId }),
     );
+  }
+
+  /**
+   * Refresh, on Updates & upgrades → Nodes (0.7.23): `apt-get update` on
+   * every online node of each cluster, then a discovery run that reads what
+   * they would now update. One discovery job per cluster does both — the
+   * worker refreshes before it reads (`refreshPackageLists`).
+   *
+   * The list Velnox shows is what apt saw at its last update, which on a
+   * Proxmox node is the daily timer. `updates.execute` on the cluster, because
+   * it runs something on the nodes; the clusters the caller may not update are
+   * left out, not refused, so "all clusters" means all the ones that are yours.
+   */
+  async refreshLists(
+    filter: { clusterId?: string },
+    actor: Actor,
+  ): Promise<{ clusters: number }> {
+    const clusters = await this.prisma.client.cluster.findMany({
+      where: { ...(filter.clusterId ? { id: filter.clusterId } : {}), credentialId: { not: null } },
+      select: { id: true, name: true, tenantId: true, siteId: true },
+    });
+    if (filter.clusterId && clusters.length === 0) {
+      throw new VelnoxError(ERROR_CODES.notFound, { status: 404 });
+    }
+    const allowed = clusters.filter((cluster) =>
+      isAllowed(actor.grants, PERMISSIONS.updatesExecute, {
+        tenantId: cluster.tenantId,
+        siteId: cluster.siteId,
+        clusterId: cluster.id,
+      }),
+    );
+    if (filter.clusterId && allowed.length === 0) {
+      // The one asked for, and not this caller's to update: say so.
+      const [cluster] = clusters;
+      assertAllowedAt(actor, PERMISSIONS.updatesExecute, {
+        tenantId: cluster!.tenantId,
+        siteId: cluster!.siteId,
+        clusterId: cluster!.id,
+      });
+    }
+
+    for (const cluster of allowed) {
+      await this.queue.enqueueInventory(JOB_NAMES.inventoryDiscover, {
+        clusterId: cluster.id,
+        requestedBy: actor.id,
+        refreshPackages: true,
+      });
+      await this.audit.success(UPDATE_AUDIT.listsRefreshed, {
+        actorType: 'USER',
+        actorId: actor.id,
+        actorLabel: actor.email,
+        tenantId: cluster.tenantId,
+        resourceType: 'cluster',
+        resourceId: cluster.id,
+        resourceLabel: cluster.name,
+        metadata: {},
+      });
+    }
+    return { clusters: allowed.length };
   }
 
   private async audited(

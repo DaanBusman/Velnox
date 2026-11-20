@@ -61,6 +61,7 @@ import type { ProvisioningServices } from './provisioning/playbook';
 import { sweepProvisionings } from './provisioning/sweep';
 import { pruneAuditEvents } from './audit/retention';
 import { LIVE_TICK_MS, LivePoller } from './inventory/live';
+import { CONNECTIVITY_TICK_MS, ConnectivityChecker } from './inventory/connectivity';
 import { pruneTasks } from './inventory/tasks';
 import { scheduleUpdates, UPDATE_SCHEDULER_INTERVAL_MS } from './updates/scheduler';
 import { keepPlacement, PLACEMENT_INTERVAL_MS } from './placement/scheduler';
@@ -316,6 +317,51 @@ async function bootstrap(): Promise<void> {
       });
   }, LIVE_TICK_MS);
 
+  /*
+   * Is each cluster answering — every two seconds (0.7.23). See
+   * ConnectivityChecker: a cluster that comes back is read at once instead of
+   * at the end of its discovery interval, and one that stops answering is
+   * marked so within seconds.
+   */
+  const connectivity = new ConnectivityChecker({
+    prisma,
+    read: async (clusterId, jobId) => {
+      await inventoryQueue.add(
+        JOB_NAMES.inventoryDiscover,
+        { clusterId, requestedBy: null },
+        {
+          jobId,
+          removeOnComplete: { age: 3600, count: 200 },
+          removeOnFail: { age: 86_400, count: 200 },
+        },
+      );
+    },
+    changed: inventoryContext.changed,
+    log: (fields, message) => logger.info(fields, message),
+  });
+  let connectivityTicking = false;
+  // A warning, once per distinct failure: at debug, the first build's refused
+  // query failed twice a second for a whole harness run without a word.
+  let connectivityLastFailure = '';
+  const connectivityTimer = setInterval(() => {
+    if (connectivityTicking) return;
+    connectivityTicking = true;
+    connectivity
+      .tick()
+      .then(() => {
+        connectivityLastFailure = '';
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message === connectivityLastFailure) return;
+        connectivityLastFailure = message;
+        logger.warn({ err: rootRedactor.value(error) }, 'Connectivity tick failed');
+      })
+      .finally(() => {
+        connectivityTicking = false;
+      });
+  }, CONNECTIVITY_TICK_MS);
+
   // ------------------------------------------------------------------
   // Jobs
   // ------------------------------------------------------------------
@@ -555,6 +601,7 @@ async function bootstrap(): Promise<void> {
     clearInterval(upgradeTimer);
     clearInterval(releaseTimer);
     clearInterval(liveTimer);
+    clearInterval(connectivityTimer);
     livePoller.close();
     liveRedis.disconnect();
     changesRedis.disconnect();
