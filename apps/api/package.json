@@ -1,6 +1,6 @@
 {
   "name": "@velnox/api",
-  "version": "0.7.21",
+  "version": "0.7.22",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox HTTP API. Owns authentication, authorization and job submission; performs no outbound automation.",
@@ -39,6 +39,6 @@
     "supertest": "^7.3.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }

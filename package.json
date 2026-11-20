@@ -1,6 +1,6 @@
 {
   "name": "velnox",
-  "version": "0.7.21",
+  "version": "0.7.22",
   "private": true,
   "description": "Self-hosted MSP management platform for Proxmox VE fleets",
   "license": "AGPL-3.0-or-later",
@@ -39,8 +39,8 @@
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-react-hooks": "^5.2.0",
     "prettier": "^3.10.1",
-    "turbo": "^2.11.11",
+    "turbo": "^2.11.13",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.72.2"
+    "typescript-eslint": "^8.73.0"
   }
 }

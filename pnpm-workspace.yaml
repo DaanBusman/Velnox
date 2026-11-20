@@ -60,8 +60,9 @@ allowBuilds:
   unrs-resolver: true
 
 # Security fixes for versions a dependency pins exactly, each inside the major
-# that dependency asks for, so nothing it relies on changes shape. Remove an
-# entry once the dependency itself requires the fixed version.
+# that dependency asks for — unless the entry says why not — so nothing it
+# relies on changes shape. Remove an entry once the dependency itself requires
+# the fixed version.
 #
 #   multer   @nestjs/platform-express 11 pins 2.4.0; 2.5.0 fixes a crash from
 #            an aborted request during an async fileFilter (GHSA-q7qp-rjg7-q26m).
@@ -70,6 +71,18 @@ allowBuilds:
 #            (GHSA-r3ph-w7gj-g6xm). Swagger only parses its own YAML. Held at
 #            5.4.x: 5.5 moves to argparse 3, which is PSF-2.0, a licence
 #            scripts/check-licenses.mjs does not yet allow.
+#   effect   @prisma/config 6.19.3 pins 3.21.0; 3.22.1 fixes a ReDoS in
+#            Schema.TemplateLiteral. Prisma reads only its own configuration
+#            with it.
+#   deepmerge-ts
+#            @prisma/config 6.19.3 pins 7.1.5; the fix for stack exhaustion on
+#            recursive objects exists only in 8. Across a major on purpose:
+#            Prisma calls plain deepmerge(), and 8 changes only deepmergeInto
+#            aliasing and type names. Proven by prisma generate in CI and
+#            migrate deploy in the stack. Prisma merges only its own
+#            configuration with it.
 overrides:
   multer: ^2.5.0
   js-yaml: ~5.4.1
+  effect: ^3.22.5
+  deepmerge-ts: ^8.0.2

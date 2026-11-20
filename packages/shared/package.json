@@ -1,6 +1,6 @@
 {
   "name": "@velnox/shared",
-  "version": "0.7.21",
+  "version": "0.7.22",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Shared contracts, error codes and redaction used by the API, the worker and the web app",
@@ -21,6 +21,6 @@
   "devDependencies": {
     "@types/node": "^22.20.5",
     "typescript": "^5.9.3",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
