@@ -1,6 +1,6 @@
 # Nodes bijwerken
 
-> **Vertaling.** Bron: [docs/updating-nodes.md](../updating-nodes.md) @ `dce032c`.
+> **Vertaling.** Bron: [docs/updating-nodes.md](../updating-nodes.md) @ `f671a9d`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Wat elke node zou bijwerken, één node bijwerken, en het beleid dat bepaalt wanneer.** Velnox leest
