@@ -16,14 +16,16 @@ import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { Card, Mono, Notice } from '@/components/ui/primitives';
 
 const select =
-  'block h-9 w-full rounded border border-line bg-surface-2 px-2.5 text-sm text-ink focus:border-accent focus:outline-none';
+  'block h-9 w-full rounded border border-line bg-surface-2 px-2.5 text-sm text-ink focus:border-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-60';
 
 /**
  * Asking for a VM.
  *
- * The choices narrow as they are made: a cluster, then the templates offered
- * to its tenant, then a node, and on that node only the storage and bridges
- * that can work. The API checks every one of them again before it queues
+ * The choices narrow as they are made, and open in that order: first only the
+ * cluster; once it is chosen, the template offered to its tenant and the node;
+ * once both are chosen, the rest — on that node only the storage and bridges
+ * that can work. A field that cannot be answered yet is greyed out rather than
+ * offering choices that the next answer would take away. The API checks every one of them again before it queues
  * anything; this is so the form offers only what can succeed.
  *
  * When the template sends an encrypted record whose password is shown once,
@@ -123,6 +125,8 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
   );
 
   const hostProblem = hostname ? hostnameProblem(hostname.trim(), family) : null;
+  /** The template and the node decide what the remaining fields can be. */
+  const ready = Boolean(template && node);
 
   async function submit() {
     setPending(true);
@@ -252,6 +256,7 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
               <TextInput
                 {...props}
                 value={hostname}
+                disabled={!ready}
                 onChange={(e) => setHostname(e.target.value)}
               />
             )}
@@ -262,7 +267,7 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
                 {...props}
                 className={select}
                 value={diskStorage}
-                disabled={!node}
+                disabled={!ready}
                 onChange={(e) => setDiskStorage(e.target.value)}
               >
                 <option value="">{t('provisioning.chooseStorage')}</option>
@@ -287,7 +292,7 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
                 {...props}
                 className={select}
                 value={mediaStorage}
-                disabled={!node}
+                disabled={!ready}
                 onChange={(e) => setMediaStorage(e.target.value)}
               >
                 <option value="">{t('provisioning.chooseStorage')}</option>
@@ -305,7 +310,7 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
                 {...props}
                 className={select}
                 value={bridge}
-                disabled={!node}
+                disabled={!ready}
                 onChange={(e) => setBridge(e.target.value)}
               >
                 <option value="">{t('provisioning.chooseBridge')}</option>
@@ -323,6 +328,7 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
                 {...props}
                 inputMode="numeric"
                 value={vlan}
+                disabled={!ready}
                 onChange={(e) => setVlan(e.target.value)}
               />
             )}
@@ -333,6 +339,7 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
                 {...props}
                 className={select}
                 value={networkMode}
+                disabled={!ready}
                 onChange={(e) => setNetworkMode(e.target.value as 'DHCP' | 'STATIC')}
               >
                 <option value="DHCP">{t('provisioning.dhcp')}</option>
@@ -347,6 +354,7 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
                   <TextInput
                     {...props}
                     value={address}
+                    disabled={!ready}
                     onChange={(e) => setAddress(e.target.value)}
                   />
                 )}
@@ -356,20 +364,33 @@ export function ProvisionForm({ initialTemplateId }: { initialTemplateId: string
                   <TextInput
                     {...props}
                     value={gateway}
+                    disabled={!ready}
                     onChange={(e) => setGateway(e.target.value)}
                   />
                 )}
               </Field>
               <Field label={t('provisioning.dns')} hint={t('provisioning.dnsHint')}>
                 {(props) => (
-                  <TextInput {...props} value={dns} onChange={(e) => setDns(e.target.value)} />
+                  <TextInput
+                    {...props}
+                    value={dns}
+                    disabled={!ready}
+                    onChange={(e) => setDns(e.target.value)}
+                  />
                 )}
               </Field>
             </>
           )}
         </div>
-        <label className="flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+        <label
+          className={`flex items-center gap-2 text-sm text-ink ${ready ? '' : 'cursor-not-allowed opacity-60'}`}
+        >
+          <input
+            type="checkbox"
+            checked={notify}
+            disabled={!ready}
+            onChange={(e) => setNotify(e.target.checked)}
+          />
           {t('provisioning.notify')}
         </label>
         <Button

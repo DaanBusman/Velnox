@@ -80,7 +80,7 @@ export function TextInput({
         'transition-[border-color,box-shadow] duration-100',
         'placeholder:text-ink-muted',
         'focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30',
-        'disabled:cursor-not-allowed disabled:opacity-60',
+        'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:opacity-60',
         'aria-[invalid=true]:border-error aria-[invalid=true]:ring-error/30',
         className,
       )}
