@@ -21,7 +21,8 @@ gemaakt, in de volgorde waarin ze geüpgraded worden: nodes op naam; Ceph-daemon
 volgorde van Ceph — monitors, dan managers, OSD's, MDS en RGW.
 
 Een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden. Eenmaal gestart kan het niet
-opnieuw gestart of verwijderd worden: zijn vastlegging en zijn rapport blijven.
+opnieuw gestart of verwijderd worden: zijn vastlegging en zijn rapport blijven. Een afgerond plan
+verhuist van dit tabblad naar **Geschiedenis**, waar het met zijn rapport te openen is.
 
 ---
 

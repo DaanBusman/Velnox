@@ -377,6 +377,9 @@ check "composite: the second started only after the first finished" "in order" "
 RC="$(call GET "/api/v1/upgrades/plans/${C1}/report" | json markdown)"
 contains "composite: its report holds the daemon run" "## daemons first on" "$RC"
 contains "composite: and the node run" "## nodes second on" "$RC"
+CHILD_JOBS="$(plan "$C1" | pick 'd.children.map(c=>c.jobId).join(",")')"
+if [[ "$CHILD_JOBS" == *,* ]]; then green "composite: each child has its own job"; PASS=$((PASS + 1)); else red "composite: children without jobs ($CHILD_JOBS)"; FAIL=$((FAIL + 1)); fi
+check "composite: the plan list names those jobs, for History" "$CHILD_JOBS" "$(call GET /api/v1/upgrades/plans | pick "d.plans.find(p=>p.id==='$C1').childJobIds.join(',')")"
 
 info "A composite whose first plan fails stops there."
 C2="$(new_plan "$(C="$CLUSTER_ID" R="$RUN" body '{ kind: "COMPOSITE", clusterId: e.C, name: e.R + " failing", children: [ { name: "daemons", playbookId: "velnox.selftest-ceph", options: { markerMissing: false, failTarget: "osd.2" } }, { name: "nodes", playbookId: "velnox.selftest-nodes", options: { markerMissing: false } } ] }')")"

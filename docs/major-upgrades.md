@@ -18,7 +18,8 @@ order they will be upgraded: nodes by name; Ceph daemons in Ceph's own order —
 managers, OSDs, MDS and RGW.
 
 A plan that has not run yet can be started or removed. Once started it cannot be started again or
-removed: its record and its report stay.
+removed: its record and its report stay. A finished plan moves from this tab to **History**, where
+it opens with its report.
 
 ---
 

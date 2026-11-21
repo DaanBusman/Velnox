@@ -668,6 +668,8 @@ export interface UpgradePlanSummary {
   jobId: string | null;
   /** The job's own status: shows a plan waiting for approval. */
   jobStatus: string | null;
+  /** In the plan list: the jobs of a composite's children, first to run first. */
+  childJobIds?: string[];
   targets: number;
   createdAt: string;
   finishedAt: string | null;

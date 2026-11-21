@@ -8,7 +8,6 @@ import {
   WEEKDAYS,
   ruleProblem,
   windowState,
-  type JobSummary,
   type MaintenanceWindowSummary,
   type NodeUpdatesSummary,
   type PendingPackage,
@@ -22,8 +21,8 @@ import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { useApiResource } from '@/components/server/use-api-resource';
 import { useRefreshOn } from '@/lib/changes';
-import { JobStatusBadge } from '@/components/jobs/primitives';
 import { AutoremoveChoice } from './autoremove-choice';
+import { HistoryTab } from './history-tab';
 import { RollingCard } from './rolling-card';
 import { UpgradesTab } from './upgrades-tab';
 
@@ -53,6 +52,8 @@ export function UpdatesView({
 }) {
   const t = useTranslations();
   const [tab, setTab] = useState<Tab>(initialTab);
+  /** A plan opened from History, shown under Major upgrades where its detail lives. */
+  const [planToOpen, setPlanToOpen] = useState<string | null>(null);
   const tabs: Tab[] = ['nodes', 'policies', 'windows', 'history', 'upgrades'];
   return (
     <div className="space-y-4">
@@ -62,7 +63,10 @@ export function UpdatesView({
             key={key}
             role="tab"
             aria-selected={tab === key}
-            onClick={() => setTab(key)}
+            onClick={() => {
+              setPlanToOpen(null);
+              setTab(key);
+            }}
             className={`-mb-px border-b-2 px-3 py-2 text-sm ${
               tab === key
                 ? 'border-accent text-ink'
@@ -76,8 +80,22 @@ export function UpdatesView({
       {tab === 'nodes' && <NodesTab clusters={clusters} canExecute={canExecute} />}
       {tab === 'policies' && <PoliciesTab clusters={clusters} canManage={canManage} />}
       {tab === 'windows' && <WindowsTab tenants={tenants} canManage={canManage} />}
-      {tab === 'history' && <HistoryTab />}
-      {tab === 'upgrades' && <UpgradesTab clusters={clusters} canExecute={canUpgrade} />}
+      {tab === 'history' && (
+        <HistoryTab
+          onOpenPlan={(id) => {
+            setPlanToOpen(id);
+            setTab('upgrades');
+          }}
+        />
+      )}
+      {tab === 'upgrades' && (
+        <UpgradesTab
+          clusters={clusters}
+          canExecute={canUpgrade}
+          initialPlan={planToOpen}
+          onShowHistory={() => setTab('history')}
+        />
+      )}
     </div>
   );
 }
@@ -961,65 +979,5 @@ function WindowsTab({ tenants, canManage }: { tenants: TenantSummary[]; canManag
         )}
       </Card>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// History
-// ---------------------------------------------------------------------------
-
-function HistoryTab() {
-  const t = useTranslations();
-  const format = useFormatter();
-  const jobs = useApiResource<{ jobs: JobSummary[] }>('/jobs?type=node.update&limit=100');
-  const nodes = useApiResource<NodeUpdatesSummary[]>('/updates/nodes');
-  const nameOf = (ids: string[]) => {
-    const found = nodes.state === 'ready' ? nodes.data.find((n) => ids.includes(n.nodeId)) : null;
-    return found ? `${found.node} (${found.clusterName})` : t('nodeUpdates.aNode');
-  };
-  return (
-    <Card title={t('nodeUpdates.historyTitle')} description={t('nodeUpdates.historyBody')}>
-      {jobs.state !== 'ready' ? (
-        <p className="text-sm text-ink-muted">{t('common.loading')}</p>
-      ) : jobs.data.jobs.length === 0 ? (
-        <p className="text-sm text-ink-muted">{t('nodeUpdates.noHistory')}</p>
-      ) : (
-        // A table, not a list of rows that each lay themselves out: the status,
-        // the time and who asked line up down the page, the way the node names
-        // do, however long the name or the date.
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-ink-muted">
-                <th className="py-2 pr-3 font-medium">{t('nodeUpdates.node')}</th>
-                <th className="py-2 pr-3 font-medium">{t('nodeUpdates.historyResult')}</th>
-                <th className="py-2 pr-3 font-medium">{t('nodeUpdates.historyWhen')}</th>
-                <th className="py-2 font-medium">{t('nodeUpdates.historyBy')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {jobs.data.jobs.map((job) => (
-                <tr key={job.id}>
-                  <td className="py-2 pr-3">
-                    <Link href={`/jobs/${job.id}`} className="text-accent underline">
-                      {nameOf(job.targetIds)}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap py-2 pr-3">
-                    <JobStatusBadge status={job.status} />
-                  </td>
-                  <td className="whitespace-nowrap py-2 pr-3 tabular-nums text-ink-muted">
-                    {format.dateTime(new Date(job.queuedAt), 'medium')}
-                  </td>
-                  <td className="py-2 text-ink-muted">
-                    {job.createdBy ? job.createdBy.email : t('nodeUpdates.historyPolicy')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
   );
 }

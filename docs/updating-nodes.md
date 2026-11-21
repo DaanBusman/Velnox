@@ -247,8 +247,9 @@ it does not move guests.
 
 ## History
 
-Tab **History**: every node update and rolling update, by a person or by a policy, newest first. Open one for its
-output, step by step.
+Tab **History**: every node update, cluster (rolling) update and major upgrade, by a person or by a policy, newest
+first. **Type** narrows the list to one of the three. Open an update for its output, step by step, or a major upgrade
+for its plan and report.
 
 ---
 

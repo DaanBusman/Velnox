@@ -270,8 +270,9 @@ verplaatst geen gasten.
 
 ## Geschiedenis
 
-Tabblad **Geschiedenis**: elke node-update en rolling update, door een persoon of door een beleid, nieuwste eerst. Open
-er een voor de uitvoer, stap voor stap.
+Tabblad **Geschiedenis**: elke node-update, clusterupdate (rolling) en grote upgrade, door een persoon of door een
+beleid, nieuwste eerst. **Soort** beperkt de lijst tot een van de drie. Open een update voor de uitvoer, stap voor stap,
+of een grote upgrade voor het plan en het rapport.
 
 ---
 

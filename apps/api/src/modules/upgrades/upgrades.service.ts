@@ -426,7 +426,18 @@ export class UpgradesService {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
-    return Promise.all(rows.map((r) => this.summary(r)));
+    // A composite has no job of its own: its children's jobs are what ran.
+    const children = await this.prisma.client.upgradePlan.findMany({
+      where: { parentPlanId: { in: rows.map((r) => r.id) }, jobId: { not: null } },
+      select: { parentPlanId: true, jobId: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return Promise.all(
+      rows.map(async (r) => ({
+        ...(await this.summary(r)),
+        childJobIds: children.filter((c) => c.parentPlanId === r.id).map((c) => c.jobId!),
+      })),
+    );
   }
 
   private async summary(r: {

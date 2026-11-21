@@ -1928,8 +1928,8 @@
     "windowsBody": "Vensters horen bij een tenant en worden gebruikt door het beleid van die tenant.",
     "noWindows": "Nog geen vensters.",
     "historyTitle": "Geschiedenis",
-    "historyBody": "Elke node-update, door een persoon of door een beleid. Open er een voor de uitvoer.",
-    "noHistory": "Nog geen updates.",
+    "historyBody": "Elke update en grote upgrade, door een persoon of door een beleid. Open er een voor de uitvoer.",
+    "noHistory": "Nog geen updates of upgrades.",
     "aNode": "een node",
     "rollingTitle": "{cluster} node voor node bijwerken",
     "rollingBody": "Elke node om de beurt: zijn draaiende gasten naar de andere verplaatst, bijgewerkt, zo nodig herstart, gecontroleerd, en de gasten teruggezet. Het cluster verliest nooit quorum, en de run begint niet op een cluster dat al gedegradeerd is.",
@@ -1964,7 +1964,17 @@
     "historyResult": "Resultaat",
     "historyWhen": "Wanneer",
     "historyBy": "Door",
-    "historyPolicy": "Een beleid"
+    "historyPolicy": "Een beleid",
+    "historyKind": "Soort",
+    "historyKindAll": "Alle soorten",
+    "historyKindValue": {
+      "node": "Node-update",
+      "rolling": "Clusterupdate",
+      "upgrade": "Grote upgrade"
+    },
+    "historySubject": "Wat",
+    "noHistoryOfKind": "Nog niets van deze soort.",
+    "removedCluster": "een verwijderd cluster"
   },
   "placement": {
     "subtitle": "Welke gasten van een cluster uit elkaar of bij elkaar worden gehouden, op welke nodes een gast hoort, en of dat nu klopt.",
@@ -2052,6 +2062,8 @@
     "plansTitle": "Upgradeplannen",
     "plansBody": "Elk plan draait één playbook — controles, herstelacties, de upgrade doel voor doel, validatie — of, als samengesteld plan, meerdere plannen na elkaar.",
     "noPlans": "Nog geen upgradeplannen.",
+    "noOpenPlans": "Er staan geen plannen open.",
+    "finishedInHistory": "{count, plural, one {# afgerond plan staat onder Geschiedenis} other {# afgeronde plannen staan onder Geschiedenis}}",
     "composite": "Samengesteld",
     "newTitle": "Nieuw plan",
     "newBody": "De doelen komen uit de inventaris: nodes op naam, Ceph-daemons in de eigen volgorde van Ceph — monitors, managers, OSD’s, dan de rest.",

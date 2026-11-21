@@ -31,7 +31,7 @@ type Playbook = Pick<
   'id' | 'version' | 'title' | 'kind' | 'targetKind' | 'internal'
 >;
 
-const PLAN_TONE: Record<string, StatusTone> = {
+export const PLAN_TONE: Record<string, StatusTone> = {
   DRAFT: 'neutral',
   RUNNING: 'neutral',
   WAITING_APPROVAL: 'warn',
@@ -40,6 +40,7 @@ const PLAN_TONE: Record<string, StatusTone> = {
   FAILED: 'error',
   CANCELLED: 'unknown',
 };
+const FINISHED_PLAN: string[] = ['COMPLETED', 'FAILED', 'CANCELLED'];
 const SEVERITY_TONE: Record<CheckSeverity, StatusTone> = {
   PASS: 'ok',
   INFO: 'neutral',
@@ -58,16 +59,25 @@ const SEVERITY_TONE: Record<CheckSeverity, StatusTone> = {
 export function UpgradesTab({
   clusters,
   canExecute,
+  initialPlan = null,
+  onShowHistory,
 }: {
   clusters: ClusterSummary[];
   canExecute: boolean;
+  /** A plan to show at once: History opens finished plans here. */
+  initialPlan?: string | null;
+  onShowHistory: () => void;
 }) {
   const t = useTranslations();
   const format = useFormatter();
   const plans = useApiResource<{ plans: UpgradePlanSummary[] }>('/upgrades/plans');
   const playbooks = useApiResource<{ playbooks: Playbook[] }>('/upgrades/playbooks');
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(initialPlan);
   const offered = playbooks.state === 'ready' ? playbooks.data.playbooks : [];
+  // A finished plan has nothing left to do here: it is in History.
+  const allPlans = plans.state === 'ready' ? plans.data.plans : [];
+  const current = allPlans.filter((p) => !FINISHED_PLAN.includes(p.status));
+  const finished = allPlans.length - current.length;
 
   return (
     <div className="space-y-4">
@@ -84,11 +94,13 @@ export function UpgradesTab({
       <Card title={t('upgrades.plansTitle')} description={t('upgrades.plansBody')}>
         {plans.state !== 'ready' ? (
           <p className="text-sm text-ink-muted">{t('common.loading')}</p>
-        ) : plans.data.plans.length === 0 ? (
-          <p className="text-sm text-ink-muted">{t('upgrades.noPlans')}</p>
+        ) : current.length === 0 ? (
+          <p className="text-sm text-ink-muted">
+            {finished > 0 ? t('upgrades.noOpenPlans') : t('upgrades.noPlans')}
+          </p>
         ) : (
           <ul className="divide-y divide-line">
-            {plans.data.plans.map((p) => (
+            {current.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                 <button
                   className="font-medium text-accent underline"
@@ -106,6 +118,11 @@ export function UpgradesTab({
               </li>
             ))}
           </ul>
+        )}
+        {finished > 0 && (
+          <button className="mt-3 text-sm text-accent underline" onClick={onShowHistory}>
+            {t('upgrades.finishedInHistory', { count: finished })}
+          </button>
         )}
       </Card>
       {open && (

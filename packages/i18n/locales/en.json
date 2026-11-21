@@ -1927,8 +1927,8 @@
     "windowsBody": "Windows belong to a tenant and are used by that tenant’s policies.",
     "noWindows": "No windows yet.",
     "historyTitle": "History",
-    "historyBody": "Every node update, by a person or by a policy. Open one for its output.",
-    "noHistory": "No updates yet.",
+    "historyBody": "Every update and major upgrade, by a person or by a policy. Open one for its output.",
+    "noHistory": "No updates or upgrades yet.",
     "aNode": "a node",
     "rollingTitle": "Update {cluster} node by node",
     "rollingBody": "Each node in turn: its running guests moved to the others, updated, rebooted if needed, checked, and the guests moved back. The cluster never loses quorum, and the run does not start on a cluster that is already degraded.",
@@ -1963,7 +1963,17 @@
     "historyResult": "Result",
     "historyWhen": "When",
     "historyBy": "By",
-    "historyPolicy": "A policy"
+    "historyPolicy": "A policy",
+    "historyKind": "Type",
+    "historyKindAll": "All types",
+    "historyKindValue": {
+      "node": "Node update",
+      "rolling": "Cluster update",
+      "upgrade": "Major upgrade"
+    },
+    "historySubject": "What",
+    "noHistoryOfKind": "Nothing of this type yet.",
+    "removedCluster": "a removed cluster"
   },
   "placement": {
     "subtitle": "Which guests of a cluster are kept apart or together, which nodes a guest belongs on, and whether that holds now.",
@@ -2051,6 +2061,8 @@
     "plansTitle": "Upgrade plans",
     "plansBody": "Each plan runs one playbook — checks, remediations, the upgrade target by target, validation — or, as a composite, several plans one after another.",
     "noPlans": "No upgrade plans yet.",
+    "noOpenPlans": "No plans are open.",
+    "finishedInHistory": "{count, plural, one {# finished plan is in History} other {# finished plans are in History}}",
     "composite": "Composite",
     "newTitle": "New plan",
     "newBody": "Targets come from the inventory: nodes by name, Ceph daemons in Ceph’s own order — monitors, managers, OSDs, then the rest.",
