@@ -589,7 +589,7 @@
     "up": "Actief",
     "updates": "Updates",
     "updatesPending": "{count, plural, one {# update beschikbaar} other {# updates beschikbaar}}",
-    "uptime": "Draaitijd",
+    "uptime": "Uptime",
     "usage": "Gebruik",
     "vmPageDescription": "Virtuele machines in elk cluster dat je kunt zien.",
     "vmid": "ID",

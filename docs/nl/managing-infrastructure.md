@@ -33,7 +33,7 @@ komt in latere fasen, elk met een eigen goedkeuring en eigen waarborgen.
 Wat het per cluster leest:
 
 - het cluster zelf: naam, versie, quorum, en of de nodes het eens zijn over hun versie;
-- elke node: status, Proxmox- en kernelversie, CPU, geheugen, systeemschijf, draaitijd, abonnement,
+- elke node: status, Proxmox- en kernelversie, CPU, geheugen, systeemschijf, uptime, abonnement,
   hoeveel pakketupdates openstaan, en de apt-bronnen;
 - de opslag en netwerkinterfaces van elke node;
 - elke virtuele machine en container, met ID, naam, status, omvang en labels;

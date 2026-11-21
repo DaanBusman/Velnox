@@ -306,7 +306,7 @@ function phase(requested) {
   set(`0.${number}.0`);
   console.log(
     number === MAX_PHASE
-      ? 'Phase 15 complete. 1.0.0 is now one deliberate step away — run `set 1.0.0` when the owner says so.'
+      ? 'Phase 15 complete. 15A and 15B stay under 0.15.x; after them 1.0.0 is one deliberate step — run `set 1.0.0` when the owner says so.'
       : `Phase ${number} complete. Changes from here bump the patch until Phase ${number + 1} lands.`,
   );
 }

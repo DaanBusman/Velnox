@@ -5,7 +5,7 @@
 
 **Status:** Fase 0 tot en met 5, 5A, 6, 7 en 7B afgerond — 6, 7 en 7B op besluit van de eigenaar met 0.7.0, terwijl
 bewijs op een echt cluster voor die fasen nog openstaat. Fase 5B, 5C, 8, 9A en 9B zijn gebouwd en wachten op datzelfde
-bewijs; fase 10–15 wachten op goedkeuring.
+bewijs; fase 10–15B wachten op goedkeuring.
 
 Elke afgeronde fase is geverifieerd in plaats van beweerd: `bash scripts/verify-stack.sh` toetst de
 acceptatiecriteria tegen een draaiende stack — 36 controles over elke afhankelijkheid, de
@@ -583,6 +583,41 @@ herstel-uit-back-upoefening slaagt op een verse host; een hoofdsleutelrotatie-oe
 geen zichtbare tekst buiten de taalcatalogi; elke term uit de woordenlijst wordt consistent gebruikt;
 `docs/known-gaps.md` beschrijft elke resterende beperking accuraat.
 
+## Phase 15A — Een nettere interface voor eindgebruikers · **L**
+
+Toegevoegd op verzoek van de eigenaar op 21 november 2026, als een van de laatste twee fasen vóór de
+uitrol. Dan bestaat elk scherm, dus wordt elk scherm één keer netjes gemaakt in plaats van na elke
+fase opnieuw. Phase 13 voegt toe wat de interface mist; deze fase loopt alles na vanuit iemand die
+Velnox gebruikt zonder Proxmox-beheerder te zijn:
+
+- gewone woorden waar een technische term voor die persoon niets toevoegt;
+- de dagelijkse taak eerst, technische details één klik verder;
+- formulieren die stap voor stap opengaan, zoals *VM bouwen* sinds 0.7.26;
+- één opmaak voor lijsten, detailpagina's en acties, met tabellen die overal hetzelfde zijn uitgelijnd;
+- wat iemand ziet, past bij de eigen rol.
+
+**Acceptatie:** elk scherm in de zijbalk is getoetst aan een geschreven lijst van deze punten; een VM
+bouwen, de staat van een machine lezen en een job volgen lukt iemand die geen beheerder is, zonder
+de documentatie; geen detail voor beheerders gaat verloren, het verhuist alleen; beide talen, licht
+en donker, en telefoonbreedte kloppen.
+
+## Phase 15B — Documentatie per doelgroep · **L**
+
+Toegevoegd op verzoek van de eigenaar op 21 november 2026, als laatste vóór de uitrol en na 15A,
+zodat ze de interface beschrijft die mensen echt krijgen. De huidige handleidingen zijn geschreven
+voor wie Velnox beheert. Ze worden twee sets, in het Engels en het Nederlands:
+
+- **Voor eindgebruikers:** nieuw, kort en eenvoudig. Eén taak per pagina, in gewone woorden, met
+  schermafbeeldingen.
+- **Voor systeembeheerders:** de huidige documentatie, als zodanig beschikbaar gemaakt en aangevuld
+  waar die tekortschiet: installeren, upgraden, back-up en herstel, SSH en sudo, certificaten,
+  rechten, en wat te doen als er iets misgaat.
+
+**Acceptatie:** iedereen bereikt vanuit het product de set die bij de eigen rol hoort; elke
+eindgebruikerstaak uit 15A heeft een handleiding die iemand zonder beheerdersachtergrond kan volgen;
+elke handeling die een beheerder kan uitvoeren is beschreven; de schermafbeeldingen kloppen met de
+interface; doc-sync slaagt voor beide talen.
+
 ---
 
 ## Onderbouwing van de opleveringsvolgorde
@@ -619,6 +654,12 @@ samenstellen in plaats van andersom.
 
 De installer landt in Phase 14 omdat die verpakt wat er is — maar de compose-stack uit Phase 1 is
 doorlopend te draaien, zodat er nooit een periode is waarin het product niet gestart kan worden.
+
+**15A en 15B als laatste, vóór de uitrol** (besluit van de eigenaar, 21 november 2026): schermen
+netjes maken en handleidingen herschrijven terwijl er nog functies bijkomen, zou betekenen dat beide
+twee keer moeten. De interface komt eerst, omdat de documentatie haar beschrijft. Beide vallen met
+een letter onder Phase 15, zoals 9A en 9B onder 9, dus de versie eindigt nog steeds op `0.15.x` en
+1.0.0 blijft daarna één bewuste stap.
 
 ## Doorlopend werk in elke fase
 

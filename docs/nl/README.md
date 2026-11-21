@@ -23,7 +23,7 @@ Velnox wordt in vijftien fasen gebouwd. Hoe elke fase ervoor staat, zoals
 
 - **Afgerond:** 1, 2, 3, 4, 5, 5A, 6, 7, 7B
 - **Gebouwd, wacht op bewijs op een echt cluster:** 5B, 5C, 8, 9A, 9B
-- **Nog niet begonnen:** 10, 11, 12, 13, 14, 15
+- **Nog niet begonnen:** 10, 11, 12, 13, 14, 15, 15A, 15B
 
 "Afgerond" is voor 6, 7 en 7B een besluit van de eigenaar bij 0.7.0: net als alles sinds fase 5A
 zijn ze bewezen tegen een nagebootste Proxmox-API, nog niet tegen een echt cluster.
@@ -217,7 +217,7 @@ Referentie — hoe het systeem is gebouwd, en waarom:
 | [service-diagram.md](service-diagram.md) | Containertopologie, startvolgorde, health checks, trust boundaries |
 | [i18n.md](i18n.md) | Lokalisatie: woordenlijst, catalogi, foutcodes, wat onvertaald blijft |
 | [risks.md](risks.md) | Gerangschikt technisch risicoregister met mitigaties |
-| [roadmap.md](roadmap.md) | Fase 1–15 met acceptatiecriteria per fase |
+| [roadmap.md](roadmap.md) | Fase 1–15B met acceptatiecriteria per fase |
 | [known-gaps.md](known-gaps.md) | Wat bewust niet gebouwd wordt, en wat nog niet gebouwd is |
 
 ---

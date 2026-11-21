@@ -19,7 +19,7 @@ three lines disagree with it:
 
 - **Complete:** 1, 2, 3, 4, 5, 5A, 6, 7, 7B
 - **Built, awaiting proof on a real cluster:** 5B, 5C, 8, 9A, 9B
-- **Not started:** 10, 11, 12, 13, 14, 15
+- **Not started:** 10, 11, 12, 13, 14, 15, 15A, 15B
 
 "Complete" for 6, 7 and 7B is the owner's call with 0.7.0: like everything since Phase 5A, they
 are proven against a fixture Proxmox API, not yet against a real cluster.
@@ -216,7 +216,7 @@ Reference — how the system is built, and why:
 | [service-diagram.md](docs/service-diagram.md) | Container topology, startup ordering, health checks, trust boundaries |
 | [i18n.md](docs/i18n.md) | Localization: glossary, catalogues, error codes, what stays untranslated |
 | [risks.md](docs/risks.md) | Ranked technical risk register with mitigations |
-| [roadmap.md](docs/roadmap.md) | Phases 1–15 with per-phase acceptance criteria |
+| [roadmap.md](docs/roadmap.md) | Phases 1–15B with per-phase acceptance criteria |
 | [known-gaps.md](docs/known-gaps.md) | What is deliberately not built, and what is not built *yet* |
 
 Nederlandse vertalingen: [docs/nl/](docs/nl/). English is canonical.

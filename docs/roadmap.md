@@ -1,7 +1,7 @@
 # Velnox — Implementation Roadmap
 
 **Status:** Phases 0 to 5, 5A, 6, 7 and 7B complete — 6, 7 and 7B on the owner's call with 0.7.0, while proof on a
-real cluster is still open for them. Phases 5B, 5C, 8, 9A and 9B are built and await that same proof; phases 10–15
+real cluster is still open for them. Phases 5B, 5C, 8, 9A and 9B are built and await that same proof; phases 10–15B
 await approval.
 
 Each landed phase is verified rather than asserted. `bash scripts/verify-stack.sh` asserts its acceptance criteria
@@ -545,6 +545,40 @@ succeeds on a fresh host; a master-key rotation drill succeeds; no user-visible 
 the locale catalogues; every glossary term is used consistently; `docs/known-gaps.md` accurately
 lists every remaining limitation.
 
+## Phase 15A — A cleaner interface for end users · **L**
+
+Added at the owner's request on 21 November 2026, as one of the last two phases before rollout. By
+then every screen exists, so each is tidied once rather than again after every phase. Phase 13 adds
+what the interface lacks; this one goes through all of it from the point of view of someone who uses
+Velnox without being a Proxmox administrator:
+
+- plain words where a technical term adds nothing for that person;
+- the everyday task first, technical detail one click further;
+- forms that open step by step, as *Build a VM* has since 0.7.26;
+- one layout for lists, detail pages and actions, with tables aligned the same way everywhere;
+- what a person sees follows what their role is for.
+
+**Acceptance:** every screen in the sidebar is checked against a written list of these points;
+building a VM, reading a machine's state and following a job can be done by someone who is not an
+administrator, without the documentation; no administrator's detail is lost, only moved; both
+languages, light and dark, and phone width all hold.
+
+## Phase 15B — Documentation per audience · **L**
+
+Added at the owner's request on 21 November 2026, last before rollout, and after 15A so that it
+describes the interface people will actually get. Today's guides are written for whoever runs
+Velnox. They become two sets, in English and Dutch:
+
+- **For end users:** new, short and simple. One task per page, in everyday words, with screenshots.
+- **For system administrators:** the current documentation, made available as such and completed
+  where it falls short: installing, upgrading, backup and restore, SSH and sudo, certificates,
+  permissions, and what to do when something goes wrong.
+
+**Acceptance:** each person reaches the set meant for them from inside the product; every end-user
+task from 15A has a guide that someone who is not an administrator can follow; every operation an
+administrator can perform is documented; the screenshots match the interface; doc-sync passes for
+both languages.
+
 ---
 
 ## Delivery order rationale
@@ -580,6 +614,11 @@ can compose 9A rather than the reverse.
 
 The installer lands at Phase 14 because it packages whatever exists — but the compose stack from
 Phase 1 is continuously runnable, so there is never a period where the product cannot be started.
+
+**15A and 15B last, before rollout** (the owner's call, 21 November 2026): tidying screens and
+rewriting guides while features are still being added would mean doing both twice. The interface
+comes first because the documentation describes it. Both are lettered under Phase 15, like 9A and
+9B under 9, so the version still ends at `0.15.x` and 1.0.0 stays one deliberate step after them.
 
 ## Cross-cutting work carried in every phase
 
