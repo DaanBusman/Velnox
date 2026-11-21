@@ -128,6 +128,13 @@ export const maintenanceWindowSchema = z.object({
     .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'A date as YYYY-MM-DD'))
     .max(100)
     .default([]),
+  /**
+   * Every update in this window ends with `apt-get autoremove` on each node it
+   * updated: the packages nothing needs any more — old kernels, mostly — are
+   * removed, after the update is verified. Never the running kernel, the
+   * newest one, or Proxmox itself (see `autoremoveRefusal`).
+   */
+  autoremove: z.boolean().default(false),
 });
 export type MaintenanceWindowInput = z.infer<typeof maintenanceWindowSchema>;
 
@@ -147,6 +154,11 @@ export type UpdatePolicyInput = z.infer<typeof updatePolicySchema>;
 
 export const nodeUpdateRequestSchema = z.object({
   rebootPolicy: z.enum(REBOOT_POLICIES).optional(),
+  /**
+   * End with `apt-get autoremove`. A window that has it on turns it on for
+   * every update in it; this turns it on for one more.
+   */
+  autoremove: z.boolean().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -184,7 +196,11 @@ export interface NodeUpdatesSummary {
   canApply: boolean;
   /** The update job running or waiting on this node, if any. */
   activeJobId: string | null;
-  policy: { id: string; name: string } | null;
+  /**
+   * `autoremove`: an update of this node ends with `apt-get autoremove`
+   * whatever is asked — the policy is on and its window says so.
+   */
+  policy: { id: string; name: string; autoremove: boolean } | null;
 }
 
 export interface MaintenanceWindowSummary extends MaintenanceWindowInput {
@@ -213,6 +229,8 @@ export interface NodeUpdateParams {
   /** The policy's window: the update changes nothing unless it is open. */
   maintenanceWindowId: string | null;
   policyId: string | null;
+  /** End with `apt-get autoremove`, after the verify step. */
+  autoremove: boolean;
   /** What was pending when it was asked for, for the approval and the record. */
   pending: { total: number; security: number; kernel: number; proxmox: number };
 }

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   COMMANDS,
   WRONG_NODE_EXIT,
+  autoremoveRefusal,
   commandLine,
+  parseAptRemovals,
   parseAptSimulate,
   parseRebootRequired,
   shellQuote,
@@ -74,5 +76,57 @@ describe('parsers', () => {
       packages: ['linux-base'],
     });
     expect(parseRebootRequired('no\n')).toEqual({ required: false, packages: [] });
+  });
+});
+
+describe('apt-get autoremove', () => {
+  it('runs privileged and uninterrupted, after a read-only simulation', () => {
+    expect(COMMANDS.aptAutoremoveSimulate.readOnly).toBe(true);
+    expect(COMMANDS.aptAutoremoveSimulate.privileged).toBe(false);
+    expect(COMMANDS.aptAutoremove.privileged).toBe(true);
+    expect(COMMANDS.aptAutoremove.interruptible).toBe(false);
+    expect(COMMANDS.aptAutoremove.argv).not.toContain('--purge');
+  });
+
+  it('reads what it would remove from the Remv lines only', () => {
+    const output = [
+      'NOTE: This is only a simulation!',
+      'The following packages will be REMOVED:',
+      '  libllvm15 proxmox-kernel-6.8.12-4-pve-signed',
+      'Remv libllvm15 [1:15.0.6-4+b1]',
+      'Remv proxmox-kernel-6.8.12-4-pve-signed [6.8.12-4]',
+    ].join('\n');
+    expect(parseAptRemovals(output)).toEqual(['libllvm15', 'proxmox-kernel-6.8.12-4-pve-signed']);
+    expect(parseAptRemovals('0 upgraded, 0 newly installed, 0 to remove')).toEqual([]);
+  });
+
+  const keep = ['6.8.12-5-pve', '6.8.12-6'];
+
+  it('allows an old kernel and a library', () => {
+    expect(autoremoveRefusal(['libllvm15', 'proxmox-kernel-6.8.12-4-pve-signed'], keep)).toBeNull();
+  });
+
+  it('refuses the running kernel, under either package family', () => {
+    expect(autoremoveRefusal(['proxmox-kernel-6.8.12-5-pve-signed'], keep)).toMatch(/kernel/);
+    expect(autoremoveRefusal(['pve-kernel-6.8.12-5-pve'], keep)).toMatch(/kernel/);
+  });
+
+  it('refuses the newest kernel, which the next boot will use', () => {
+    expect(autoremoveRefusal(['proxmox-kernel-6.8.12-6-pve-signed'], keep)).toMatch(/kernel/);
+  });
+
+  it('does not mistake one kernel for another that starts the same', () => {
+    expect(autoremoveRefusal(['proxmox-kernel-6.8.12-50-pve-signed'], keep)).toBeNull();
+  });
+
+  it.each([
+    'proxmox-ve',
+    'pve-manager',
+    'corosync',
+    'grub-efi-amd64',
+    'ceph-osd',
+    'qemu-server:amd64',
+  ])('refuses %s', (name) => {
+    expect(autoremoveRefusal([name], keep)).toContain(name);
   });
 });

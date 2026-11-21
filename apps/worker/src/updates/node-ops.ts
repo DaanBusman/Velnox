@@ -6,13 +6,20 @@ import {
   waitForTask,
   type ProxmoxClient,
 } from '@velnox/proxmox';
-import { ERROR_CODES, newerKernelInstalled, type RebootPolicy } from '@velnox/shared';
-import { StepError } from '../jobs/steps';
+import {
+  ERROR_CODES,
+  compareVersions,
+  newerKernelInstalled,
+  type RebootPolicy,
+} from '@velnox/shared';
+import { PartialStop, StepError } from '../jobs/steps';
 import type { LibraryServices } from '../library/services';
 import type { SshTarget } from '../library/ssh';
 import {
   COMMANDS,
   WRONG_NODE_EXIT,
+  autoremoveRefusal,
+  parseAptRemovals,
   parseAptSimulate,
   parseRebootRequired,
   type CommandSpec,
@@ -197,6 +204,66 @@ export async function distUpgrade(handle: NodeHandle): Promise<void> {
   await handle.log('STDOUT', 'Running apt-get dist-upgrade; a cancel waits for it to finish');
   await runRegistered(handle, COMMANDS.aptDistUpgrade, true);
   await handle.log('STDOUT', 'dist-upgrade finished');
+}
+
+/**
+ * `apt-get autoremove`, after the update is verified (0.7.27): the packages
+ * nothing needs any more — old kernels, mostly — removed.
+ *
+ * What it would remove is read first, and the removal is refused when that
+ * includes the running kernel, the newest one, or Proxmox itself (see
+ * `autoremoveRefusal`), or when the kernels cannot be read to tell. A refusal
+ * or a failure is a `PartialStop`: the update before it is done and stays
+ * done, and the job says the tidying was not.
+ */
+export async function autoremove(handle: NodeHandle): Promise<{ removed: number }> {
+  const incomplete = (reason: string) =>
+    new PartialStop(
+      ERROR_CODES.updateAutoremoveIncomplete,
+      `apt-get autoremove did not complete on ${handle.node}: ${reason}. The update itself is done`,
+      { node: handle.node, reason },
+    );
+  const attempt = async <T>(run: () => Promise<T>): Promise<T> => {
+    try {
+      return await run();
+    } catch (error) {
+      if (error instanceof StepError) throw incomplete(error.message);
+      throw error;
+    }
+  };
+
+  const simulated = await attempt(() =>
+    runRegistered(handle, COMMANDS.aptAutoremoveSimulate, false),
+  );
+  const removals = parseAptRemovals(simulated.stdout);
+  if (removals.length === 0) {
+    await handle.log('STDOUT', `${handle.node}: nothing to autoremove`);
+    return { removed: 0 };
+  }
+  for (const name of removals) await handle.log('STDOUT', `  remove ${name}`);
+
+  const [status, versions] = await Promise.all([
+    handle.pve.nodeStatus(handle.node).catch(() => null),
+    handle.pve.nodePackageVersions(handle.node).catch(() => null),
+  ]);
+  const running = status?.['current-kernel']?.release ?? null;
+  const newest = versions
+    ? (installedKernelVersions(versions).sort(compareVersions).at(-1) ?? null)
+    : null;
+  const refusal = !running
+    ? 'the running kernel could not be read'
+    : !newest
+      ? 'the installed kernels could not be read'
+      : autoremoveRefusal(removals, [running, newest]);
+  if (refusal) throw incomplete(`${refusal}; nothing was removed`);
+
+  await handle.log(
+    'STDOUT',
+    `Running apt-get autoremove on ${handle.node} (${removals.length} package${removals.length === 1 ? '' : 's'}); a cancel waits for it to finish`,
+  );
+  await attempt(() => runRegistered(handle, COMMANDS.aptAutoremove, true));
+  await handle.log('STDOUT', `autoremove finished: ${removals.length} removed`);
+  return { removed: removals.length };
 }
 
 const REBOOT_TIMEOUT_MS = 20 * 60_000;

@@ -71,7 +71,9 @@ export class UpdatesService {
             tenantId: true,
             sshCredentialId: true,
             tenant: { select: { name: true } },
-            updatePolicy: { select: { id: true, name: true } },
+            updatePolicy: {
+              select: { id: true, name: true, enabled: true, window: { select: { autoremove: true } } },
+            },
           },
         },
       },
@@ -100,7 +102,15 @@ export class UpdatesService {
       checkedAt: node.updatesCheckedAt?.toISOString() ?? null,
       canApply: Boolean(node.cluster.sshCredentialId && node.sshHostKeyFingerprint),
       activeJobId: active.find((job) => job.targetIds.includes(node.id))?.id ?? null,
-      policy: node.cluster.updatePolicy,
+      policy: node.cluster.updatePolicy
+        ? {
+            id: node.cluster.updatePolicy.id,
+            name: node.cluster.updatePolicy.name,
+            autoremove:
+              node.cluster.updatePolicy.enabled &&
+              node.cluster.updatePolicy.window?.autoremove === true,
+          }
+        : null,
     }));
   }
 
@@ -147,7 +157,7 @@ export class UpdatesService {
    */
   async run(
     nodeId: string,
-    input: { rebootPolicy?: RebootPolicy },
+    input: { rebootPolicy?: RebootPolicy; autoremove?: boolean },
     actor: Actor,
   ): Promise<JobDetail> {
     const node = await this.node(nodeId);
@@ -182,6 +192,8 @@ export class UpdatesService {
       requireApproval: policy?.requireApproval ?? false,
       maintenanceWindowId: policy?.maintenanceWindowId ?? null,
       policyId: policy?.id ?? null,
+      // Asked for here, or the window has it on for every update in it.
+      autoremove: input.autoremove === true || policy?.window?.autoremove === true,
       pending: {
         total: node.updatesAvailable ?? 0,
         security: node.updatesSecurity ?? 0,
@@ -285,6 +297,8 @@ export class UpdatesService {
       clusterId: cluster.id,
       clusterName: cluster.name,
       groups,
+      autoremoveByWindow:
+        cluster.updatePolicy?.enabled === true && cluster.updatePolicy.window?.autoremove === true,
       refused,
       guests,
       nonMigratable: [],
@@ -365,6 +379,7 @@ export class UpdatesService {
       maintenanceWindowId: policy?.maintenanceWindowId ?? null,
       policyId: policy?.id ?? null,
       settleMinutes: input.settleMinutes,
+      autoremove: input.autoremove === true || policy?.window?.autoremove === true,
     };
     return this.jobs.create(
       {
@@ -402,6 +417,7 @@ export class UpdatesService {
         rrule: row.rrule,
         durationMinutes: row.durationMinutes,
         blackoutDates: row.blackoutDates,
+        autoremove: row.autoremove,
         open: state.open,
         nextOpening: state.nextOpening ? new Date(state.nextOpening).toISOString() : null,
         closesAt: state.closesAt ? new Date(state.closesAt).toISOString() : null,
@@ -422,6 +438,7 @@ export class UpdatesService {
       rrule: input.rrule.replace(/^RRULE:/i, '').toUpperCase(),
       durationMinutes: input.durationMinutes,
       blackoutDates: input.blackoutDates,
+      autoremove: input.autoremove,
     };
     let row;
     try {

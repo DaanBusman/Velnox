@@ -1,6 +1,6 @@
 {
   "name": "velnox",
-  "version": "0.7.26",
+  "version": "0.7.27",
   "private": true,
   "description": "Self-hosted MSP management platform for Proxmox VE fleets",
   "license": "AGPL-3.0-or-later",

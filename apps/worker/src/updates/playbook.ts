@@ -9,6 +9,7 @@ import {
 import { StepError, type Playbook, type StepContext, type StepDefinition } from '../jobs/steps';
 import type { LibraryServices } from '../library/services';
 import {
+  autoremove,
   distUpgrade,
   rebootIfNeeded,
   refreshLists,
@@ -32,6 +33,8 @@ import { refreshNodeUpdates } from './refresh';
  *   reboot    when the policy says so: only if the cluster keeps quorum
  *             without this node, then waits for it to come back on the new kernel
  *   verify    reads what is left, and whether a reboot is still due
+ *   autoremove (when asked, or the window says so) apt-get autoremove, after
+ *             checking it takes no kernel that runs or boots next
  *
  * Nothing here can be undone — apt has no rollback — so the steps before
  * `upgrade` are where it refuses, and the job says plainly what it changed.
@@ -63,6 +66,7 @@ export function parseNodeUpdateParams(raw: unknown): NodeUpdateParams {
     requireApproval: v.requireApproval === true,
     maintenanceWindowId: typeof v.maintenanceWindowId === 'string' ? v.maintenanceWindowId : null,
     policyId: typeof v.policyId === 'string' ? v.policyId : null,
+    autoremove: v.autoremove === true,
     pending: {
       total: Number(v.pending?.total ?? 0),
       security: Number(v.pending?.security ?? 0),
@@ -142,6 +146,7 @@ export function nodeUpdatePlaybook(raw: unknown, services: LibraryServices): Pla
         security: params.pending.security,
         kernel: params.pending.kernel,
         reboot: params.rebootPolicy,
+        autoremove: params.autoremove,
       },
     });
   }
@@ -233,6 +238,15 @@ export function nodeUpdatePlaybook(raw: unknown, services: LibraryServices): Pla
       },
     },
   );
+
+  if (params.autoremove) {
+    steps.push({
+      kind: 'task',
+      key: 'autoremove',
+      phase: 'verify',
+      run: async (context) => autoremove(await handle(context)),
+    });
+  }
 
   return {
     version: 1,

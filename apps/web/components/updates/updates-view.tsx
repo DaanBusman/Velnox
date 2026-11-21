@@ -23,6 +23,7 @@ import { Card, Notice, StatusBadge } from '@/components/ui/primitives';
 import { useApiResource } from '@/components/server/use-api-resource';
 import { useRefreshOn } from '@/lib/changes';
 import { JobStatusBadge } from '@/components/jobs/primitives';
+import { AutoremoveChoice } from './autoremove-choice';
 import { RollingCard } from './rolling-card';
 import { UpgradesTab } from './upgrades-tab';
 
@@ -96,6 +97,7 @@ function NodesTab({ clusters, canExecute }: { clusters: ClusterSummary[]; canExe
   const [open, setOpen] = useState<string | null>(null);
   const [running, setRunning] = useState<NodeUpdatesSummary | null>(null);
   const [reboot, setReboot] = useState<RebootPolicy>('IF_REQUIRED');
+  const [autoremove, setAutoremove] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [started, setStarted] = useState<{ node: string; jobId: string } | null>(null);
   const [pending, setPending] = useState(false);
@@ -125,6 +127,7 @@ function NodesTab({ clusters, canExecute }: { clusters: ClusterSummary[]; canExe
     setFailure(null);
     const result = await apiPost<{ id: string }>(`/updates/nodes/${running.nodeId}/run`, {
       rebootPolicy: reboot,
+      autoremove,
     });
     setPending(false);
     if (!result.ok) return setFailure(result.error);
@@ -208,6 +211,11 @@ function NodesTab({ clusters, canExecute }: { clusters: ClusterSummary[]; canExe
                 </select>
               )}
             </Field>
+            <AutoremoveChoice
+              checked={autoremove || running.policy?.autoremove === true}
+              byWindow={running.policy?.autoremove === true}
+              onChange={setAutoremove}
+            />
             {running.policy && (
               <p className="text-xs text-ink-muted">
                 {t('nodeUpdates.policyApplies', { policy: running.policy.name })}
@@ -257,6 +265,7 @@ function NodesTab({ clusters, canExecute }: { clusters: ClusterSummary[]; canExe
                       canExecute && n.canApply && n.online && !n.activeJobId
                         ? () => {
                             setRunning(n);
+                            setAutoremove(false);
                             setStarted(null);
                           }
                         : null
@@ -605,6 +614,7 @@ interface WindowDraft {
   rrule: string;
   advanced: boolean;
   blackoutDates: string;
+  autoremove: boolean;
 }
 
 function ruleFrom(d: WindowDraft): string {
@@ -657,6 +667,7 @@ function WindowsTab({ tenants, canManage }: { tenants: TenantSummary[]; canManag
         .split(/[\s,]+/)
         .map((s) => s.trim())
         .filter(Boolean),
+      autoremove: draft.autoremove,
     };
     const result = draft.id
       ? await apiPut(`/updates/windows/${draft.id}`, body)
@@ -685,6 +696,7 @@ function WindowsTab({ tenants, canManage }: { tenants: TenantSummary[]; canManag
     rrule: '',
     advanced: false,
     blackoutDates: '',
+    autoremove: false,
   });
 
   return (
@@ -834,6 +846,17 @@ function WindowsTab({ tenants, canManage }: { tenants: TenantSummary[]; canManag
                 />
               )}
             </Field>
+            <div className="space-y-1 md:col-span-2">
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={draft.autoremove}
+                  onChange={(e) => setDraft({ ...draft, autoremove: e.target.checked })}
+                />
+                {t('nodeUpdates.windowAutoremove')}
+              </label>
+              <p className="text-xs text-ink-muted">{t('nodeUpdates.windowAutoremoveHint')}</p>
+            </div>
             <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"
@@ -892,6 +915,7 @@ function WindowsTab({ tenants, canManage }: { tenants: TenantSummary[]; canManag
                   <span className="block font-mono text-xs text-ink-muted">
                     {w.rrule} · {w.timezone} ·{' '}
                     {t('nodeUpdates.minutes', { minutes: w.durationMinutes })}
+                    {w.autoremove ? ` · ${t('nodeUpdates.windowAutoremoveShort')}` : ''}
                   </span>
                   <span className="block text-xs text-ink-muted">
                     {w.open && w.closesAt
@@ -920,6 +944,7 @@ function WindowsTab({ tenants, canManage }: { tenants: TenantSummary[]; canManag
                           rrule: w.rrule,
                           advanced: true,
                           blackoutDates: w.blackoutDates.join(', '),
+                          autoremove: w.autoremove,
                         })
                       }
                     >

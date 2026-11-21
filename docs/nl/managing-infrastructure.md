@@ -153,7 +153,7 @@ kan, doet Velnox via SSH naar elke node:
 | Wat | Via SSH | Het account heeft nodig |
 |---|---|---|
 | Een ISO of schijfimage van een node naar de bibliotheek kopiëren | SFTP, één bestand lezen | Leestoegang tot de opslagmap |
-| Updates toepassen, rolling updates | Drie vaste opdrachten — zie [Nodes bijwerken](updating-nodes.md#voordat-je-updates-kunt-toepassen-ssh) | root, of sudo voor de dist-upgrade |
+| Updates toepassen, rolling updates | Vijf vaste opdrachten — zie [Nodes bijwerken](updating-nodes.md#voordat-je-updates-kunt-toepassen-ssh) | root, of sudo voor de dist-upgrade en de autoremove |
 | Grote upgrades van Ceph en Proxmox VE | Vaste opdrachten per stap — zie [Grote upgrades](major-upgrades.md) | root |
 
 Velnox opent nooit een shell, en voert nooit een opdracht uit die iemand typt of die via de API

@@ -33,6 +33,9 @@
  * Proxmox 9's HA rules (`/cluster/ha/rules`) answer; on 8 they answer 501 as
  * PVE 8 does. The rules live in the fixture, so they outlast Velnox.
  *
+ * `{"autoremoveRunning": "pve2"}` makes `apt-get autoremove` offer that node's
+ * running kernel, which Velnox must refuse (0.7.27).
+ *
  * `{"repos": "enterprise"}` puts every node on Proxmox's enterprise
  * repository, answering `/apt/repositories` (GET, POST to toggle one, PUT to
  * add a standard one) as Proxmox does. Only pve1 has a subscription, so
@@ -175,6 +178,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       pending: initialPending(),
       kernels: [KERNEL_RUNNING],
       running: KERNEL_RUNNING,
+      orphans: ['libllvm15'],
       rebootMarker: false,
       bootedAt: Date.now() - 864_000_000,
       backAt: 0,
@@ -522,6 +526,33 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
         done(0);
       }, 150);
       return true;
+    }
+    // What autoremove would take: the orphan, and every kernel neither running
+    // nor newest. `{"autoremoveRunning":"pve2"}` makes apt offer that node's
+    // running kernel too, as it should not, for the refusal to be seen.
+    const removable = () => {
+      const newest = s.kernels.slice().sort(compare).pop();
+      const kernels = s.kernels.filter(
+        (k) => (k !== s.running && k !== newest) || (k === s.running && control().autoremoveRunning === node),
+      );
+      return [...s.orphans, ...kernels.map((k) => `proxmox-kernel-${k}-pve-signed`)];
+    };
+    if (body === 'env LC_ALL=C apt-get -s -o Debug::NoLocking=1 autoremove') {
+      log(`ops: ${node} autoremove simulate`);
+      channel.write('NOTE: This is only a simulation!\n');
+      for (const name of removable()) channel.write(`Remv ${name} [1.0]\n`);
+      return (done(0), true);
+    }
+    if (
+      body ===
+      'env LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold autoremove'
+    ) {
+      const gone = removable();
+      log(`ops: ${node} autoremove (${gone.length} packages: ${gone.join(' ')})`);
+      for (const name of gone) channel.write(`Removing ${name} ...\n`);
+      s.orphans = [];
+      s.kernels = s.kernels.filter((k) => !gone.includes(`proxmox-kernel-${k}-pve-signed`));
+      return (done(0), true);
     }
     if (body.startsWith("sh -c 'if [ -f /var/run/reboot-required ]")) {
       channel.write(s.rebootMarker ? 'required\nlinux-base\n' : 'no\n');

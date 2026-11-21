@@ -482,6 +482,7 @@
       "capacity_short": "Terwijl {node} down is, hebben zijn gasten {neededGb} GB nodig; de andere nodes hebben {freeGb} GB vrij.",
       "migration_failed": "Gast {vmid} verplaatsen van {from} naar {to} is mislukt. De uitvoer van de job laat zien waarom.",
       "validation_failed": "{node} kwam na de update niet heel terug ({reason}); de run is daar gestopt.",
+      "autoremove_incomplete": "De update van {node} is klaar, maar apt autoremove is niet afgerond: {reason}. Bekijk de node voordat je met de hand pakketten verwijdert.",
       "placement_blocked": "Geen node mag {guest} hebben terwijl zijn eigen node wordt leeggemaakt, onder plaatsingsregels {rules}. Wijzig de regels, of stop de gast."
     },
     "maintenance": {
@@ -1942,6 +1943,12 @@
     "settleHint": "Hoe lang een node, het cluster en Ceph mogen doen om na een herstart weer heel te zijn voordat de run stopt.",
     "migrateBack": "Gasten daarna terugzetten",
     "migrateBackHint": "Elke gast gaat terug naar de node waar hij vandaan kwam zodra die node klaar is.",
+    "autoremove": "Daarna pakketten verwijderen die niets meer nodig heeft (apt autoremove)",
+    "autoremoveHint": "Vooral oude kernels. Draait zodra de update geverifieerd is, en wordt geweigerd als het de draaiende kernel, de nieuwste of Proxmox zelf zou verwijderen.",
+    "autoremoveByWindow": "Aan: het onderhoudsvenster van het beleid van dit cluster sluit elke update af met apt autoremove.",
+    "windowAutoremove": "Elke update in dit venster afsluiten met apt autoremove",
+    "windowAutoremoveHint": "Nadat de update van een node geverifieerd is, worden de pakketten verwijderd die niets meer nodig heeft — vooral oude kernels. Geweigerd, en gemeld, als dat de draaiende kernel, de nieuwste of Proxmox zelf zou verwijderen.",
+    "windowAutoremoveShort": "apt autoremove",
     "rollingStart": "Rolling update starten",
     "refresh": "Vernieuwen",
     "refreshHint": "Voer apt-get update uit op elke online node en lees daarna wat elke node zou bijwerken. Zonder dit is de lijst wat de nodes vonden bij hun eigen dagelijkse controle.",

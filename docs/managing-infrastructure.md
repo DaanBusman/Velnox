@@ -146,7 +146,7 @@ Velnox does over SSH to each node:
 | What | Over SSH | The account needs |
 |---|---|---|
 | Copying an ISO or disk image off a node into the library | SFTP, reading one file | Read access to the storage directory |
-| Applying updates, rolling updates | Three fixed commands — see [Updating nodes](updating-nodes.md#before-you-can-apply-updates-ssh) | root, or sudo for the dist-upgrade |
+| Applying updates, rolling updates | Five fixed commands — see [Updating nodes](updating-nodes.md#before-you-can-apply-updates-ssh) | root, or sudo for the dist-upgrade and the autoremove |
 | Ceph and Proxmox VE major upgrades | Fixed commands per step — see [Major upgrades](major-upgrades.md) | root |
 
 Velnox never opens a shell, and never runs a command typed by a person or received over the API:

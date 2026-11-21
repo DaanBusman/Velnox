@@ -174,6 +174,8 @@ export const ERROR_CODES = {
   updateMigrationFailed: 'update.migration_failed',
   /** After its reboot a node, the cluster or Ceph did not come back whole in time. */
   updateValidationFailed: 'update.validation_failed',
+  /** The update is done; `apt-get autoremove` was refused for what it would remove, or failed. */
+  updateAutoremoveIncomplete: 'update.autoremove_incomplete',
   /** Placement rules leave a guest no node to go to while its own is emptied (Phase 7B). */
   updatePlacementBlocked: 'update.placement_blocked',
   /** A placement rule names a guest or node the cluster does not have. */

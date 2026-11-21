@@ -204,6 +204,8 @@ MSYS_NO_PATHCONV=1 docker run -d --rm --name "$FIXTURE_NAME" \
 sleep 3
 docker ps --format '{{.Names}}' | grep -q "$FIXTURE_NAME" || { red "the fixture did not start"; docker logs "$FIXTURE_NAME" 2>&1 | tail -20; exit 1; }
 FIXLOG() { docker logs "$FIXTURE_NAME" 2>&1; }
+in_fixture() { MSYS_NO_PATHCONV=1 docker exec "$FIXTURE_NAME" sh -c "$1"; }
+step_keys() { call GET "/api/v1/jobs/$1" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>process.stdout.write((JSON.parse(r).steps||[]).map(x=>x.key+"="+x.status).join(",")))'; }
 
 # ---------------------------------------------------------------------------
 # An administrator, the cluster, SSH
@@ -332,8 +334,32 @@ check "failure: the job fails" FAILED "$(wait_for "$J3" 120 SUCCEEDED FAILED CAN
 check "failure: as a command that failed" update.command_failed "$(job_field "$J3" errorCode)"
 contains "failure: with dpkg's own words in the output" "dpkg returned an error code" "$(logs_of "$J3")"
 
+info "apt-get autoremove, after the verify step (0.7.27)."
+lacks "autoremove: an update that did not ask for it has no such step" "autoremove" "$(step_keys "$J2")"
+J2B="$(call POST "/api/v1/updates/nodes/${PVE1_ID}/run" '{"rebootPolicy":"NEVER","autoremove":true}' | json id)"
+check "autoremove: the job succeeds" SUCCEEDED "$(wait_for "$J2B" 120 SUCCEEDED FAILED PARTIALLY_SUCCEEDED CANCELLED)"
+contains "autoremove: its step comes after verify" "verify=SUCCEEDED,autoremove=SUCCEEDED" "$(step_keys "$J2B")"
+L2B="$(logs_of "$J2B")"
+contains "autoremove: says it removes the old kernel" "remove proxmox-kernel-6.8.12-4-pve-signed" "$L2B"
+contains "autoremove: and the orphaned library" "remove libllvm15" "$L2B"
+lacks "autoremove: never the kernel that runs" "remove proxmox-kernel-6.8.12-5" "$L2B"
+contains "autoremove: the node removed exactly those two" "ops: pve1 autoremove (2 packages: libllvm15 proxmox-kernel-6.8.12-4-pve-signed)" "$(FIXLOG)"
+lacks "autoremove: the fixture refused nothing Velnox sent" "EXEC REFUSED" "$(FIXLOG)"
+J2C="$(call POST "/api/v1/updates/nodes/${PVE1_ID}/run" '{"rebootPolicy":"NEVER","autoremove":true}' | json id)"
+check "autoremove: with nothing left, still succeeds" SUCCEEDED "$(wait_for "$J2C" 120 SUCCEEDED FAILED PARTIALLY_SUCCEEDED CANCELLED)"
+contains "autoremove: and says so" "nothing to autoremove" "$(logs_of "$J2C")"
+check "autoremove: and ran no removal" 1 "$(FIXLOG | grep -c 'ops: pve1 autoremove (')"
+
+info "An autoremove that would take the running kernel is refused."
+in_fixture "printf '%s' '{\"autoremoveRunning\":\"pve1\"}' > /fixture/store/ops-control.json"
+J2D="$(call POST "/api/v1/updates/nodes/${PVE1_ID}/run" '{"rebootPolicy":"NEVER","autoremove":true}' | json id)"
+check "refused: the update stands, the job is partial" PARTIALLY_SUCCEEDED "$(wait_for "$J2D" 120 SUCCEEDED FAILED PARTIALLY_SUCCEEDED CANCELLED)"
+check "refused: with its own error" update.autoremove_incomplete "$(job_field "$J2D" errorCode)"
+contains "refused: naming the package" "proxmox-kernel-6.8.12-5-pve-signed" "$(job_field "$J2D" errorDetail)"
+check "refused: nothing was removed" 1 "$(FIXLOG | grep -c 'ops: pve1 autoremove (')"
+in_fixture "printf '%s' '{}' > /fixture/store/ops-control.json"
+
 info "A node without a subscription, on the enterprise repository (ADR-056)."
-in_fixture() { MSYS_NO_PATHCONV=1 docker exec "$FIXTURE_NAME" sh -c "$1"; }
 in_fixture "printf '%s' '{\"repos\":\"enterprise-${RUN}\"}' > /fixture/store/ops-control.json"
 JS1="$(call POST "/api/v1/updates/nodes/${PVE2_ID}/run" '{"rebootPolicy":"NEVER"}' | json id)"
 check "subscription: pve2, which has none, updates from the enterprise repository's place" SUCCEEDED "$(wait_for "$JS1" 120 SUCCEEDED FAILED CANCELLED)"
@@ -399,7 +425,9 @@ check "auto: an automatic policy with a window is saved" 200 "$(last_status)"
 info "Waiting a scheduler tick with the window closed."
 sleep 70
 check "auto: nothing starts outside the window" 0 "$(psql_at "SELECT count(*) FROM jobs WHERE type = 'node.update' AND created_by_user_id IS NULL AND '${PVE3_ID}' = ANY(target_ids);")"
-call PUT "/api/v1/updates/windows/${OPEN_ID}" "$(T="$TENANT_ID" H="$HOUR_NOW" R="$RUN" body '{ tenantId: e.T, name: "Open " + e.R, timezone: "UTC", rrule: "FREQ=DAILY;BYHOUR=" + e.H, durationMinutes: 120 }')" >/dev/null
+SAVED="$(call PUT "/api/v1/updates/windows/${OPEN_ID}" "$(T="$TENANT_ID" H="$HOUR_NOW" R="$RUN" body '{ tenantId: e.T, name: "Open " + e.R, timezone: "UTC", rrule: "FREQ=DAILY;BYHOUR=" + e.H, durationMinutes: 120, autoremove: true }')")"
+check "window: remembers it ends updates with autoremove" true "$(printf '%s' "$SAVED" | json autoremove)"
+check "window: and the node's row says so" true "$(nodes_now | node_row pve3 | json policy.autoremove)"
 info "Waiting for the scheduler with the window open."
 AUTO=""
 for _ in $(seq 1 90); do
@@ -415,6 +443,7 @@ else
   FAIL=$((FAIL + 1))
 fi
 if [[ -n "$AUTO" ]]; then
+  check "auto: the window's autoremove is in the job it started" true "$(psql_at "SELECT params->>'autoremove' FROM jobs WHERE id = '${AUTO}';")"
   contains "auto: and says which policy started it" 'Queued by update policy "Automatic"' "$(psql_at "SELECT message FROM job_events WHERE job_id = '${AUTO}' AND event_key = 'job.queued';")"
   wait_for "$AUTO" 120 SUCCEEDED FAILED >/dev/null
   info "Waiting a tick to see it is not started twice in one opening."

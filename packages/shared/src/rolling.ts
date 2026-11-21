@@ -73,6 +73,8 @@ export const rollingUpdateRequestSchema = z.object({
   migrateBack: z.boolean().default(true),
   /** How long a node, the cluster and Ceph may take to come back whole after a reboot. */
   settleMinutes: z.number().int().min(1).max(60).default(10),
+  /** Each node ends with `apt-get autoremove` once it is validated; also on when the window says so. */
+  autoremove: z.boolean().optional(),
   /** Only these nodes; all of the cluster's nodes when absent. */
   nodes: z
     .array(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,62}$/))
@@ -93,6 +95,8 @@ export interface RollingUpdateParams {
   maintenanceWindowId: string | null;
   policyId: string | null;
   settleMinutes: number;
+  /** Each node ends with `apt-get autoremove` once it is validated. */
+  autoremove: boolean;
 }
 
 /** One running guest as the plan sees it. */
@@ -118,4 +122,6 @@ export interface RollingPlanPreview {
   /** Nodes whose guests would not fit on the others while it is down. */
   capacityShort: { node: string; neededBytes: number; freeBytes: number }[];
   maxConcurrency: number;
+  /** The cluster's policy is on and its window ends every update with `apt-get autoremove`. */
+  autoremoveByWindow: boolean;
 }

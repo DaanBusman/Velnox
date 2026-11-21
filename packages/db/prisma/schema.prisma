@@ -1826,6 +1826,8 @@ model MaintenanceWindow {
   rrule           String
   durationMinutes Int        @map("duration_minutes")
   blackoutDates   String[]   @default([]) @map("blackout_dates")
+  /// Every update in this window ends with apt-get autoremove on the nodes it updated (0.7.27).
+  autoremove      Boolean    @default(false)
   createdByLabel  String?    @map("created_by_label")
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)

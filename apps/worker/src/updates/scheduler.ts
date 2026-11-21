@@ -78,6 +78,7 @@ export async function scheduleUpdates(
           requireApproval: policy.requireApproval,
           maintenanceWindowId: policy.maintenanceWindowId,
           policyId: policy.id,
+          autoremove: policy.window.autoremove,
           pending: {
             total: node.updatesAvailable ?? 0,
             security: node.updatesSecurity ?? 0,

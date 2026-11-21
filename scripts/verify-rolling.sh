@@ -304,6 +304,20 @@ ALL="$(nodes_now)"
 check "rolling: nothing pending on any node" "0,0,0" "$(printf '%s' "$ALL" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>process.stdout.write(JSON.parse(r).sort((a,b)=>a.node.localeCompare(b.node)).map(n=>n.total).join(",")))')"
 check "rolling: no reboot due on any node" "false,false,false" "$(printf '%s' "$ALL" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>process.stdout.write(JSON.parse(r).sort((a,b)=>a.node.localeCompare(b.node)).map(n=>n.rebootRequired).join(",")))')"
 
+info "autoremove: a refusal on one node does not stop the others (0.7.27)."
+control '{"autoremoveRunning":"pve2"}'
+J3B="$(call POST "/api/v1/updates/clusters/${CLUSTER_ID}/rolling" '{"nonMigratable":"SHUTDOWN","rebootPolicy":"NEVER","settleMinutes":2,"autoremove":true}' | json id)"
+check "autoremove: the run ends partially succeeded" PARTIALLY_SUCCEEDED "$(wait_for "$J3B" 600 SUCCEEDED FAILED PARTIALLY_SUCCEEDED CANCELLED)"
+check "autoremove: as an autoremove that did not complete" update.autoremove_incomplete "$(job_field "$J3B" errorCode)"
+contains "autoremove: naming the node" "did not complete on pve2" "$(job_field "$J3B" errorDetail)"
+S3B="$(call GET "/api/v1/jobs/${J3B}" | node -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const s=JSON.parse(r).steps||[];process.stdout.write(s.map(x=>x.key+"="+x.status).join(","))})')"
+contains "autoremove: pve3's group still ran after pve2's" "g3-return=SUCCEEDED,g3-autoremove=SUCCEEDED" "$S3B"
+contains "autoremove: and the summary too" "summary=SUCCEEDED,autoremove-report=FAILED" "$S3B"
+contains "autoremove: pve1 was tidied" "ops: pve1 autoremove (2 packages" "$(FIXLOG)"
+contains "autoremove: pve3 was tidied" "ops: pve3 autoremove (2 packages" "$(FIXLOG)"
+lacks "autoremove: pve2 was not" "ops: pve2 autoremove (" "$(FIXLOG)"
+control '{}'
+
 info "A node that fails its validation stops the run, partially succeeded."
 control '{"cephWarnAfterReboot":"pve2"}'
 J4="$(call POST "/api/v1/updates/clusters/${CLUSTER_ID}/rolling" '{"nonMigratable":"SHUTDOWN","rebootPolicy":"ALWAYS","settleMinutes":1}' | json id)"

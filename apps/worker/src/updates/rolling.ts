@@ -31,6 +31,7 @@ import {
   sharedStorages,
 } from './guests';
 import {
+  autoremove,
   distUpgrade,
   rebootIfNeeded,
   refreshLists,
@@ -58,7 +59,11 @@ import { refreshNodeUpdates } from './refresh';
  *     validate  the group's nodes are back, the cluster is whole and quorate,
  *               Ceph is HEALTH_OK — waited for up to `settleMinutes`
  *     return    guests moved back where they came from, shut-down ones started
+ *     autoremove (when asked, or the window says so) apt-get autoremove on
+ *               each node of the group, once its guests are home
  *   summary     every guest moved, and where each is now
+ *   autoremove-report  ends the job partially succeeded if any node's
+ *               autoremove was refused or failed; those never stop the run
  *
  * A group that fails after an earlier one finished stops the run as
  * PARTIALLY_SUCCEEDED: the finished nodes are finished. Every failure names
@@ -109,6 +114,7 @@ export function parseRollingParams(raw: unknown): RollingUpdateParams & { settle
     maintenanceWindowId: typeof v.maintenanceWindowId === 'string' ? v.maintenanceWindowId : null,
     policyId: typeof v.policyId === 'string' ? v.policyId : null,
     settleMinutes: Math.min(60, Math.max(1, Number(v.settleMinutes ?? 10))),
+    autoremove: v.autoremove === true,
   };
 }
 
@@ -375,6 +381,7 @@ export function rollingUpdatePlaybook(
         nodes: params.groups.map((g) => g.join('+')).join(' → '),
         reboot: params.rebootPolicy,
         nonMigratable: params.nonMigratable,
+        autoremove: params.autoremove,
       },
     });
   }
@@ -641,6 +648,37 @@ export function rollingUpdatePlaybook(
         },
       },
     );
+    if (params.autoremove) {
+      steps.push({
+        kind: 'task',
+        key: `g${g}-autoremove`,
+        phase: 'verify',
+        // After the guests are home. One that cannot be done does not stop the
+        // run: a cluster left half updated over a tidy-up is the worse outcome.
+        // It is kept, and the last step ends the job partially succeeded.
+        run: async (context) => {
+          let removed = 0;
+          const notDone: { node: string; reason: string }[] = [];
+          await Promise.all(
+            group.map(async (node) => {
+              const h = await handle(context, node);
+              try {
+                removed += (await autoremove(h)).removed;
+              } catch (error) {
+                if (!(error instanceof StepError)) throw error;
+                await h.log('STDERR', error.message);
+                const reason = error.params?.reason;
+                notDone.push({
+                  node,
+                  reason: typeof reason === 'string' ? reason : error.message,
+                });
+              }
+            }),
+          );
+          return { removed, notDone: JSON.stringify(notDone) };
+        },
+      });
+    }
   });
 
   steps.push({
@@ -674,6 +712,33 @@ export function rollingUpdatePlaybook(
       return { nodes: params.groups.flat().length, moved, returned: back };
     },
   });
+
+  if (params.autoremove) {
+    steps.push({
+      kind: 'task',
+      key: 'autoremove-report',
+      phase: 'verify',
+      run: async (context) => {
+        const notDone: { node: string; reason: string }[] = [];
+        for (let g = 1; g <= params.groups.length; g += 1) {
+          const out = await output(`g${g}-autoremove`);
+          if (typeof out.notDone === 'string') {
+            notDone.push(...(JSON.parse(out.notDone) as typeof notDone));
+          }
+        }
+        if (notDone.length > 0) {
+          const nodes = notDone.map((n) => n.node).join(', ');
+          const reason = notDone.map((n) => `${n.node}: ${n.reason}`).join('; ');
+          throw new PartialStop(
+            ERROR_CODES.updateAutoremoveIncomplete,
+            `Every node is updated, but apt-get autoremove did not complete on ${nodes} (${reason})`,
+            { node: nodes, reason },
+          );
+        }
+        await context.log('STDOUT', 'apt-get autoremove completed on every node');
+      },
+    });
+  }
 
   return {
     version: 1,

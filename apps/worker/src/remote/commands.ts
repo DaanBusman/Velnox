@@ -79,6 +79,43 @@ export const COMMANDS = {
       'dist-upgrade',
     ],
   },
+  /**
+   * What `apt-get autoremove` would remove, without removing it — read first,
+   * so a removal that would take the running kernel or Proxmox itself is
+   * refused before anything is gone.
+   */
+  aptAutoremoveSimulate: {
+    id: 'apt.autoremove_simulate',
+    readOnly: true,
+    privileged: false,
+    timeoutMs: 3 * MINUTE,
+    interruptible: true,
+    argv: ['env', 'LC_ALL=C', 'apt-get', '-s', '-o', 'Debug::NoLocking=1', 'autoremove'],
+  },
+  /**
+   * Remove the packages nothing depends on any more — old kernels, mostly.
+   * Not `--purge`: their configuration files stay, as apt's own default does.
+   * Not interruptible, for the same reason as the dist-upgrade.
+   */
+  aptAutoremove: {
+    id: 'apt.autoremove',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 30 * MINUTE,
+    interruptible: false,
+    argv: [
+      'env',
+      'LC_ALL=C',
+      'DEBIAN_FRONTEND=noninteractive',
+      'apt-get',
+      '-y',
+      '-o',
+      'Dpkg::Options::=--force-confdef',
+      '-o',
+      'Dpkg::Options::=--force-confold',
+      'autoremove',
+    ],
+  },
   /** Debian's own marker that something installed wants a reboot. */
   rebootRequired: {
     id: 'system.reboot_required',
@@ -348,6 +385,45 @@ export function parseAptSimulate(output: string): SimulatedInstall[] {
     });
   }
   return out;
+}
+
+/** The packages `apt-get -s autoremove` says it would remove (its `Remv` lines). */
+export function parseAptRemovals(output: string): string[] {
+  const out: string[] = [];
+  for (const line of output.split(/\r?\n/)) {
+    const match = /^Remv (\S+)/.exec(line);
+    if (match) out.push(match[1]!);
+  }
+  return out;
+}
+
+/**
+ * Packages an autoremove may never take, whatever apt thinks of them: Proxmox
+ * itself and what boots the node. Apt would only offer one of these when
+ * something is already wrong — a meta-package removed by hand, a repository
+ * gone — and that is a node for a person to look at, not to tidy.
+ */
+const NEVER_AUTOREMOVED =
+  /^(proxmox-ve|pve-manager|pve-cluster|pve-container|qemu-server|pve-qemu-kvm|corosync|proxmox-default-kernel|proxmox-kernel-helper|pve-kernel-helper|proxmox-backup-client|ifupdown2|openssh-server|grub-.+|shim-.+|ceph|ceph-(?:base|common|mon|mgr|osd|mds|fuse))(?::\S+)?$/;
+
+/**
+ * Why this removal must not happen, or null when it may. A kernel is kept when
+ * it is the one running — taking it leaves no modules for what it loads next
+ * — or the newest installed, which the next boot will use.
+ */
+export function autoremoveRefusal(
+  removals: readonly string[],
+  keepKernels: readonly string[],
+): string | null {
+  const keep = new Set(keepKernels.map((k) => k.replace(/-pve$/, '')));
+  for (const name of removals) {
+    if (NEVER_AUTOREMOVED.test(name)) return `it would remove ${name}`;
+    const kernel = /^(?:proxmox|pve)-kernel-(\d+\.\d+\.\d+-\d+)/.exec(name);
+    if (kernel && keep.has(kernel[1]!)) {
+      return `it would remove ${name}, a kernel that is running or newest`;
+    }
+  }
+  return null;
 }
 
 /** `system.reboot_required`'s answer: whether, and which packages asked. */

@@ -48,26 +48,31 @@ step by step, with where the public key goes, in
 with each node's host key confirmed. A node without a confirmed key shows *Needs SSH*.
 
 **What Velnox runs.** Only commands from a fixed list in Velnox itself — never one typed by a person
-or received over the API. For updates, three:
+or received over the API. For updates, five:
 
 | Command | Changes the node | Needs root |
 |---|---|---|
 | `apt-get -s -o Debug::NoLocking=1 dist-upgrade` | No | No |
 | `apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade` | Yes | Yes |
+| `apt-get -s -o Debug::NoLocking=1 autoremove` — only when [autoremove](#removing-what-is-no-longer-needed-apt-autoremove) is on | No | No |
+| `apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold autoremove` — likewise | Yes | Yes |
 | a check for `/var/run/reboot-required` | No | No |
 
 Each is run with `LC_ALL=C`, and only after checking that the machine answering is called what the
 node is called — a command meant for `pve2` refuses to run anywhere else.
 
 **The account.** Root works. A dedicated account is better: give it the key Velnox holds, and let it
-run exactly the dist-upgrade through sudo without a password, in `/etc/sudoers.d/velnox`:
+run exactly the dist-upgrade and the autoremove through sudo without a password, in
+`/etc/sudoers.d/velnox`. Without the second line, updates work and an autoremove ends the job
+partially succeeded:
 
 ```
 velnox ALL=(root) NOPASSWD: /usr/bin/env LC_ALL\=C DEBIAN_FRONTEND\=noninteractive apt-get -y -o Dpkg\:\:Options\:\:\=--force-confdef -o Dpkg\:\:Options\:\:\=--force-confold dist-upgrade
+velnox ALL=(root) NOPASSWD: /usr/bin/env LC_ALL\=C DEBIAN_FRONTEND\=noninteractive apt-get -y -o Dpkg\:\:Options\:\:\=--force-confdef -o Dpkg\:\:Options\:\:\=--force-confold autoremove
 ```
 
 sudoers wants `:`, `=` and `,` in a command's arguments escaped with a backslash, as above; check
-the file with `visudo -cf /etc/sudoers.d/velnox`. Velnox prefixes that one command with `sudo -n`
+the file with `visudo -cf /etc/sudoers.d/velnox`. Velnox prefixes those two commands with `sudo -n`
 when the account is not root, and fails rather than
 waiting if sudo would ask for a password. An account limited to SFTP (`ForceCommand internal-sftp`)
 keeps copying files into the library working and makes updates fail with *exit code 126*.
@@ -122,8 +127,31 @@ The job, step by step:
    [rolling update](#updating-a-whole-cluster-rolling-update). Velnox
    waits for the node to come back, up to twenty minutes, and reports the kernel it came back on.
 8. **verify** — reads what is left. Anything still pending — held back, or new since — is said.
+9. **autoremove** — only when asked for, or when the policy's window has it on. See below.
 
 Only one job changes a cluster at a time: an update waits behind any other job on the same cluster.
+
+### Removing what is no longer needed: apt autoremove
+
+Updates leave packages behind that nothing depends on any more, old kernels above all, and on a
+small root disk those are what fills it. Tick **Afterwards, remove packages nothing needs any more**
+when you update a node or a whole cluster, or turn it on for a
+[maintenance window](#maintenance-windows) to have it done with every update in that window.
+
+It runs after the update is verified; in a rolling update, per group, once that group's guests are
+back. Velnox first asks apt what it would remove, lists it in the job, and **refuses** if that
+includes:
+
+- the **running kernel**, or the **newest installed kernel**, which the next boot will use;
+- **Proxmox itself or what boots the node**: `proxmox-ve`, `pve-manager`, `qemu-server`, Corosync,
+  Ceph's daemons, GRUB, the shim, the SSH server and the like. Apt offering one of these means
+  something is already wrong, and that is a node for a person to look at.
+
+Packages are removed, not purged: their configuration files stay.
+
+**When it cannot be done** — refused, or apt fails — the update stands and the job ends **partially
+succeeded**, saying which node and why. In a rolling update the other nodes are still updated and
+tidied: a cluster left half updated over a tidy-up would be the worse outcome.
 
 ---
 
@@ -165,6 +193,7 @@ The job, step by step:
      the cluster is quorate and Ceph is `HEALTH_OK`.
    - **return** — every guest moved back to the node it came from, every guest shut down started
      again.
+   - **autoremove** — only when asked for, or when the window has it on.
 4. **summary** — how many nodes were updated, how many guests moved or shut down and how many are
    back where they were; any that are not, by name, and where they are.
 
@@ -189,6 +218,11 @@ weekday such as *the last Saturday* (`-1SA`) — and shows when it next opens. *
 takes an RFC 5545 rule directly: `FREQ` (`DAILY`, `WEEKLY`, `MONTHLY`) with `BYDAY`, `BYMONTHDAY`,
 `BYHOUR` and `BYMINUTE`. Anything else — `INTERVAL`, `COUNT`, `UNTIL` — is refused rather than
 guessed at. **Not on these dates** skips whole local dates, such as a freeze before a holiday.
+
+**End every update in this window with apt autoremove** does that for every update under a policy
+with this window, those it starts by itself and those someone starts by hand. See
+[what it removes and refuses](#removing-what-is-no-longer-needed-apt-autoremove). A person can add
+it to one update; under a window that has it on, it cannot be left out.
 
 ---
 
@@ -236,3 +270,4 @@ output, step by step.
 | *These running guests cannot be moved live …* | Their disk is on a node's own storage, or a device is passed through. Move or stop them, or choose to shut them down for the reboot. |
 | *While … is down its guests need … GB* | The other nodes do not have the memory free. Stop guests you can spare, or add memory. |
 | *… did not come back whole after its update* | The node came back but the cluster or Ceph was not whole in time. The job names what was wrong and the guests not returned. |
+| *The update of … is done, but apt autoremove did not complete* | It would have removed a kernel in use or part of Proxmox, or apt failed, or sudo does not allow it. The update stands. Read the job's output and look at the node before removing anything by hand. |

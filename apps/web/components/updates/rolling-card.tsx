@@ -15,6 +15,7 @@ import { useApiError } from '@/lib/use-api-error';
 import { Button, Field, FormError } from '@/components/ui/form';
 import { Card, Notice } from '@/components/ui/primitives';
 import { useApiResource } from '@/components/server/use-api-resource';
+import { AutoremoveChoice } from './autoremove-choice';
 
 const select =
   'block h-9 w-full rounded border border-line bg-surface-2 px-2.5 text-sm text-ink focus:border-accent focus:outline-none';
@@ -34,6 +35,7 @@ export function RollingCard({ clusterId, canExecute }: { clusterId: string; canE
   const [nonMigratable, setNonMigratable] = useState<NonMigratablePolicy>('BLOCK');
   const [migrateBack, setMigrateBack] = useState(true);
   const [settle, setSettle] = useState(10);
+  const [autoremove, setAutoremove] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -50,6 +52,7 @@ export function RollingCard({ clusterId, canExecute }: { clusterId: string; canE
       nonMigratable,
       migrateBack,
       settleMinutes: settle,
+      autoremove,
     });
     setPending(false);
     if (!result.ok) return setFailure(result.error);
@@ -189,6 +192,13 @@ export function RollingCard({ clusterId, canExecute }: { clusterId: string; canE
               </span>
             </span>
           </label>
+          <div className="md:col-span-2">
+            <AutoremoveChoice
+              checked={autoremove || p.autoremoveByWindow}
+              byWindow={p.autoremoveByWindow}
+              onChange={setAutoremove}
+            />
+          </div>
         </div>
         {canExecute && (
           <Button

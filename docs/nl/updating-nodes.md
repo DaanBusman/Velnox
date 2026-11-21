@@ -53,27 +53,32 @@ installeren. Updates toepassen vereist daarom **SSH op het cluster**, ingesteld 
 met de hostsleutel van elke node bevestigd. Een node zonder bevestigde sleutel toont *Vereist SSH*.
 
 **Wat Velnox uitvoert.** Alleen opdrachten uit een vaste lijst in Velnox zelf — nooit een die iemand
-typte of die via de API binnenkwam. Voor updates drie:
+typte of die via de API binnenkwam. Voor updates vijf:
 
 | Opdracht | Wijzigt de node | Vereist root |
 |---|---|---|
 | `apt-get -s -o Debug::NoLocking=1 dist-upgrade` | Nee | Nee |
 | `apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade` | Ja | Ja |
+| `apt-get -s -o Debug::NoLocking=1 autoremove` — alleen als [autoremove](#verwijderen-wat-niet-meer-nodig-is-apt-autoremove) aan staat | Nee | Nee |
+| `apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold autoremove` — idem | Ja | Ja |
 | een controle op `/var/run/reboot-required` | Nee | Nee |
 
 Elke opdracht draait met `LC_ALL=C`, en pas nadat is gecontroleerd dat de machine die antwoordt heet
 zoals de node heet — een opdracht bedoeld voor `pve2` weigert overal anders te draaien.
 
 **Het account.** Root werkt. Een eigen account is beter: geef het de sleutel die Velnox bewaart, en
-laat het precies de dist-upgrade via sudo zonder wachtwoord uitvoeren, in `/etc/sudoers.d/velnox`:
+laat het precies de dist-upgrade en de autoremove via sudo zonder wachtwoord uitvoeren, in
+`/etc/sudoers.d/velnox`. Zonder de tweede regel werken updates, en eindigt een autoremove de job als
+deels geslaagd:
 
 ```
 velnox ALL=(root) NOPASSWD: /usr/bin/env LC_ALL\=C DEBIAN_FRONTEND\=noninteractive apt-get -y -o Dpkg\:\:Options\:\:\=--force-confdef -o Dpkg\:\:Options\:\:\=--force-confold dist-upgrade
+velnox ALL=(root) NOPASSWD: /usr/bin/env LC_ALL\=C DEBIAN_FRONTEND\=noninteractive apt-get -y -o Dpkg\:\:Options\:\:\=--force-confdef -o Dpkg\:\:Options\:\:\=--force-confold autoremove
 ```
 
 sudoers wil `:`, `=` en `,` in de argumenten van een opdracht ge-escaped met een backslash, zoals
 hierboven; controleer het bestand met `visudo -cf /etc/sudoers.d/velnox`. Velnox zet `sudo -n` voor
-die ene opdracht als het account geen root is, en faalt in plaats van te wachten als sudo om een
+die twee opdrachten als het account geen root is, en faalt in plaats van te wachten als sudo om een
 wachtwoord zou vragen. Een account dat beperkt is tot SFTP (`ForceCommand internal-sftp`) houdt het
 kopiëren naar de bibliotheek werkend en laat updates mislukken met *exitcode 126*.
 
@@ -132,10 +137,36 @@ De job, stap voor stap:
    terugkwam.
 8. **verify** — leest wat er over is. Wat nog wacht — tegengehouden, of nieuw sindsdien — wordt
    gemeld.
+9. **autoremove** — alleen als erom gevraagd is, of als het venster van het beleid het aan heeft.
+   Zie hieronder.
 
 Er wijzigt maar één job tegelijk een cluster: een update wacht achter elke andere job op hetzelfde
 cluster.
 
+
+
+### Verwijderen wat niet meer nodig is: apt autoremove
+
+Updates laten pakketten achter waar niets meer van afhangt, vooral oude kernels, en op een kleine
+systeemschijf zijn die het die hem vullen. Vink **Daarna pakketten verwijderen die niets meer nodig
+heeft** aan als je een node of een heel cluster bijwerkt, of zet het aan voor een
+[onderhoudsvenster](#onderhoudsvensters) om het bij elke update in dat venster te laten gebeuren.
+
+Het draait nadat de update geverifieerd is; bij een rolling update per groep, zodra de gasten van
+die groep terug zijn. Velnox vraagt apt eerst wat het zou verwijderen, zet dat in de job, en
+**weigert** als daar dit bij zit:
+
+- de **draaiende kernel**, of de **nieuwste geïnstalleerde kernel**, die de volgende start gebruikt;
+- **Proxmox zelf of wat de node opstart**: `proxmox-ve`, `pve-manager`, `qemu-server`, Corosync,
+  de daemons van Ceph, GRUB, de shim, de SSH-server en dergelijke. Als apt een daarvan aanbiedt, is
+  er al iets mis, en dan moet iemand naar de node kijken.
+
+Pakketten worden verwijderd, niet gepurged: hun configuratiebestanden blijven staan.
+
+**Als het niet kan** — geweigerd, of apt faalt — blijft de update staan en eindigt de job als **deels
+geslaagd**, met welke node en waarom. Bij een rolling update worden de andere nodes gewoon nog
+bijgewerkt en opgeruimd: een cluster dat om een opruiming half bijgewerkt blijft, is de slechtere
+uitkomst.
 
 ---
 
@@ -180,6 +211,7 @@ De job, stap voor stap:
      dat zijn, het cluster quorum heeft en Ceph `HEALTH_OK` is.
    - **return** — elke gast terug naar de node waar hij vandaan kwam, elke afgesloten gast weer
      gestart.
+   - **autoremove** — alleen als erom gevraagd is, of als het venster het aan heeft.
 4. **summary** — hoeveel nodes zijn bijgewerkt, hoeveel gasten verplaatst of afgesloten en hoeveel
    terug waar ze waren; wie dat niet is, met naam, en waar die nu staat.
 
@@ -206,6 +238,11 @@ zelf schrijven** neemt direct een RFC 5545-regel: `FREQ` (`DAILY`, `WEEKLY`, `MO
 `BYMONTHDAY`, `BYHOUR` en `BYMINUTE`. Al het andere — `INTERVAL`, `COUNT`, `UNTIL` — wordt geweigerd
 in plaats van geraden. **Niet op deze datums** slaat hele lokale datums over, zoals een bevriezing
 voor een feestdag.
+
+**Elke update in dit venster afsluiten met apt autoremove** doet dat bij elke update onder een beleid
+met dit venster, zowel die het zelf start als die iemand met de hand start. Zie
+[wat het verwijdert en weigert](#verwijderen-wat-niet-meer-nodig-is-apt-autoremove). Iemand kan het
+aan één update toevoegen; onder een venster dat het aan heeft, kan het niet worden weggelaten.
 
 ---
 
@@ -256,3 +293,4 @@ er een voor de uitvoer, stap voor stap.
 | *Deze draaiende gasten kunnen niet live verhuizen …* | Hun schijf staat op de eigen opslag van een node, of er is een apparaat doorgegeven. Verplaats of stop ze, of kies ervoor ze af te sluiten voor de herstart. |
 | *Terwijl … down is, hebben zijn gasten … GB nodig* | De andere nodes hebben dat geheugen niet vrij. Stop gasten die je kunt missen, of voeg geheugen toe. |
 | *… kwam na de update niet heel terug* | De node kwam terug, maar het cluster of Ceph was niet op tijd heel. De job noemt wat er mis was en welke gasten niet teruggezet zijn. |
+| *De update van … is klaar, maar apt autoremove is niet afgerond* | Het zou een kernel in gebruik of een deel van Proxmox hebben verwijderd, of apt faalde, of sudo staat het niet toe. De update blijft staan. Lees de uitvoer van de job en bekijk de node voordat je met de hand iets verwijdert. |

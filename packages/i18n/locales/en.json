@@ -481,6 +481,7 @@
       "capacity_short": "While {node} is down its guests need {neededGb} GB; the other nodes have {freeGb} GB free.",
       "migration_failed": "Moving guest {vmid} from {from} to {to} failed. The job’s output shows why.",
       "validation_failed": "{node} did not come back whole after its update ({reason}); the run stopped there.",
+      "autoremove_incomplete": "The update of {node} is done, but apt autoremove did not complete: {reason}. Look at the node before removing packages by hand.",
       "placement_blocked": "No node may take {guest} while its own is emptied, under placement rules {rules}. Change the rules, or stop the guest."
     },
     "maintenance": {
@@ -1941,6 +1942,12 @@
     "settleHint": "How long a node, the cluster and Ceph may take to be whole again after a reboot before the run stops.",
     "migrateBack": "Move guests back afterwards",
     "migrateBackHint": "Each guest returns to the node it came from once that node is done.",
+    "autoremove": "Afterwards, remove packages nothing needs any more (apt autoremove)",
+    "autoremoveHint": "Old kernels, mostly. Runs once the update is verified, and is refused if it would take the running kernel, the newest one, or Proxmox itself.",
+    "autoremoveByWindow": "On: the maintenance window of this cluster's policy ends every update with apt autoremove.",
+    "windowAutoremove": "End every update in this window with apt autoremove",
+    "windowAutoremoveHint": "After each node's update is verified, the packages nothing needs any more — old kernels, mostly — are removed. Refused, and said, if that would take the running kernel, the newest one, or Proxmox itself.",
+    "windowAutoremoveShort": "apt autoremove",
     "rollingStart": "Start rolling update",
     "refresh": "Refresh",
     "refreshHint": "Run apt-get update on every online node, then read what each would update. Without it the list is what the nodes found at their own daily check.",
