@@ -780,10 +780,14 @@
     "onCluster": "Cluster {cluster}"
   },
   "layout": {
+    "accountMenu": "Accountmenu: {name}",
+    "closeMenu": "Menu sluiten",
     "footerLicense": "{product} {version} — vrije software onder de AGPLv3.",
     "footerSource": "Broncode",
     "language": "Taal",
+    "menu": "Menu",
     "notifications": "Notificaties",
+    "openMenu": "Menu openen",
     "primaryNavigation": "Hoofdnavigatie",
     "searchPlaceholder": "Zoeken…",
     "searchUnavailable": "Globaal zoeken komt in fase 13.",

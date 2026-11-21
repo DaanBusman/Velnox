@@ -121,12 +121,13 @@ export function AuditPanel() {
       </Notice>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">
+        {/* A select is as wide as its longest option, here a customer's name. */}
+        <label className="flex max-w-full flex-col gap-1 text-xs text-ink-muted">
           {t('audit.columnAction')}
           <select
             value={action}
             onChange={(event) => changeAction(event.target.value)}
-            className="h-8 min-w-56 rounded border border-line bg-surface px-2 text-sm text-ink shadow-card"
+            className="h-8 w-full min-w-56 rounded border border-line bg-surface px-2 text-sm text-ink shadow-card"
           >
             <option value="">{t('server.audit.allActions')}</option>
             {(actions.data?.actions ?? []).map((name) => (
@@ -138,12 +139,12 @@ export function AuditPanel() {
         </label>
 
         {tenantList.length > 1 && (
-          <label className="flex flex-col gap-1 text-xs text-ink-muted">
+          <label className="flex max-w-full flex-col gap-1 text-xs text-ink-muted">
             {t('audit.filterTenant')}
             <select
               value={tenantId}
               onChange={(event) => changeFilter(() => setTenantId(event.target.value))}
-              className="h-8 min-w-44 rounded border border-line bg-surface px-2 text-sm text-ink shadow-card"
+              className="h-8 w-full min-w-44 rounded border border-line bg-surface px-2 text-sm text-ink shadow-card"
             >
               <option value="">{t('audit.filterAllTenants')}</option>
               {tenantList.map((tenant) => (

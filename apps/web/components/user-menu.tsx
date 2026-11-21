@@ -68,7 +68,9 @@ export function UserMenu({
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-7 items-center gap-2 rounded border border-line bg-surface-2 pl-1 pr-2 text-xs text-ink hover:bg-surface"
+        // Below `sm` only the initials show, which are no name for a button.
+        aria-label={t('layout.accountMenu', { name: user.displayName })}
+        className="flex items-center gap-2 rounded border border-line bg-surface-2 text-xs text-ink hover:bg-surface max-sm:size-9 max-sm:justify-center sm:h-7 sm:pl-1 sm:pr-2"
       >
         <span
           aria-hidden
@@ -76,7 +78,7 @@ export function UserMenu({
         >
           {initials || '?'}
         </span>
-        <span className="max-w-32 truncate">{user.displayName}</span>
+        <span className="hidden max-w-32 truncate sm:inline">{user.displayName}</span>
       </button>
 
       {open && (

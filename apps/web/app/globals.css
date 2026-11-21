@@ -255,6 +255,42 @@ body {
   animation: velnox-panel-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/*
+ * The sidebar below `lg`, off-canvas until the menu button opens it.
+ *
+ * Visibility rather than the transform alone keeps its links out of the tab
+ * order while closed. It flips at once on opening, because focus moves in
+ * during that same frame, and only after the slide on closing.
+ */
+@media (width < 64rem) {
+  .velnox-drawer {
+    position: fixed;
+    inset-block: 0;
+    left: 0;
+    z-index: 50;
+    width: min(18rem, 85vw);
+    height: 100dvh;
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      visibility 0s linear 180ms;
+  }
+
+  .velnox-drawer[data-open='true'] {
+    visibility: visible;
+    transform: none;
+    box-shadow: var(--velnox-shadow-panel);
+    transition-delay: 0s;
+  }
+}
+
+@media (width < 64rem) and (prefers-reduced-motion: reduce) {
+  .velnox-drawer {
+    transition-delay: 0s;
+  }
+}
+
 
 /* ---------------------------------------------------------------------------
    Rendered documentation.

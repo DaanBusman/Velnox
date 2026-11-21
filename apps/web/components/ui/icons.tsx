@@ -253,6 +253,12 @@ export const IconClose = (p: IconProps) => (
   </Icon>
 );
 
+export const IconMenu = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+  </Icon>
+);
+
 /** Nav-key to glyph. A key with no entry simply renders without one. */
 export const NAV_ICONS: Record<string, (props: IconProps) => ReactElement> = {
   dashboard: IconDashboard,

@@ -230,20 +230,26 @@ function ServerWindow({ initialTab, onClose }: { initialTab: TabKey; onClose: ()
               {TABS.map(({ key, icon: Icon }) => {
                 const active = tab === key;
                 return (
-                  <li key={key} className="min-w-0 flex-1 md:flex-none">
+                  <li key={key} className="min-w-min flex-auto md:flex-none">
                     <button
                       type="button"
                       onClick={() => setTab(key)}
                       aria-current={active ? 'true' : undefined}
                       className={clsx(
-                        'flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-sm transition-colors',
+                        // Icon over label below `md`: five labels side by side
+                        // were cut to a first letter, and two of them start
+                        // with the same one.
+                        'flex w-full flex-col items-center gap-1 rounded px-0.5 py-1.5 text-[11px] transition-colors',
+                        'md:flex-row md:gap-2.5 md:px-2.5 md:py-2 md:text-sm',
                         active
                           ? 'bg-accent-soft font-medium text-accent shadow-card'
                           : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
                       )}
                     >
                       <Icon className="size-4 shrink-0" />
-                      <span className="min-w-0 truncate">{t(`server.tab.${key}`)}</span>
+                      <span className="max-w-full min-w-0 text-center leading-tight md:truncate md:leading-normal">
+                        {t(`server.tab.${key}`)}
+                      </span>
                     </button>
                   </li>
                 );

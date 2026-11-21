@@ -38,8 +38,10 @@ export function TenantSelector({
   if (tenants.length < 2) return null;
 
   return (
-    <label className="flex h-8 shrink-0 items-center gap-2 rounded border border-line bg-surface px-2 shadow-card velnox-lit">
-      <span className="text-[11px] font-medium text-ink-muted">{t('layout.tenantSelector')}</span>
+    <label className="flex h-9 min-w-0 items-center gap-2 rounded border border-line bg-surface px-2 shadow-card velnox-lit max-md:flex-1 md:h-8 md:shrink-0">
+      <span className="sr-only text-[11px] font-medium text-ink-muted sm:not-sr-only">
+        {t('layout.tenantSelector')}
+      </span>
       <select
         value={selected ?? ''}
         disabled={pending}
@@ -54,7 +56,7 @@ export function TenantSelector({
           });
         }}
         className={clsx(
-          'max-w-[14rem] truncate bg-transparent py-0.5 text-xs font-medium text-ink',
+          'min-w-0 truncate bg-transparent py-0.5 text-xs font-medium text-ink max-md:flex-1 md:max-w-[14rem]',
           'focus:outline-none disabled:cursor-progress disabled:opacity-60',
         )}
       >

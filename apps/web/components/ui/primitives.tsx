@@ -93,7 +93,7 @@ export function StatusBadge({
 
 export function KeyValue({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[minmax(8rem,14rem)_1fr] items-baseline gap-x-4 gap-y-1 border-b border-line/70 py-2.5 last:border-b-0">
+    <div className="grid grid-cols-1 items-baseline gap-x-4 gap-y-1 border-b border-line/70 py-2.5 last:border-b-0 sm:grid-cols-[minmax(8rem,14rem)_1fr]">
       <dt className="text-xs font-medium text-ink-muted">{label}</dt>
       <dd className="min-w-0 break-words text-sm text-ink">{children}</dd>
     </div>

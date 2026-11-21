@@ -779,10 +779,14 @@
     "onCluster": "Cluster {cluster}"
   },
   "layout": {
+    "accountMenu": "Account menu: {name}",
+    "closeMenu": "Close menu",
     "footerLicense": "{product} {version} — free software under the AGPLv3.",
     "footerSource": "Source code",
     "language": "Language",
+    "menu": "Menu",
     "notifications": "Notifications",
+    "openMenu": "Open menu",
     "primaryNavigation": "Primary navigation",
     "searchPlaceholder": "Search…",
     "searchUnavailable": "Global search arrives in phase 13.",

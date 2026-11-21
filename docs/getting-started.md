@@ -123,6 +123,9 @@ phase implements are listed and lead to a page naming that phase, rather than be
 them would misrepresent what Velnox is for, and filling them with sample data would misrepresent
 reality.
 
+On a phone or in a narrow window, the sidebar is behind the menu button at the top left. On a phone,
+language and theme are at the bottom of that menu.
+
 Working today:
 
 | Where | What it does |

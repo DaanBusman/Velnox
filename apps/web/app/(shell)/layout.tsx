@@ -10,6 +10,7 @@ import {
   viewerTimeZone,
 } from '@/lib/preferences';
 import { UploadsProvider } from '@/components/library/uploads-provider';
+import { NavDrawerPage, NavDrawerProvider } from '@/components/nav-drawer';
 import { SessionKeepAlive } from '@/components/session-keepalive';
 import { SessionRecovery } from '@/components/session-recovery';
 import { Sidebar } from '@/components/sidebar';
@@ -93,48 +94,51 @@ export default async function ShellLayout({ children }: { children: React.ReactN
         {t('layout.skipToContent')}
       </a>
 
-      <div className="relative z-[1] flex h-dvh overflow-hidden">
-        <Sidebar
-          product={product}
-          version={version}
-          // The sidebar hides what this account cannot use — a courtesy, not the
-          // control. The API refuses every one of these regardless.
-          permissions={session.user.permissions}
-          viewer={{
-            isMspRoot: session.user.isMspRoot,
-            reachableTenants: session.user.reachableTenants ?? 1,
-          }}
-        />
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar
+      <NavDrawerProvider>
+        <div className="relative z-[1] flex h-dvh overflow-hidden">
+          <Sidebar
+            product={product}
+            version={version}
             locale={locale}
-            user={session.user}
-            tenants={selectableTenants}
-            selectedTenantId={resolveSelection(selected, selectableTenants)}
-            preferences={{
-              locale,
-              refreshSeconds: refresh,
-              refreshChoices: REFRESH_CHOICES,
-              motionBackground: moving,
-              timeZone: zone,
-              installationTimeZone: installationTimeZone(),
+            // The sidebar hides what this account cannot use — a courtesy, not the
+            // control. The API refuses every one of these regardless.
+            permissions={session.user.permissions}
+            viewer={{
+              isMspRoot: session.user.isMspRoot,
+              reachableTenants: session.user.reachableTenants ?? 1,
             }}
           />
 
-          <main id="main" className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>
+          <NavDrawerPage>
+            <Topbar
+              locale={locale}
+              user={session.user}
+              tenants={selectableTenants}
+              selectedTenantId={resolveSelection(selected, selectableTenants)}
+              preferences={{
+                locale,
+                refreshSeconds: refresh,
+                refreshChoices: REFRESH_CHOICES,
+                motionBackground: moving,
+                timeZone: zone,
+                installationTimeZone: installationTimeZone(),
+              }}
+            />
 
-            <footer className="mx-auto max-w-6xl px-6 pb-6 text-xs text-ink-muted">
-              {t('layout.footerLicense', { product, version })}{' '}
-              <a href="/settings" className="underline underline-offset-2">
-                {t('layout.footerSource')}
-              </a>
-            </footer>
-          </main>
-          <ActivityBar />
+            <main id="main" className="min-h-0 flex-1 overflow-y-auto">
+              <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">{children}</div>
+
+              <footer className="mx-auto max-w-6xl px-4 pb-6 text-xs text-ink-muted sm:px-6">
+                {t('layout.footerLicense', { product, version })}{' '}
+                <a href="/settings" className="underline underline-offset-2">
+                  {t('layout.footerSource')}
+                </a>
+              </footer>
+            </main>
+            <ActivityBar />
+          </NavDrawerPage>
         </div>
-      </div>
+      </NavDrawerProvider>
     </UploadsProvider>
   );
 }

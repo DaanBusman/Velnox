@@ -128,6 +128,9 @@ latere fase implementeert staan er wel en leiden naar een pagina die de fase noe
 verborgen te zijn — verbergen zou verkeerd weergeven waar Velnox voor is, en ze vullen met
 voorbeeldgegevens zou de werkelijkheid verkeerd weergeven.
 
+Op een telefoon of in een smal venster zit de zijbalk achter de menuknop linksboven. Op een telefoon
+staan taal en thema onderaan dat menu.
+
 Werkt vandaag:
 
 | Waar | Wat het doet |

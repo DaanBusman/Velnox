@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { SessionUser } from '@/lib/session-types';
 import { LocaleSwitcher } from './locale-switcher';
+import { NavDrawerButton } from './nav-drawer';
 import { TenantSelector, type SelectableTenant } from './tenant-selector';
 import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
@@ -32,10 +33,12 @@ export function Topbar({
   const t = useTranslations();
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur-sm">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface/85 px-3 backdrop-blur-sm sm:gap-3 sm:px-4">
+      <NavDrawerButton />
       <TenantSelector tenants={tenants} selected={selectedTenantId} />
 
-      <label className="relative flex min-w-0 flex-1 items-center">
+      {/* Disabled until phase 13, so it gives up its space first on a phone. */}
+      <label className="relative hidden min-w-0 flex-1 items-center md:flex">
         <span className="sr-only">{t('common.search')}</span>
         <input
           type="search"
@@ -46,10 +49,13 @@ export function Topbar({
         />
       </label>
 
-      <div className="flex shrink-0 items-center gap-1.5">
-        <LocaleSwitcher current={locale} />
-        <ThemeToggle />
-        <span aria-hidden className="mx-1 h-5 w-px bg-line" />
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {/* Below `sm` these two are at the bottom of the drawer. */}
+        <div className="hidden items-center gap-1.5 sm:flex">
+          <LocaleSwitcher current={locale} />
+          <ThemeToggle />
+          <span aria-hidden className="mx-1 h-5 w-px bg-line" />
+        </div>
         <UserMenu user={user} preferences={preferences} />
       </div>
     </header>
