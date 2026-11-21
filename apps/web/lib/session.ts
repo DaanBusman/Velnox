@@ -3,6 +3,7 @@ import type {
   ClusterFilesResponse,
   ClusterMergeCandidate,
   ClusterSshStatus,
+  JobActivityResponse,
   JobDetail,
   JobLogLine,
   JobSummary,
@@ -282,12 +283,24 @@ export function listAlerts() {
  * Jobs, newest first. The API filters to tenants the account holds `jobs.read`
  * in; a status here can only narrow that.
  */
-export function listJobs(params: { status?: string | null; tenantId?: string | null } = {}) {
+export function listJobs(
+  params: { status?: string | null; tenantId?: string | null; active?: boolean } = {},
+) {
   const query = new URLSearchParams();
   if (params.status) query.set('status', params.status);
   if (params.tenantId) query.set('tenantId', params.tenantId);
+  if (params.active) {
+    query.set('active', 'true');
+    query.set('limit', '200');
+  }
   const suffix = query.toString();
   return readAs<{ jobs: JobSummary[] }>(`/api/v1/jobs${suffix ? `?${suffix}` : ''}`);
+}
+
+/** How finished jobs ended, per day in this time zone. */
+export function getJobActivity(days: number, timeZone: string) {
+  const query = new URLSearchParams({ days: String(days), timeZone });
+  return readAs<JobActivityResponse>(`/api/v1/jobs/activity?${query.toString()}`);
 }
 
 export function getJob(id: string) {

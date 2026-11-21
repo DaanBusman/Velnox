@@ -19,6 +19,7 @@ import {
   parseSelftestParams,
   rootRedactor,
   type ApprovalSummary,
+  type JobActivityResponse,
   type JobDetail,
   type JobEventMessage,
   type JobLogLine,
@@ -32,6 +33,7 @@ import { AUDIT_ACTIONS, AuditService } from '../audit/audit.service';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { QueueService } from '../infrastructure/queue.service';
 import { RedisService } from '../infrastructure/redis.service';
+import { JOB_ACTIVITY_MAX_ROWS, jobActivityDays } from './job-activity';
 import { jobsHiddenBefore, jobsInSight, jobsVisibleDays } from './job-history';
 import { JobStreamHub } from './job-stream.hub';
 
@@ -349,6 +351,46 @@ export class JobsService {
     );
     const clusters = await this.clustersOf(allowed);
     return allowed.map((row) => summarise(row, clusters));
+  }
+
+  /**
+   * How the jobs of the last days ended, per day in the reader's time zone.
+   *
+   * Counted from the same rows the list shows: the data layer's tenant scope,
+   * the period older jobs are hidden after, and `jobs.read` per tenant.
+   */
+  async activity(
+    filter: { days: number; timeZone: string },
+    actor: Actor,
+    now = new Date(),
+  ): Promise<JobActivityResponse> {
+    const inSight = await jobsInSight(this.prisma, actor, now);
+    // A day longer than asked: where "today" starts depends on the time zone.
+    const from = new Date(now.getTime() - (filter.days + 1) * 24 * 60 * 60_000);
+    const rows = await this.prisma.client.job.findMany({
+      where: {
+        AND: [inSight],
+        status: { in: [...TERMINAL_JOB_STATUSES] },
+        finishedAt: { gte: from },
+      },
+      select: { tenantId: true, status: true, finishedAt: true },
+      orderBy: { finishedAt: 'desc' },
+      take: JOB_ACTIVITY_MAX_ROWS + 1,
+    });
+    const readable = new Map<string, boolean>();
+    const allowed = rows.slice(0, JOB_ACTIVITY_MAX_ROWS).filter((row) => {
+      let may = readable.get(row.tenantId);
+      if (may === undefined) {
+        may = isAllowed(actor.grants, PERMISSIONS.jobsRead, { tenantId: row.tenantId });
+        readable.set(row.tenantId, may);
+      }
+      return may;
+    });
+    return {
+      timeZone: filter.timeZone,
+      days: jobActivityDays(allowed, filter.days, filter.timeZone, now),
+      truncated: rows.length > JOB_ACTIVITY_MAX_ROWS,
+    };
   }
 
   /**

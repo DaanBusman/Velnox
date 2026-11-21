@@ -362,6 +362,28 @@ export interface JobSummary {
   eventSeq: number;
 }
 
+/** The most days the job activity can be asked for. */
+export const JOB_ACTIVITY_DAYS_MAX = 30;
+
+/** How the jobs that finished on one calendar day ended. */
+export interface JobActivityDay {
+  /** The day in the reader's time zone, as YYYY-MM-DD. */
+  date: string;
+  succeeded: number;
+  partial: number;
+  /** Failed, including those that were rolled back. */
+  failed: number;
+  cancelled: number;
+}
+
+/** Finished jobs per day, oldest day first, every day present. What the dashboard charts. */
+export interface JobActivityResponse {
+  timeZone: string;
+  days: JobActivityDay[];
+  /** More jobs finished than were counted, so the oldest days may read low. */
+  truncated: boolean;
+}
+
 export interface JobStepSummary {
   key: string;
   phase: string | null;

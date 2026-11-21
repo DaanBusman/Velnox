@@ -18,13 +18,25 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import type { Observable } from 'rxjs';
 import { z } from 'zod';
-import { JOBS_VISIBLE_DAYS_MAX, JOB_STATUSES, PERMISSIONS, SELFTEST_LIMITS } from '@velnox/shared';
+import {
+  JOBS_VISIBLE_DAYS_MAX,
+  JOB_ACTIVITY_DAYS_MAX,
+  JOB_STATUSES,
+  PERMISSIONS,
+  SELFTEST_LIMITS,
+} from '@velnox/shared';
 import { RequirePermission, RequirePermissionSomewhere } from '../../common/auth.guard';
 import { zodBody, zodQuery } from '../../common/zod-validation.pipe';
 import { actorOf } from '../../common/actor';
+import { isTimeZone } from './job-activity';
 import { JobsService } from './jobs.service';
 
 const uuidParam = new ParseUUIDPipe({ version: '4' });
+
+const activitySchema = z.object({
+  days: z.coerce.number().int().min(1).max(JOB_ACTIVITY_DAYS_MAX).default(14),
+  timeZone: z.string().trim().min(1).max(64).refine(isTimeZone, 'A time zone').default('UTC'),
+});
 
 const listSchema = z.object({
   status: z.enum(JOB_STATUSES).optional(),
@@ -106,6 +118,21 @@ export class JobsController {
     return this.jobs
       .list({ ...query, active: query.active === 'true' }, actorOf(request))
       .then((jobs) => ({ jobs }));
+  }
+
+  @RequirePermissionSomewhere(PERMISSIONS.jobsRead)
+  @Get('activity')
+  @ApiOperation({
+    summary: 'How finished jobs ended, per day',
+    description:
+      'Every day of the period, in the given time zone, counted from the jobs this reader may ' +
+      'see. `truncated` says when there were more than one reading counts.',
+  })
+  activity(
+    @Query(zodQuery(activitySchema)) query: z.infer<typeof activitySchema>,
+    @Req() request: Request,
+  ) {
+    return this.jobs.activity(query, actorOf(request));
   }
 
   @RequirePermissionSomewhere(PERMISSIONS.jobsRead)

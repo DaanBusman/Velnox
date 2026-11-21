@@ -127,7 +127,7 @@ Working today:
 
 | Where | What it does |
 |---|---|
-| **Dashboard** | Counts of what you can see, and prompts for what is worth doing next |
+| **Dashboard** | What you can see at a glance: what needs attention, job results over 14 days, capacity per cluster and update status |
 | **Tenants**, **Sites** | Your customers and their locations — see [Organising your fleet](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtual machines**, **Containers**, **Storage**, **Networks** | The Proxmox inventory, read on a schedule — see [Adding clusters and reading the inventory](managing-infrastructure.md) |
 | **ISO library** | Installers and cloud images on the Velnox host, copied onto any cluster — see [The ISO library](managing-the-library.md) |

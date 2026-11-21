@@ -132,7 +132,7 @@ Werkt vandaag:
 
 | Waar | Wat het doet |
 |---|---|
-| **Dashboard** | Aantallen van wat je kunt zien, en suggesties voor wat nu de moeite waard is |
+| **Dashboard** | Wat je kunt zien in één oogopslag: wat aandacht vraagt, jobresultaten over 14 dagen, capaciteit per cluster en updatestatus |
 | **Tenants**, **Locaties** | Je klanten en hun locaties — zie [Je omgeving indelen](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtuele machines**, **Containers**, **Opslag**, **Netwerken** | De Proxmox-inventarisatie, volgens schema uitgelezen — zie [Clusters toevoegen en de inventarisatie lezen](managing-infrastructure.md) |
 | **Virtuele machines → Nieuwe VM**, **Autoconfig** | VM’s die onbeheerd vanuit templates worden gebouwd, en de templates — zie [VM's bouwen vanuit templates](building-vms.md) |

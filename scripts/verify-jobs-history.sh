@@ -188,6 +188,10 @@ info "Nothing hidden until a period is set."
 check "engineer: every job, before" "$ALL" "$(visible_ids engineer)"
 check "engineer: reads the setting: nothing hidden, and it applies to them" "null false 3650" \
   "$(call engineer GET /api/v1/jobs/visibility | pick '[d.visibleDays,d.seesAll,d.maxDays].map(String).join(" ")')"
+check "activity: the customer's own finished job, in fourteen days, and nothing of anyone else" "14 1 0" \
+  "$(call customer GET '/api/v1/jobs/activity?days=14&timeZone=Europe/Amsterdam' | pick '[d.days.length, d.days.reduce((n,x)=>n+x.failed,0), d.days.reduce((n,x)=>n+x.succeeded+x.partial+x.cancelled,0)].join(" ")')"
+check "activity: an unknown time zone is refused" 400 "$(status customer GET '/api/v1/jobs/activity?timeZone=Mars/Olympus')"
+check "activity: more days than it keeps is refused" 400 "$(status customer GET '/api/v1/jobs/activity?days=31')"
 
 # ---------------------------------------------------------------------------
 info "Only system.manage sets it."

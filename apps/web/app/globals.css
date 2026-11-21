@@ -52,6 +52,11 @@
   --velnox-error-bg: #fbdfe1;
   --velnox-unknown: #59636e;
   --velnox-unknown-bg: #e6e9ed;
+  /* Chart marks: brighter than the status text above, which has to be read. */
+  --velnox-chart-good: #0ca30c;
+  --velnox-chart-warning: #fab219;
+  --velnox-chart-critical: #d03b3b;
+  --velnox-chart-neutral: #8a94a3;
 
   /* Elevation. Two layers each: a tight contact shadow that grounds the edge,
      and a wider ambient one that carries the height. */
@@ -88,6 +93,10 @@
   --velnox-error-bg: #3a1519;
   --velnox-unknown: #909dad;
   --velnox-unknown-bg: #212831;
+  --velnox-chart-good: #0ca30c;
+  --velnox-chart-warning: #fab219;
+  --velnox-chart-critical: #d03b3b;
+  --velnox-chart-neutral: #7b8696;
 
   /* Deeper and softer: on a near-black ground a light shadow is invisible, so
      these are there to separate rather than to lift. The lifting is done by the
