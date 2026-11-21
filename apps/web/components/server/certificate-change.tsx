@@ -8,7 +8,8 @@ import { useApiError } from '@/lib/use-api-error';
 import { Button, Field, FileButton, FormError, TextInput } from '@/components/ui/form';
 import { Card, Notice } from '@/components/ui/primitives';
 
-type Choice = TlsChangeRequest['mode'];
+/** A PFX is a way to supply `certificate`, not a choice of its own. */
+type Choice = Exclude<TlsChangeRequest['mode'], 'pfx'>;
 
 const area =
   'block min-h-28 w-full rounded border border-line bg-surface-2 px-2.5 py-2 font-mono text-xs text-ink focus:border-accent focus:outline-none';
@@ -48,6 +49,9 @@ export function CertificateChange({
   /** Which file each field was last read from, shown beside its button. */
   const [certificateFile, setCertificateFile] = useState<string | null>(null);
   const [keyFile, setKeyFile] = useState<string | null>(null);
+  /** A chosen PFX file, as base64, and the password that opens it. Kept in the page only. */
+  const [pfx, setPfx] = useState<string | null>(null);
+  const [pfxPassword, setPfxPassword] = useState('');
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [result, setResult] = useState<TlsChangeResponse | null>(null);
@@ -58,6 +62,26 @@ export function CertificateChange({
     void file.text().then((text) => {
       set(text);
       named(file.name);
+    });
+  };
+
+  /** A PFX holds the certificate and its key together, so it replaces both fields. */
+  const loadCertificate = (file: File) => {
+    if (!/\.(pfx|p12)$/i.test(file.name)) {
+      setPfx(null);
+      setPfxPassword('');
+      load(setCertificate, setCertificateFile)(file);
+      return;
+    }
+    void file.arrayBuffer().then((buffer) => {
+      let binary = '';
+      for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte);
+      setPfx(btoa(binary));
+      setPfxPassword('');
+      setCertificate('');
+      setKey('');
+      setKeyFile(null);
+      setCertificateFile(file.name);
     });
   };
 
@@ -74,14 +98,19 @@ export function CertificateChange({
             caRoot: otherCa && caRoot.trim() ? caRoot : null,
           }
         : choice === 'certificate'
-          ? { mode: 'certificate', certificate, key }
+          ? pfx
+            ? { mode: 'pfx', pfx, password: pfxPassword }
+            : { mode: 'certificate', certificate, key }
           : { mode: choice };
     const response = await apiPut<TlsChangeResponse>('/system/tls', request);
     setPending(false);
     if (!response.ok) return setFailure(response.error);
-    // The key is not kept in the page once it is stored.
+    // The key is not kept in the page once it is stored, nor the PFX that held it.
     setKey('');
     setKeyFile(null);
+    setPfx(null);
+    setPfxPassword('');
+    if (pfx) setCertificateFile(null);
     setResult(response.data);
     onChanged(response.data.status);
   }
@@ -106,7 +135,8 @@ export function CertificateChange({
     choice === 'acme'
       ? email.includes('@') && (!otherCa || directory.startsWith('https://'))
       : choice === 'certificate'
-        ? certificate.includes('BEGIN CERTIFICATE') && key.includes('PRIVATE KEY')
+        ? pfx !== null ||
+          (certificate.includes('BEGIN CERTIFICATE') && key.includes('PRIVATE KEY'))
         : true;
 
   return (
@@ -204,40 +234,86 @@ export function CertificateChange({
 
         {choice === 'certificate' && (
           <div className="space-y-3">
-            <Field label={t('tls.certificateField')} hint={t('tls.certificateFieldHint')}>
-              {(props) => (
-                <textarea
-                  {...props}
-                  className={area}
-                  value={certificate}
-                  placeholder="-----BEGIN CERTIFICATE-----"
-                  onChange={(e) => setCertificate(e.target.value)}
-                />
-              )}
-            </Field>
+            {!pfx && (
+              <Field label={t('tls.certificateField')} hint={t('tls.certificateFieldHint')}>
+                {(props) => (
+                  <textarea
+                    {...props}
+                    className={area}
+                    value={certificate}
+                    placeholder="-----BEGIN CERTIFICATE-----"
+                    onChange={(e) => setCertificate(e.target.value)}
+                  />
+                )}
+              </Field>
+            )}
             <FileButton
-              accept=".pem,.crt,.cer"
+              accept=".pem,.crt,.cer,.pfx,.p12"
+              picker={{
+                description: t('tls.fileTypeCertificate'),
+                accept: {
+                  'application/x-pem-file': ['.pem', '.crt', '.cer'],
+                  'application/x-pkcs12': ['.pfx', '.p12'],
+                },
+              }}
               chosen={certificateFile}
-              onFile={load(setCertificate, setCertificateFile)}
+              onFile={loadCertificate}
             >
               {t('tls.certificateFromFile')}
             </FileButton>
-            <Field label={t('tls.keyField')} hint={t('tls.keyFieldHint')}>
-              {(props) => (
-                <textarea
-                  {...props}
-                  className={area}
-                  value={key}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="-----BEGIN PRIVATE KEY-----"
-                  onChange={(e) => setKey(e.target.value)}
-                />
-              )}
-            </Field>
-            <FileButton accept=".pem,.key" chosen={keyFile} onFile={load(setKey, setKeyFile)}>
-              {t('tls.keyFromFile')}
-            </FileButton>
+            {pfx ? (
+              <div className="space-y-2">
+                <Field label={t('tls.pfxPassword')} hint={t('tls.pfxPasswordHint')}>
+                  {(props) => (
+                    <TextInput
+                      {...props}
+                      type="password"
+                      autoComplete="off"
+                      value={pfxPassword}
+                      onChange={(e) => setPfxPassword(e.target.value)}
+                    />
+                  )}
+                </Field>
+                <Button
+                  type="button"
+                  variant="quiet"
+                  onClick={() => {
+                    setPfx(null);
+                    setPfxPassword('');
+                    setCertificateFile(null);
+                  }}
+                >
+                  {t('tls.pfxClear')}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Field label={t('tls.keyField')} hint={t('tls.keyFieldHint')}>
+                  {(props) => (
+                    <textarea
+                      {...props}
+                      className={area}
+                      value={key}
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="-----BEGIN PRIVATE KEY-----"
+                      onChange={(e) => setKey(e.target.value)}
+                    />
+                  )}
+                </Field>
+                <FileButton
+                  accept=".pem,.key"
+                  picker={{
+                    description: t('tls.fileTypeKey'),
+                    accept: { 'application/x-pem-file': ['.pem', '.key'] },
+                  }}
+                  chosen={keyFile}
+                  onFile={load(setKey, setKeyFile)}
+                >
+                  {t('tls.keyFromFile')}
+                </FileButton>
+              </>
+            )}
           </div>
         )}
 

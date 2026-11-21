@@ -464,6 +464,8 @@
       "certificate_invalid": "Dat is geen PEM-certificaat dat Velnox kan lezen.",
       "key_invalid": "Dat is geen leesbare privésleutel. Een versleutelde sleutel moet eerst worden ontsleuteld.",
       "key_mismatch": "Die sleutel hoort niet bij dat certificaat.",
+      "pfx_invalid": "Dat is geen PFX-bestand met een certificaat en zijn privésleutel.",
+      "pfx_password": "Dat wachtwoord opent dit PFX-bestand niet.",
       "certificate_expired": "Dat certificaat is al verlopen ({notAfter}).",
       "acme_needs_hostname": "Deze installatie wordt bereikt op {address}. Let’s Encrypt geeft geen certificaten uit voor IP-adressen: stel eerst een hostnaam in.",
       "apply_failed": "De proxy weigerde de nieuwe configuratie, en serveert nog het vorige certificaat: {detail}",
@@ -1352,8 +1354,13 @@
     },
     "changedBy": "door {who}",
     "hostTitle": "Op de host",
-    "certificateFromFile": "Certificaat uit een bestand lezen…",
-    "keyFromFile": "Sleutel uit een bestand lezen…"
+    "certificateFromFile": "Certificaat uit een bestand lezen (PEM of PFX)…",
+    "keyFromFile": "Sleutel uit een bestand lezen…",
+    "fileTypeCertificate": "Certificaatbestanden (.pem, .crt, .cer, .pfx, .p12)",
+    "fileTypeKey": "Privésleutelbestanden (.pem, .key)",
+    "pfxPassword": "Wachtwoord van het PFX-bestand",
+    "pfxPasswordHint": "Laat leeg als het bestand er geen heeft. Het wordt eenmalig gebruikt om het bestand te openen en niet bewaard.",
+    "pfxClear": "Dit bestand weghalen"
   },
   "users": {
     "chooseRole": "Kies een rol…",

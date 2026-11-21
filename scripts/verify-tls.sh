@@ -269,12 +269,52 @@ else
   red "could not start Pebble"; FAIL=$((FAIL + 1))
 fi
 
+info "A PFX file."
+MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout "$WORK_NATIVE/c.key" -out "$WORK_NATIVE/c.crt" -days 30 \
+  -subj "/CN=${SITE}" -addext "subjectAltName=DNS:${SITE}" >/dev/null 2>&1
+PFX_PASSWORD="$(node -e 'process.stdout.write(require("crypto").randomBytes(18).toString("base64url"))')"
+printf '%s' "$PFX_PASSWORD" >"$WORK/pfx-password"
+MSYS_NO_PATHCONV=1 openssl pkcs12 -export -inkey "$WORK_NATIVE/c.key" -in "$WORK_NATIVE/c.crt" \
+  -passout "file:$WORK_NATIVE/pfx-password" -out "$WORK_NATIVE/c.pfx" >/dev/null 2>&1
+MSYS_NO_PATHCONV=1 openssl pkcs12 -export -nokeys -in "$WORK_NATIVE/c.crt" \
+  -passout "file:$WORK_NATIVE/pfx-password" -out "$WORK_NATIVE/nokey.pfx" >/dev/null 2>&1
+as_base64() { node -e 'process.stdout.write(require("fs").readFileSync(process.argv[1]).toString("base64"))' "$1"; }
+PFX_C="$(as_base64 "$WORK_NATIVE/c.pfx")"
+PFX_NOKEY="$(as_base64 "$WORK_NATIVE/nokey.pfx")"
+export PFX_C PFX_NOKEY PFX_PASSWORD
+PFX_SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+R="$(put_tls '{ mode: "pfx", pfx: e.PFX_C, password: e.PFX_PASSWORD + "x" }')"
+check "the wrong password is refused" "400 tls.pfx_password" "$(last_status) $(printf '%s' "$R" | json error.code)"
+R="$(put_tls '{ mode: "pfx", pfx: Buffer.from("not a pfx file").toString("base64"), password: "x" }')"
+check "what is not a PFX is refused" "400 tls.pfx_invalid" "$(last_status) $(printf '%s' "$R" | json error.code)"
+R="$(put_tls '{ mode: "pfx", pfx: e.PFX_NOKEY, password: e.PFX_PASSWORD }')"
+check "a PFX without a private key is refused" "400 tls.pfx_invalid" "$(last_status) $(printf '%s' "$R" | json error.code)"
+put_tls '{ mode: "pfx", pfx: e.PFX_C, password: "two\nlines" }' >/dev/null
+check "a password of two lines is refused" 400 "$(last_status)"
+R="$(put_tls '{ mode: "pfx", pfx: e.PFX_C, password: e.PFX_PASSWORD }')"
+check "a PFX with its password is accepted and verified" "200 true" "$(last_status) $(printf '%s' "$R" | json verified)"
+check "a browser gets exactly the certificate in it" "$(fingerprint_of "$WORK_NATIVE/c.crt")" "$(served_fingerprint)"
+check "it is stored as an ordinary certificate" "interface|certificate" "$(printf '%s' "$R" | json status.managedBy)|$(printf '%s' "$R" | json status.mode)"
+lacks "the response carries no key" "PRIVATE KEY" "$R"
+lacks "nor the password" "$PFX_PASSWORD" "$R"
+lacks "the status carries no password" "$PFX_PASSWORD" "$(call GET /api/v1/system/tls)"
+AUDITED="$(psql_at "SELECT coalesce(string_agg(metadata::text, ' '), '') FROM audit_events WHERE action = 'system.tls_changed';")"
+lacks "the audit log holds no password" "$PFX_PASSWORD" "$AUDITED"
+lacks "nor the file" "${PFX_C:0:64}" "$AUDITED"
+SETTINGS="$(psql_at "SELECT row_to_json(system_settings)::text FROM system_settings;")"
+lacks "the settings hold no password" "$PFX_PASSWORD" "$SETTINGS"
+API_LOGS="$(dc logs --since "$PFX_SINCE" api 2>&1)"
+lacks "the API's logs hold no password" "$PFX_PASSWORD" "$API_LOGS"
+lacks "nor the file" "${PFX_C:0:64}" "$API_LOGS"
+lacks "nor a key" "PRIVATE KEY" "$API_LOGS"
+check "no converted file stays behind in the API's temporary directory" "" "$(in_api 'grep -rl "PRIVATE KEY" /tmp 2>/dev/null || true')"
+
 info "Back to the installer's."
 R="$(put_tls '{ mode: "installer" }')"
 check "handing it back is accepted" "200 installer" "$(last_status) $(printf '%s' "$R" | json status.managedBy)"
 check "the installer's certificate is served again" "$INSTALLER_FP" "$(served_fingerprint)"
 check "the managed file imports the installer's again" "import /etc/caddy/tls/tls.caddy" "$(in_api 'tail -1 /var/lib/velnox/tls/tls.caddy')"
-check "every change was audited" 4 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'system.tls_changed' AND actor_label LIKE '${ACTOR}' AND result = 'SUCCESS';")"
+check "every change was audited" 5 "$(psql_at "SELECT count(*) FROM audit_events WHERE action = 'system.tls_changed' AND actor_label LIKE '${ACTOR}' AND result = 'SUCCESS';")"
 check "the admin API has no port: only its socket" "" "$(dc exec -T caddy sh -c 'netstat -ltn 2>/dev/null | grep -E ":2019 " || true')"
 
 printf '\n'

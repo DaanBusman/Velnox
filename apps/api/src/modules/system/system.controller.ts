@@ -49,6 +49,20 @@ const tlsChangeSchema = z.discriminatedUnion('mode', [
     certificate: z.string().min(1).max(65_536),
     key: z.string().min(1).max(16_384),
   }),
+  z.object({
+    mode: z.literal('pfx'),
+    // 64 KiB of file, as base64: far more than a certificate with its chain.
+    pfx: z
+      .string()
+      .min(1)
+      .max(87_384)
+      .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'A file as base64'),
+    // A line, because openssl reads it as one.
+    password: z
+      .string()
+      .max(1024)
+      .regex(/^[^\r\n]*$/, 'One line'),
+  }),
 ]);
 
 /*
@@ -138,7 +152,7 @@ export class SystemController {
     summary: 'Change the certificate being served',
     description:
       'Caddy’s own certificate, one from an ACME CA (Let’s Encrypt unless another directory is ' +
-      'named), an uploaded certificate and key, or back to the installer’s. Applied through ' +
+      'named), an uploaded certificate and key or PFX file, or back to the installer’s. Applied through ' +
       'Caddy’s admin socket; refused configurations leave the previous certificate in place. ' +
       'The key is stored encrypted and never returned. The certificate served afterwards is read ' +
       'back over a handshake (ADR-045).',

@@ -142,6 +142,10 @@ export const ERROR_CODES = {
   tlsKeyInvalid: 'tls.key_invalid',
   /** The key does not belong to the certificate. */
   tlsKeyMismatch: 'tls.key_mismatch',
+  /** Not a PFX file, or one without a certificate and its key. */
+  tlsPfxInvalid: 'tls.pfx_invalid',
+  /** The password does not open the PFX file. */
+  tlsPfxPassword: 'tls.pfx_password',
   tlsCertificateExpired: 'tls.certificate_expired',
   /** Let's Encrypt does not issue for an IP address. */
   tlsAcmeNeedsHostname: 'tls.acme_needs_hostname',

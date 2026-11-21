@@ -242,7 +242,10 @@ picked up is visible instead of being reported as success.
   names a different directory — a private CA such as step-ca, or a staging server — with the root
   that signs its HTTPS when that is not publicly trusted.
 - **My own certificate** — paste the certificate with its chain, and the unencrypted private key,
-  or read either from a PEM file with the button under its field. The same checks as the script: the key must belong to the certificate, and it must
+  or read either from a PEM file with the button under its field. A PFX file (`.pfx` or `.p12`)
+  holds both: choose it with the certificate button and enter its password, if it has one. Velnox
+  converts it on the server, uses the password once and does not store it or the file. The same
+  checks as the script: the key must belong to the certificate, and it must
   not have expired; names that do not cover the address, or a missing chain, are warnings. The key
   is stored encrypted in Velnox's secret store and is never shown again.
 

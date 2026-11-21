@@ -166,15 +166,24 @@ export function Button({
  * that clears the input after reading it, it says "No file chosen" straight
  * after one was. This is a hidden input behind an ordinary button, and the name
  * of the file it read, which is the one thing worth showing.
+ *
+ * With `picker`, the dialog's file-type list says what it is looking for. Given
+ * only `accept`, Chrome and Edge call that list "Custom Files" for any type they
+ * have no name of their own for, and a person looking for a certificate does
+ * not recognise it. Only the File System Access API can name it; a browser
+ * without it (Firefox, Safari) gets the plain input and its own wording.
  */
 export function FileButton({
   accept,
+  picker,
   onFile,
   chosen,
   disabled,
   children,
 }: {
   accept: string;
+  /** What the dialog calls these files, and which extensions that covers. */
+  picker?: { description: string; accept: Record<string, string[]> };
   onFile: (file: File) => void;
   /** The name of the file last read, shown beside the button. */
   chosen?: string | null;
@@ -182,6 +191,19 @@ export function FileButton({
   children: ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
+
+  async function choose() {
+    const open = (window as unknown as { showOpenFilePicker?: OpenFilePicker }).showOpenFilePicker;
+    if (!picker || !open) return input.current?.click();
+    try {
+      const [handle] = await open.call(window, { types: [picker], multiple: false });
+      if (handle) onFile(await handle.getFile());
+    } catch (error) {
+      // Closing the dialog is not a failure. Anything else falls back to the input.
+      if ((error as { name?: string } | null)?.name !== 'AbortError') input.current?.click();
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <input
@@ -203,7 +225,7 @@ export function FileButton({
         variant="secondary"
         className="h-8 text-xs"
         disabled={disabled}
-        onClick={() => input.current?.click()}
+        onClick={() => void choose()}
       >
         {children}
       </Button>
@@ -211,6 +233,12 @@ export function FileButton({
     </div>
   );
 }
+
+/** The part of the File System Access API used above; not in TypeScript's DOM types yet. */
+type OpenFilePicker = (options: {
+  types: { description: string; accept: Record<string, string[]> }[];
+  multiple: boolean;
+}) => Promise<{ getFile(): Promise<File> }[]>;
 
 /**
  * The form-level error.

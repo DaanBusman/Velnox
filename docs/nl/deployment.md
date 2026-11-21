@@ -247,7 +247,10 @@ weggeschreven maar nooit is opgepakt zichtbaar is in plaats van als succes gemel
   gebruiken** noemt een andere directory — een eigen CA zoals step-ca, of een testserver — met de
   root die haar HTTPS ondertekent als die niet publiek vertrouwd is.
 - **Mijn eigen certificaat** — plak het certificaat met zijn keten, en de onversleutelde
-  privésleutel, of lees ze uit een PEM-bestand met de knop onder het veld. Dezelfde controles als het script: de sleutel moet bij het certificaat horen, en het
+  privésleutel, of lees ze uit een PEM-bestand met de knop onder het veld. Een PFX-bestand (`.pfx`
+  of `.p12`) bevat ze allebei: kies het met de certificaatknop en vul het wachtwoord in, als het er
+  een heeft. Velnox zet het op de server om, gebruikt het wachtwoord eenmalig en bewaart het
+  wachtwoord noch het bestand. Dezelfde controles als het script: de sleutel moet bij het certificaat horen, en het
   mag niet verlopen zijn; namen die het adres niet dekken, of een ontbrekende keten, zijn
   waarschuwingen. De sleutel wordt versleuteld in de geheimenopslag van Velnox bewaard en wordt
   nooit meer getoond.

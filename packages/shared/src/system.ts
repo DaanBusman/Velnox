@@ -168,6 +168,14 @@ export type TlsChangeRequest =
       certificate: string;
       /** Its private key, unencrypted PEM. Stored encrypted, never returned. */
       key: string;
+    }
+  | {
+      /** The same, from one PFX (PKCS#12) file; applied as `certificate`. */
+      mode: 'pfx';
+      /** The file, as base64. */
+      pfx: string;
+      /** What opens it. Used once, never stored or logged. */
+      password: string;
     };
 
 export interface TlsChangeResponse {

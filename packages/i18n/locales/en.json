@@ -463,6 +463,8 @@
       "certificate_invalid": "That is not a PEM certificate Velnox can read.",
       "key_invalid": "That is not a readable private key. An encrypted key must be decrypted first.",
       "key_mismatch": "That key does not belong to that certificate.",
+      "pfx_invalid": "That is not a PFX file holding a certificate and its private key.",
+      "pfx_password": "That password does not open this PFX file.",
       "certificate_expired": "That certificate has already expired ({notAfter}).",
       "acme_needs_hostname": "This installation is reached on {address}. Let’s Encrypt does not issue certificates for IP addresses: set a host name first.",
       "apply_failed": "The proxy refused the new configuration, and still serves the previous certificate: {detail}",
@@ -1351,8 +1353,13 @@
     },
     "changedBy": "by {who}",
     "hostTitle": "On the host",
-    "certificateFromFile": "Read the certificate from a file…",
-    "keyFromFile": "Read the key from a file…"
+    "certificateFromFile": "Read the certificate from a file (PEM or PFX)…",
+    "keyFromFile": "Read the key from a file…",
+    "fileTypeCertificate": "Certificate files (.pem, .crt, .cer, .pfx, .p12)",
+    "fileTypeKey": "Private key files (.pem, .key)",
+    "pfxPassword": "Password of the PFX file",
+    "pfxPasswordHint": "Leave empty if the file has none. It is used once to open the file and is not stored.",
+    "pfxClear": "Remove this file"
   },
   "users": {
     "chooseRole": "Choose a role…",

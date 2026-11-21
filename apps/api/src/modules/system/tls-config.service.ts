@@ -17,6 +17,7 @@ import { SecretStoreService } from '../auth/secret-store.service';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import type { Actor } from '../../common/actor';
 import { CaddyAdminService } from './caddy-admin.service';
+import { readPfx } from './pfx';
 import { TlsService } from './tls.service';
 
 /**
@@ -253,7 +254,13 @@ export class TlsConfigService implements OnModuleInit {
     return changed;
   }
 
-  async apply(request: TlsChangeRequest, actor: Actor): Promise<TlsChangeResponse> {
+  async apply(incoming: TlsChangeRequest, actor: Actor): Promise<TlsChangeResponse> {
+    // A PFX is a certificate and key in one file: from here on it is those two,
+    // through the same checks, and neither the file nor its password goes further.
+    const request: Exclude<TlsChangeRequest, { mode: 'pfx' }> =
+      incoming.mode === 'pfx'
+        ? { mode: 'certificate', ...(await readPfx(incoming.pfx, incoming.password)) }
+        : incoming;
     const siteAddress = this.tls.siteAddress();
     const previous = await this.stored();
     const warnings: string[] = [];
