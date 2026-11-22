@@ -127,11 +127,11 @@ export async function runUpdateCheck(
 }
 
 /**
- * The timer's question: is a check due? Every six hours while it is on, judged
- * from the last attempt in the database rather than from the worker's start,
- * so a worker that restarts ten times an hour still asks four times a day.
- * A failed attempt waits the same six hours: an installation that cannot reach
- * GitHub does not keep trying.
+ * The timer's question: is a check due? Every quarter of an hour while it is on,
+ * judged from the last attempt in the database rather than from the worker's
+ * start, so a worker that restarts ten times an hour still asks four times an
+ * hour. A failed attempt waits the same quarter of an hour: an installation that
+ * cannot reach GitHub does not keep trying.
  */
 export async function updateCheckDue(prisma: VelnoxPrismaClient, now = Date.now()): Promise<boolean> {
   return withSystemScope('the update check belongs to no request', async () => {

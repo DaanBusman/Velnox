@@ -19,7 +19,14 @@ export const UPDATE_MANIFEST_URL =
   'https://raw.githubusercontent.com/DaanBusman/Velnox/main/release.json';
 
 /** How often the worker reads it while the check is on. */
-export const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60_000;
+export const UPDATE_CHECK_INTERVAL_MS = 15 * 60_000;
+
+/**
+ * How often the worker asks whether a check is due. Well under the interval: a
+ * timer of the same length would now and then arrive just before it was due,
+ * and the check would then run half-hourly.
+ */
+export const UPDATE_CHECK_TICK_MS = 60_000;
 
 /** The most the file may be. It is a few hundred bytes; this is a ceiling, not a size. */
 export const UPDATE_MANIFEST_MAX_BYTES = 256 * 1024;

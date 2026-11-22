@@ -366,7 +366,7 @@ onderhoudsvenster voert niets uit buiten dat venster; beleid met handmatige goed
 ## Phase 7 — Rolling updates · **L** · ✅ afgerond
 
 **Zoals gebouwd** (0.5.27, ADR-048): een `cluster.rolling_update`-job in groepen niet groter dan
-quorum toelaat, standaard één node; geweigerd op een gedegradeerd cluster (node offline, geen quorum,
+quorum toelaat, standaard één node; geweigerd op een verminderd cluster (node offline, geen quorum,
 Ceph niet `HEALTH_OK`), bij een gast die niet live kan verhuizen tenzij gevraagd is hem af te sluiten,
 en bij te weinig geheugen op de andere nodes; gasten live verplaatst, nodes bijgewerkt en herstart,
 gevalideerd binnen een stabilisatietijd, gasten teruggezet; een fout na de eerste groep eindigt als
@@ -391,7 +391,7 @@ bij elkaar houden, voorkeur voor nodes (strikt of zacht) — en of elke regel kl
 op PVE 9 geschreven in de HA-regels van Proxmox, teruggelezen, en opnieuw geschreven als ze daar
 gewijzigd zijn; correcties en balanceren op geheugen met één verplaatsing als
 `cluster.placement`-jobs, met de hand of door de instellingen van het cluster, nooit terwijl het
-cluster niet heel is; de rolling update houdt zich aan de regels en weigert als dat niet kan.
+cluster niet gezond is; de rolling update houdt zich aan de regels en weigert als dat niet kan.
 `scripts/verify-placement.sh` bewijst het tegen de fixture. **Nog niet:** een echt cluster, en echte
 HA-regels op PVE 9 — vooral of Proxmox een regel accepteert die gasten buiten HA noemt.
 
@@ -414,7 +414,7 @@ node leegmaakt.
 verplaatsingen en niet door een rolling update die een node leegmaakt; een overtreding op een cluster
 wordt gemeld en, als dat mag, gecorrigeerd met een migratiejob; op PVE 9 staat de regel in de eigen
 HA-regels van Proxmox en overleeft hij het stoppen van Velnox; balanceren verplaatst niets zolang een
-cluster gedegradeerd is.
+cluster verminderd draait.
 
 ## Phase 8 — Framework voor major upgrades (generiek) · **L** · gebouwd, nog niet afgerond
 
@@ -510,7 +510,7 @@ SSH-stdin, verificatie met een nieuwe verbinding, rotatiebeleid en -planning, be
 node, afhandeling van `NEEDS_ATTENTION` en alarmering.
 
 **Acceptatie:** rotatie voltooit en het nieuwe wachtwoord authenticeert; een gesimuleerde fout tussen
-toepassen en verifiëren laat beide versies bewaard en het credential gemarkeerd, nooit verwijderd; de
+toepassen en verifiëren laat beide versies bewaard en de credential gemarkeerd, nooit verwijderd; de
 volledige jobgebeurtenisstroom, logs, auditmetadata en elke API-respons worden gecontroleerd op afwezigheid
 van elke deeltekst van het gegenereerde wachtwoord; noodinzage is een apart, zwaar geaudit recht.
 

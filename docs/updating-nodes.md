@@ -270,5 +270,5 @@ for its plan and report.
 | *The cluster is degraded …* | A node is offline, the cluster has no quorum or Ceph is not healthy. A rolling update does not start until it is whole. |
 | *These running guests cannot be moved live …* | Their disk is on a node's own storage, or a device is passed through. Move or stop them, or choose to shut them down for the reboot. |
 | *While … is down its guests need … GB* | The other nodes do not have the memory free. Stop guests you can spare, or add memory. |
-| *… did not come back whole after its update* | The node came back but the cluster or Ceph was not whole in time. The job names what was wrong and the guests not returned. |
+| *… did not come back healthy after its update* | The node came back but the cluster or Ceph was not whole in time. The job names what was wrong and the guests not returned. |
 | *The update of … is done, but apt autoremove did not complete* | It would have removed a kernel in use or part of Proxmox, or apt failed, or sudo does not allow it. The update stands. Read the job's output and look at the node before removing anything by hand. |

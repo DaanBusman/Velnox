@@ -92,7 +92,7 @@ Under **Keeping it so**, both off until you turn them on:
 - **Balance memory by itself** — when the busiest node uses more of its memory than the quietest by
   more than the **threshold** (percentage points, 5–80), Velnox starts a balancing run.
 
-Never while the cluster is not whole — a node offline or quorum lost — never while another job
+Never while the cluster is not healthy — a node offline or quorum lost — never while another job
 changes the cluster, and at most once per **quiet period** (minutes). A run started this way says so
 in its history: *by the settings*.
 
@@ -115,7 +115,7 @@ would now break a rule; the job says where it stays.
 | *The cluster has no guest or node …* | The rule names a VMID or node the inventory does not have. Discover the cluster again if it is new. |
 | *… guests cannot be kept apart on … nodes* | More guests than nodes. Split the rule. |
 | *The same guests are kept the other way by rule …* | Two rules contradict each other. Change or switch off one. |
-| *The cluster is not whole …* | A node is offline, quorum is lost, or Ceph is unhealthy. Nothing is moved until it is whole. |
+| *The cluster is not healthy …* | A node is offline, quorum is lost, or Ceph is unhealthy. Nothing is moved until it is whole. |
 | *Some placement rules are still not met …* | No node with the room, or a guest that cannot move live (a disk on a node's own storage, a device passed through). |
 | *Not in Proxmox* on a rule | Proxmox refused the rule; the reason is under it. On a cluster mid-upgrade, the rule is kept by Velnox until every node runs PVE 9. |
 | *No node may take … while its own is emptied* | A rolling update would have to break a rule. Change the rule for the update, or stop the guest. |

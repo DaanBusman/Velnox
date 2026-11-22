@@ -70,16 +70,16 @@ daar achterblijven.
 - **Zonder verbinding met de server** toont de app een pagina die zegt dat Velnox niet bereikbaar is
   — niets van eerder.
 
-## Meldingen als een taak op jou wacht
+## Meldingen als een job op jou wacht
 
-Velnox kan je op dit apparaat laten weten dat een taak, zoals een grote upgrade, op jouw goedkeuring
+Velnox kan je op dit apparaat laten weten dat een job, zoals een grote upgrade, op jouw goedkeuring
 wacht.
 
 1. Open het gebruikersmenu, kies **Instellingen** en kies onder **Meldingen op dit apparaat** voor
    **Inschakelen**. De browser vraagt om toestemming.
 2. Kies **Testmelding sturen**. Verschijnt die, dan is dit apparaat ingesteld.
 
-**Doorgaan** en **Annuleren** in een melding openen de taak. Er wordt niets beslist voordat je bent
+**Doorgaan** en **Annuleren** in een melding openen de job. Er wordt niets beslist voordat je bent
 ingelogd, de exacte wijziging hebt gelezen en op **Goedkeuren** of **Afwijzen** hebt gedrukt. De
 melding zelf noemt geen klant, cluster of wijziging. Je kunt ook gewoon in de webinterface beslissen.
 
@@ -90,7 +90,7 @@ melding zelf noemt geen klant, cluster of wijziging. Je kunt ook gewoon in de we
 - **Netwerk:** de Velnox-server moet `fcm.googleapis.com`, `*.push.services.mozilla.com`,
   `*.notify.windows.com` en `web.push.apple.com` via HTTPS bereiken, en het apparaat de dienst van
   zijn eigen browser. Een installatie zonder internet krijgt geen meldingen.
-- **Timing:** een apparaat dat uit staat, ontvangt de melding zodra het terug is, binnen 24 uur.
+- **Timing:** een apparaat dat uitstaat, ontvangt de melding zodra het terug is, binnen 24 uur.
 - **Uitloggen** schakelt meldingen uit voor die browser. Een wachtwoordwijziging of het uitschakelen
   van je account schakelt ze overal uit.
 

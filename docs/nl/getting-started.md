@@ -100,12 +100,12 @@ niet nodig zouden moeten hebben.
 
 De prijs is echt en het is eerlijk hem te noemen: één account in je installatie is blijvend
 bevoorrecht, dus het wachtwoord en de tweede factor ervan wegen zwaarder dan die van elk ander
-account. Geef het een sterk wachtwoord en zet er meervoudige authenticatie op voordat je iets anders
+account. Geef het een sterk wachtwoord en zet er tweefactorauthenticatie op voordat je iets anders
 doet.
 
 ---
 
-## Meervoudige authenticatie instellen
+## Tweefactorauthenticatie instellen
 
 Doe dit nu en niet later, terwijl er precies één account is en je een collega niet kunt buitensluiten
 door te experimenteren.
@@ -145,7 +145,7 @@ Werkt vandaag:
 | **Gebruikers** | Accounts, rollen, in- en uitschakelen — zie [Gebruikers en toegang beheren](managing-access.md) |
 | **Rollen & rechten** | Wat elke rol toekent — zie [Rollen en rechten](permissions.md) |
 | **Auditlog** | Elke authenticatie- en autorisatiegebeurtenis, nieuwste eerst |
-| **Beveiliging** | Meervoudige authenticatie voor je eigen account en, voor beheerders, single sign-on — de wizard voor Microsoft Entra ID |
+| **Beveiliging** | Tweefactorauthenticatie voor je eigen account en, voor beheerders, single sign-on — de wizard voor Microsoft Entra ID |
 | **Serverbeheer** | De installatie zelf: servicestatus, auditlog, certificaat, upgradeprocedure, en Over deze server |
 | **Documentatie** | Deze documentatie, offline, gestempeld met de draaiende versie |
 
@@ -252,7 +252,7 @@ lijst van wat er op dit moment bewust ontbreekt of onaf is.
 
 ## Waar je hierna naartoe kunt
 
-- [Gebruikers en toegang beheren](managing-access.md) — accounts, rollen, meervoudige authenticatie, Entra ID SSO
+- [Gebruikers en toegang beheren](managing-access.md) — accounts, rollen, tweefactorauthenticatie, Entra ID SSO
 - [Rollen en rechten](permissions.md) — wat elke rol volledig toekent
 - [Je omgeving indelen](organising-your-fleet.md) — tenants, locaties en het beperken van een recht
 - [Clusters toevoegen](managing-infrastructure.md) — Proxmox onder beheer brengen, en de inventarisatie

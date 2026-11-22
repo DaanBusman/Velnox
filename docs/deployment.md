@@ -327,7 +327,7 @@ the worker holds no connection through Caddy.
 
 ### Knowing that there is a newer version
 
-Every six hours the worker reads one file, `release.json` on the repository's main branch: the
+Every quarter of an hour the worker reads one file, `release.json` on the repository's main branch: the
 newest version, and the advisories — fixes an installation should not sit on. When the version is
 newer than the one running, the sidebar shows **Velnox 0.7.x available** above Server management to
 anyone with `system.manage`, or **Critical update: Velnox 0.7.x** in red when an advisory that
@@ -337,7 +337,7 @@ and the procedure below.
 - **What is sent:** the request for that file, and nothing else — no version, no instance id, no
   count of anything. GitHub sees the address it comes from, as with any download.
 - **No internet:** the panel says *Could not check* and why, never *Up to date*; the sidebar shows
-  nothing. A failed read waits six hours like a good one.
+  nothing. A failed read waits a quarter of an hour like a good one.
 - **Switching it off:** *Switch the check off* in Server management → Updates (audited as
   `system.update_check_changed`). *Check now* still works while it is off.
 - **Another address:** `VELNOX_UPDATE_MANIFEST_URL` in `.env` names another https address — a

@@ -41,7 +41,7 @@ de weigering zegt dat ook.
 1. Ga naar **Tenants**.
 2. **Tenant toevoegen**.
 3. Geef de naam van de klant zoals je die op een factuur zou schrijven. De korte aanduiding die in
-   URLs verschijnt wordt daar automatisch van afgeleid; hebben twee klanten dezelfde naam, dan krijgt
+   URL's verschijnt wordt daar automatisch van afgeleid; hebben twee klanten dezelfde naam, dan krijgt
    de tweede er een nummer achter in plaats van een weigering.
 4. **Tenant toevoegen**.
 
@@ -49,7 +49,7 @@ De tenant verschijnt meteen, zonder accounts en zonder locaties. Niemand kan zic
 je er een account aanmaakt — zie *Een account toevoegen* in
 [Gebruikers en toegang beheren](managing-access.md), waar je nu de tenant kunt kiezen.
 
-### Meervoudige authenticatie verplichten voor één klant
+### Tweefactorauthenticatie verplichten voor één klant
 
 Elke tenant heeft een eigen beleid voor de tweede factor, en het geldende beleid voor een account is
 **het strengste van dat van de installatie en dat van de tenant**. Een klant wiens contract dat eist
@@ -112,7 +112,7 @@ een verwijderde locatie zou rechten achterlaten die toegekend lijken en niets de
 stilletjes betekenisloos is geworden is erger dan een recht dat nooit gegeven is, want niemand gaat
 ernaar zoeken.
 
-Een locatie verwijderen verbergt hem. Wat er in het auditlogboek over vastligt blijft leesbaar.
+Een locatie verwijderen verbergt hem. Wat er in het auditlog over vastligt blijft leesbaar.
 
 ---
 

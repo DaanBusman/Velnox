@@ -967,7 +967,7 @@ comment, which browsers ignore and Nest does not number; `done` repeats the last
 
 **Why `done`.** `EventSource` reconnects whenever a connection closes, including when the server
 closes it on purpose. Without a signal to stop, a finished job's page would reconnect every few
-seconds for ever. On `done`, the page closes the stream; and a reconnect to a job that is already
+seconds forever. On `done`, the page closes the stream; and a reconnect to a job that is already
 finished gets `done` at once rather than an open connection that will never say anything.
 
 **One subscriber per API process.** A Redis connection in subscriber mode can do nothing else, so
@@ -1216,7 +1216,7 @@ archived rather than deleted, and the tenancy filter needs only `hasSome`.
 ## ADR-040 — The audit log: retention per tenant, removed one way, and exported
 
 **Decision:** How long a tenant's audit events are kept is a per-tenant setting
-(`tenants.audit_retention_days`), for ever by default, otherwise one to ten years, never less than one
+(`tenants.audit_retention_days`), forever by default, otherwise one to ten years, never less than one
 — the database refuses less. Only MSP staff set it: a customer administrator shortening it would be
 shortening the record of what they did. The worker's sweep removes older events through one database
 function, `velnox_prune_audit_events`, the only path the append-only trigger lets a `DELETE` through;
@@ -1509,7 +1509,7 @@ and writes it again when it was changed or removed in Proxmox; a removed rule is
 its row goes. Corrections and balancing are `cluster.placement` jobs — check that the cluster is whole,
 plan from Proxmox's own view, move one guest at a time with the rules checked again just before each
 move, verify — on the cluster's concurrency key. A per-cluster setting lets the worker start them by
-itself, never on a cluster that is not whole, never within a quiet period of the last. The rolling
+itself, never on a cluster that is not healthy, never within a quiet period of the last. The rolling
 update (ADR-048) chooses every target through the same rules and refuses before it starts when a
 guest would have nowhere allowed to go.
 
@@ -1555,7 +1555,7 @@ step key. A playbook that grew steps at run time would not resume the same way t
 steps keep the list fixed and the behaviour dynamic.
 
 **Why a composite is driven, not waited on.** A parent job waiting for its children would hold a
-worker slot for hours — with one slot, for ever — and could not even queue a child, since both would
+worker slot for hours — with one slot, forever — and could not even queue a child, since both would
 want the cluster's key. A driver that looks every ten seconds needs neither, and survives a worker
 restart; it also sets a plan whose job ended without telling it.
 
@@ -1908,8 +1908,8 @@ seconds; and with the stream refused, the page back on its interval.
 
 ## ADR-060 — Velnox says when there is a newer version, and which fixes are critical
 
-**Decision:** the worker reads `release.json` from the repository's main branch every six hours —
-the newest version and its advisories — and the interface tells `system.manage` when it is newer,
+**Decision:** the worker reads `release.json` from the repository's main branch every quarter of an hour
+(every six hours until 0.7.40, at the owner's request) — the newest version and its advisories — and the interface tells `system.manage` when it is newer,
 in red when an advisory that concerns the running version is critical. On by default; switched off
 in Server management. Reversing the decision recorded in the Updates panel until 0.7.21, at the
 owner's request.

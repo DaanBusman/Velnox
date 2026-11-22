@@ -388,7 +388,7 @@ thuis in een codebase die het gebruikt.
 
 **Besluit:** De secret store van de API weigert elk credential te ontsleutelen waarvan de soort niet
 `TOTP_SEED` of `OIDC_CLIENT_SECRET` is. Die twee vormen het materiaal waarmee Velnox zijn eigen
-gebruikers authenticeert. Elk credential dat bij beheerde infrastructuur hoort — Proxmox-wachtwoorden,
+gebruikers authenticeert. Elke credential die bij beheerde infrastructuur hoort — Proxmox-wachtwoorden,
 SSH-sleutels, WinRM-credentials — blijft alleen leesbaar voor de worker. De beperking wordt per soort
 afgedwongen in `SecretStoreService`, werpt `ForbiddenCredentialKindError`, en kent geen vlag om hem
 uit te zetten.
@@ -884,7 +884,7 @@ levenscyclus gemigreerd moet worden, uit gegevens waar beheerders al op waren ga
 ## ADR-034 — De inventarisatieschermen verversen zichzelf, en er is geen "nu uitlezen"
 
 **Besluit:** De clusterlijst en de clusterpagina lezen zichzelf elke twee seconden opnieuw. Een
-**Refresh**-knop doet diezelfde leesactie op verzoek. De knop **Nu uitlezen**, die een uitleesronde
+**Vernieuwen**-knop doet diezelfde leesactie op verzoek. De knop **Nu uitlezen**, die een uitleesronde
 tegen Proxmox in de wachtrij zette, is weg.
 
 **Waarom die knop weg is.** Hij zag eruit als verversen en was dat niet. Hij zette een taak in de
@@ -2034,8 +2034,8 @@ pagina staat; en met de stroom geweigerd de pagina terug op haar interval.
 
 ## ADR-060 — Velnox meldt een nieuwere versie, en welke oplossingen kritiek zijn
 
-**Besluit:** de worker leest elke zes uur `release.json` van de main-branch van de repository — de
-nieuwste versie en de advisories — en de interface meldt aan `system.manage` wanneer die nieuwer is,
+**Besluit:** de worker leest elk kwartier (tot 0.7.40 elke zes uur, op verzoek van de eigenaar)
+`release.json` van de main-branch van de repository — de nieuwste versie en de advisories — en de interface meldt aan `system.manage` wanneer die nieuwer is,
 in rood als een advisory die de draaiende versie raakt kritiek is. Standaard aan; uit te zetten in
 Serverbeheer. Dit draait het besluit terug dat tot 0.7.21 in het Updates-paneel stond, op verzoek van
 de eigenaar.
@@ -2094,7 +2094,7 @@ check toont een cluster niet eerder. Een check wacht hooguit vijf seconden, en d
 als hij klaar is.
 
 **Waarom vijf seconden geduld.** Linux geeft ARP voor een adres op zijn eigen netwerk na ongeveer
-drie seconden op en zegt *geen route* — een node die uit staat. De eerste versie wachtte drie, de
+drie seconden op en zegt *geen route* — een node die uitstaat. De eerste versie wachtte drie, de
 twee liepen tegen elkaar op, en een uitgezette node werd gemeld als *geen verbinding binnen de tijd*,
 wat een beheerder naar de firewall stuurt. En omdat het geduld van de check bewust kort is, vraagt het
 als mislukt markeren van een cluster meteen ook om een uitleesronde, waarvan de twintig seconden en

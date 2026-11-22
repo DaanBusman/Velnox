@@ -244,5 +244,5 @@ when the plan is made.
 | *The running release, the target and the version matrix disagree* | The refusal names which; see [the version matrix](#the-version-matrix). |
 | *This upgrade does not apply: every node already runs Proxmox VE 9* | There is nothing to upgrade. To read versions again first, rediscover the cluster. |
 | *Ceph runs …, and Proxmox VE 9 needs Squid* | Make the plan with **Upgrade Ceph to Squid first**. |
-| *Ceph is not whole: …* | After a daemon's restart Ceph did not come back healthy within the settle time, or showed a warning Velnox does not know. `noout` has been cleared. |
+| *Ceph is not healthy: …* | After a daemon's restart Ceph did not come back healthy within the settle time, or showed a warning Velnox does not know. `noout` has been cleared. |
 | *apt.update ended with exit code 100* | `apt-get update` failed on the node. The technical detail carries apt's first `E:` line, and the job's output all of apt's — a repository without a Release file, a 401, a name that does not resolve. |

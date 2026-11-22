@@ -80,13 +80,32 @@ export class MailService {
 
   async update(input: MailSettingsInput, actor: Actor): Promise<MailSettings> {
     const row = await this.settingsRow();
+
+    /*
+     * Half an account is refused: the mailer logs in only with both, so it would
+     * otherwise connect without logging in, and the server's refusal would be the
+     * first anyone heard of it. A username of null alone leaves a stored password
+     * in place, unused, so a temporary change can be put back; removing it takes
+     * an explicit password of null, which is what unticking the checkbox sends.
+     */
+    const stored = row.smtpPasswordCredentialId !== null;
+    if (input.username !== undefined || input.password !== undefined) {
+      const username = input.username !== undefined ? input.username : row.smtpUsername;
+      const hasPassword = input.password === undefined ? stored : input.password !== null;
+      if (username ? !hasPassword : typeof input.password === 'string') {
+        throw new VelnoxError(ERROR_CODES.mailCredentialsIncomplete, { status: 422 });
+      }
+    }
+    const password = input.password;
+    const passwordChanged = password !== undefined && (password !== null || stored);
+
     const connectionChanged =
       (input.host !== undefined && input.host !== row.smtpHost) ||
       (input.port !== undefined && input.port !== row.smtpPort) ||
       (input.security !== undefined && input.security !== row.smtpSecurity) ||
       (input.username !== undefined && input.username !== row.smtpUsername) ||
       (input.from !== undefined && input.from !== row.smtpFrom) ||
-      input.password !== undefined;
+      passwordChanged;
 
     const verified = connectionChanged ? null : row.smtpVerifiedAt;
     const enabled = input.enabled ?? (connectionChanged ? false : row.smtpEnabled);
@@ -100,18 +119,18 @@ export class MailService {
 
     let credentialId = row.smtpPasswordCredentialId;
     const retired: string[] = [];
-    if (input.password !== undefined) {
+    if (passwordChanged) {
       if (credentialId) retired.push(credentialId);
       credentialId = null;
-      if (input.password !== null) {
-        const stored = await this.secrets.putForCredential({
+      if (password) {
+        const saved = await this.secrets.putForCredential({
           kind: 'SMTP_PASSWORD',
-          material: input.password,
+          material: password,
           tenantId: null,
           label: 'Outgoing mail server',
           scopeType: 'GLOBAL',
         });
-        credentialId = stored.credentialId;
+        credentialId = saved.credentialId;
       }
     }
 
@@ -142,7 +161,7 @@ export class MailService {
       resourceLabel: 'Outgoing mail',
       metadata: {
         fields: Object.keys(input).filter((key) => key !== 'password'),
-        passwordChanged: input.password !== undefined,
+        passwordChanged,
         enabled,
       },
     });

@@ -161,18 +161,18 @@ product *niet* omkeerbaar, en daar zit het hele verschil.
 De interface vermeldt dit bij het account, in plaats van je een ontbrekende knop te laten ontdekken.
 
 **Wat dit voor jou betekent:** één account is blijvend bevoorrecht. Geef het een sterk wachtwoord,
-zet er meervoudige authenticatie op, en maak vroeg een tweede beheerder aan zodat het oprichtend
+zet er tweefactorauthenticatie op, en maak vroeg een tweede beheerder aan zodat het oprichtende
 account niet de enige weg naar binnen is — een account waarvan het wachtwoord in het hoofd van één
 persoon zit is een single point of failure, wat de software ook toestaat.
 
 ---
 
-## Meervoudige authenticatie aanzetten voor jezelf
+## Tweefactorauthenticatie aanzetten voor jezelf
 
 **Je hebt nodig:** een account. Dit is persoonlijk en vereist geen recht.
 
 1. Ga naar **Beveiliging** onder Beheer.
-2. Kies **Meervoudige authenticatie instellen**.
+2. Kies **Tweefactorauthenticatie instellen**.
 3. Scan de QR-code met een authenticator-app, of typ het getoonde geheim met de hand over.
 4. Voer één code uit de app in.
 5. Bewaar de tien herstelcodes.
@@ -198,7 +198,7 @@ Elke code werkt precies één keer. Het gebruik wordt naar het auditlog geschrev
 herstelcode is óf een collega met een pechdag óf een aanvaller met een goede dag, en die twee zien er
 op dat moment identiek uit.
 
-Ga daarna naar **Beveiliging**, zet meervoudige authenticatie uit, en stel hem opnieuw in met het
+Ga daarna naar **Beveiliging**, zet tweefactorauthenticatie uit, en stel hem opnieuw in met het
 nieuwe apparaat. Genereer meteen een nieuwe set herstelcodes.
 
 > Gebruik van een herstelcode wordt gelogd maar nog nergens buiten het auditlog gemeld. Dat staat in
@@ -206,7 +206,7 @@ nieuwe apparaat. Genereer meteen een nieuwe set herstelcodes.
 
 ---
 
-## De meervoudige authenticatie van iemand anders resetten
+## De tweefactorauthenticatie van iemand anders resetten
 
 **Je hebt nodig:** `users.reset_mfa`, en voor een account in je eigen organisatie ook
 `users.reset_mfa_msp`. Zie [wie wie mag resetten](#wie-wie-mag-resetten) hieronder.
@@ -250,7 +250,7 @@ Velnox dwingt dat aan de serverzijde af, niet door de knop te verbergen.
 
 ---
 
-## Meervoudige authenticatie verplichten
+## Tweefactorauthenticatie verplichten
 
 Velnox dwingt drie beleidsvormen af:
 
@@ -345,7 +345,7 @@ Zelfde paneel, zelfde gegevens; alleen de weg ernaartoe verschilt.
 
 Elke authenticatie- en autorisatiegebeurtenis wordt vastgelegd: aanmeldingen en mislukte pogingen,
 afmeldingen, geweigerde rechten, toekenningen en intrekkingen van rollen, statuswijzigingen van
-accounts, het instellen van meervoudige authenticatie, gebruik van herstelcodes, en wijzigingen aan
+accounts, het instellen van tweefactorauthenticatie, gebruik van herstelcodes, en wijzigingen aan
 de identityprovider.
 
 De tabel is **append-only**, afgedwongen door een databasetrigger die `UPDATE` en `DELETE` weigert —

@@ -231,8 +231,9 @@ zegt de registratie dat ze niet meer worden bewaard. Wijzig ze daarvoor op de VM
 
 **Notificatiebeheer → Uitgaande mail**, voor `system.manage`. In deze volgorde:
 
-1. **Sla** de server **op**: host, poort, versleuteling, afzender, en een gebruikersnaam en wachtwoord
-   als de server die vraagt. STARTTLS is verplicht als het is gekozen — een server die het niet biedt
+1. **Sla** de server **op**: host, poort, afzender en versleuteling. Neemt de server alleen na het
+   inloggen mail aan, vink dan **Authenticatie vereist** aan en vul de gebruikersnaam en het wachtwoord
+   in. Vink je het uit, dan worden ze bij het opslaan verwijderd. STARTTLS is verplicht als het is gekozen — een server die het niet biedt
    wordt geweigerd, niet onversleuteld gebruikt. *Geen* is alleen voor een relay op dezelfde host of in
    een lab.
 2. **Verstuur een test.** De worker verstuurt hem, met de opgeslagen instellingen, zoals hij elke mail

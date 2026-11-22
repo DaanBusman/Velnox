@@ -202,7 +202,7 @@ cleanup() {
   for id in "${ITEMS[@]}"; do call DELETE "/api/v1/library/${id}" >/dev/null 2>&1; done
   [[ -n "$CLUSTER_ID" ]] && call DELETE "/api/v1/clusters/${CLUSTER_ID}" >/dev/null 2>&1
   if [[ -n "$MAIL_BEFORE" ]]; then
-    call PUT /api/v1/system/mail "$(M="$MAIL_BEFORE" body '(({host, port, security, username, from}) => ({ host, port, security, username, from, enabled: false }))(JSON.parse(e.M))')" >/dev/null 2>&1
+    call PUT /api/v1/system/mail "$(M="$MAIL_BEFORE" body '(({host, port, security, username, passwordSet, from}) => ({ host, port, security, username: passwordSet ? username : null, from, enabled: false }))(JSON.parse(e.M))')" >/dev/null 2>&1
   fi
   docker rm -f "$FIXTURE_NAME" >/dev/null 2>&1 || true
   for user in "${CREATED_USERS[@]}"; do

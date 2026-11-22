@@ -82,7 +82,7 @@ sudo apt-get install -y qemu-guest-agent
 Installeren is alles wat u in de guest doet. Voer `systemctl enable qemu-guest-agent` **niet** uit:
 de unit wordt door udev gestart zodra de virtuele seriële poort verschijnt, en hem inschakelen levert
 een lap tekst op over een unit zonder installatieconfiguratie — dat is systemd die correct meldt dat
-het commando zinloos was, geen fout die u moet verhelpen.
+het commando zinloos was, geen fout die je moet verhelpen.
 
 Wat wél telt is het vinkje **Guest agent** in de VM-opties hierboven. Dat toevoegen is een
 hardwarewijziging, dus een draaiende VM moet volledig worden gestopt en gestart — opnieuw opstarten
@@ -181,7 +181,7 @@ niet aan. Daarom gebruikt `sudo velnox update` hem voor upgrades.
 
 > ### Maak een back-up van `MASTER_ENCRYPTION_KEY`
 >
-> De installer toont hem als hij klaar is. Elk credential dat Velnox opslaat is versleuteld met een
+> De installer toont hem als hij klaar is. Elke credential die Velnox opslaat is versleuteld met een
 > sleutel die daarvan is afgeleid, en er is geen herstelpad als je hem kwijtraakt — dat is een
 > ontwerpkeuze. Zet hem in je wachtwoordmanager voordat je iets anders doet.
 
@@ -335,7 +335,7 @@ niets onderbroken: de worker houdt geen verbinding via Caddy.
 
 ### Weten dat er een nieuwere versie is
 
-Elke zes uur leest de worker één bestand, `release.json` op de main-branch van de repository: de
+Elk kwartier leest de worker één bestand, `release.json` op de main-branch van de repository: de
 nieuwste versie, en de advisories — oplossingen waar een installatie niet op moet blijven zitten. Is
 die versie nieuwer dan de draaiende, dan toont de zijbalk boven Serverbeheer **Velnox 0.7.x
 beschikbaar** aan iedereen met `system.manage`, of **Kritieke update: Velnox 0.7.x** in rood als een
@@ -345,9 +345,9 @@ procedure hieronder.
 - **Wat er wordt verstuurd:** het verzoek om dat bestand, en verder niets — geen versie, geen
   instance-id, geen aantallen. GitHub ziet het adres waar het vandaan komt, zoals bij elke download.
 - **Geen internet:** het paneel zegt *Kon niet controleren* en waarom, nooit *Up-to-date*; de zijbalk
-  toont niets. Een mislukte poging wacht net als een geslaagde zes uur.
+  toont niets. Een mislukte poging wacht net als een geslaagde een kwartier.
 - **Uitzetten:** *Controle uitzetten* in Serverbeheer → Updates (in de audit als
-  `system.update_check_changed`). *Nu controleren* werkt ook als hij uit staat.
+  `system.update_check_changed`). *Nu controleren* werkt ook als hij uitstaat.
 - **Een ander adres:** `VELNOX_UPDATE_MANIFEST_URL` in `.env` noemt een ander https-adres — een
   mirror binnen het beheernetwerk, of het eigen bestand van een fork. Het wordt direct gelezen, niet
   via een proxy.

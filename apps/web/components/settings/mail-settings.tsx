@@ -19,6 +19,9 @@ const select =
  * switch mail on. Changing the server switches it off again until a new test
  * goes out, because a notification that silently fails is worse than none. The
  * password is write-only.
+ *
+ * Whether the server wants a login is one checkbox: the username and password
+ * exist only while it is ticked, and unticking it removes them on save.
  */
 export function MailSettings({
   initial,
@@ -35,6 +38,7 @@ export function MailSettings({
   const [host, setHost] = useState(initial.host ?? '');
   const [port, setPort] = useState(String(initial.port));
   const [security, setSecurity] = useState(initial.security);
+  const [authRequired, setAuthRequired] = useState(initial.username !== null && initial.passwordSet);
   const [username, setUsername] = useState(initial.username ?? '');
   const [password, setPassword] = useState('');
   const [from, setFrom] = useState(initial.from ?? '');
@@ -60,6 +64,9 @@ export function MailSettings({
     router.refresh();
   }
 
+  const missingUsername = authRequired && !username.trim();
+  const missingPassword = authRequired && !password && !settings.passwordSet;
+
   const save = () =>
     run(
       'save',
@@ -68,9 +75,10 @@ export function MailSettings({
           host: host.trim() || null,
           port: Number(port),
           security,
-          username: username.trim() || null,
           from: from.trim() || null,
-          ...(password ? { password } : {}),
+          ...(authRequired
+            ? { username: username.trim(), ...(password ? { password } : {}) }
+            : { username: null, password: null }),
         }),
       t('mail.saved'),
     );
@@ -112,6 +120,16 @@ export function MailSettings({
               />
             )}
           </Field>
+          <Field label={t('mail.from')}>
+            {(props) => (
+              <TextInput
+                {...props}
+                type="email"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            )}
+          </Field>
           <Field
             label={t('mail.security')}
             hint={security === 'NONE' ? t('mail.securityNoneHint') : undefined}
@@ -129,60 +147,64 @@ export function MailSettings({
               </select>
             )}
           </Field>
-          <Field label={t('mail.from')}>
-            {(props) => (
-              <TextInput
-                {...props}
-                type="email"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-            )}
-          </Field>
-          <Field label={t('mail.username')}>
-            {(props) => (
-              <TextInput
-                {...props}
-                autoComplete="off"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            )}
-          </Field>
-          <Field
-            label={t('mail.password')}
-            hint={settings.passwordSet ? t('mail.passwordStored') : undefined}
-          >
-            {(props) => (
-              <TextInput
-                {...props}
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            )}
-          </Field>
+          <label className="flex items-start gap-2.5 text-sm text-ink md:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={authRequired}
+              onChange={(e) => {
+                setAuthRequired(e.target.checked);
+                if (!e.target.checked) setPassword('');
+              }}
+            />
+            <span>
+              {t('mail.authRequired')}
+              <span className="block text-xs text-ink-muted">{t('mail.authRequiredHint')}</span>
+            </span>
+          </label>
+          {authRequired && (
+            <>
+              <Field
+                label={t('mail.username')}
+                error={missingUsername ? t('mail.usernameNeeded') : undefined}
+              >
+                {(props) => (
+                  <TextInput
+                    {...props}
+                    required
+                    autoComplete="off"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Field
+                label={t('mail.password')}
+                hint={settings.passwordSet ? t('mail.passwordStored') : undefined}
+                error={missingPassword ? t('mail.passwordNeeded') : undefined}
+              >
+                {(props) => (
+                  <TextInput
+                    {...props}
+                    required={!settings.passwordSet}
+                    type="password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                )}
+              </Field>
+            </>
+          )}
         </div>
         <div className="mt-3 flex gap-2">
-          <Button onClick={() => void save()} pending={pending === 'save'}>
+          <Button
+            onClick={() => void save()}
+            pending={pending === 'save'}
+            disabled={missingUsername || missingPassword}
+          >
             {t('common.save')}
           </Button>
-          {settings.passwordSet && (
-            <Button
-              variant="quiet"
-              onClick={() =>
-                void run(
-                  'clear',
-                  () => apiPut<MailSettingsView>('/system/mail', { password: null }),
-                  t('mail.passwordCleared'),
-                )
-              }
-              pending={pending === 'clear'}
-            >
-              {t('mail.clearPassword')}
-            </Button>
-          )}
         </div>
       </Card>
 

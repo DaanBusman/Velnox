@@ -219,8 +219,9 @@ after that the record says they are no longer kept. Change them on the VM before
 
 **Notifications → Outgoing mail**, for `system.manage`. In this order:
 
-1. **Save** the server: host, port, encryption, sender, and a username and password if the server
-   needs them. STARTTLS is required when chosen — a server that does not offer it is refused, not
+1. **Save** the server: host, port, sender and encryption. If the server only accepts mail after
+   signing in, tick **Authentication required** and enter its username and password. Unticking it
+   removes them when you save. STARTTLS is required when chosen — a server that does not offer it is refused, not
    used in plain text. *None* is for a relay on the same host or a lab only.
 2. **Send a test.** The worker sends it, with the stored settings, as it will send every mail.
 3. **Switch mail on.** Not possible before a test has gone out with these settings; changing the

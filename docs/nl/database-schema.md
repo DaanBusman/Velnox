@@ -246,8 +246,8 @@ updates, upgradeplannen, guards — uniform in plaats van te vertakken op "is di
 `tls_verify_mode` is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. Er bestaat geen waarde `INSECURE`.
 
 `ssh_host_key_fingerprint` en `ssh_host_key_type`, gereserveerd sinds fase 4, worden in fase 5A
-gevuld: de host key die een beheerder bevestigde, in de `SHA256:`-vorm van OpenSSH. Met een node
-zonder host key wordt nooit via SSH verbinding gemaakt.
+gevuld: de hostsleutel die een beheerder bevestigde, in de `SHA256:`-vorm van OpenSSH. Met een node
+zonder hostsleutel wordt nooit via SSH verbinding gemaakt.
 
 ### `ceph_daemons`
 `id, tenant_id, site_id, cluster_id, node_id, kind (MON|MGR|OSD|MDS|RGW), daemon_id (bijv. "osd.7",
@@ -533,7 +533,7 @@ balanceren zijn jobs van type `cluster.placement`.
 
 ---
 
-## 8. Major upgrades
+## 8. Grote upgrades
 
 Gebouwd in fase 8 (migratie `20261011180000_upgrade_framework`); ADR-050. Elke tabel neemt haar tenant
 via een trigger over van haar cluster of plan.
@@ -562,7 +562,7 @@ de inventaris verdwijnt. `pre_state`/`post_state` zijn het voor en na dat het ra
 daemon-voor-daemonrun bedienen.
 
 ### `upgrade_checks`
-`id, tenant_id, plan_id, target_id (leeg voor heel het plan), source, parser_version, check_key,
+`id, tenant_id, plan_id, target_id (leeg voor het hele plan), source, parser_version, check_key,
 severity (PASS|INFO|WARNING|BLOCKER|UNKNOWN), title, detail, raw_line, remediation_id, run_index,
 created_at`
 

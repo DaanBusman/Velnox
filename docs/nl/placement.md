@@ -30,7 +30,7 @@ Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo we
 Een regel noemt gasten, bij hun VMID, en alleen draaiende gasten tellen: een gestopte gast staat
 nergens, dus breekt geen regel. Dezelfde twee gasten kunnen niet door de ene regel uit elkaar en door
 een andere bij elkaar worden gehouden; de tweede wordt geweigerd, met de naam van de eerste. Een regel
-die uit staat, blijft bestaan en telt nergens voor.
+die uitstaat, blijft bestaan en telt nergens voor.
 
 Elke regel zegt of hij **klopt**, uit de inventaris — een gast die buiten Velnox om verplaatst is, zie
 je dus bij de volgende inventarisatie — en zo niet, welke gasten waar staan.
@@ -102,7 +102,7 @@ Onder **Zo houden**, allebei uit tot je ze aanzet:
 - **Zelf het geheugen balanceren** — als de drukste node meer van zijn geheugen gebruikt dan de
   rustigste, met meer dan de **drempel** (procentpunten, 5–80), start Velnox een balanceerrun.
 
-Nooit terwijl het cluster niet heel is — een node offline of quorum weg — nooit terwijl een andere job
+Nooit terwijl het cluster niet gezond is — een node offline of quorum weg — nooit terwijl een andere job
 het cluster wijzigt, en hoogstens één keer per **rustperiode** (minuten). Een run die zo gestart is,
 zegt dat in zijn geschiedenis: *door de instellingen*.
 
@@ -126,7 +126,7 @@ blijft.
 | *Het cluster heeft geen gast of node …* | De regel noemt een VMID of node die de inventaris niet heeft. Inventariseer het cluster opnieuw als het nieuw is. |
 | *… gasten kunnen niet uit elkaar worden gehouden op … nodes* | Meer gasten dan nodes. Splits de regel. |
 | *Dezelfde gasten worden andersom gehouden door regel …* | Twee regels spreken elkaar tegen. Wijzig er een of zet er een uit. |
-| *Het cluster is niet heel …* | Een node is offline, het quorum is weg, of Ceph is niet gezond. Er wordt niets verplaatst tot het heel is. |
+| *Het cluster is niet gezond …* | Een node is offline, het quorum is weg, of Ceph is niet gezond. Er wordt niets verplaatst tot het heel is. |
 | *Sommige plaatsingsregels kloppen nog niet …* | Geen node met de ruimte, of een gast die niet live kan verhuizen (een schijf op de eigen opslag van een node, een doorgegeven apparaat). |
 | *Niet in Proxmox* bij een regel | Proxmox weigerde de regel; de reden staat eronder. Op een cluster dat midden in een upgrade zit, bewaakt Velnox de regel tot elke node PVE 9 draait. |
 | *Geen node mag … hebben terwijl zijn eigen node wordt leeggemaakt* | Een rolling update zou een regel moeten breken. Wijzig de regel voor de update, of stop de gast. |

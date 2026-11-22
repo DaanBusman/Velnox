@@ -362,7 +362,7 @@ tests for cluster sizes 1–15; a node failing post-validation stops the run and
 together, prefer nodes (strict or soft) — whether each holds, from the inventory; on PVE 9 written
 into Proxmox's HA rules, read back, and written again when changed there; corrections and one-move
 memory balancing as `cluster.placement` jobs, by hand or by the cluster's settings, never while the
-cluster is not whole; the rolling update honours the rules and refuses when it cannot.
+cluster is not healthy; the rolling update honours the rules and refuses when it cannot.
 `scripts/verify-placement.sh` proves it against the fixture. **Not yet:** a real cluster, and real
 PVE 9 HA rules — in particular whether Proxmox accepts a rule naming guests not under HA.
 

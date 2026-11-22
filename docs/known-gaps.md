@@ -207,7 +207,7 @@ in their own table with no live progress and no cancellation — the job system 
 has not been moved onto it. Phase 6 added its update inventory to discovery as it is, rather than
 move it then; it moves when it next has to change shape.
 
-The third is fixed: a worker killed mid-discovery used to leave the run marked `RUNNING` for ever.
+The third is fixed: a worker killed mid-discovery used to leave the run marked `RUNNING` forever.
 The same reconciler that fails lost jobs now fails a discovery run still running after an hour, with
 the same `job.worker_lost` reason.
 
@@ -216,7 +216,7 @@ The library's five — fetch, check an upload, copy to a cluster, copy from one,
 building a VM (Phase 5B), checking an installer package (Phase 5C) and updating a node (Phase 6).
 `system.selftest` touches nothing and exists to prove the machinery.
 
-### Job history is kept for ever
+### Job history is kept forever
 Jobs, their events and their output are never deleted. There is no retention policy and no size cap
 beyond 16 KiB per output entry. At one event per progress report, a busy installation will
 eventually want one; the events table allows deletion for exactly that reason, and forbids only
@@ -328,7 +328,7 @@ A Proxmox task started with a password credential reads as Velnox's, even when a
 Proxmox with that account: give Velnox its own API token. Only the task list is kept — type, user,
 times and how it ended — not each task's log text, which stays on the node. A node with more than
 500 tasks between two discoveries loses the oldest of them. And the support logs' jobs follow the job
-history, which is kept for ever (above). See ADR-043.
+history, which is kept forever (above). See ADR-043.
 
 ### The audit log is protected by a trigger, not by a separate database role
 Old events can only be removed through the retention function, and an ordinary `DELETE` or `UPDATE`
@@ -358,7 +358,7 @@ does not block.
   Tiles whose phase is done now show real counts, and link to the screen behind them.
 - **The job system was a queue, not a job system.** It is a job system now: recorded runs, a state
   machine that refuses invalid moves, live progress, cancellation, approvals, and loss detection.
-- **A worker killed mid-discovery left the run `RUNNING` for ever.** Reconciled after an hour.
+- **A worker killed mid-discovery left the run `RUNNING` forever.** Reconciled after an hour.
 
 ### Resolved in Phase 4
 - **The Users tenant filter had one option to choose from.** There are customer tenants now, the

@@ -261,5 +261,5 @@ doel dat mislukt — gekozen als het plan wordt gemaakt.
 | *De draaiende release, het doel en de versiematrix spreken elkaar tegen* | De weigering noemt welke; zie [de versiematrix](#de-versiematrix). |
 | *Deze upgrade is niet van toepassing: elke node draait al Proxmox VE 9* | Er valt niets te upgraden. Wil je de versies eerst opnieuw laten lezen, ontdek het cluster dan opnieuw. |
 | *Ceph draait …, en Proxmox VE 9 vraagt Squid* | Maak het plan met **Eerst Ceph naar Squid upgraden**. |
-| *Ceph is niet heel: …* | Na de herstart van een daemon kwam Ceph niet binnen de stabilisatietijd gezond terug, of toonde een waarschuwing die Velnox niet kent. `noout` is uitgezet. |
+| *Ceph is niet gezond: …* | Na de herstart van een daemon kwam Ceph niet binnen de stabilisatietijd gezond terug, of toonde een waarschuwing die Velnox niet kent. `noout` is uitgezet. |
 | *apt.update eindigde met exitcode 100* | `apt-get update` mislukte op de node. Het technisch detail bevat de eerste `E:`-regel van apt, en de uitvoer van de job alles van apt — een repository zonder Release-bestand, een 401, een naam die niet resolvet. |

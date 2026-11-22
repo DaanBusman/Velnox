@@ -38,7 +38,7 @@ Wat het per cluster leest:
 - de opslag en netwerkinterfaces van elke node;
 - elke virtuele machine en container, met ID, naam, status, omvang en labels;
 - Ceph, als dat er is: gezondheid, monitorquorum, OSD-aantallen, de status van de placement groups,
-  de versie van elke daemon, en welke vlaggen aan staan.
+  de versie van elke daemon, en welke vlaggen aanstaan.
 
 ---
 
@@ -260,7 +260,7 @@ pogingen wel en niet konden lezen.
 
 **Nu uitlezen**, bovenaan de pagina van een cluster, vraagt meteen om een volledige uitleesronde in
 plaats van op het schema te wachten, en opent **Uitleesrondes** om hem te tonen. Loopt er al een
-ronde, dan zegt de knop dat en zet hij niets in de wachtrij. **Refresh** ernaast leest alleen opnieuw
+ronde, dan zegt de knop dat en zet hij niets in de wachtrij. **Vernieuwen** ernaast leest alleen opnieuw
 wat Velnox al heeft; die benadert Proxmox niet.
 
 **Nodes**, **Virtuele machines** en **Containers** tonen dezelfde gegevens over alle clusters die je
@@ -337,7 +337,7 @@ Drie gedragingen zijn het weten waard, want die maken de inventarisatie betrouwb
 
 **Meldingen** toont wat Velnox op dit moment ziet: een cluster dat het niet kan bereiken, een node
 offline, een cluster zonder quorum, nodes die het oneens zijn over hun versie, Ceph ongezond,
-Ceph-daemons op verschillende releases, en elke Ceph-vlag die aan staat.
+Ceph-daemons op verschillende releases, en elke Ceph-vlag die aanstaat.
 
 Ze worden bij elke keer openen uit de inventarisatie afgeleid. Een melding verdwijnt dus zodra de
 oorzaak weg is en kan nooit verouderd zijn — en er is geen bevestigen, geen onderdrukken en geen

@@ -38,7 +38,7 @@ MSP. Die ene zin bepaalt elke architectuurkeuze:
   geen eindklanten.
 
 **In scope per beslissing (2026-08-31):** Ceph major upgrades (§10.1), optionele maar aanbevolen
-meervoudige authenticatie (§5), Engelse en Nederlandse lokalisatie met een vertaalklare woordenlijst
+tweefactorauthenticatie (§5), Engelse en Nederlandse lokalisatie met een vertaalklare woordenlijst
 ([i18n.md](i18n.md)), en air-gapped installatie vanaf een self-contained artifact (§13). Het project is
 gelicentieerd onder **AGPLv3**, wat een concrete producteis met zich meebrengt — zie §15.
 
@@ -305,7 +305,7 @@ verwijzen, maar heeft geen code path dat platte tekst teruggeeft.
 3. Pas het toe via `chpasswd` over SSH.
 4. Open een *nieuwe* verbinding en authenticeer met het nieuwe wachtwoord.
 5. Bij succes: markeer het nieuwe secret `ACTIVE` en het oude `SUPERSEDED` (bewaard gedurende een
-   instelbare respijtperiode). Bij mislukking: bewaar beide, markeer het credential
+   instelbare respijtperiode). Bij mislukking: bewaar beide, markeer de credential
    `NEEDS_ATTENTION`, geef een melding en verwijder niets.
 
 ---

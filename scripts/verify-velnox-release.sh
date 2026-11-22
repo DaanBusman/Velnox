@@ -201,7 +201,7 @@ check "worker: checked at start-up" checked "$CHECKED"
 STAMP="$(psql_at "SELECT update_checked_at FROM system_settings WHERE id = 1;")"
 "${COMPOSE[@]}" restart worker >/dev/null 2>&1
 sleep 20
-check "worker: and not again on the next start, within six hours" "$STAMP" "$(psql_at "SELECT update_checked_at FROM system_settings WHERE id = 1;")"
+check "worker: and not again on the next start, within the interval" "$STAMP" "$(psql_at "SELECT update_checked_at FROM system_settings WHERE id = 1;")"
 
 echo
 if ((FAIL == 0)); then

@@ -153,7 +153,7 @@ vandaag toekenbaar en bewaakt nog niets.
 | `tenants.manage` | Klantorganisaties aanmaken, hernoemen en archiveren | 3 |
 | `sites.read` | Fysieke of logische locaties binnen een tenant zien | 3 |
 | `sites.manage` | Locaties aanmaken en wijzigen | 3 |
-| `users.read` | Accounts, hun rollen en hun status voor meervoudige authenticatie zien | **2** |
+| `users.read` | Accounts, hun rollen en hun status voor tweefactorauthenticatie zien | **2** |
 | `users.manage` | Accounts aanmaken, in- en uitschakelen | **2** |
 | `users.reset_mfa` | De tweede factor verwijderen van een account in een **klant**tenant | **2** |
 | `users.reset_mfa_msp` | Hetzelfde voor een account in de **MSP-hoofdtenant**. Vereist naast `users.reset_mfa` | **2** |
@@ -205,7 +205,7 @@ worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
 
 ---
 
-## Bevoorrechte rechten en meervoudige authenticatie
+## Bevoorrechte rechten en tweefactorauthenticatie
 
 Deze tweeëntwintig rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
 van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige

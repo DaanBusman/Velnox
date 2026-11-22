@@ -78,7 +78,7 @@ erDiagram
 | parent_tenant_id | uuid null | the main tenant of a sub-tenant; null for a main tenant and the MSP root. Two levels under the MSP, fixed at creation (`tenants_hierarchy_two_levels`, migration `20261006090000_tenant_hierarchy`) |
 | status | enum | `ACTIVE` \| `SUSPENDED` \| `ARCHIVED` |
 | settings | jsonb | branding, defaults, notification targets |
-| audit_retention_days | int null | how long its audit events are kept; null is for ever, at least 365 (`tenants_audit_retention_at_least_a_year`); the MSP root's also covers events of no tenant |
+| audit_retention_days | int null | how long its audit events are kept; null is forever, at least 365 (`tenants_audit_retention_at_least_a_year`); the MSP root's also covers events of no tenant |
 
 **Invariant:** exactly one row with `kind = MSP_ROOT`, enforced by a partial unique index. It is
 created by the setup wizard and can never be deleted.

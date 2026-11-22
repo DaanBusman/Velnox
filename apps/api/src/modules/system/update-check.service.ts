@@ -81,7 +81,7 @@ export class UpdateCheckService {
 
   /**
    * Switch the check on or off. Switching it on forgets the last attempt, so
-   * the worker asks within a quarter of an hour instead of six hours after it.
+   * the worker asks within a minute instead of a quarter of an hour after it.
    */
   async setEnabled(enabled: boolean, actor: Actor): Promise<UpdateStatusResponse> {
     const before = await this.status();

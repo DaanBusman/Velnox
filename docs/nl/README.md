@@ -37,7 +37,7 @@ er bestaan op geen enkel moment standaardinloggegevens. Aanmelden gebruikt Argon
 access-token en een roterend refresh-token waarvan hergebruik de hele sessiefamilie intrekt.
 Optionele TOTP-tweefactorauthenticatie, met een beleid dat het kan verplichten. Elk endpoint dat niet
 bewust publiek is, vereist een sessie, en elke authenticatie- en autorisatiegebeurtenis wordt
-weggeschreven naar een auditlogboek dat de database zelf weigert te wijzigen. De MSP kan eigen rollen
+weggeschreven naar een auditlog dat de database zelf weigert te wijzigen. De MSP kan eigen rollen
 maken, per onderdeel als "kan wijzigen" of "kan alleen lezen", en niemand kan meer rechten toekennen dan
 het eigen account heeft.
 
@@ -57,7 +57,7 @@ lijken.
 
 **ISO-bibliotheek** (fase 5A): installers en cloud images op de Velnox-host, opgehaald van een URL of
 hervatbaar geüpload vanuit een browser, naar de opslag van elk cluster gekopieerd terwijl Proxmox de
-checksum controleert, en via SFTP met vastgepinde host keys weer van een cluster teruggehaald.
+checksum controleert, en via SFTP met vastgepinde hostsleutels weer van een cluster teruggehaald.
 
 **VM's bouwen** (fase 5B): Autoconfig-templates van de MSP of van een klant, en VM's die daar onbeheerd
 uit worden gebouwd — Windows vanaf zijn ISO met een gegenereerd antwoordbestand, Linux vanuit een cloud
@@ -74,7 +74,7 @@ no-subscription-repository's.
 getoetst aan de inventaris, gecorrigeerd door migratiejobs, en op Proxmox VE 9 weggeschreven in de
 eigen HA-regels van Proxmox.
 
-**Major upgrades** (fase 8, 9A en 9B): een playbook-engine met preflightcontroles, remediaties die de
+**Grote upgrades** (fase 8, 9A en 9B): een playbook-engine met preflightcontroles, remediaties die de
 exacte wijziging tonen voordat die wordt doorgevoerd, en een verslag achteraf. Daarop draaien Ceph
 Quincy → Reef en Reef → Squid, en Proxmox VE 8 → 9: pve8to9 regel voor regel gelezen, een node die
 daar te oud voor is eerst naar de laatste 8 gebracht, en de eerste node als canary.
@@ -194,7 +194,7 @@ Beheerdersgidsen — taakgericht, en dezelfde pagina's die offline in het produc
 | Gids | Inhoud |
 |---|---|
 | [getting-started.md](getting-started.md) | Het eerste uur: installeren, de eerste beheerder aanmaken, de weg vinden, gezondheid controleren |
-| [managing-access.md](managing-access.md) | Accounts, rollen, meervoudige authenticatie, Entra ID single sign-on, het auditlog |
+| [managing-access.md](managing-access.md) | Accounts, rollen, tweefactorauthenticatie, Entra ID single sign-on, het auditlog |
 | [permissions.md](permissions.md) | Elke rol tegen elk recht, wat elk recht toestaat, en welke fase het echt maakt |
 | [organising-your-fleet.md](organising-your-fleet.md) | Tenants, subtenants en locaties |
 | [managing-infrastructure.md](managing-infrastructure.md) | Clusters toevoegen, SSH, de inventaris, clusters en nodes, twee registraties samenvoegen |

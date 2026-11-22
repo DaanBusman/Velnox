@@ -19,6 +19,7 @@ import {
   JOB_NAMES,
   JOB_QUEUE,
   QUEUE_NAMES,
+  UPDATE_CHECK_TICK_MS,
   rootRedactor,
   type ChangeMessage,
 } from '@velnox/shared';
@@ -564,8 +565,8 @@ async function bootstrap(): Promise<void> {
       );
   const upgradeTimer = setInterval(() => void upgradeTick(), UPGRADE_DRIVER_INTERVAL_MS);
 
-  // Is there a newer Velnox (0.7.21)? Asked every quarter of an hour whether a
-  // check is due; one is, six hours after the last, while it is switched on.
+  // Is there a newer Velnox (0.7.21)? Asked every minute whether a check is due;
+  // one is, a quarter of an hour after the last, while it is switched on.
   const releaseTick = () =>
     updateCheckDue(prisma)
       .then(async (due) => {
@@ -580,7 +581,7 @@ async function bootstrap(): Promise<void> {
         logger.error({ err: rootRedactor.value(error) }, 'The update check failed'),
       );
   void releaseTick();
-  const releaseTimer = setInterval(() => void releaseTick(), 15 * 60_000);
+  const releaseTimer = setInterval(() => void releaseTick(), UPDATE_CHECK_TICK_MS);
 
   logger.info(
     {

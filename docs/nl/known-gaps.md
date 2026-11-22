@@ -381,7 +381,7 @@ waarschuwt, het blokkeert niet.
 
 ### Opgelost in fase 5A
 - **Er ging niets via SSH naar een node.** SSH bestaat nu, per cluster en optioneel, alleen voor
-  leesacties via SFTP, met de host key van elke node bevestigd voordat er iets aan wordt aangeboden
+  leesacties via SFTP, met de hostsleutel van elke node bevestigd voordat er iets aan wordt aangeboden
   (ADR-038).
 - **Velnox kon niets op een cluster zetten.** Het kopieert ISO's en cloud images naar opslag, en
   verwijdert ze, als jobs die niets achterlaten als ze worden geannuleerd.
@@ -414,7 +414,7 @@ waarschuwt, het blokkeert niet.
   uitgeschakeld en weer ingeschakeld, en rollen toegekend en ingetrokken — elk daarvan geaudit. Een
   account uitschakelen trekt zijn sessies direct in, in plaats van ze te laten doorlopen tot de
   tokens verlopen.
-- **Het auditlogboek heeft geen interface.** Die is er nu, gepagineerd op cursor en gefilterd op de
+- **Het auditlog heeft geen interface.** Die is er nu, gepagineerd op cursor en gefilterd op de
   tenant en de rechten van de lezer zelf.
 - **Een verlopen access-token wordt niet transparant vernieuwd.** Nu wel. Een openstaand tabblad
   vernieuwt zichzelf voordat de vijftien minuten om zijn, en een pagina die met een verouderd token
@@ -471,7 +471,7 @@ transactie dwingt. Hier vastgelegd in plaats van stilzwijgend overgeslagen.
 geleverd. HashiCorp Vault- en Azure Key Vault-backends zijn voorzien maar niet geïmplementeerd, waardoor
 `MASTER_ENCRYPTION_KEY` een enkel faalpunt is (R-05).
 
-### Meervoudige authenticatie — *alleen TOTP; WebAuthn uitgesteld*
+### Tweefactorauthenticatie — *alleen TOTP; WebAuthn uitgesteld*
 **Nu in scope (2026-08-31): optioneel maar aanbevolen.** TOTP met herstelcodes wordt in Phase 2 geleverd,
 met de beleidsniveaus `OPTIONAL` / `REQUIRED_FOR_PRIVILEGED` / `REQUIRED` en `OPTIONAL` als standaard.
 WebAuthn/passkeys zijn **niet** geïmplementeerd — `user_mfa_factors.kind` reserveert de waarde. TOTP is
