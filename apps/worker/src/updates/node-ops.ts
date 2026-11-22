@@ -216,6 +216,28 @@ export async function distUpgrade(handle: NodeHandle): Promise<void> {
  * or a failure is a `PartialStop`: the update before it is done and stays
  * done, and the job says the tidying was not.
  */
+export async function readAutoremove(
+  handle: NodeHandle,
+): Promise<{ removals: string[]; refusal: string | null }> {
+  const simulated = await runRegistered(handle, COMMANDS.aptAutoremoveSimulate, false);
+  const removals = parseAptRemovals(simulated.stdout);
+  if (removals.length === 0) return { removals, refusal: null };
+  const [status, versions] = await Promise.all([
+    handle.pve.nodeStatus(handle.node).catch(() => null),
+    handle.pve.nodePackageVersions(handle.node).catch(() => null),
+  ]);
+  const running = status?.['current-kernel']?.release ?? null;
+  const newest = versions
+    ? (installedKernelVersions(versions).sort(compareVersions).at(-1) ?? null)
+    : null;
+  const refusal = !running
+    ? 'the running kernel could not be read'
+    : !newest
+      ? 'the installed kernels could not be read'
+      : autoremoveRefusal(removals, [running, newest]);
+  return { removals, refusal };
+}
+
 export async function autoremove(handle: NodeHandle): Promise<{ removed: number }> {
   const incomplete = (reason: string) =>
     new PartialStop(
@@ -232,29 +254,12 @@ export async function autoremove(handle: NodeHandle): Promise<{ removed: number 
     }
   };
 
-  const simulated = await attempt(() =>
-    runRegistered(handle, COMMANDS.aptAutoremoveSimulate, false),
-  );
-  const removals = parseAptRemovals(simulated.stdout);
+  const { removals, refusal } = await attempt(() => readAutoremove(handle));
   if (removals.length === 0) {
     await handle.log('STDOUT', `${handle.node}: nothing to autoremove`);
     return { removed: 0 };
   }
   for (const name of removals) await handle.log('STDOUT', `  remove ${name}`);
-
-  const [status, versions] = await Promise.all([
-    handle.pve.nodeStatus(handle.node).catch(() => null),
-    handle.pve.nodePackageVersions(handle.node).catch(() => null),
-  ]);
-  const running = status?.['current-kernel']?.release ?? null;
-  const newest = versions
-    ? (installedKernelVersions(versions).sort(compareVersions).at(-1) ?? null)
-    : null;
-  const refusal = !running
-    ? 'the running kernel could not be read'
-    : !newest
-      ? 'the installed kernels could not be read'
-      : autoremoveRefusal(removals, [running, newest]);
   if (refusal) throw incomplete(`${refusal}; nothing was removed`);
 
   await handle.log(

@@ -456,7 +456,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
 
   /** Answer one exec request; returns false for a command it does not know. */
   function exec(command, channel) {
-    const guard = /^\[ "\$\(hostname -s\)" = '?([A-Za-z0-9-]+)'? \] \|\| \{ [^}]*\}; (.*)$/.exec(command);
+    const guard = /^\[ "\$\(hostname -s\)" = '?([A-Za-z0-9-]+)'? \] \|\| \{ [^}]*\}; (.*)$/s.exec(command);
     if (!guard) {
       log(`EXEC REFUSED (no node guard): ${command}`);
       return false;
@@ -531,6 +531,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
     // nor newest. `{"autoremoveRunning":"pve2"}` makes apt offer that node's
     // running kernel too, as it should not, for the refusal to be seen.
     const removable = () => {
+      if (control().autoremoveNothing) return [];
       const newest = s.kernels.slice().sort(compare).pop();
       const kernels = s.kernels.filter(
         (k) => (k !== s.running && k !== newest) || (k === s.running && control().autoremoveRunning === node),
@@ -552,6 +553,7 @@ export function installOps({ nodes, storage, log, dir, rebootSeconds = 8, failUp
       for (const name of gone) channel.write(`Removing ${name} ...\n`);
       s.orphans = [];
       s.kernels = s.kernels.filter((k) => !gone.includes(`proxmox-kernel-${k}-pve-signed`));
+      pve9.autoremoved(node);
       return (done(0), true);
     }
     if (body.startsWith("sh -c 'if [ -f /var/run/reboot-required ]")) {

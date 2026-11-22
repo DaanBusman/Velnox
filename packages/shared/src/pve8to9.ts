@@ -196,12 +196,27 @@ const RULES: Rule[] = [
     match: /^Less than 5 GB free space on root file system/,
     key: 'pve8to9.root-space',
     severity: 'BLOCKER',
+    remediationId: 'pve.free-root-space',
   },
   {
     match: /^Less than 10 GB free space on root file system/,
     key: 'pve8to9.root-space',
     severity: 'INFO',
   },
+  {
+    match: /^systemd-timesyncd is not the best choice for time-keeping on servers/,
+    key: 'pve8to9.timesyncd',
+    remediationId: 'pve.chrony',
+  },
+  { match: /^Detected active time synchronisation unit/, key: 'pve8to9.timesyncd' },
+  {
+    // Prefixed with where it was found: /etc/vzdump.conf, a storage, or vzdump.cron.
+    match: /parameter 'maxfiles' was deprecated with PVE 7\.x/,
+    key: 'pve8to9.maxfiles',
+    severity: 'BLOCKER',
+    remediationId: 'pve.prune-backups',
+  },
+  { match: /^no backup retention problems found/, key: 'pve8to9.maxfiles' },
   { match: /^dkms modules found/, key: 'pve8to9.dkms' },
   // Velnox moves a node's guests away before its upgrade, as a rolling update does.
   { match: /^(\d+) running guest\(s\) detected/, key: 'pve8to9.running-guests', severity: 'INFO' },

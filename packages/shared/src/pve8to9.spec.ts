@@ -119,4 +119,37 @@ describe('parsePve8to9 after the upgrade', () => {
       severity: 'BLOCKER',
     });
   });
+
+  describe('the findings Velnox can act on since 0.7.38', () => {
+    const classify = (level: 'PASS' | 'WARN' | 'FAIL' | 'NOTICE', message: string) =>
+      classifyPve8to9({ level, section: null, message, detail: [], raw: message });
+
+    it('offers chrony for systemd-timesyncd, and passes an active alternative', () => {
+      expect(
+        classify('WARN', 'systemd-timesyncd is not the best choice for time-keeping on servers, due to only applying updates on boot.'),
+      ).toMatchObject({ key: 'pve8to9.timesyncd', severity: 'WARNING', remediationId: 'pve.chrony' });
+      const pass = classify('PASS', "Detected active time synchronisation unit 'chrony.service'");
+      expect(pass).toMatchObject({ key: 'pve8to9.timesyncd', severity: 'PASS' });
+      expect(pass?.remediationId).toBeUndefined();
+    });
+
+    it.each([
+      '/etc/vzdump.conf',
+      "storage 'nas'",
+      '/etc/pve/vzdump.cron',
+    ])('treats maxfiles in %s as a blocker Velnox can fix', (where) => {
+      expect(
+        classify('FAIL', `${where} - parameter 'maxfiles' was deprecated with PVE 7.x and is getting dropped with PVE 9.`),
+      ).toMatchObject({ key: 'pve8to9.maxfiles', severity: 'BLOCKER', remediationId: 'pve.prune-backups' });
+    });
+
+    it('offers to free root space below 5 GB, and leaves a notice below 10 GB alone', () => {
+      expect(
+        classify('WARN', 'Less than 5 GB free space on root file system, upgrade may fail.'),
+      ).toMatchObject({ severity: 'BLOCKER', remediationId: 'pve.free-root-space' });
+      const notice = classify('NOTICE', 'Less than 10 GB free space on root file system.');
+      expect(notice).toMatchObject({ severity: 'INFO' });
+      expect(notice?.remediationId).toBeUndefined();
+    });
+  });
 });

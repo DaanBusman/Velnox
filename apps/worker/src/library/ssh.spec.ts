@@ -18,9 +18,17 @@ import {
  * thing ever opened is SFTP.
  */
 
-const hostKey = utils.generateKeyPairSync('ed25519');
-const clientKey = utils.generateKeyPairSync('ed25519');
-const otherClientKey = utils.generateKeyPairSync('ed25519');
+/** ssh2's generator writes about 1 key in 250 that its own parser refuses; ssh-keygen's are fine. */
+const usableKey = () => {
+  for (;;) {
+    const key = utils.generateKeyPairSync('ed25519');
+    if (!(utils.parseKey(key.private) instanceof Error)) return key;
+  }
+};
+
+const hostKey = usableKey();
+const clientKey = usableKey();
+const otherClientKey = usableKey();
 const allowedPublic = utils.parseKey(clientKey.public);
 const FILE = Buffer.from('CD001 pretend iso contents '.repeat(200));
 

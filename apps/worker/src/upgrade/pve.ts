@@ -21,7 +21,21 @@ import {
   type PvePlanOptions,
 } from '@velnox/shared';
 import { StepError, type StepContext } from '../jobs/steps';
-import { PVE_COMMANDS, microcodeCommand, microcodeFor } from '../remote/commands';
+import {
+  CHRONY_SOURCES,
+  COMMANDS,
+  MAXFILES_BACKUP,
+  PVE_COMMANDS,
+  linuxImageRefusal,
+  maxfilesDrift,
+  maxfilesFiles,
+  microcodeCommand,
+  microcodeFor,
+  ntpSourcesFile,
+  parseHostFacts,
+  parseMaxfilesChanges,
+  parseNtpServers,
+} from '../remote/commands';
 import {
   assessGuests,
   chooseTarget,
@@ -33,6 +47,7 @@ import {
 } from '../updates/guests';
 import {
   distUpgrade,
+  readAutoremove,
   rebootIfNeeded,
   refreshLists,
   runRegistered,
@@ -227,7 +242,70 @@ export const PVE_PROVIDERS: Record<string, CheckProvider> = {
       }
       return out;
     }),
+
+  /**
+   * What Proxmox's upgrade guide asks for and pve8to9 does not check: the
+   * linux-image-amd64 meta-package of a node installed on plain Debian, and
+   * the audit socket Velnox stops just before each node's dist-upgrade.
+   */
+  'pve.host': async (rt, row) =>
+    withPve(rt, async (pve) => {
+      const out: Finding[] = [];
+      for (const target of row.targets.filter((t) => t.status !== 'NOT_APPLICABLE')) {
+        const add = (finding: Omit<Finding, 'targetId' | 'source'>) =>
+          out.push({ targetId: target.id, source: 'VELNOX_GUARD', ...finding });
+        const facts = await readHostFacts(rt, pve, target.label);
+        if (!facts) {
+          add({
+            key: 'pve.host-facts',
+            severity: 'WARNING',
+            title: `${target.label}: could not read whether linux-image-amd64 is installed`,
+          });
+          continue;
+        }
+        if (facts.auditSocketActive) {
+          add({
+            key: 'pve.journald-audit',
+            severity: 'INFO',
+            title: `${target.label}: Velnox stops systemd-journald-audit.socket just before the dist-upgrade, as Proxmox advises`,
+          });
+        }
+        if (!facts.linuxImageInstalled) {
+          add({
+            key: 'pve.linux-image-amd64',
+            severity: 'PASS',
+            title: 'linux-image-amd64 is not installed',
+          });
+          continue;
+        }
+        const refusal = linuxImageRefusal(facts);
+        add({
+          key: 'pve.linux-image-amd64',
+          severity: 'BLOCKER',
+          title: refusal
+            ? `linux-image-amd64 conflicts with Proxmox VE 9, and Velnox will not remove it: ${refusal}`
+            : 'linux-image-amd64 conflicts with Proxmox VE 9 and must go before the dist-upgrade',
+          ...(refusal ? {} : { remediationId: 'pve.remove-linux-image' }),
+        });
+      }
+      return out;
+    }),
 };
+
+/** What the host checks read, or null when the node did not answer it whole. */
+async function readHostFacts(rt: UpgradeRuntime, pve: ProxmoxClient, node: string) {
+  try {
+    const read = await runRegistered(
+      handleFor(rt, pve, node, quiet()),
+      PVE_COMMANDS.hostFacts,
+      false,
+    );
+    return parseHostFacts(read.stdout);
+  } catch (error) {
+    if (error instanceof StepError) return null;
+    throw error;
+  }
+}
 
 /** A node's pve-manager version, read again while its API restarts after an update. */
 async function settledVersion(rt: UpgradeRuntime, node: string): Promise<string | null> {
@@ -282,6 +360,24 @@ const commandRemediation = (
 
 const SYSCTL_D = '/etc/sysctl.d/99-velnox-from-sysctl-conf.conf';
 const isSetting = (line: string) => line.trim() !== '' && !/^\s*[#;]/.test(line);
+
+/** Below this, apt's cache is not what stands between a node and 5 GB free. */
+const MIN_CACHE_WORTH_CLEARING_MB = 50;
+
+/** The NTP servers timesyncd uses; null when they cannot be read or trusted. */
+async function readNtpServers(rt: UpgradeRuntime, pve: ProxmoxClient, node: string) {
+  try {
+    const read = await runRegistered(
+      handleFor(rt, pve, node, quiet()),
+      PVE_COMMANDS.timesyncServers,
+      false,
+    );
+    return parseNtpServers(read.stdout);
+  } catch (error) {
+    if (error instanceof StepError) return null;
+    throw error;
+  }
+}
 
 export const PVE_REMEDIATION_IMPLS: Record<string, RemediationImpl> = {
   'pve.microcode': {
@@ -387,6 +483,132 @@ export const PVE_REMEDIATION_IMPLS: Record<string, RemediationImpl> = {
     PVE_COMMANDS.lvmAutoactivation,
     "run Proxmox's script that disables autoactivation of existing LVM guest volumes",
   ),
+  'pve.chrony': {
+    // The node's own NTP servers are read, shown, and kept. When they cannot
+    // be read, nothing is offered: the warning stays, and does not stop the run.
+    plan: async (rt, row, targetId) =>
+      withPve(rt, async (pve) => {
+        const servers = await readNtpServers(rt, pve, targetNode(row, targetId));
+        if (!servers) return null;
+        return change(
+          servers.length
+            ? `replace systemd-timesyncd with chrony, preferring this node's NTP servers (${servers.join(', ')})`
+            : "replace systemd-timesyncd with chrony, on Debian's default NTP pool",
+          ['apt-get -y install chrony', 'chronyc waitsync 12 0 0 5'],
+          { install: ['chrony'], remove: ['systemd-timesyncd'] },
+          servers.length
+            ? [{ path: CHRONY_SOURCES, before: null, after: ntpSourcesFile(servers) }]
+            : [],
+        );
+      }),
+    apply: async (rt, row, targetId, approved) =>
+      withPve(rt, async (pve) => {
+        const node = targetNode(row, targetId);
+        const servers = await readNtpServers(rt, pve, node);
+        if (!servers || ntpSourcesFile(servers) !== (approved.files[0]?.after ?? '')) {
+          throw new Error(`the NTP servers on ${node} changed since this was approved`);
+        }
+        await runRegistered(handleFor(rt, pve, node, quiet()), PVE_COMMANDS.chrony, false);
+      }),
+    validate: async (rt, row, targetId) =>
+      !(await stillReported(rt, targetNode(row, targetId), 'pve8to9.timesyncd')),
+  },
+  'pve.remove-linux-image': {
+    plan: async () =>
+      change(
+        'remove the linux-image-amd64 meta-package (the Proxmox kernel stays)',
+        ['apt-get -y remove linux-image-amd64'],
+        { remove: ['linux-image-amd64'] },
+      ),
+    apply: async (rt, row, targetId) =>
+      withPve(rt, async (pve) => {
+        await runRegistered(
+          handleFor(rt, pve, targetNode(row, targetId), quiet()),
+          PVE_COMMANDS.removeLinuxImage,
+          false,
+        );
+      }),
+    validate: async (rt, row, targetId) =>
+      withPve(rt, async (pve) => {
+        const facts = await readHostFacts(rt, pve, targetNode(row, targetId));
+        return Boolean(facts && !facts.linuxImageInstalled);
+      }),
+  },
+  'pve.prune-backups': {
+    // Read by the same script that applies it, so the approval shows its result.
+    plan: async (rt, row, targetId) =>
+      withPve(rt, async (pve) => {
+        const node = targetNode(row, targetId);
+        const shown = await runRegistered(
+          handleFor(rt, pve, node, quiet()),
+          PVE_COMMANDS.maxfilesShow,
+          false,
+        );
+        const changes = parseMaxfilesChanges(shown.stdout);
+        if (!changes.length) return null;
+        return change(
+          `move backup retention from maxfiles to prune-backups on ${node}; the originals are kept in ${MAXFILES_BACKUP}`,
+          ['pvesm set <storage> --prune-backups <value> --delete maxfiles'],
+          {},
+          maxfilesFiles(changes),
+        );
+      }),
+    apply: async (rt, row, targetId, approved) =>
+      withPve(rt, async (pve) => {
+        const node = targetNode(row, targetId);
+        const handle = handleFor(rt, pve, node, quiet());
+        const now = await runRegistered(handle, PVE_COMMANDS.maxfilesShow, false);
+        const drift = maxfilesDrift(approved.files, parseMaxfilesChanges(now.stdout));
+        if (drift) {
+          throw new Error(`${drift.where} on ${node} changed since this was approved`);
+        }
+        await runRegistered(handle, PVE_COMMANDS.maxfilesApply, false);
+      }),
+    validate: async (rt, row, targetId) =>
+      !(await stillReported(rt, targetNode(row, targetId), 'pve8to9.maxfiles')),
+  },
+  'pve.free-root-space': {
+    // Only what apt itself calls unneeded. With nothing to clear nothing is
+    // offered, and the plan stays blocked on the free space.
+    plan: async (rt, row, targetId) =>
+      withPve(rt, async (pve) => {
+        const handle = handleFor(rt, pve, targetNode(row, targetId), quiet());
+        const cache = await runRegistered(handle, PVE_COMMANDS.aptCacheSize, false);
+        const cacheMb = Number(/^(\d+)/.exec(cache.stdout)?.[1] ?? 0);
+        const { removals, refusal } = await readAutoremove(handle);
+        const remove = refusal ? [] : removals;
+        if (cacheMb < MIN_CACHE_WORTH_CLEARING_MB && !remove.length) return null;
+        return change(
+          `free space on /: clear apt's cache (${cacheMb} MB)${
+            remove.length ? ` and remove ${remove.length} package(s) nothing needs` : ''
+          }${refusal ? `; autoremove is left out: ${refusal}` : ''}`,
+          ['apt-get clean', ...(remove.length ? ['apt-get -y autoremove'] : [])],
+          { remove },
+        );
+      }),
+    apply: async (rt, row, targetId, approved) =>
+      withPve(rt, async (pve) => {
+        const node = targetNode(row, targetId);
+        const handle = handleFor(rt, pve, node, quiet());
+        await runRegistered(handle, PVE_COMMANDS.aptClean, false);
+        if (!approved.packages.remove.length) return;
+        const { removals, refusal } = await readAutoremove(handle);
+        if (refusal) throw new Error(`autoremove on ${node} refused: ${refusal}`);
+        const extra = removals.filter((p) => !approved.packages.remove.includes(p));
+        if (extra.length) {
+          throw new Error(`autoremove on ${node} would now also remove ${extra.join(', ')}`);
+        }
+        if (removals.length) await runRegistered(handle, COMMANDS.aptAutoremove, false);
+      }),
+    validate: async (rt, row, targetId) => {
+      if (await stillReported(rt, targetNode(row, targetId), 'pve8to9.root-space')) {
+        throw new Error(
+          "there is still less than 5 GB free on / with apt's cache and unused packages gone; the rest needs a person",
+        );
+      }
+      return true;
+    },
+  },
   'pve.update-bookworm': {
     plan: async (_rt, _row, _targetId, finding) =>
       change(
@@ -509,6 +731,7 @@ export const PVE_ACTIONS: Record<string, UpgradeAction> = {
         if (hasPve8to9(version)) continue;
         const finding = pve8to9Missing(target.id, target.label, version);
         const planned = await impl.plan(rt, row, target.id, finding);
+        if (!planned) continue;
         await rt.prisma.remediationRun.create({
           data: {
             tenantId: row.tenantId,
@@ -668,6 +891,18 @@ export const PVE_ACTIONS: Record<string, UpgradeAction> = {
       if (await skipIfDone(pve, target, context, 'the dist-upgrade')) return;
       const handle = handleFor(rt, pve, target.label, context);
       await refreshLists(handle);
+      // Proxmox's advice, and optional: if it fails the upgrade goes on, and
+      // the audit messages stop by themselves at the reboot.
+      try {
+        await runRegistered(handle, PVE_COMMANDS.auditSocketStop, false);
+        await context.log('STDOUT', `${target.label}: systemd-journald-audit.socket stopped`);
+      } catch (error) {
+        if (!(error instanceof StepError)) throw error;
+        await context.log(
+          'STDERR',
+          `${target.label}: systemd-journald-audit.socket could not be stopped (${error.message}); the upgrade continues`,
+        );
+      }
       await distUpgrade(handle);
     });
   },

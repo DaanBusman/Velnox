@@ -219,12 +219,24 @@ export const SHARED_ACTIONS: Record<string, UpgradeAction> = {
     }
     if (!recheck) {
       await rt.prisma.remediationRun.deleteMany({ where: { planId: row.id, status: 'PLANNED' } });
+      // One fix can answer several findings on a node: retention set in three places.
+      const planned = new Set<string>();
       for (const f of findings) {
         if (f.severity === 'PASS' || !f.remediationId) continue;
         const def = UPGRADE_REMEDIATIONS[f.remediationId];
         const impl = remediationImpls()[f.remediationId];
         if (!def || !impl) continue;
+        const once = JSON.stringify([f.targetId, f.remediationId, f.params ?? null]);
+        if (planned.has(once)) continue;
+        planned.add(once);
         const change = await impl.plan(rt, row, f.targetId, f);
+        if (!change) {
+          await context.log(
+            'STDOUT',
+            `${labelOf(row, f.targetId)}: "${def.title}" not offered — there is nothing it can do here`,
+          );
+          continue;
+        }
         const mode = routeRemediation(def);
         await rt.prisma.remediationRun.create({
           data: {

@@ -170,7 +170,15 @@ harmless. What Velnox does about the findings:
 | Removable bootloader … not set up to update it | After approval, the debconf setting and a reinstall of `grub-efi-amd64`, as pve8to9 advises. |
 | LVM autoactivation (shared storage) | After approval, runs Proxmox's own `pve-lvm-disable-autoactivation`. On local storage it is a notice, left be. |
 | proxmox-ve too old / updates available | After approval, brings the node up to date on bookworm first — as for a node too old to have pve8to9 at all. |
-| Less than 5 GB free on `/`, containers needing cgroup v1, Ceph too old, nodes offline, GlusterFS | **Blocks.** Nothing Velnox can fix; the plan says why. |
+| `systemd-timesyncd` is not the best choice | After approval, installs chrony in its place. The node's own NTP servers are shown and kept as preferred sources in `/etc/chrony/sources.d/velnox-from-timesyncd.sources`; `chrony.conf` stays as shipped, so the dist-upgrade has nothing to ask about it. If chrony does not synchronise within a minute, timesyncd is put back and the run stops. |
+| `maxfiles` deprecated (`/etc/vzdump.conf`, a storage, `/etc/pve/vzdump.cron`) | After approval, moves it to `prune-backups` as vzdump itself reads it: `maxfiles N` becomes `keep-last=N`, `maxfiles 0` becomes `keep-all=1`, and where `prune-backups` is already set only `maxfiles` goes. The approval shows each line; the originals are kept in `/root/velnox-before-maxfiles/`. |
+| Less than 5 GB free on `/` | After approval, clears apt's cache and runs the guarded autoremove (never the running or newest kernel, never Proxmox itself). With nothing to clear it is not offered and the plan stays blocked. If `/` is still under 5 GB afterwards the run stops and says so: the rest needs a person. |
+| Containers needing cgroup v1, Ceph too old, nodes offline, GlusterFS | **Blocks.** Nothing Velnox can fix; the plan says why. |
+
+Two things Proxmox's guide asks for that pve8to9 does not check, so Velnox checks them itself:
+
+- **`linux-image-amd64`**, present on a node installed on plain Debian, conflicts with Proxmox VE 9 and blocks the upgrade. After approval Velnox removes it, but only when the node runs a Proxmox kernel, has one installed, and apt would remove that one package. Otherwise it stays blocked and the plan says why.
+- **`systemd-journald-audit.socket`**: Proxmox advises stopping it so the upgrade does not flood the journal with kernel audit messages. Velnox runs `systemctl disable --now` on it right before each node's dist-upgrade, and the plan lists this as a notice. Those messages leave the journal at that point rather than at the reboot, when Debian 13's default ends them anyway. `auditd`, if you run it, is not affected. If the command fails the upgrade continues.
 
 Every fix is proven by running pve8to9 again on that node; then the whole check runs again, and
 anything that still stops the upgrade ends the run before any node is touched.

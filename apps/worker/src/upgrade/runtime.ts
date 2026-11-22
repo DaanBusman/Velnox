@@ -54,12 +54,13 @@ export type CheckProvider = (rt: UpgradeRuntime, plan: PlanRow) => Promise<Findi
 
 /** How a remediation is planned, applied and proven. Its metadata is in shared. */
 export interface RemediationImpl {
+  /** The exact change, or null when there is nothing it can do here: the finding stays open. */
   plan(
     rt: UpgradeRuntime,
     plan: PlanRow,
     targetId: string | null,
     finding: Finding,
-  ): Promise<ChangeSet>;
+  ): Promise<ChangeSet | null>;
   apply(
     rt: UpgradeRuntime,
     plan: PlanRow,

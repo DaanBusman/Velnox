@@ -19,6 +19,14 @@
  *   `{"sysctlConf": false}`         /etc/sysctl.conf holds only comments
  *   `{"systemdBoot": true}`         the systemd-boot meta-package installed
  *   `{"rootFreeGb": 3}`             free space on /
+ *   `{"aptCacheMb": 2048}`          apt's cache; `apt-get clean` gives it back to /
+ *   `{"autoremoveFreesGb": 1}`      what the autoremove gives back to /
+ *   `{"timesyncd": true}`           systemd-timesyncd keeps the time (chrony otherwise)
+ *   `{"ntpServers": "a b"}`         the NTP servers it reports
+ *   `{"linuxImageAmd64": true}`     the linux-image-amd64 meta-package installed
+ *   `{"maxfilesConf": 3}`           `maxfiles` in each node's /etc/vzdump.conf
+ *   `{"maxfilesStorage": 5}`        `maxfiles` on a storage (shared by the cluster)
+ *   `{"maxfilesCron": 2}`           `--maxfiles` in /etc/pve/vzdump.cron (shared too)
  *   `{"pve8to9Unknown": "…"}`       pve8to9 prints that line, unprefixed
  *   `{"pveNine": ["pve3"]}`         those nodes already run Proxmox VE 9, on trixie
  *   `{"majorReset": 1}`             any new value starts the nodes over
@@ -40,10 +48,13 @@ const SYSCTL_COMMENTS = '# /etc/sysctl.conf - Configuration file for setting sys
 export function installMajor({ nodes, log, control }) {
   let state = null;
   let lastReset;
+  /** What the cluster shares: a storage's and the cron file's retention. */
+  let retention = { storage: null, cron: null };
 
   const fresh = () => {
     const c = control();
     const nine = [].concat(c.pveNine ?? []);
+    retention = { storage: c.maxfilesStorage ?? null, cron: c.maxfilesCron ?? null };
     state = Object.fromEntries(
       Object.keys(nodes).map((n) => [
         n,
@@ -60,6 +71,13 @@ export function installMajor({ nodes, log, control }) {
           sysctlD: {},
           systemdBoot: Boolean(c.systemdBoot),
           rootFreeGb: Number(c.rootFreeGb ?? 40),
+          aptCacheMb: Number(c.aptCacheMb ?? 0),
+          timesyncd: Boolean(c.timesyncd),
+          ntpServers: String(c.ntpServers ?? ''),
+          chronySources: null,
+          linuxImage: Boolean(c.linuxImageAmd64),
+          auditSocket: true,
+          maxfilesConf: c.maxfilesConf ?? null,
           kernel9Installed: false,
         },
       ]),
@@ -84,6 +102,13 @@ export function installMajor({ nodes, log, control }) {
     sysctlD: {},
     systemdBoot: false,
     rootFreeGb: 40,
+    aptCacheMb: 0,
+    timesyncd: false,
+    ntpServers: '',
+    chronySources: null,
+    linuxImage: false,
+    auditSocket: false,
+    maxfilesConf: null,
     kernel9Installed: true,
   });
   const current = () => {
@@ -135,6 +160,16 @@ export function installMajor({ nodes, log, control }) {
     if (control().pve8to9Unknown) lines.push(String(control().pve8to9Unknown));
     if (s.rootFreeGb < 5) log2('warn', 'Less than 5 GB free space on root file system, upgrade may fail.');
     else if (s.rootFreeGb < 10) log2('notice', 'Less than 10 GB free space on root file system.');
+    log2('info', 'Checking for supported & active NTP service..');
+    if (s.timesyncd) {
+      log2('warn', "systemd-timesyncd is not the best choice for time-keeping on servers, due to only applying updates on boot.\n  While not necessary for the upgrade it's recommended to use one of:\n    * chrony (Default in new Proxmox VE installations)\n    * ntpsec\n    * openntpd");
+    } else log2('pass', "Detected active time synchronisation unit 'chrony.service'");
+    log2('info', 'Checking backup retention settings..');
+    const dropped = "parameter 'maxfiles' was deprecated with PVE 7.x and is getting dropped with PVE 9.";
+    if (s.maxfilesConf !== null) log2('fail', `/etc/vzdump.conf - ${dropped}`);
+    if (retention.storage !== null) log2('fail', `storage 'nas' - ${dropped}`);
+    if (retention.cron !== null) log2('fail', `/etc/pve/vzdump.cron - ${dropped}`);
+    if (s.maxfilesConf === null && retention.storage === null && retention.cron === null) log2('pass', 'no backup retention problems found.');
     log2('info', 'Checking bootloader configuration...');
     if (s.systemdBoot) {
       log2('fail', "systemd-boot meta-package installed. This will cause problems on upgrades of other boot-related packages. Remove 'systemd-boot' See https://pve.proxmox.com/wiki/Upgrade_from_8_to_9#sd-boot-warning for more information.");
@@ -178,6 +213,56 @@ export function installMajor({ nodes, log, control }) {
       return ok(pve8to9(node, context));
     }
     if (body === 'cat /etc/sysctl.conf') return ok(s.sysctl);
+    if (body.includes('audit_socket=')) {
+      return ok([
+        `audit_socket=${s.auditSocket ? 'active' : 'inactive'}`,
+        `linux_image=${s.linuxImage ? 'ii' : ''}`,
+        'running_kernel=6.8.12-4-pve',
+        'pve_kernels=1',
+        `linux_image_removes=${s.linuxImage ? 'linux-image-amd64 ' : ''}`,
+        '',
+      ].join('\n'));
+    }
+    if (body === 'systemctl disable --now systemd-journald-audit.socket') {
+      s.auditSocket = false;
+      log(`major: ${node} audit socket stopped`);
+      return ok();
+    }
+    if (body === 'timedatectl show-timesync --property=SystemNTPServers --property=LinkNTPServers --value') {
+      return ok(`${s.ntpServers}\n`);
+    }
+    if (body.includes('velnox-from-timesyncd.sources')) {
+      s.timesyncd = false;
+      s.chronySources = s.ntpServers.split(/\s+/).filter(Boolean).sort().map((h) => `server ${h} iburst prefer`).join('\n');
+      log(`major: ${node} chrony installed, sources: ${s.chronySources.replace(/\n/g, ', ')}`);
+      return ok('Setting up chrony ...\n');
+    }
+    if (body.includes('apt-get -y remove linux-image-amd64')) {
+      s.linuxImage = false;
+      log(`major: ${node} linux-image-amd64 removed`);
+      return ok('Removing linux-image-amd64 ...\n');
+    }
+    if (body.includes('velnox-before-maxfiles')) {
+      const keep = (n) => (Number(n) === 0 ? 'keep-all=1' : `keep-last=${n}`);
+      const rows = [
+        ...(s.maxfilesConf !== null ? [`/etc/vzdump.conf\tmaxfiles: ${s.maxfilesConf}\tprune-backups: ${keep(s.maxfilesConf)}`] : []),
+        ...(retention.storage !== null ? [`storage nas\tmaxfiles ${retention.storage}\tprune-backups ${keep(retention.storage)}`] : []),
+        ...(retention.cron !== null ? [`/etc/pve/vzdump.cron\t0 1 * * 6 root vzdump 100 --maxfiles ${retention.cron}\t0 1 * * 6 root vzdump 100 --prune-backups ${keep(retention.cron)}`] : []),
+      ];
+      if (body.includes('apply=1')) {
+        s.maxfilesConf = null;
+        retention = { storage: null, cron: null };
+        log(`major: ${node} retention moved to prune-backups (${rows.length} places)`);
+      }
+      return ok(rows.length ? `${rows.join('\n')}\n` : '');
+    }
+    if (body === 'du -sm /var/cache/apt/archives') return ok(`${s.aptCacheMb}\t/var/cache/apt/archives\n`);
+    if (body === 'env LC_ALL=C apt-get clean') {
+      s.rootFreeGb += s.aptCacheMb / 1024;
+      s.aptCacheMb = 0;
+      log(`major: ${node} apt cache cleared, ${s.rootFreeGb} GB free`);
+      return ok();
+    }
     if (body === "grep -m1 '^vendor_id' /proc/cpuinfo") {
       log(`major: ${node} cpu vendor read: ${s.vendor}`);
       return ok(`vendor_id\t: ${s.vendor}\n`);
@@ -284,5 +369,13 @@ export function installMajor({ nodes, log, control }) {
     ];
   }
 
-  return { exec, pendingFor, installAll, rebooted, aptRefusal, versionOf: (node) => current()[node]?.pve ?? null, stats: () => current() };
+  /** The autoremove gave its space back to /. */
+  function autoremoved(node) {
+    const s = current()[node];
+    if (!s) return;
+    s.rootFreeGb += Number(control().autoremoveFreesGb ?? 0);
+    log(`major: ${node} autoremoved, ${s.rootFreeGb} GB free`);
+  }
+
+  return { exec, pendingFor, installAll, rebooted, autoremoved, aptRefusal, versionOf: (node) => current()[node]?.pve ?? null, stats: () => current() };
 }

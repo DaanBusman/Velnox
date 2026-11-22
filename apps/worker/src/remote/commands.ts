@@ -42,6 +42,7 @@ import {
   type CephChannel,
   type CephMatrixEntry,
   type CephRelease,
+  type ChangeSet,
 } from '@velnox/shared';
 
 const MINUTE = 60_000;
@@ -182,6 +183,108 @@ export const CEPH_COMMANDS: readonly CommandSpec[] = [
  */
 const SYSCTL_D = '/etc/sysctl.d/99-velnox-from-sysctl-conf.conf';
 const APT = ['env', 'LC_ALL=C', 'DEBIAN_FRONTEND=noninteractive', 'apt-get', '-y'] as const;
+/** dpkg's own field, kept out of the templates below where it would read as interpolation. */
+const DPKG_STATUS = '${db:Status-Abbrev}';
+const PROXMOX_KERNEL = "'^ii +(proxmox|pve)-kernel-[0-9]+\\.[0-9]+\\.[0-9]+-[0-9]+-pve'";
+
+/** Where a node's own NTP servers go: Debian's chrony reads this directory. */
+export const CHRONY_SOURCES = '/etc/chrony/sources.d/velnox-from-timesyncd.sources';
+/** The first copy of each file the retention change touches; not in /etc/pve, which is shared. */
+export const MAXFILES_BACKUP = '/root/velnox-before-maxfiles';
+
+/**
+ * chrony in place of systemd-timesyncd. Debian's two packages conflict, so
+ * installing one removes the other. The node's own NTP servers are read first
+ * and added as preferred sources in a file of their own: chrony.conf stays as
+ * the package shipped it, so the dist-upgrade to trixie has nothing to ask
+ * about it. When chrony does not synchronise, timesyncd is put back.
+ */
+const CHRONY_SCRIPT = [
+  'set -u',
+  `sources=${CHRONY_SOURCES}`,
+  'export DEBIAN_FRONTEND=noninteractive',
+  'servers=$(timedatectl show-timesync --property=SystemNTPServers --property=LinkNTPServers --value) || { echo "velnox: the NTP servers of systemd-timesyncd could not be read" >&2; exit 1; }',
+  'for s in $servers; do case "$s" in -*|*[!A-Za-z0-9.:-]*) echo "velnox: not an NTP server: $s" >&2; exit 1;; esac; done',
+  'back() { rm -f "$sources"; apt-get -y install systemd-timesyncd >/dev/null 2>&1 || echo "velnox: systemd-timesyncd could not be put back" >&2; }',
+  'apt-get -y install chrony || { back; echo "velnox: chrony could not be installed" >&2; exit 1; }',
+  'if [ -n "$servers" ]; then',
+  "  for s in $servers; do printf 'server %s iburst prefer\\n' \"$s\"; done | sort -u > \"$sources\"",
+  '  chronyc reload sources >/dev/null 2>&1 || systemctl restart chrony',
+  'fi',
+  'if ! chronyc waitsync 12 0 0 5 >/dev/null; then back; echo "velnox: chrony did not synchronise within a minute; systemd-timesyncd is back" >&2; exit 1; fi',
+].join('\n');
+
+/**
+ * The meta-package Proxmox's guide says to remove on a node installed on plain
+ * Debian. Refuses unless the node runs a Proxmox kernel, has one installed,
+ * and apt would remove this one package and nothing else.
+ */
+const REMOVE_LINUX_IMAGE_SCRIPT = [
+  'set -eu',
+  'case "$(uname -r)" in *-pve) ;; *) echo "velnox: the running kernel is not a Proxmox kernel" >&2; exit 1;; esac',
+  `dpkg-query -W -f='${DPKG_STATUS} \${Package}\\n' 'proxmox-kernel-*' 'pve-kernel-*' 2>/dev/null | grep -Eq ${PROXMOX_KERNEL} || { echo "velnox: no Proxmox kernel is installed" >&2; exit 1; }`,
+  "removes=$(apt-get -s -o Debug::NoLocking=1 remove linux-image-amd64 | sed -n 's/^Remv \\([^ ]*\\).*/\\1/p')",
+  '[ "$removes" = linux-image-amd64 ] || { echo "velnox: removing it would also remove: $removes" >&2; exit 1; }',
+  'DEBIAN_FRONTEND=noninteractive apt-get -y remove linux-image-amd64',
+].join('\n');
+
+/**
+ * `maxfiles` to `prune-backups`, in the three places pve8to9 looks. One script
+ * for showing and for doing, so what is approved is what runs. It prints one
+ * tab-separated line per change: where, before, after. The mapping is
+ * vzdump's own: N keeps the last N, 0 keeps everything, and an existing
+ * `prune-backups` already wins, so there only `maxfiles` goes.
+ */
+const maxfilesScript = (apply: boolean) =>
+  [
+    'set -eu',
+    `apply=${apply ? 1 : 0}`,
+    `keep=${MAXFILES_BACKUP}`,
+    "t=''",
+    "trap 'rm -f \"$t\"' EXIT",
+    'die() { echo "velnox: $1" >&2; exit 1; }',
+    'value() { case "$1" in \'\'|*[!0-9]*|0?*) return 1;; 0) echo keep-all=1;; *) echo "keep-last=$1";; esac; }',
+    "row() { printf '%s\\t%s\\t%s\\n' \"$1\" \"$2\" \"$3\"; }",
+    'save() { if [ "$apply" = 1 ]; then mkdir -p "$keep"; [ -e "$keep/$2" ] || cp -p "$1" "$keep/$2"; fi; }',
+    // This node's /etc/vzdump.conf.
+    'c=/etc/vzdump.conf',
+    "if [ -f \"$c\" ] && grep -Eq '^[[:space:]]*maxfiles:' \"$c\"; then",
+    "  [ \"$(grep -Ec '^[[:space:]]*maxfiles:' \"$c\")\" = 1 ] || die \"$c has more than one maxfiles line\"",
+    "  n=$(sed -nE 's/^[[:space:]]*maxfiles:[[:space:]]*([^[:space:]]*)[[:space:]]*$/\\1/p' \"$c\")",
+    '  v=$(value "$n") || die "$c: maxfiles is not a number: $n"',
+    "  if grep -Eq '^[[:space:]]*prune-backups:' \"$c\"; then",
+    '    row "$c" "maxfiles: $n" "(removed: prune-backups is already set)"',
+    "    if [ \"$apply\" = 1 ]; then save \"$c\" vzdump.conf; sed -i -E '/^[[:space:]]*maxfiles:/d' \"$c\"; fi",
+    '  else',
+    '    row "$c" "maxfiles: $n" "prune-backups: $v"',
+    '    if [ "$apply" = 1 ]; then save "$c" vzdump.conf; sed -i -E "s|^[[:space:]]*maxfiles:.*|prune-backups: $v|" "$c"; fi',
+    '  fi',
+    'fi',
+    // The cluster's storages, through Proxmox's own tool.
+    's=/etc/pve/storage.cfg',
+    'if [ -f "$s" ]; then',
+    "  awk '/^[a-z0-9]+:[[:space:]]/ { if (id != \"\" && m != \"\") print id, m, p; id=$2; m=\"\"; p=0; next } /^[[:space:]]+maxfiles[[:space:]]/ { m=$2 } /^[[:space:]]+prune-backups[[:space:]]/ { p=1 } END { if (id != \"\" && m != \"\") print id, m, p }' \"$s\" | while read -r id n has; do",
+    '    case "$id" in -*|*[!A-Za-z0-9._-]*) die "not a storage name: $id";; esac',
+    '    v=$(value "$n") || die "storage $id: maxfiles is not a number: $n"',
+    '    if [ "$has" = 1 ]; then',
+    '      row "storage $id" "maxfiles $n" "(removed: prune-backups is already set)"',
+    '      if [ "$apply" = 1 ]; then save "$s" storage.cfg; pvesm set "$id" --delete maxfiles; fi',
+    '    else',
+    '      row "storage $id" "maxfiles $n" "prune-backups $v"',
+    '      if [ "$apply" = 1 ]; then save "$s" storage.cfg; pvesm set "$id" --prune-backups "$v" --delete maxfiles; fi',
+    '    fi',
+    '  done',
+    'fi',
+    // The old cron file, shared by the cluster: written in place, as /etc/pve wants.
+    'j=/etc/pve/vzdump.cron',
+    "if [ -f \"$j\" ] && grep -Eq '^[^#]*--maxfiles[ =]' \"$j\"; then",
+    '  t=$(mktemp)',
+    `  awk '/^[[:space:]]*#/ { print; next } { line = $0; if (match(line, /--maxfiles[ =]+[0-9]+/)) { n = substr(line, RSTART, RLENGTH); sub(/^--maxfiles[ =]+/, "", n); if (line ~ /--prune-backups/) line = substr(line, 1, RSTART - 2) substr(line, RSTART + RLENGTH); else line = substr(line, 1, RSTART - 1) "--prune-backups " (n == "0" ? "keep-all=1" : "keep-last=" (n + 0)) substr(line, RSTART + RLENGTH) } print line }' "$j" > "$t"`,
+    "  if grep -Eq '^[^#]*--maxfiles' \"$t\"; then die \"$j has a maxfiles value that is not a number\"; fi",
+    `  awk -v f="$j" 'NR == FNR { a[FNR] = $0; next } $0 != a[FNR] { b = a[FNR]; c = $0; gsub(/\\t/, " ", b); gsub(/\\t/, " ", c); printf "%s\\t%s\\t%s\\n", f, b, c }' "$j" "$t"`,
+    '  if [ "$apply" = 1 ]; then save "$j" vzdump.cron; cat "$t" > "$j"; fi',
+    'fi',
+  ].join('\n');
 
 export const PVE_COMMANDS = {
   /** The checklist, with the expensive checks. Read-only; needs root to read everything. */
@@ -259,6 +362,101 @@ export const PVE_COMMANDS = {
     interruptible: false,
     argv: ['/usr/share/pve-manager/migrations/pve-lvm-disable-autoactivation'],
   },
+  /** What Velnox's own checks read: the audit socket and the linux-image-amd64 question. */
+  hostFacts: {
+    id: 'pve.host_facts',
+    readOnly: true,
+    privileged: false,
+    timeoutMs: 2 * MINUTE,
+    interruptible: true,
+    argv: [
+      'sh',
+      '-c',
+      [
+        'printf \'audit_socket=%s\\n\' "$(systemctl is-active systemd-journald-audit.socket 2>/dev/null)"',
+        `printf 'linux_image=%s\\n' "$(dpkg-query -W -f='${DPKG_STATUS}' linux-image-amd64 2>/dev/null | cut -c1-2)"`,
+        'printf \'running_kernel=%s\\n\' "$(uname -r)"',
+        `printf 'pve_kernels=%s\\n' "$(dpkg-query -W -f='${DPKG_STATUS} \${Package}\\n' 'proxmox-kernel-*' 'pve-kernel-*' 2>/dev/null | grep -Ec ${PROXMOX_KERNEL})"`,
+        "printf 'linux_image_removes=%s\\n' \"$(apt-get -s -o Debug::NoLocking=1 remove linux-image-amd64 2>/dev/null | sed -n 's/^Remv \\([^ ]*\\).*/\\1/p' | tr '\\n' ' ')\"",
+      ].join('\n'),
+    ],
+  },
+  /**
+   * Proxmox's advice for the upgrade: journald starts logging kernel audit
+   * messages during it. Run just before the node's dist-upgrade. On bookworm
+   * the unit is static, so `disable` changes nothing there and `--now` is what
+   * stops it; Debian 13 has it disabled by default.
+   */
+  auditSocketStop: {
+    id: 'pve.audit_socket_stop',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: ['systemctl', 'disable', '--now', 'systemd-journald-audit.socket'],
+  },
+  timesyncServers: {
+    id: 'pve.timesync_servers',
+    readOnly: true,
+    privileged: false,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: [
+      'timedatectl',
+      'show-timesync',
+      '--property=SystemNTPServers',
+      '--property=LinkNTPServers',
+      '--value',
+    ],
+  },
+  chrony: {
+    id: 'pve.chrony',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 15 * MINUTE,
+    interruptible: false,
+    argv: ['sh', '-c', CHRONY_SCRIPT],
+  },
+  removeLinuxImage: {
+    id: 'pve.remove_linux_image',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 10 * MINUTE,
+    interruptible: false,
+    argv: ['sh', '-c', REMOVE_LINUX_IMAGE_SCRIPT],
+  },
+  maxfilesShow: {
+    id: 'pve.maxfiles_show',
+    readOnly: true,
+    privileged: true,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: ['sh', '-c', maxfilesScript(false)],
+  },
+  maxfilesApply: {
+    id: 'pve.maxfiles_apply',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 5 * MINUTE,
+    interruptible: false,
+    argv: ['sh', '-c', maxfilesScript(true)],
+  },
+  aptCacheSize: {
+    id: 'pve.apt_cache_size',
+    readOnly: true,
+    privileged: true,
+    timeoutMs: MINUTE,
+    interruptible: true,
+    argv: ['du', '-sm', '/var/cache/apt/archives'],
+  },
+  aptClean: {
+    id: 'pve.apt_clean',
+    readOnly: false,
+    privileged: true,
+    timeoutMs: 5 * MINUTE,
+    interruptible: false,
+    argv: ['env', 'LC_ALL=C', 'apt-get', 'clean'],
+  },
   /**
    * Every Ceph repository to Squid, each changed file kept as `*.velnox-ceph`.
    *
@@ -332,6 +530,103 @@ export function microcodeCommand(pkg: MicrocodePackage): CommandSpec {
       `set -e; for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do [ -f "$f" ] && cp -p "$f" "$f.velnox-before"; done; [ -f /etc/apt/sources.list ] && sed -i -E '/^deb .*(deb|security)\\.debian\\.org/{/non-free-firmware/!s/$/ non-free-firmware/}' /etc/apt/sources.list; [ -f /etc/apt/sources.list.d/debian.sources ] && sed -i -E '/^Components:/{/non-free-firmware/!s/$/ non-free-firmware/}' /etc/apt/sources.list.d/debian.sources; export DEBIAN_FRONTEND=noninteractive; apt-get update -qq; apt-get install -y ${pkg}`,
     ],
   };
+}
+
+/** What `hostFacts` read from a node. */
+export interface HostFacts {
+  auditSocketActive: boolean;
+  linuxImageInstalled: boolean;
+  runningKernel: string;
+  pveKernels: number;
+  linuxImageRemoves: string[];
+}
+
+/** `hostFacts`'s lines; null when one is missing, so nothing is concluded from half an answer. */
+export function parseHostFacts(output: string): HostFacts | null {
+  const read = new Map<string, string>();
+  for (const line of output.split(/\r?\n/)) {
+    const at = line.indexOf('=');
+    if (at > 0) read.set(line.slice(0, at), line.slice(at + 1).trim());
+  }
+  const keys = ['audit_socket', 'linux_image', 'running_kernel', 'pve_kernels', 'linux_image_removes'];
+  if (!keys.every((k) => read.has(k))) return null;
+  const pveKernels = Number(read.get('pve_kernels'));
+  if (!read.get('running_kernel') || !Number.isInteger(pveKernels)) return null;
+  return {
+    auditSocketActive: read.get('audit_socket') === 'active',
+    linuxImageInstalled: read.get('linux_image') === 'ii',
+    runningKernel: read.get('running_kernel')!,
+    pveKernels,
+    linuxImageRemoves: read.get('linux_image_removes')!.split(/\s+/).filter(Boolean),
+  };
+}
+
+/** Why linux-image-amd64 must not be removed from this node, or null when it may. */
+export function linuxImageRefusal(facts: HostFacts): string | null {
+  if (!facts.runningKernel.endsWith('-pve')) {
+    return `the node runs kernel ${facts.runningKernel}, not a Proxmox kernel`;
+  }
+  if (facts.pveKernels < 1) return 'no Proxmox kernel is installed';
+  const others = facts.linuxImageRemoves.filter((p) => p !== 'linux-image-amd64');
+  if (others.length) return `removing it would also remove ${others.join(', ')}`;
+  if (!facts.linuxImageRemoves.length) return 'apt does not say what removing it would do';
+  return null;
+}
+
+/** The NTP servers timesyncd reports; null when one is not a plain host name or address. */
+export function parseNtpServers(output: string): string[] | null {
+  const servers = [...new Set(output.split(/\s+/).filter(Boolean))].sort();
+  return servers.every((s) => /^[A-Za-z0-9.:][A-Za-z0-9.:-]*$/.test(s)) ? servers : null;
+}
+
+/** The file `chrony` writes for those servers; empty for none. */
+export const ntpSourcesFile = (servers: readonly string[]): string =>
+  servers.map((s) => `server ${s} iburst prefer`).join('\n');
+
+export interface MaxfilesChange {
+  where: string;
+  before: string;
+  after: string;
+}
+
+/** The lines `maxfilesShow` printed. */
+export function parseMaxfilesChanges(output: string): MaxfilesChange[] {
+  const out: MaxfilesChange[] = [];
+  for (const line of output.split(/\r?\n/)) {
+    const [where, before, after, ...rest] = line.split('\t');
+    if (where && before && after && !rest.length) out.push({ where, before, after });
+  }
+  return out;
+}
+
+/** Those changes as the files of a change set, one entry per place. */
+export function maxfilesFiles(changes: readonly MaxfilesChange[]): ChangeSet['files'] {
+  const places = [...new Set(changes.map((c) => c.where))];
+  return places.map((path) => {
+    const here = changes.filter((c) => c.where === path);
+    return {
+      path,
+      before: here.map((c) => c.before).join('\n'),
+      after: here.map((c) => c.after).join('\n'),
+    };
+  });
+}
+
+/**
+ * A change the node would make now that was not approved, or null. Fewer is
+ * fine: a storage is shared, so the first node's run already did it for the rest.
+ */
+export function maxfilesDrift(
+  approved: ChangeSet['files'],
+  now: readonly MaxfilesChange[],
+): MaxfilesChange | null {
+  for (const change of now) {
+    const file = approved.find((f) => f.path === change.where);
+    const before = (file?.before ?? '').split('\n');
+    const after = (file?.after ?? '').split('\n');
+    if (!before.includes(change.before) || !after.includes(change.after)) return change;
+  }
+  return null;
 }
 
 /** Proxmox's rule for a node name: what may follow `hostname -s`. */

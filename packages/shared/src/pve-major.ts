@@ -75,6 +75,35 @@ export const PVE_REMEDIATIONS: RemediationDef[] = [
     reversible: false,
     fixes: ['pve8to9.lvm-autoactivation'],
   },
+  {
+    // Reversible, but the clock of every node in a cluster: a person decides.
+    id: 'pve.chrony',
+    title: 'Replace systemd-timesyncd with chrony, keeping the NTP servers',
+    risk: 'MEDIUM',
+    reversible: true,
+    fixes: ['pve8to9.timesyncd'],
+  },
+  {
+    id: 'pve.remove-linux-image',
+    title: 'Remove the linux-image-amd64 meta-package',
+    risk: 'MEDIUM',
+    reversible: false,
+    fixes: ['pve.linux-image-amd64'],
+  },
+  {
+    id: 'pve.prune-backups',
+    title: "Move backup retention from 'maxfiles' to 'prune-backups'",
+    risk: 'MEDIUM',
+    reversible: true,
+    fixes: ['pve8to9.maxfiles'],
+  },
+  {
+    id: 'pve.free-root-space',
+    title: "Free space on /: apt's cache and packages nothing needs",
+    risk: 'MEDIUM',
+    reversible: false,
+    fixes: ['pve8to9.root-space'],
+  },
 ];
 
 const steps: PlaybookStepDef[] = [
@@ -109,7 +138,7 @@ export const PVE_MAJOR_PLAYBOOK: UpgradePlaybookDef = {
   kind: 'PVE_MAJOR',
   targetKind: 'NODE',
   internal: false,
-  checkProviders: ['pve.cluster', 'pve.pve8to9'],
+  checkProviders: ['pve.cluster', 'pve.pve8to9', 'pve.host'],
   cleanup: 'pve.cleanup',
   steps,
 };
