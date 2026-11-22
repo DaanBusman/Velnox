@@ -46,6 +46,9 @@ export function CertificatePanel() {
   const expiringSoon =
     status.mode !== 'internal' && days !== null && days >= 0 && days <= EXPIRY_WARNING_DAYS;
   const overdueUntil = cert?.renewalOverdue ? cert.notAfter : null;
+  // Caddy's internal leaf lives 12 hours: a time says when, a day count would
+  // read "last day" on a healthy certificate.
+  const shortLived = status.mode === 'internal';
 
   const suffix = status.siteAddress.includes('.')
     ? status.siteAddress.split('.').slice(-2).join('.')
@@ -161,11 +164,16 @@ export function CertificatePanel() {
             </KeyValue>
             <KeyValue label={t('tls.expires')}>
               {cert.notAfter
-                ? `${format.dateTime(new Date(cert.notAfter), { dateStyle: 'long' })}${
+                ? `${format.dateTime(
+                    new Date(cert.notAfter),
+                    shortLived ? { dateStyle: 'long', timeStyle: 'short' } : { dateStyle: 'long' },
+                  )}${
                     // Only while there is time left. A negative count would
                     // render as "-3 days left"; an expired certificate is
                     // already stated in the notice above.
-                    days === null || days < 0 ? '' : ` — ${t('tls.daysRemaining', { days })}`
+                    shortLived || days === null || days < 0
+                      ? ''
+                      : ` — ${t('tls.daysRemaining', { days })}`
                   }`
                 : t('common.unknown')}
             </KeyValue>
