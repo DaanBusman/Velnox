@@ -327,6 +327,7 @@ describe('the scoped model list against the schema', () => {
     MfaRecoveryCode: 'authentication internals, read by the signed-in account id',
     RolePermission: 'read only through its role, whose own visibility is scoped',
     CredentialSecret: 'ciphertext, read by credential id after the credential row was resolved',
+    PushSubscription: 'a device of the signed-in account, read by that account id or by the worker',
   };
 
   it('accounts for every model that reaches a tenant through a relation', () => {

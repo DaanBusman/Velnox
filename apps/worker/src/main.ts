@@ -56,6 +56,7 @@ import {
 import { LIBRARY_SWEEP_INTERVAL_MS, sweepLibrary } from './library/sweep';
 import { backfillWindowsImages } from './library/windows-images-backfill';
 import { Mailer } from './mail/mailer';
+import { PushSender } from './push/push-sender';
 import { notifyProvisioned } from './provisioning/notify';
 import type { ProvisioningServices } from './provisioning/playbook';
 import { sweepProvisionings } from './provisioning/sweep';
@@ -187,6 +188,11 @@ async function bootstrap(): Promise<void> {
 
   // Before any queue worker starts: a test mail can be asked for at once.
   const mailer = new Mailer(prisma, credentials, config.VELNOX_VERSION);
+  // The contact a push service is given: the public project, so no internal
+  // hostname leaves the network with it.
+  const push = new PushSender(prisma, credentials, config.VELNOX_SOURCE_URL, {
+    warn: (fields, message) => logger.warn(fields, message),
+  });
   const sendTestMail = async (job: Job<{ to: string }>) => {
     await mailer.send(
       {
@@ -246,6 +252,8 @@ async function bootstrap(): Promise<void> {
         // probe; it talks to a mail server, not a hypervisor.
         case JOB_NAMES.mailTest:
           return sendTestMail(job as Job<{ to: string }>);
+        case JOB_NAMES.pushTest:
+          return push.sendTest((job as Job<{ subscriptionId: string }>).data.subscriptionId);
         // Check now, in Server management: the API waits for it. It talks to
         // GitHub, not a hypervisor, and is here for the same reason as the mail.
         case JOB_NAMES.updateCheck:
@@ -411,6 +419,7 @@ async function bootstrap(): Promise<void> {
     workerId,
     library,
     provisioning,
+    approvals: push,
     log: {
       info: (fields, message) => logger.info(fields, message),
       warn: (fields, message) => logger.warn(fields, message),

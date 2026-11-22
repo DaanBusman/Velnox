@@ -580,6 +580,12 @@
     },
     "velnox_update": {
       "unanswered": "The worker did not answer in time, so nothing was checked. Is the worker running? Server management > Status says."
+    },
+    "push": {
+      "endpoint_refused": "This browser’s notification service is not one Velnox supports.",
+      "not_registered": "This device is no longer registered. Turn notifications off and on again.",
+      "send_failed": "The notification service did not accept the message. Try again in a moment.",
+      "worker_unavailable": "No notification could be sent, because the Velnox worker is not running."
     }
   },
   "inventory": {
@@ -2187,5 +2193,28 @@
     "placeholder": "Type a place, such as Amsterdam",
     "none": "No time zone for that place",
     "typeToSearch": "Type a place to search"
+  },
+  "push": {
+    "title": "Notifications on this device",
+    "body": "Be told when a job waits for your approval. A notification names no customer, cluster or change: you see those after signing in, and decide there.",
+    "on": "On for this device.",
+    "off": "Off for this device.",
+    "enable": "Turn on",
+    "disable": "Turn off",
+    "test": "Send a test notification",
+    "testSent": "Sent. It should appear on this device within a few seconds. If it does not, check that the system allows notifications for this browser.",
+    "failed": "That did not work. Try again.",
+    "unsupported": "This browser cannot receive notifications. On an iPhone or iPad, add Velnox to the Home Screen and open it from there.",
+    "untrusted": "Notifications need a certificate this browser trusts. See “Installing Velnox as an app”.",
+    "denied": "This browser blocks notifications from Velnox. Allow them in the site settings, then reopen this window.",
+    "notificationApprovalTitle": "Approval needed",
+    "notificationApprovalBody": "A Velnox job is waiting for your decision.",
+    "notificationTestTitle": "Velnox notifications work",
+    "notificationTestBody": "This device will be told when a job waits for your approval.",
+    "notificationContinue": "Continue",
+    "notificationCancel": "Cancel",
+    "fromNotificationApprove": "You chose Continue in the notification. Check the changes below, then press Approve.",
+    "fromNotificationReject": "You chose Cancel in the notification. Press Reject to stop this job.",
+    "fromNotificationDecided": "This job is no longer waiting for a decision."
   }
 }

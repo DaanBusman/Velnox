@@ -249,6 +249,10 @@ export const ERROR_CODES = {
   /** Asking to be notified when outgoing mail is not set up. */
   mailNotConfigured: 'mail.not_configured',
   mailSendFailed: 'mail.send_failed',
+  pushEndpointRefused: 'push.endpoint_refused',
+  pushNotRegistered: 'push.not_registered',
+  pushSendFailed: 'push.send_failed',
+  pushWorkerUnavailable: 'push.worker_unavailable',
 
   cephNotHealthy: 'ceph.not_healthy',
   cephPgsNotClean: 'ceph.pgs_not_clean',

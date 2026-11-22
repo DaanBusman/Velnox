@@ -637,10 +637,24 @@ source_url, build_commit, feature_flags jsonb, retention jsonb, schema_version`
 `system_settings_tls_complete` requires what each mode needs and refuses a private key in the
 certificate column.
 
+`push_vapid_public_key`, `push_vapid_credential_id`: the key browsers subscribe to notifications
+with, made on first use (ADR-062). Its private half is a `PUSH_VAPID_KEY` credential.
+
 `product_name` lives here and is read by the frontend, so rebranding from "Velnox" is a settings
 change plus asset swap — not a code change. `source_url` and `build_commit` back the AGPL §13
 obligation: they are what `GET /api/v1/system/source` and **About** (behind *Source code* at the foot of every screen) serve, and an operator
 running a modified build points `source_url` at their own source.
+
+---
+
+### `push_subscriptions`
+
+`id, user_id → users (cascade), endpoint (unique), p256dh, credential_id → credentials (unique,
+cascade), locale, created_at, last_delivered_at`
+
+One browser that wants approval notifications (ADR-062). Its authentication secret is a
+`PUSH_SUBSCRIPTION` credential, so removing the credential removes the row. `endpoint` is accepted
+only for a known push service and is never logged.
 
 ---
 

@@ -122,6 +122,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
                 motionBackground: moving,
                 timeZone: zone,
                 installationTimeZone: installationTimeZone(),
+                canApprove: session.user.permissions.includes('jobs.approve'),
               }}
             />
 

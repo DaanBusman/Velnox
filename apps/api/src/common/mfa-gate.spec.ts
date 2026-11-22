@@ -25,6 +25,7 @@ import { ClusterFilesController } from '../modules/library/cluster-files.control
 import { TemplatesController } from '../modules/autoconfig/autoconfig.controller';
 import { ProvisioningController } from '../modules/autoconfig/provisioning.controller';
 import { MailController } from '../modules/mail/mail.controller';
+import { PushController } from '../modules/push/push.controller';
 import { SupportController } from '../modules/support/support.controller';
 import { PackagesController } from '../modules/autoconfig/packages.controller';
 import { UpdatesController } from '../modules/updates/updates.controller';
@@ -115,6 +116,7 @@ const CONTROLLERS = [
   TemplatesController,
   ProvisioningController,
   MailController,
+  PushController,
   SupportController,
   PackagesController,
   UpdatesController,

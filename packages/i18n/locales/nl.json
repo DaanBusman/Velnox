@@ -581,6 +581,12 @@
     },
     "velnox_update": {
       "unanswered": "De worker antwoordde niet op tijd, dus er is niets gecontroleerd. Draait de worker? Serverbeheer > Status laat het zien."
+    },
+    "push": {
+      "endpoint_refused": "Velnox ondersteunt de meldingsdienst van deze browser niet.",
+      "not_registered": "Dit apparaat is niet meer geregistreerd. Zet meldingen uit en weer aan.",
+      "send_failed": "De meldingsdienst heeft het bericht niet aangenomen. Probeer het zo opnieuw.",
+      "worker_unavailable": "Er kon geen melding worden verstuurd, omdat de Velnox-worker niet draait."
     }
   },
   "inventory": {
@@ -2188,5 +2194,28 @@
     "placeholder": "Typ een plaats, zoals Amsterdam",
     "none": "Geen tijdzone voor die plaats",
     "typeToSearch": "Typ een plaats om te zoeken"
+  },
+  "push": {
+    "title": "Meldingen op dit apparaat",
+    "body": "Krijg een melding als een taak op jouw goedkeuring wacht. Een melding noemt geen klant, cluster of wijziging: die zie je na het inloggen, en daar beslis je ook.",
+    "on": "Aan voor dit apparaat.",
+    "off": "Uit voor dit apparaat.",
+    "enable": "Inschakelen",
+    "disable": "Uitschakelen",
+    "test": "Testmelding sturen",
+    "testSent": "Verstuurd. De melding hoort binnen enkele seconden op dit apparaat te verschijnen. Zo niet, controleer dan of het systeem meldingen van deze browser toestaat.",
+    "failed": "Dat is niet gelukt. Probeer het opnieuw.",
+    "unsupported": "Deze browser kan geen meldingen ontvangen. Zet Velnox op een iPhone of iPad op het beginscherm en open het van daaruit.",
+    "untrusted": "Meldingen vragen een certificaat dat deze browser vertrouwt. Zie “Velnox als app installeren”.",
+    "denied": "Deze browser blokkeert meldingen van Velnox. Sta ze toe in de site-instellingen en open dit venster opnieuw.",
+    "notificationApprovalTitle": "Goedkeuring nodig",
+    "notificationApprovalBody": "Een Velnox-taak wacht op jouw beslissing.",
+    "notificationTestTitle": "Velnox-meldingen werken",
+    "notificationTestBody": "Dit apparaat krijgt een melding als een taak op jouw goedkeuring wacht.",
+    "notificationContinue": "Doorgaan",
+    "notificationCancel": "Annuleren",
+    "fromNotificationApprove": "Je koos Doorgaan in de melding. Controleer de wijzigingen hieronder en druk op Goedkeuren.",
+    "fromNotificationReject": "Je koos Annuleren in de melding. Druk op Afwijzen om deze taak te stoppen.",
+    "fromNotificationDecided": "Deze taak wacht niet meer op een beslissing."
   }
 }

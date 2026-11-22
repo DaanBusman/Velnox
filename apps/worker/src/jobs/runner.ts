@@ -1,4 +1,5 @@
 import type { Redis } from 'ioredis';
+import type { ApprovalNotice } from '../push/push-sender';
 import { appendJobEvent, withSystemScope, type Prisma, type VelnoxPrismaClient } from '@velnox/db';
 import {
   JOB_EVENT_KEYS,
@@ -49,6 +50,8 @@ export interface JobsContext {
   library?: LibraryServices;
   /** What vm.provision works with. Absent where the library is. */
   provisioning?: ProvisioningServices;
+  /** Tells whoever can decide that a job waits for them (ADR-062). Never throws. */
+  approvals?: { approvalRequested(notice: ApprovalNotice): Promise<void> };
   log: {
     info(fields: Record<string, unknown>, message: string): void;
     warn(fields: Record<string, unknown>, message: string): void;
@@ -606,6 +609,17 @@ async function approvalGate(
     // Let go entirely: a parked job belongs to nobody until it is approved.
     { workerId: null, leaseUntil: null, currentStep: step.key },
   );
+  // After the move, so whoever opens it finds it waiting; and once per gate,
+  // so a job that passes through here again does not ring every phone again.
+  if (!existing) {
+    await context.approvals?.approvalRequested({
+      jobId,
+      tenantId,
+      requiredPermission: step.requiredPermission,
+      requireDifferentApprover: step.requireDifferentApprover,
+      requestedBy,
+    });
+  }
   return 'PARKED';
 }
 

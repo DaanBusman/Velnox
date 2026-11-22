@@ -17,6 +17,11 @@
  * (its text differs), which on activating removes the caches of the old one.
  * Signing out removes them too (`clearAppCaches`).
  *
+ * It also shows approval notifications (ADR-062). A message says which job,
+ * never what it does, and this worker writes the text and builds the address
+ * itself: nothing in a message is shown or opened as it came. A click only
+ * opens the job's page. Deciding happens there, signed in, on the exact change.
+ *
  * Plain JavaScript for the browser, not bundled: it runs outside the page.
  * The test evaluates this very text, so what is tested is what ships.
  */
@@ -28,12 +33,30 @@ export interface OfflineText {
   retry: string;
 }
 
+export interface NoticeText {
+  lang: string;
+  approvalTitle: string;
+  approvalBody: string;
+  testTitle: string;
+  testBody: string;
+  proceed: string;
+  cancel: string;
+}
+
 export const CACHE_PREFIX = 'velnox-';
 
-export function serviceWorkerSource(build: string, offline: readonly OfflineText[]): string {
+export function serviceWorkerSource(
+  build: string,
+  offline: readonly OfflineText[],
+  notices: readonly NoticeText[],
+  icon: string,
+): string {
   return `'use strict';
 const STATIC = ${JSON.stringify(`${CACHE_PREFIX}static-${build}`)};
 const OFFLINE = ${JSON.stringify(offline)};
+const NOTICES = ${JSON.stringify(notices)};
+const ICON = ${JSON.stringify(icon)};
+const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -61,6 +84,57 @@ self.addEventListener('fetch', (event) => {
   // Anything else is not answered here: the browser fetches it as it would
   // without a service worker, and nothing of it is stored.
 });
+
+self.addEventListener('push', (event) => {
+  event.waitUntil(showNotice(event.data));
+});
+
+async function showNotice(data) {
+  let message = null;
+  try {
+    message = data ? data.json() : null;
+  } catch {
+    // Shown anyway: a browser penalises a push that shows nothing.
+  }
+  const text = NOTICES.find((t) => message && t.lang === message.lang) || NOTICES[0];
+  if (message && message.kind === 'approval' && JOB_ID.test(String(message.jobId))) {
+    await self.registration.showNotification(text.approvalTitle, {
+      body: text.approvalBody,
+      icon: ICON,
+      tag: 'velnox-approval-' + message.jobId,
+      requireInteraction: true,
+      data: { jobId: message.jobId },
+      actions: [
+        { action: 'approve', title: text.proceed },
+        { action: 'reject', title: text.cancel },
+      ],
+    });
+    return;
+  }
+  await self.registration.showNotification(text.testTitle, {
+    body: text.testBody,
+    icon: ICON,
+    tag: 'velnox-test',
+    data: {},
+  });
+}
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const jobId = event.notification.data && event.notification.data.jobId;
+  const decide = event.action === 'approve' || event.action === 'reject' ? event.action : null;
+  const path = JOB_ID.test(String(jobId)) ? '/jobs/' + jobId + (decide ? '?decide=' + decide : '') : '/';
+  event.waitUntil(openPath(path));
+});
+
+// A window already there is brought forward; any other is left alone, because
+// moving it could lose what someone was typing.
+async function openPath(path) {
+  const url = new URL(path, self.location.origin).href;
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const open = windows.find((client) => client.url === url);
+  return open ? open.focus() : self.clients.openWindow(url);
+}
 
 async function fromCache(request) {
   const cache = await caches.open(STATIC);

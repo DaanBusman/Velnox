@@ -12,6 +12,7 @@ export * from './fingerprint';
 export * from './jobs';
 export * from './library';
 export * from './permissions';
+export * from './push';
 export * from './redaction';
 export * from './rolling';
 export * from './placement';
@@ -87,6 +88,11 @@ export const JOB_NAMES = {
    * The worker reads it, because the API makes no outbound calls (ADR-009).
    */
   updateCheck: 'system.update_check',
+  /**
+   * Send one test notification to a device. The worker sends, because it holds
+   * the signing key and the API makes no outbound calls (ADR-009).
+   */
+  pushTest: 'push.test',
 } as const;
 
 /** Redis keys owned by the worker. The health check reads the heartbeat. */

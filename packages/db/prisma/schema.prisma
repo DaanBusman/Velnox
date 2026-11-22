@@ -92,6 +92,11 @@ model SystemSettings {
   smtpFrom                 String?      @map("smtp_from")
   smtpVerifiedAt           DateTime?    @map("smtp_verified_at") @db.Timestamptz(3)
 
+  /// Web Push (ADR-062): the key browsers subscribe with, and where its private
+  /// half lives in the secret store (kind PUSH_VAPID_KEY). Made on first use.
+  pushVapidPublicKey    String? @map("push_vapid_public_key")
+  pushVapidCredentialId String? @map("push_vapid_credential_id") @db.Uuid
+
   /// How long Proxmox tasks are kept for the support logs, in days: 1 to 30
   /// (`system_settings_support_retention_range`). Shortened with support.manage.
   supportLogRetentionDays Int @default(30) @map("support_log_retention_days")
@@ -295,6 +300,7 @@ model User {
   mfaFactors      UserMfaFactor[]
   recoveryCodes   MfaRecoveryCode[]
   jobsCreated     Job[]             @relation("JobCreatedBy")
+  pushSubscriptions PushSubscription[]
 
   @@index([tenantId])
   @@index([status])
@@ -395,6 +401,28 @@ model Session {
   @@index([familyId])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+/// A browser that wants to be told when a job waits for this account (ADR-062).
+/// The browser's authentication secret is in the secret store (kind
+/// PUSH_SUBSCRIPTION); removing that credential removes this row.
+model PushSubscription {
+  id           String @id @default(uuid()) @db.Uuid
+  userId       String @map("user_id") @db.Uuid
+  /// Only a known push service's address; see `isPushEndpoint`. Never logged.
+  endpoint     String @unique
+  p256dh       String
+  credentialId String @unique @map("credential_id") @db.Uuid
+  locale       String @default("en")
+
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastDeliveredAt DateTime? @map("last_delivered_at") @db.Timestamptz(3)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credential Credential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // ---------------------------------------------------------------------------
@@ -1342,6 +1370,10 @@ enum CredentialKind {
   /// The private key of a certificate uploaded in Server management. Read by the
   /// API, which writes it for Caddy; Velnox's own identity, not infrastructure's.
   TLS_PRIVATE_KEY
+  /// Signs notifications to push services (ADR-062). Worker-only.
+  PUSH_VAPID_KEY
+  /// One browser's Web Push authentication secret. Worker-only.
+  PUSH_SUBSCRIPTION
 
   @@map("credential_kind")
 }
@@ -1381,6 +1413,7 @@ model Credential {
 
   tenant  Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   secrets CredentialSecret[]
+  pushSubscription PushSubscription?
 
   @@index([tenantId])
   @@map("credentials")

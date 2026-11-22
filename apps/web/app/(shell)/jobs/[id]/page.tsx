@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ decide?: string | string[] }>;
 }
 
 export async function generateMetadata() {
@@ -15,8 +16,11 @@ export async function generateMetadata() {
   return { title: t('nav.jobs') };
 }
 
-export default async function JobPage({ params }: Props) {
+export default async function JobPage({ params, searchParams }: Props) {
   const { id } = await params;
+  // Which button of the notification was pressed. It decides nothing.
+  const { decide } = await searchParams;
+  const fromNotification = decide === 'approve' || decide === 'reject' ? decide : null;
   const [t, session, job, logs] = await Promise.all([
     getTranslations(),
     getSession(),
@@ -57,6 +61,7 @@ export default async function JobPage({ params }: Props) {
         canCancel={permissions.has('jobs.cancel')}
         canApprove={permissions.has('jobs.approve')}
         canRetry={permissions.has('system.manage')}
+        fromNotification={fromNotification}
         renderedAt={new Date().toISOString()}
       />
     </>

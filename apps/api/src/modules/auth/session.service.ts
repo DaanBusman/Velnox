@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { Session, VelnoxTransactionClient } from '@velnox/db';
+import { withSystemScope, type Session, type VelnoxTransactionClient } from '@velnox/db';
 import { PrismaService } from '../infrastructure/prisma.service';
 import { REFRESH_TOKEN_TTL_SECONDS, TokenService, hashRefreshToken } from './token.service';
 
@@ -133,6 +133,19 @@ export class SessionService {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date(), revokedReason: reason },
     });
+    // Whatever ended every session also ends being told about approvals. The
+    // sender checks the account again, so a failure here cannot reach a
+    // disabled one, and must not undo the sign-out that just happened.
+    await withSystemScope("a person's own devices", async () => {
+      const devices = await this.prisma.client.pushSubscription.findMany({
+        where: { userId },
+        select: { credentialId: true },
+      });
+      if (devices.length === 0) return;
+      await this.prisma.client.credential.deleteMany({
+        where: { id: { in: devices.map((device) => device.credentialId) } },
+      });
+    }).catch(() => undefined);
     return count;
   }
 

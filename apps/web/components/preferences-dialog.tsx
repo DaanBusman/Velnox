@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { InterfaceSettings } from '@/components/interface-settings';
+import { PushSettings } from '@/components/push-settings';
 
 export interface ViewerPreferences {
   locale: string;
@@ -11,6 +12,8 @@ export interface ViewerPreferences {
   motionBackground: boolean;
   timeZone: string | null;
   installationTimeZone: string;
+  /** Holds jobs.approve somewhere: there is something to be told about. */
+  canApprove: boolean;
 }
 
 /**
@@ -70,7 +73,10 @@ export function PreferencesDialog({
           <span aria-hidden>×</span>
         </button>
       </div>
-      <div className="p-5">{open && <InterfaceSettings {...preferences} />}</div>
+      <div className="space-y-4 p-5">
+        {open && <InterfaceSettings {...preferences} />}
+        {open && preferences.canApprove && <PushSettings />}
+      </div>
     </dialog>
   );
 }

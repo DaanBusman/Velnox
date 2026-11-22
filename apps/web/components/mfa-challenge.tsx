@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { apiPost, type ApiFailure } from '@/lib/client-api';
+import { afterSignIn } from '@/lib/pwa/push';
 import { useApiError } from '@/lib/use-api-error';
 import { Button, CodeInput, Field, FormError, TextInput } from '@/components/ui/form';
 
@@ -47,7 +48,7 @@ export function MfaChallenge() {
       setRemaining(result.data.recoveryCodesRemaining);
     }
 
-    router.replace('/');
+    router.replace(afterSignIn());
     router.refresh();
   }
 

@@ -64,6 +64,28 @@ tenant: Velnox is used on shared workstations, and nothing of a session may stay
 - **Without a connection to the server**, the app shows a page that says Velnox cannot be reached —
   nothing from before.
 
+## Notifications when a job needs you
+
+Velnox can tell you on this device when a job, such as a major upgrade, waits for your approval.
+
+1. Open the user menu, choose **Settings**, and under **Notifications on this device** choose
+   **Turn on**. The browser asks for permission.
+2. Choose **Send a test notification**. If it appears, this device is set up.
+
+**Continue** and **Cancel** in a notification open the job. Nothing is decided until you have signed
+in, read the exact change and pressed **Approve** or **Reject**. The notification itself names no
+customer, cluster or change. You can still decide in the web interface as always.
+
+- **Who needs it:** an account allowed to approve jobs. Each browser or phone is turned on separately.
+- **iPhone and iPad (iOS 16.4 or later):** add Velnox to the Home Screen and turn it on from there.
+- **Certificate:** the same trusted certificate as installing, [above](#when-there-is-no-install-as-app).
+- **Network:** the Velnox server must reach `fcm.googleapis.com`, `*.push.services.mozilla.com`,
+  `*.notify.windows.com` and `web.push.apple.com` over HTTPS, and the device must reach its own
+  browser's service. An installation without internet gets no notifications.
+- **Timing:** a device that is off receives it when it comes back, within 24 hours.
+- **Signing out** turns notifications off for that browser. Changing your password or having your
+  account disabled turns them off everywhere.
+
 ## After the server is updated
 
 An open window notices the new version when it is next brought to the front, and offers
@@ -88,4 +110,6 @@ where nothing happens costs the server next to nothing. See ADR-059 in
 | *Installing as an app needs a certificate this browser trusts.* | The browser refused the app's background script, as it does on a certificate it does not trust. See [a trusted certificate](#when-there-is-no-install-as-app). |
 | No **Install as app** in the menu, and no message | The browser does not offer it: not Edge or Chrome, a private window, or already installed. |
 | *Velnox cannot be reached* | The computer has no connection to the Velnox server. **Try again** once it has. |
+| *No notification could be sent, because the Velnox worker is not running.* | Start the worker. Until then, jobs do not run either. |
+| The test says sent, but nothing appears | The system is blocking this browser's notifications, or Focus / Do Not Disturb is on. |
 | *Velnox has been updated. Reload to use the new version.* | The server runs a newer version than the open window. **Reload**. |

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { apiPost } from '@/lib/client-api';
+import { rememberJobForSignIn } from '@/lib/pwa/push';
 
 /**
  * The gap between an expired access token and a still-valid session.
@@ -40,6 +41,7 @@ export function SessionRecovery() {
       if (result.ok) {
         router.refresh();
       } else {
+        rememberJobForSignIn();
         router.replace('/login');
       }
     })();

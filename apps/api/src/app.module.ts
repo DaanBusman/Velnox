@@ -19,6 +19,7 @@ import { ChangesModule } from './modules/changes/changes.module';
 import { AutoconfigModule } from './modules/autoconfig/autoconfig.module';
 import { LibraryModule } from './modules/library/library.module';
 import { MailModule } from './modules/mail/mail.module';
+import { PushModule } from './modules/push/push.module';
 import { SupportModule } from './modules/support/support.module';
 import { UpdatesModule } from './modules/updates/updates.module';
 import { PlacementModule } from './modules/placement/placement.module';
@@ -50,6 +51,7 @@ import { UpgradesModule } from './modules/upgrades/upgrades.module';
     LibraryModule,
     AutoconfigModule,
     MailModule,
+    PushModule,
     SupportModule,
     UpdatesModule,
     PlacementModule,

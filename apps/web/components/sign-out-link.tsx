@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { apiPost } from '@/lib/client-api';
 import { clearAppCaches } from '@/components/pwa';
+import { forgetPushOnSignOut } from '@/lib/pwa/push';
 
 /**
  * Signing out.
@@ -29,6 +30,9 @@ export function SignOutLink({ className }: { className?: string }) {
         // The cookies are cleared by the API's response. Even if the call fails,
         // sending the user to the sign-in page is better than leaving them on a
         // screen they were trying to leave.
+        // Before the session ends: it is what says whose device this is, and
+        // the next person at a shared workstation must not get these.
+        await forgetPushOnSignOut();
         await apiPost('/auth/logout');
         // Only static files are ever cached (ADR-058); they go too, so a shared
         // workstation keeps nothing of the session.

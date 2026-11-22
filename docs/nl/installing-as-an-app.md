@@ -70,6 +70,30 @@ daar achterblijven.
 - **Zonder verbinding met de server** toont de app een pagina die zegt dat Velnox niet bereikbaar is
   — niets van eerder.
 
+## Meldingen als een taak op jou wacht
+
+Velnox kan je op dit apparaat laten weten dat een taak, zoals een grote upgrade, op jouw goedkeuring
+wacht.
+
+1. Open het gebruikersmenu, kies **Instellingen** en kies onder **Meldingen op dit apparaat** voor
+   **Inschakelen**. De browser vraagt om toestemming.
+2. Kies **Testmelding sturen**. Verschijnt die, dan is dit apparaat ingesteld.
+
+**Doorgaan** en **Annuleren** in een melding openen de taak. Er wordt niets beslist voordat je bent
+ingelogd, de exacte wijziging hebt gelezen en op **Goedkeuren** of **Afwijzen** hebt gedrukt. De
+melding zelf noemt geen klant, cluster of wijziging. Je kunt ook gewoon in de webinterface beslissen.
+
+- **Voor wie:** een account dat taken mag goedkeuren. Elke browser of telefoon schakel je apart in.
+- **iPhone en iPad (iOS 16.4 of nieuwer):** zet Velnox op het beginscherm en schakel het daar in.
+- **Certificaat:** hetzelfde vertrouwde certificaat als voor het installeren,
+  [hierboven](#als-installeren-als-app-er-niet-staat).
+- **Netwerk:** de Velnox-server moet `fcm.googleapis.com`, `*.push.services.mozilla.com`,
+  `*.notify.windows.com` en `web.push.apple.com` via HTTPS bereiken, en het apparaat de dienst van
+  zijn eigen browser. Een installatie zonder internet krijgt geen meldingen.
+- **Timing:** een apparaat dat uit staat, ontvangt de melding zodra het terug is, binnen 24 uur.
+- **Uitloggen** schakelt meldingen uit voor die browser. Een wachtwoordwijziging of het uitschakelen
+  van je account schakelt ze overal uit.
+
 ## Nadat de server bijgewerkt is
 
 Een open venster merkt de nieuwe versie wanneer het weer naar voren komt, en biedt **Herladen** aan.
@@ -94,4 +118,6 @@ verversinstelling. Een scherm waarop niets gebeurt, kost de server vrijwel niets
 | *Installeren als app vraagt een certificaat dat deze browser vertrouwt.* | De browser weigerde het achtergrondscript van de app, zoals hij doet bij een certificaat dat hij niet vertrouwt. Zie [een vertrouwd certificaat](#als-installeren-als-app-er-niet-staat). |
 | Geen **Installeren als app** in het menu, en geen melding | De browser biedt het niet aan: geen Edge of Chrome, een privévenster, of al geïnstalleerd. |
 | *Velnox is niet bereikbaar* | De computer heeft geen verbinding met de Velnox-server. **Opnieuw proberen** zodra die er is. |
+| *Er kon geen melding worden verstuurd, omdat de Velnox-worker niet draait.* | Start de worker. Tot die tijd draaien er ook geen taken. |
+| De test zegt verstuurd, maar er verschijnt niets | Het systeem blokkeert meldingen van deze browser, of Focus / Niet storen staat aan. |
 | *Velnox is bijgewerkt. Herlaad om de nieuwe versie te gebruiken.* | De server draait een nieuwere versie dan het open venster. **Herladen**. |

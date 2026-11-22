@@ -98,6 +98,8 @@ export const AUDIT_ACTIONS = {
   provisioningCredentialsRevealed: 'provisioning.credentials_revealed',
   mailSettingsChanged: 'mail.settings_changed',
   mailTestSent: 'mail.test_sent',
+  pushDeviceAdded: 'push.device_added',
+  pushDeviceRemoved: 'push.device_removed',
 
   jobCreated: 'job.created',
   jobRetried: 'job.retried',

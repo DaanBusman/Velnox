@@ -654,11 +654,25 @@ alleen `support.manage` wijzigt het.
 `system_settings_tls_complete` eist wat elke modus nodig heeft en weigert een privésleutel in de
 certificaatkolom.
 
+`push_vapid_public_key`, `push_vapid_credential_id`: de sleutel waarmee browsers zich op meldingen
+abonneren, gemaakt bij het eerste gebruik (ADR-062). De privéhelft is een `PUSH_VAPID_KEY`-credential.
+
 `product_name` staat hier en wordt door de frontend gelezen, zodat hernoemen vanaf "Velnox" een
 instellingswijziging plus assetwissel is — geen codewijziging. `source_url` en `build_commit`
 ondersteunen de verplichting uit AGPL artikel 13: ze zijn wat `GET /api/v1/system/source` en
 **Over** (achter *Broncode* onderaan elk scherm) tonen, en een operator met een aangepaste build wijst `source_url` naar de eigen
 broncode.
+
+---
+
+### `push_subscriptions`
+
+`id, user_id → users (cascade), endpoint (uniek), p256dh, credential_id → credentials (uniek,
+cascade), locale, created_at, last_delivered_at`
+
+Eén browser die goedkeuringsmeldingen wil ontvangen (ADR-062). Het authenticatiegeheim is een
+`PUSH_SUBSCRIPTION`-credential, dus het verwijderen van de credential verwijdert de rij. `endpoint`
+wordt alleen geaccepteerd voor een bekende pushdienst en wordt nooit gelogd.
 
 ---
 

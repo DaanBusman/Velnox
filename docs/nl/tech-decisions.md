@@ -2112,6 +2112,44 @@ uitlezen te drukken, en door de tests van de worker voor elke overgang.
 
 ---
 
+## ADR-062 — Een wachtende taak meldt zich bij wie kan beslissen, en de melding beslist niets
+
+**Besluit (0.7.39).** Bereikt een taak een goedkeuringspoort, dan stuurt de worker een Web
+Push-melding naar de browsers van de accounts die erover kunnen beslissen. De melding zegt alleen dat
+er een taak wacht. *Doorgaan* en *Annuleren* openen de pagina van de taak, waar de persoon, ingelogd,
+de exacte wijziging leest en op Goedkeuren of Afwijzen drukt. `JobsService.decide` blijft de enige
+manier waarop een taak verdergaat.
+
+**Waarom geen SMS.** Web Push kost niets en vraagt geen telefoonnummer, simkaart, gateway of account
+bij een aanbieder.
+
+**Waarom een knop niet kan goedkeuren.** Een melding staat op een vergrendeld scherm, op een telefoon
+die iemand kan hebben opgepakt. Goedkeuren vanuit de melding zou het inloggen, de tweede factor en de
+wijzigingsset overslaan die iemand volgens ADR-050 moet zien.
+
+**Wat de installatie verlaat.** Het bericht is versleuteld voor de browser (RFC 8291), dus de
+pushdienst van de browsermaker vervoert het zonder het te kunnen lezen. Het bevat een taak-ID en een
+taal. Geen klant, cluster, node of wijziging. De pushdienst ziet wel dat deze server deze browser een
+melding stuurde, en wanneer.
+
+**Wie een melding krijgt.** Een actief account met zowel `jobs.approve` als het recht dat de poort
+noemt, bij de tenant van de taak: dezelfde twee controles als in `decide`. Bij vier-ogen niet degene
+die de taak aanvroeg.
+
+**Het adres is onbetrouwbaar.** Een browser levert de URL waar de worker naartoe post. Alleen de
+pushdiensten van Chrome, Edge, Firefox en Safari worden geaccepteerd, bij het opslaan en opnieuw bij
+het gebruik, en doorverwijzingen worden geweigerd. Geen enkele instelling verruimt dit.
+
+**Sleutels.** De ondertekeningssleutel en het authenticatiegeheim van elke browser zijn credentials
+die alleen de worker kan lezen (ADR-009). Uitloggen verwijdert die browser. Een wachtwoordwijziging,
+het resetten van de tweede factor of het uitschakelen van het account verwijdert alle browsers van
+dat account.
+
+**Geen afhankelijkheid.** De versleuteling en handtekening zijn zo'n honderd regels op Node's eigen
+crypto, en het uitgewerkte voorbeeld uit RFC 8291 is hun test.
+
+---
+
 ## Versiedoelen
 
 | Component | Versie |

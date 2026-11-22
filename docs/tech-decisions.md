@@ -1980,6 +1980,40 @@ pressing Read now, and by the worker's tests of each transition.
 
 ---
 
+## ADR-062 — A job that waits tells whoever can decide, and the notification decides nothing
+
+**Decision (0.7.39).** When a job reaches an approval gate, the worker sends a Web Push notification
+to the browsers of the accounts that can decide it. The notification says only that a job is
+waiting. *Continue* and *Cancel* open the job's page, where the person, signed in, reads the exact
+change and presses Approve or Reject. `JobsService.decide` stays the only way a job moves on.
+
+**Why not SMS.** Web Push costs nothing and needs no phone number, SIM, gateway or provider account.
+
+**Why a button cannot approve.** A notification is on a locked screen, on a phone someone may have
+picked up. Approving from it would skip the sign-in, the second factor and the change set ADR-050
+requires a person to see.
+
+**What leaves the installation.** The message is encrypted for the browser (RFC 8291), so the
+browser vendor's push service carries it without reading it, and it holds a job id and a language.
+No customer, cluster, node or change. The push service does learn that this server notified this
+browser, and when.
+
+**Who is told.** An active account holding both `jobs.approve` and the permission the gate names, at
+the job's tenant, the same two checks `decide` makes. With four-eyes, not the person who asked.
+
+**The address is untrusted.** A browser supplies the URL the worker posts to. Only the push services
+of Chrome, Edge, Firefox and Safari are accepted, when it is stored and again when it is used, and
+redirects are refused. There is no setting that widens this.
+
+**Keys.** The signing key and each browser's authentication secret are credentials only the worker
+can read (ADR-009). Signing out removes that browser. A password change, a second-factor reset or
+disabling the account removes all of that account's.
+
+**No dependency.** The encryption and signature are about a hundred lines on Node's own crypto, and
+RFC 8291's worked example is their test.
+
+---
+
 ## Version targets
 
 | Component | Version |

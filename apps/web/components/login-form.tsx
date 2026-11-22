@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { apiPost, type ApiFailure } from '@/lib/client-api';
+import { afterSignIn } from '@/lib/pwa/push';
 import { useApiError } from '@/lib/use-api-error';
 import { Button, Field, FormError, TextInput } from '@/components/ui/form';
 
@@ -47,7 +48,8 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
 
     // Stay pending through the navigation: re-enabling the button here would
     // invite a second submission against a session that already exists.
-    router.replace(result.data.status === 'authenticated' ? '/' : '/mfa');
+    // A second factor still to come keeps the way back for the form after it.
+    router.replace(result.data.status === 'authenticated' ? afterSignIn() : '/mfa');
     router.refresh();
   }
 

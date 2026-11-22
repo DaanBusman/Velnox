@@ -108,6 +108,16 @@ export class CredentialReader {
     return this.read(credentialId, ['SMTP_PASSWORD']);
   }
 
+  /** The private half of the key notifications are signed with (ADR-062). */
+  pushVapidKey(credentialId: string): Promise<string> {
+    return this.read(credentialId, ['PUSH_VAPID_KEY']);
+  }
+
+  /** One browser's Web Push authentication secret. */
+  pushSubscriptionAuth(credentialId: string): Promise<string> {
+    return this.read(credentialId, ['PUSH_SUBSCRIPTION']);
+  }
+
   /** A provisioned VM's accounts and passwords. For the answer file and the record, nothing else. */
   async guestCredentials(credentialId: string): Promise<GuestCredentials> {
     const raw = await this.read(credentialId, ['GUEST_CREDENTIALS']);

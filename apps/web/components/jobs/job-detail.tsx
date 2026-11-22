@@ -48,6 +48,7 @@ export function JobDetail({
   canCancel,
   canApprove,
   canRetry,
+  fromNotification = null,
   renderedAt,
 }: {
   job: Job;
@@ -55,6 +56,8 @@ export function JobDetail({
   canCancel: boolean;
   canApprove: boolean;
   canRetry: boolean;
+  /** The button pressed in a notification. Only says what to point at. */
+  fromNotification?: 'approve' | 'reject' | null;
   /** When the server rendered this page; see `useClock`. */
   renderedAt: string;
 }) {
@@ -306,9 +309,18 @@ export function JobDetail({
         </div>
       </Card>
 
+      {fromNotification && !(pendingApproval && liveStatus === 'WAITING_APPROVAL') && (
+        <Notice tone="neutral">{t('push.fromNotificationDecided')}</Notice>
+      )}
+
       {pendingApproval && liveStatus === 'WAITING_APPROVAL' && (
         <Card title={t('job.approvalTitle')} description={t('job.approvalPrompt')}>
           <div className="space-y-3">
+            {fromNotification && (
+              <Notice tone="neutral">
+                {t(fromNotification === 'approve' ? 'push.fromNotificationApprove' : 'push.fromNotificationReject')}
+              </Notice>
+            )}
             <p className="text-sm text-ink">{pendingApproval.reason}</p>
             <p className="text-xs text-ink-muted">
               {t('job.approvalNeeds', { permission: pendingApproval.requiredPermission })}
@@ -335,6 +347,7 @@ export function JobDetail({
                 />
                 <div className="flex gap-2">
                   <Button
+                    autoFocus={fromNotification === 'approve'}
                     pending={pending === 'approve'}
                     onClick={() => void act('approve', `/jobs/${job.id}/approve`, { note: note || null })}
                   >
@@ -342,6 +355,7 @@ export function JobDetail({
                   </Button>
                   <Button
                     variant="secondary"
+                    autoFocus={fromNotification === 'reject'}
                     pending={pending === 'reject'}
                     onClick={() => void act('reject', `/jobs/${job.id}/reject`, { note: note || null })}
                   >
