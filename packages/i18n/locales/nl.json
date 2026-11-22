@@ -1003,18 +1003,16 @@
     "title": "Serverbeheer",
     "updates": {
       "afterwards": "Vijf tot tien minuten, grotendeels het opnieuw bouwen van images. Je .env wordt nooit opnieuw gegenereerd, dus secrets, het adres, de TLS-modus en de poorten blijven allemaal behouden. Named volumes blijven onaangeroerd, dus de database en de wachtrij blijven bestaan.",
-      "backupBody": "Dit is de stap die mensen overslaan, en juist die maakt de andere twee omkeerbaar. Een upgrade voert migraties uit, en een migratie draai je niet terug door de vorige commit uit te checken.",
-      "backupTitle": "Maak eerst een back-up van de database",
-      "procedureBody": "Drie commando's, in deze volgorde, vanaf een shell op de host als gebruiker met sudo.",
+      "backupBody": "De update maakt eerst een gedateerde back-up en stopt als dat niet lukt. Die back-up is de weg terug: een upgrade voert migraties uit, en een migratie maak je niet ongedaan door de vorige commit uit te checken.",
+      "backupTitle": "De update maakt eerst een back-up van de database",
+      "procedureBody": "Twee commando’s, vanuit een shell op de host als gebruiker met sudo.",
       "procedureTitle": "Upgradeprocedure",
       "runningBody": "Gerapporteerd door de API, dus het is de software die deze pagina daadwerkelijk serveert.",
       "runningTitle": "De draaiende build",
-      "step1": "1. Back-up van de database",
-      "step1Hint": "Schrijft een gedateerde dump naar /var/backups. Kopieer die naar een plek die niet deze machine is.",
-      "step2": "2. Bekijk wat je gaat krijgen",
-      "step2Hint": "Toont de commits tussen de draaiende build en de upstream-branch. Lees ze voordat je pullt.",
-      "step3": "3. Upgraden",
-      "step3Hint": "Het installatieprogramma bouwt de images opnieuw, voert migraties uit, herstart de services en verifieert het resultaat.",
+      "step1": "1. Bekijk wat je binnenhaalt",
+      "step1Hint": "Toont de wijzigingen sinds de draaiende build en verandert niets.",
+      "step2": "2. Back-up maken en upgraden",
+      "step2Hint": "Schrijft een back-up naar /var/backups, bouwt daarna de images opnieuw, voert migraties uit, herstart de services en controleert het resultaat. Kopieer de back-up naar een plek buiten deze machine.",
       "verifyBody": "Dezelfde verificatie die het installatieprogramma aan het eind uitvoert. De moeite waard om ook los te draaien na elke wijziging aan de machine.",
       "verifyLabel": "Een draaiende installatie verifiëren",
       "verifyTitle": "Controleer het resultaat"
@@ -1367,7 +1365,7 @@
     "subtitle": "Het certificaat dat deze installatie serveert, en hoe je het wijzigt.",
     "unreachableBody": "Geen TLS-handshake met de proxy ({detail}). Velnox zelf draait — je leest dit immers — dus waarschijnlijk is de proxy aan het herstarten.",
     "unreachableTitle": "De proxy was niet bereikbaar",
-    "whyNotHere": "scripts/tls.sh schrijft de certificaatbestanden van de installatie en herstart de proxy. Een certificaat dat hierboven is gekozen, wordt daaraan teruggegeven als het script draait.",
+    "whyNotHere": "velnox cert schrijft de certificaatbestanden van de installatie en herstart de proxy. Een certificaat dat hierboven is gekozen, wordt daaraan teruggegeven als het commando draait.",
     "changeInterfaceBody": "Toegepast via de admin-socket van de proxy. Een configuratie die de proxy niet kan serveren wordt geweigerd, en het huidige certificaat blijft staan. Het certificaat dat daarna geserveerd wordt, wordt teruggelezen ter controle.",
     "choice": {
       "installer": "Zoals geïnstalleerd",
@@ -1376,7 +1374,7 @@
       "certificate": "Mijn eigen certificaat"
     },
     "choiceHint": {
-      "installer": "Wat de installatie instelde, uit VELNOX_TLS, en wat scripts/tls.sh wijzigt.",
+      "installer": "Wat de installatie instelde, uit VELNOX_TLS, en wat velnox cert wijzigt.",
       "internal": "Browsers waarschuwen één keer. Geschikt voor een appliance die op IP-adres in een beheernetwerk bereikt wordt.",
       "acme": "Publiek vertrouwd. Het adres moet publiek resolven en poort 80 en 443 moeten deze host bereiken. Een andere ACME-autoriteit kan in plaats daarvan worden opgegeven.",
       "certificate": "Upload een certificaat met zijn keten en zijn privésleutel. Niets vernieuwt het: vervang het voordat het verloopt."
@@ -1393,7 +1391,7 @@
     "certificateFieldHint": "Eerst het certificaat, dan de tussencertificaten — het fullchain-bestand van je leverancier.",
     "keyField": "Privésleutel (PEM, onversleuteld)",
     "keyFieldHint": "Versleuteld opgeslagen. Hij wordt nooit meer getoond, en verlaat de installatie nooit via deze pagina.",
-    "breakGlass": "Maakt een certificaat deze pagina onbereikbaar, voer dan sudo bash /opt/velnox/scripts/tls.sh --self-signed uit op de host: dat geeft de keuze terug aan die van de installatie.",
+    "breakGlass": "Maakt een certificaat deze pagina onbereikbaar, voer dan sudo velnox cert self-signed uit op de host: dat geeft de keuze terug aan die van de installatie.",
     "apply": "Toepassen",
     "appliedVerified": "Toegepast, en geserveerd",
     "appliedNotYet": "Toegepast, nog niet geserveerd",

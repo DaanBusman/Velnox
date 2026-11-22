@@ -199,7 +199,7 @@ poll it without holding a credential; it contains no secrets and no configuratio
 **From the machine, thoroughly:**
 
 ```bash
-cd /opt/velnox && bash scripts/verify-stack.sh https://velnox.example.internal
+sudo velnox check
 ```
 
 That is the same verification the installer runs: thirty-five checks covering TLS, the security
@@ -210,7 +210,7 @@ When something is wrong, [Deployment](deployment.md) has the diagnosis section, 
 logs are the next place to look:
 
 ```bash
-cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
+sudo velnox logs api
 ```
 
 ---

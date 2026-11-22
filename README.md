@@ -138,7 +138,7 @@ Full options, sizing and hypervisor VM settings: [docs/deployment.md](docs/deplo
 ### Verify a running installation
 
 ```bash
-bash scripts/verify-stack.sh https://your-velnox-host
+sudo velnox check
 ```
 
 Asserts against the running stack: every dependency reachable, migrations applied, security headers

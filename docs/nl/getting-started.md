@@ -204,7 +204,7 @@ kan bevragen zonder een credential te bezitten; het bevat geen secrets en geen c
 **Vanaf de machine, grondig:**
 
 ```bash
-cd /opt/velnox && bash scripts/verify-stack.sh https://velnox.example.internal
+sudo velnox check
 ```
 
 Dat is dezelfde verificatie die het installatieprogramma uitvoert: vijfendertig controles op TLS, de
@@ -216,7 +216,7 @@ Gaat er iets mis, dan bevat [Deployment](deployment.md) het diagnosehoofdstuk, e
 containerlogs de volgende plek om te kijken:
 
 ```bash
-cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
+sudo velnox logs api
 ```
 
 ---

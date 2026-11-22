@@ -57,26 +57,15 @@ export function UpdatesPanel() {
           <li>
             <CopyField
               label={t('server.updates.step1')}
-              value={
-                "cd /opt/velnox && sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml " +
-                '--env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > ' +
-                '"/var/backups/velnox-$(date +%F).dump"\''
-              }
+              value="sudo velnox update --check"
               hint={t('server.updates.step1Hint')}
             />
           </li>
           <li>
             <CopyField
               label={t('server.updates.step2')}
-              value="cd /opt/velnox && sudo git fetch && sudo git log --oneline HEAD..origin/main"
+              value="sudo velnox update"
               hint={t('server.updates.step2Hint')}
-            />
-          </li>
-          <li>
-            <CopyField
-              label={t('server.updates.step3')}
-              value="cd /opt/velnox && sudo git pull && sudo bash install.sh --non-interactive"
-              hint={t('server.updates.step3Hint')}
             />
           </li>
         </ol>
@@ -87,7 +76,7 @@ export function UpdatesPanel() {
       <Card title={t('server.updates.verifyTitle')} description={t('server.updates.verifyBody')}>
         <CopyField
           label={t('server.updates.verifyLabel')}
-          value="cd /opt/velnox && bash scripts/verify-stack.sh https://$(grep -m1 '^VELNOX_SITE_ADDRESS=' .env | cut -d= -f2)"
+          value="sudo velnox check"
         />
       </Card>
 

@@ -146,7 +146,7 @@ Volledige opties, dimensionering en VM-instellingen: [deployment.md](deployment.
 ### Een draaiende installatie verifiëren
 
 ```bash
-bash scripts/verify-stack.sh https://jouw-velnox-host
+sudo velnox check
 ```
 
 Toetst tegen de draaiende stack: elke afhankelijkheid bereikbaar, migraties toegepast, security

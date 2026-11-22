@@ -11,9 +11,10 @@
 #   --keep=N          always keep the N newest       (default 7, at least 1)
 #   --delete          actually remove; without it nothing is touched
 #
-# Only files named exactly velnox-YYYY-MM-DD.dump are considered, and a dump's
-# age is the date in its name, not its modification time: copying a backup back
-# from off-site storage gives it a new mtime, and it would stop looking old.
+# Only files named exactly velnox-YYYY-MM-DD.dump or velnox-YYYY-MM-DD-HHMMSS.dump
+# are considered, and a dump's age is the date in its name, not its modification
+# time: copying a backup back from off-site storage gives it a new mtime, and it
+# would stop looking old.
 
 set -euo pipefail
 
@@ -53,17 +54,21 @@ done
 (( KEEP >= 1 )) || die "--keep must be at least 1. The newest backup is never removed."
 [[ -d "$DIR" ]] || die "${DIR} is not a directory."
 
-# The dumps, newest first. The name sorts by date, so a reverse sort by name is
-# a sort by age — and it does not depend on mtimes, for the reason above.
+# The dumps, newest first, by the date and time in the name, so it does not
+# depend on mtimes, for the reason above. A name without a time is the first of
+# its day: `velnox backup` adds the time only when that name is already taken.
 mapfile -t DUMPS < <(
   find "$DIR" -maxdepth 1 -type f -regextype posix-extended \
-    -regex '.*/velnox-[0-9]{4}-[0-9]{2}-[0-9]{2}\.dump' -printf '%f\n' | sort -r
+    -regex '.*/velnox-[0-9]{4}-[0-9]{2}-[0-9]{2}(-[0-9]{6})?\.dump' -printf '%f\n' |
+    awk '{ key = $0; sub(/^velnox-/, "", key); sub(/\.dump$/, "", key)
+           if (length(key) == 10) key = key "-000000"; print key "\t" $0 }' |
+    LC_ALL=C sort -r | cut -f2
 )
 
 printf '\n  %sDatabase backups in %s%s\n\n' "$C_BOLD" "$DIR" "$C_RESET"
 
 if (( ${#DUMPS[@]} == 0 )); then
-  info "No files named velnox-YYYY-MM-DD.dump here. Nothing to do."
+  info "No Velnox backups here. Nothing to do."
   echo
   exit 0
 fi
@@ -77,7 +82,7 @@ valid=0
 
 for name in "${DUMPS[@]}"; do
   path="${DIR}/${name}"
-  day="${name#velnox-}"; day="${day%.dump}"
+  day="${name#velnox-}"; day="${day:0:10}"
   size="$(stat -c %s "$path")"
   human="$(numfmt --to=iec --suffix=B "$size")"
 

@@ -55,6 +55,8 @@ const ENTRY_POINTS = [
   'scripts/test-install-ui.sh',
   'scripts/prune-backups.sh',
   'scripts/test-prune-backups.sh',
+  'scripts/velnox.sh',
+  'scripts/test-velnox-cli.sh',
 ];
 
 /**

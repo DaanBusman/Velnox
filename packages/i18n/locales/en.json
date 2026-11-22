@@ -1002,18 +1002,16 @@
     "title": "Server management",
     "updates": {
       "afterwards": "Five to ten minutes, most of it rebuilding images. Your .env is never regenerated, so secrets, the site address, the TLS mode and the ports all survive. Named volumes are untouched, so the database and the queue survive.",
-      "backupBody": "This is the step people skip, and it is the one that makes the other two reversible. An upgrade applies migrations, and a migration is not undone by checking out the previous commit.",
-      "backupTitle": "Back up the database first",
-      "procedureBody": "Three commands, in this order, from a shell on the host as a user with sudo.",
+      "backupBody": "The update makes a dated backup first, and stops if it cannot. That backup is the way back: an upgrade applies migrations, and a migration is not undone by checking out the previous commit.",
+      "backupTitle": "The update backs up the database first",
+      "procedureBody": "Two commands, from a shell on the host as a user with sudo.",
       "procedureTitle": "Upgrade procedure",
       "runningBody": "Reported by the API, so it is the software actually serving this page.",
       "runningTitle": "The build that is running",
-      "step1": "1. Back up the database",
-      "step1Hint": "Writes a dated dump to /var/backups. Copy it somewhere that is not this machine.",
-      "step2": "2. See what you are about to get",
-      "step2Hint": "Lists the commits between the running build and the upstream branch. Read them before pulling.",
-      "step3": "3. Upgrade",
-      "step3Hint": "The installer rebuilds the images, applies migrations, restarts the services and verifies the result.",
+      "step1": "1. See what you are about to get",
+      "step1Hint": "Lists the changes since the running build, and changes nothing.",
+      "step2": "2. Back up and upgrade",
+      "step2Hint": "Writes a backup to /var/backups, then rebuilds the images, applies migrations, restarts the services and verifies the result. Copy the backup somewhere that is not this machine.",
       "verifyBody": "The same verification the installer runs at the end. Worth running again on its own after any change to the machine.",
       "verifyLabel": "Verify a running installation",
       "verifyTitle": "Check the result"
@@ -1366,7 +1364,7 @@
     "subtitle": "The certificate this installation serves, and how to change it.",
     "unreachableBody": "No TLS handshake with the proxy ({detail}). Velnox itself is running — you are reading this — so the proxy is probably restarting.",
     "unreachableTitle": "Could not reach the proxy",
-    "whyNotHere": "scripts/tls.sh writes the installer’s certificate files and restarts the proxy. A certificate chosen above is handed back to it when the script runs.",
+    "whyNotHere": "velnox cert writes the installer’s certificate files and restarts the proxy. A certificate chosen above is handed back to it when the command runs.",
     "changeInterfaceBody": "Applied through the proxy’s admin socket. A configuration the proxy cannot serve is refused, and the current certificate stays in place. The certificate served afterwards is read back to check it.",
     "choice": {
       "installer": "As installed",
@@ -1375,7 +1373,7 @@
       "certificate": "My own certificate"
     },
     "choiceHint": {
-      "installer": "What the installer set up, from VELNOX_TLS, and what scripts/tls.sh changes.",
+      "installer": "What the installer set up, from VELNOX_TLS, and what velnox cert changes.",
       "internal": "Browsers warn once. Right for an appliance reached by IP address on a management network.",
       "acme": "Publicly trusted. The address must resolve publicly and ports 80 and 443 must reach this host. Another ACME authority can be named instead.",
       "certificate": "Upload a certificate with its chain and its private key. Nothing renews it: replace it before it expires."
@@ -1392,7 +1390,7 @@
     "certificateFieldHint": "The certificate first, then the intermediates — your provider’s fullchain file.",
     "keyField": "Private key (PEM, unencrypted)",
     "keyFieldHint": "Stored encrypted. It is never shown again, and never leaves the installation through this page.",
-    "breakGlass": "If a certificate makes this page unreachable, run sudo bash /opt/velnox/scripts/tls.sh --self-signed on the host: it hands the choice back to the installer’s.",
+    "breakGlass": "If a certificate makes this page unreachable, run sudo velnox cert self-signed on the host: it hands the choice back to the installer’s.",
     "apply": "Apply",
     "appliedVerified": "Applied, and served",
     "appliedNotYet": "Applied, not yet served",

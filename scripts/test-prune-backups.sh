@@ -71,6 +71,18 @@ bash "$S" --dir="$B" --older-than=1 --keep=1 --delete >/dev/null 2>&1
 check "one left" "[ \$(ls \"$B\" | wc -l) = 1 ]"
 check "and it is the newest" "[ -e \"$(dump 400)\" ]"
 
+echo "== a second backup on one day has the time in its name"
+rm -rf "$B"; mkdir -p "$B"
+old="$(date -d '-100 days' +%F)"
+echo x > "$B/velnox-$old.dump"; echo x > "$B/velnox-$old-091500.dump"; echo x > "$B/velnox-$old-171500.dump"
+bash "$S" --dir="$B" --older-than=30 --keep=1 --delete >/dev/null 2>&1
+check "the latest of the day is the one kept" "[ -e \"$B/velnox-$old-171500.dump\" ]"
+check "the earlier ones of that day go" "[ ! -e \"$B/velnox-$old.dump\" ] && [ ! -e \"$B/velnox-$old-091500.dump\" ]"
+rm -rf "$B"; mkdir -p "$B"
+echo x > "$B/velnox-$old-12345.dump"; echo x > "$B/velnox-$old-1234567.dump"
+bash "$S" --dir="$B" --older-than=1 --keep=1 --delete >/dev/null 2>&1
+check "a time of the wrong length is not one of ours" "[ -e \"$B/velnox-$old-12345.dump\" ] && [ -e \"$B/velnox-$old-1234567.dump\" ]"
+
 echo "== a name that is not a date does not take a --keep place"
 rm -rf "$B"; mkdir -p "$B"
 echo x > "$B/velnox-2027-13-45.dump"   # sorts first, and is not a date

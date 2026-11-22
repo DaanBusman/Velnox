@@ -91,7 +91,7 @@ ship in the next version. There are no backports to earlier versions, and there 
 Check what you are running with **Settings → About**, or:
 
 ```bash
-cd /opt/velnox && sudo bash scripts/tls.sh --status
+sudo velnox cert status
 ```
 
 ---

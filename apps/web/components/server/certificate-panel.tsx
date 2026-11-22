@@ -21,7 +21,7 @@ const EXPIRY_WARNING_DAYS = 30;
  *
  * Changed here since Phase 5C (ADR-045, reversing the read-only panel at the
  * owner's request): the API writes Caddy's files and reloads it through its
- * admin socket, without a shell command. `scripts/tls.sh` on the host stays as
+ * admin socket, without a shell command. `velnox cert` on the host stays as
  * the way back when this page cannot be reached, and this panel shows it.
  *
  * What it answers that configuration cannot: the certificate shown here is the
@@ -205,23 +205,19 @@ export function CertificatePanel() {
         <div className="space-y-4">
           <CopyField
             label={t('tls.commandStatus')}
-            value="sudo bash /opt/velnox/scripts/tls.sh --status"
+            value="sudo velnox cert status"
           />
           <CopyField
             label={t('tls.commandLetsencrypt')}
-            value={`sudo bash /opt/velnox/scripts/tls.sh --letsencrypt=you@${suffix}`}
+            value={`sudo velnox cert letsencrypt you@${suffix}`}
           />
           <CopyField
             label={t('tls.commandUpload')}
-            value={
-              'sudo bash /opt/velnox/scripts/tls.sh \\\n' +
-              '  --certificate=/path/to/fullchain.pem \\\n' +
-              '  --key=/path/to/privkey.pem'
-            }
+            value="sudo velnox cert install /path/to/fullchain.pem /path/to/privkey.pem"
           />
           <CopyField
             label={t('tls.commandSelfSigned')}
-            value="sudo bash /opt/velnox/scripts/tls.sh --self-signed"
+            value="sudo velnox cert self-signed"
           />
         </div>
 

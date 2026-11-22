@@ -22,6 +22,8 @@ ORIGINAL_ARGS=("$@")
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${ROOT}/deploy/compose/docker-compose.yml"
 ENV_FILE="${ROOT}/.env"
+# Marks /usr/local/bin/velnox as ours, so an upgrade may replace it.
+COMMAND_MARKER="Velnox command, written by install.sh"
 
 # get_env_var / set_env_var / random_*, shared with gen-env.sh so the two cannot
 # drift apart on escaping rules.
@@ -570,6 +572,21 @@ generate_configuration() {
 BUILT_SERVICES=(api web)
 UPSTREAM_SERVICES=(postgres redis caddy)
 
+# `sudo velnox status` and the rest. A small launcher rather than a symlink,
+# because it needs no executable bit on the script, which a zip download or a
+# copy through Windows drops. A file of that name that is not ours stays.
+install_command() {
+  local target=/usr/local/bin/velnox
+  if [[ -e "$target" ]] && ! grep -qF "$COMMAND_MARKER" "$target"; then
+    printf 'Leaving %s alone: it is not from Velnox.\n' "$target"
+    return 0
+  fi
+  mkdir -p /usr/local/bin
+  printf '#!/bin/sh\n# %s\nexec bash %q "$@"\n' "$COMMAND_MARKER" "${ROOT}/scripts/velnox.sh" >"${target}.new"
+  chmod 0755 "${target}.new"
+  mv -f "${target}.new" "$target"
+}
+
 build_images() {
   # Pulled explicitly, every run. `up` only fetches an image that is missing,
   # so without this an installation kept the PostgreSQL, Redis and Caddy it was
@@ -647,8 +664,11 @@ summary() {
   box_line
   printf '  %sConfiguration%s  %s/.env\n' "$C_DIM" "$C_RESET" "$ROOT"
   printf '  %sInstall log%s    %s\n' "$C_DIM" "$C_RESET" "$LOG_FILE"
-  printf '  %sManage%s         cd %s && docker compose -f deploy/compose/docker-compose.yml --env-file .env ps\n' \
-    "$C_DIM" "$C_RESET" "$ROOT"
+  if grep -qsF "$COMMAND_MARKER" /usr/local/bin/velnox; then
+    printf '  %sManage%s         sudo velnox help\n' "$C_DIM" "$C_RESET"
+  else
+    printf '  %sManage%s         sudo bash %s/scripts/velnox.sh help\n' "$C_DIM" "$C_RESET" "$ROOT"
+  fi
   box_line
   printf '\n'
 }
@@ -667,8 +687,8 @@ main() {
   configure
 
   # Count the steps that will actually run, so [n/total] is honest.
-  # Five always run: prerequisites, time sync, configuration, build, start.
-  TOTAL_STEPS=5
+  # Six always run: prerequisites, time sync, configuration, command, build, start.
+  TOTAL_STEPS=6
   [[ $SKIP_DOCKER -eq 0 ]] && TOTAL_STEPS=$((TOTAL_STEPS + 1))
   [[ $SKIP_VERIFY -eq 0 ]] && TOTAL_STEPS=$((TOTAL_STEPS + 1))
 
@@ -692,6 +712,7 @@ main() {
 
   step "Enabling time synchronisation" enable_time_sync
   step "Generating configuration and secrets" generate_configuration
+  step "Installing the velnox command" install_command
   step_streamed "Fetching and building images (this takes a few minutes)" build_images
   step "Starting services and waiting for health" start_services
 

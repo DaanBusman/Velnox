@@ -173,7 +173,7 @@ sudo bash /opt/velnox/install.sh --non-interactive --site-address=velnox.example
 | `--skip-verify` | Skip the post-install verification |
 
 Re-running the installer is safe. It never overwrites an existing `.env` and never touches your
-data, so it doubles as the upgrade path after `git pull`.
+data, which is why `sudo velnox update` uses it for upgrades.
 
 > ### Back up `MASTER_ENCRYPTION_KEY`
 >
@@ -185,28 +185,35 @@ data, so it doubles as the upgrade path after `git pull`.
 
 ## Operating it
 
-All commands run from `/opt/velnox`.
+The installer adds one command for everything below. It works from any directory.
 
-Status and logs:
+| Command | What it does |
+|---|---|
+| `sudo velnox status` | Shows what is running |
+| `sudo velnox logs [service]` | Follows the logs of `api`, `worker`, `web`, `caddy`, `postgres` or `redis`, or of all of them |
+| `sudo velnox check` | Verifies the running installation |
+| `sudo velnox start` / `stop` | Starts or stops Velnox. Stopping keeps all data |
+| `sudo velnox restart [service]` | Restarts one service, or all of them |
+| `sudo velnox update` | Backs up the database, then upgrades |
+| `sudo velnox update --check` | Shows what an upgrade would bring, and changes nothing |
+| `sudo velnox rollback [commit]` | Lists recent versions, or goes back to one |
+| `sudo velnox backup` | Backs up the database to `/var/backups` |
+| `sudo velnox backup list` | Shows the backups |
+| `sudo velnox backup prune` | Shows which old backups can go. Add `--delete` to remove them |
+| `sudo velnox backup restore <file>` | Puts a backup back |
+| `sudo velnox backup library` | Also backs up the ISO library |
+| `sudo velnox cert status` | Shows the certificate being served |
+| `sudo velnox cert self-signed` | Uses Caddy's own certificate |
+| `sudo velnox cert letsencrypt <email>` | Uses Let's Encrypt |
+| `sudo velnox cert install <cert> <key> [chain]` | Uses a certificate you already have |
+| `sudo velnox disk` | Shows where the disk space went |
+| `sudo velnox clean` | Removes caches. Never touches your data |
+| `velnox version`, `velnox help` | The installed version, and this list |
+
+Installed before 0.7.37? The command arrives with your next upgrade, which runs like this once:
 
 ```bash
-cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env ps
-```
-
-```bash
-cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env logs -f api
-```
-
-Re-verify a running installation at any time:
-
-```bash
-cd /opt/velnox && bash scripts/verify-stack.sh https://velnox.example.internal
-```
-
-Stop (data is preserved in named volumes):
-
-```bash
-cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env down
+cd /opt/velnox && sudo git pull --ff-only && sudo bash scripts/velnox.sh update
 ```
 
 ---
@@ -215,11 +222,11 @@ cd /opt/velnox && sudo docker compose -f deploy/compose/docker-compose.yml --env
 
 Velnox serves HTTPS through Caddy in one of three modes. Change it at any time, on a running
 installation: in the product under **Server management → Certificate**, or on the host with
-`scripts/tls.sh`. Either way nothing is served until it has been validated, so a certificate that
+`velnox cert`. Either way nothing is served until it has been validated, so a certificate that
 would not have worked is refused while the working one is still serving.
 
 ```bash
-cd /opt/velnox && sudo bash scripts/tls.sh --status
+sudo velnox cert status
 ```
 
 | Mode | What it is | Renewal |
@@ -236,7 +243,7 @@ picked up is visible instead of being reported as success.
 
 **Server management → Certificate → Change the certificate**, with `system.manage`:
 
-- **As installed** — what the installer set up from `VELNOX_TLS`, and what `scripts/tls.sh` changes.
+- **As installed** — what the installer set up from `VELNOX_TLS`, and what `velnox cert` changes.
 - **Self-signed** — Caddy's own certificate authority.
 - **Let's Encrypt** — with an account address; renewed by Caddy. **Use another ACME authority**
   names a different directory — a private CA such as step-ca, or a staging server — with the root
@@ -257,19 +264,20 @@ it is kept in the database, and the API writes Caddy's files again at every star
 in the audit log as `system.tls_changed`, never with the key.
 
 **When the interface cannot be reached** — after a certificate browsers refuse, say — any
-`scripts/tls.sh` command on the host hands the choice back to the installer's: it clears the choice
-in the database, removes the stored key, records that in the audit log, and restarts the API and
-Caddy. `scripts/tls.sh --status` says when a choice from the interface is being served.
+`velnox cert` command that changes the certificate hands the choice back to the installer's: it
+clears the choice in the database, removes the stored key, records that in the audit log, and
+restarts the API and Caddy. `velnox cert status` says when a choice from the interface is being
+served.
 
 ### Switch to Let's Encrypt
 
 ```bash
-cd /opt/velnox && sudo bash scripts/tls.sh --letsencrypt=you@example.com
+sudo velnox cert letsencrypt you@example.com
 ```
 
-The address is the ACME account contact; no separate option is needed. This requires
+The address is the ACME account contact. This requires
 `VELNOX_SITE_ADDRESS` to be a name that resolves publicly and reaches this host on ports 80 and 443.
-Let's Encrypt does not issue certificates for IP addresses, and the script refuses rather than
+Let's Encrypt does not issue certificates for IP addresses, and the command refuses rather than
 letting Caddy fail quietly.
 
 Issuance takes up to a minute. Caddy renews on its own from then on.
@@ -277,26 +285,26 @@ Issuance takes up to a minute. Caddy renews on its own from then on.
 ### Install a certificate you already have
 
 ```bash
-cd /opt/velnox && sudo bash scripts/tls.sh --certificate=/path/to/fullchain.pem --key=/path/to/privkey.pem
+sudo velnox cert install /path/to/fullchain.pem /path/to/privkey.pem
 ```
 
 Both files must be PEM. An encrypted private key has to be decrypted first — Caddy cannot prompt for
-a passphrase. If your issuer gave you the leaf and the chain separately, pass `--chain=` as well, or
-concatenate them yourself; most browsers reject a leaf served without its issuers.
+a passphrase. If your issuer gave you the leaf and the chain separately, name the chain as a third
+file, or concatenate them yourself; most browsers reject a leaf served without its issuers.
 
-Before writing anything the script checks that the key belongs to the certificate, that the
+Before writing anything the command checks that the key belongs to the certificate, that the
 certificate has not expired, and that one of its names covers `VELNOX_SITE_ADDRESS`. A name mismatch
 is a warning rather than a refusal, because installing ahead of a DNS change is legitimate — but
 browsers will refuse the connection until the two agree.
 
 The certificate and key are written to `deploy/caddy/tls/`, the key mode 0600, and the directory is
 mounted read-only into the Caddy container. **Renewal is yours in this mode.** Velnox warns on the
-certificate screen from 30 days out, and `scripts/verify-stack.sh` fails once it has expired.
+certificate screen from 30 days out, and `velnox check` fails once it has expired.
 
 ### Go back to a self-signed certificate
 
 ```bash
-cd /opt/velnox && sudo bash scripts/tls.sh --self-signed
+sudo velnox cert self-signed
 ```
 
 ### What changing it in the interface costs
@@ -309,7 +317,7 @@ network — and the API still runs no shell commands and cannot restart a contai
 code inside the API container can change the certificate; that was already enough to read the
 database.
 
-A change from the interface reloads Caddy without a restart. A change with `scripts/tls.sh`
+A change from the interface reloads Caddy without a restart. A change with `velnox cert`
 restarts the API and Caddy, which costs a few seconds on the console. Nothing else is interrupted:
 the worker holds no connection through Caddy.
 
@@ -336,44 +344,29 @@ and the procedure below.
   mirror inside the management network, or a fork's own file. It is read directly, not through a
   proxy.
 
-Three steps, in this order. Step 1 is the one that is tempting to skip, and it is the one that makes
-the other two reversible.
-
-### Step 1 — Back up the database. First.
+### Upgrade
 
 ```bash
-cd /opt/velnox && sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/var/backups/velnox-$(date +%F).dump"'
+sudo velnox update
 ```
 
-The `sudo sh -c` wrapper is not decoration, and neither half of it is optional. Redirecting directly — `sudo command > /var/backups/file` — fails, because your shell opens the file before sudo runs, as you. Splitting it into two sudos joined by a pipe fails differently: both halves start at once, neither has a cached credential, and both ask for a password on the same terminal. One sudo around the whole thing asks once and does the redirection as root.
+That is the whole procedure. It backs up the database, fetches the new version, rebuilds the images,
+applies any new migrations, restarts the services and verifies the result. If the backup fails,
+nothing else happens.
 
-This takes seconds, and it is the only way back. **Migrations only run forwards.** If the new version
-adds one and you then want the previous version again, the older code cannot run against the newer
-schema — a `git checkout` alone will not undo it. Without this dump you are committed to going
-forwards.
-
-### Step 2 — See what you are about to get
+To see first whether you are picking up one small fix or a month of changes:
 
 ```bash
-cd /opt/velnox && sudo git fetch && sudo git log --oneline HEAD..origin/main
+sudo velnox update --check
 ```
 
-Skippable, but it costs a second and tells you whether you are picking up one small fix or a month of
-changes.
+**Why the backup comes first.** Migrations only run forwards. If the new version adds one and you
+then want the previous version again, the older code cannot run against the newer schema. The backup
+is the only way back, so copy it, with `.env`, somewhere that is not this machine.
 
-### Step 3 — Upgrade
-
-```bash
-cd /opt/velnox && sudo git pull && sudo bash install.sh --non-interactive
-```
-
-That is the whole procedure. The installer rebuilds the images, applies any new migrations, restarts
-the services and verifies the result — the same steps as a first install, which is why there is no
-separate upgrade script to keep in step.
-
-If `git pull` refuses because of local edits, you changed something inside `/opt/velnox`. Either keep
-the change with `git stash`, or discard it with `git checkout -- <file>`. Configuration belongs in
-`.env`, which git ignores, so a conflict here usually means an edit that wants to become a proper
+If the update refuses because of local edits, you changed something inside `/opt/velnox`. Either
+keep the change with `git stash`, or discard it with `git checkout -- <file>`. Configuration belongs
+in `.env`, which git ignores, so a conflict here usually means an edit that wants to become a proper
 change in the repository.
 
 **What the upgrade keeps.** Your `.env` is never regenerated, so secrets survive. The site address,
@@ -405,29 +398,33 @@ The installer stops at the failing step and prints the last lines of its log, wi
 `/var/log/velnox-install-*.log`. Nothing is left half-applied at the compose level: migrations run in
 a one-shot container that must succeed before the API starts.
 
-To go back to the previous version:
+To go back, list the recent versions:
 
 ```bash
-cd /opt/velnox && sudo git log --oneline -5
+sudo velnox rollback
 ```
+
+Then name the one you want:
 
 ```bash
-cd /opt/velnox && sudo git checkout <previous-commit> && sudo bash install.sh --non-interactive
+sudo velnox rollback <previous-commit>
 ```
 
-That is enough **only if the upgrade added no migration**. If it did, restore your step 1 dump first,
-then check out the older commit:
+If the upgrade added a migration, the command refuses, because the older code cannot run on the newer
+database. Name the backup from before the upgrade as well:
 
 ```bash
-cd /opt/velnox && sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /var/backups/velnox-2026-09-01.dump'
+sudo velnox rollback <previous-commit> --restore=/var/backups/velnox-2026-09-01.dump
 ```
+
+It asks for confirmation and saves the current database first. If the restore fails, the database
+stays as it was and nothing is rolled back.
 
 ### Keeping several machines in step
 
 The commit shown under Settings → About is the exact source of the running build, so comparing that
-across installations tells you which are behind. To upgrade a fleet, run the same three steps on each
-host; the installer is idempotent, so running it on a machine that is already current is harmless and
-takes about a minute.
+across installations tells you which are behind. To upgrade a fleet, run `sudo velnox update` on
+each host; running it on a machine that is already current is harmless and takes about a minute.
 
 ---
 
@@ -446,8 +443,7 @@ The floor matters more than the ceiling: the volume is on the same disk as Postg
 it, and a full disk stops the whole installation, not only the upload. On the 25 GB evaluation size
 the floor is what you will hit first, which is the point of it.
 
-Change either value, then `sudo docker compose -f deploy/compose/docker-compose.yml --env-file .env up -d`
-so the API and worker read it. Lowering the ceiling below what the library already holds removes
+Change either value, then run `sudo velnox start` so the API and worker read it. Lowering the ceiling below what the library already holds removes
 nothing; it only refuses new files until enough are deleted.
 
 To give the library a disk of its own, mount one at the volume's location before the first start, or
@@ -459,17 +455,25 @@ filesystem the library is on.
 Two things, and one of them is not in the database:
 
 ```bash
-sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_dump -U velnox -d velnox --format=custom > "/var/backups/velnox-$(date +%F).dump"'
+sudo velnox backup
 ```
 
 …and `/opt/velnox/.env`, which holds `MASTER_ENCRYPTION_KEY`. A database backup without it is
 ciphertext you can never read.
 
-Restore by putting `.env` back, starting the stack so migrations create the schema, then:
+A backup is readable by root only, and never replaces an earlier one: a second backup on the same day
+gets the time in its name.
+
+Restore by putting `.env` back, starting Velnox with `sudo velnox start` so migrations create the
+schema, then:
 
 ```bash
-sudo sh -c 'docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres pg_restore -U velnox -d velnox --clean --if-exists < /var/backups/velnox-2026-09-01.dump'
+sudo velnox backup restore /var/backups/velnox-2026-09-01.dump
 ```
+
+It asks for confirmation, saves the current database first, and stops the services that use it. The
+restore is one transaction, so if it fails the database stays as it was. Afterwards it applies the
+migrations of the installed version and starts the services that were running.
 
 Test the restore before you rely on it.
 
@@ -480,35 +484,36 @@ notices within fifteen minutes and marks them *Failed*, with the reason that the
 removing them on the **ISO library** screen clears them. If re-fetching is expensive for you, back the volume up as well:
 
 ```bash
-sudo docker run --rm -v velnox_library:/library:ro -v /var/backups:/backup alpine tar -C /library -cf /backup/velnox-library.tar .
+sudo velnox backup library
 ```
 
 ### Removing old backups
 
-Each dump is a new file, and nothing removes them for you. `scripts/prune-backups.sh` does. Run it
-first without `--delete`: it lists what it would remove and touches nothing.
+Each backup is a new file, and nothing removes them for you. This does. Run it first without
+`--delete`: it lists what it would remove and touches nothing.
 
 ```bash
-cd /opt/velnox && sudo bash scripts/prune-backups.sh
+sudo velnox backup prune
 ```
 
 When the list is what you expect, remove them:
 
 ```bash
-cd /opt/velnox && sudo bash scripts/prune-backups.sh --delete
+sudo velnox backup prune --delete
 ```
 
-By default it removes dumps older than 30 days and always keeps the 7 newest, however old those are.
-Both can be changed, and so can the directory:
+By default it removes backups older than 30 days and always keeps the 7 newest, however old those
+are. Both can be changed:
 
 ```bash
-cd /opt/velnox && sudo bash scripts/prune-backups.sh --older-than=90 --keep=14 --dir=/var/backups --delete
+sudo velnox backup prune --older-than=90 --keep=14 --delete
 ```
 
 What it will and will not do:
 
-- **It only considers files named exactly `velnox-YYYY-MM-DD.dump`** — the name the commands above
-  produce. Anything else in the directory, and any symlink, is left alone.
+- **It only considers files named exactly `velnox-YYYY-MM-DD.dump` or
+  `velnox-YYYY-MM-DD-HHMMSS.dump`** — the names `velnox backup` produces. Anything else in the
+  directory, and any symlink, is left alone.
 - **A dump's age is the date in its name, not the file's modification time.** A backup copied back
   from off-site storage gets a new modification time; going by that, it would never look old.
 - **The newest backup is never removed.** `--keep` must be at least 1, and a file whose name is not a
@@ -516,63 +521,34 @@ What it will and will not do:
 - **It does not touch `.env` backups.** `scripts/gen-env.sh --force` writes a new `.env` with a new
   `MASTER_ENCRYPTION_KEY`, and saves the old file as `.env.<timestamp>.bak`. Every dump made before
   that needs the old key to be read, so a `.bak` file is only safe to delete once no dump you keep
-  predates it. That is a judgement the script cannot make for you.
-
-The script has its own tests, which need GNU tools and so run on the host or in a container:
-
-```bash
-cd /opt/velnox && bash scripts/test-prune-backups.sh
-```
+  predates it. That is a judgement the command cannot make for you.
 
 ---
 
 ## Freeing disk space
 
-Look first, then clean — in this order, safest first. Nothing in this section touches the database.
+Look first, then clean. Nothing in this section touches the database.
 
 ### Where the space went
 
 ```bash
-df -h /
+sudo velnox disk
 ```
 
-```bash
-sudo docker system df
-```
-
-```bash
-sudo sh -c 'du -sh /var/lib/docker/containers/* 2>/dev/null | sort -h | tail -5'
-```
-
-```bash
-ls -lh /var/backups/velnox-*.dump
-```
-
-```bash
-sudo du -sh /var/lib/docker/volumes/velnox_library
-```
-
-The third one is the container logs, one directory per container, largest last. Since 0.5.5 each
-container keeps at most five files of 10 MB — about 50 MB, or 350 MB for the whole stack — and the
-oldest is dropped as a new one starts. Before 0.5.5 there was no limit at all, and on a host that
-had run for months they could be gigabytes.
+It shows the free space, what Docker uses, the largest container logs, the backups and the ISO
+library. Since 0.5.5 each container keeps at most five log files of 10 MB — about 50 MB, or 350 MB
+for the whole stack — and the oldest is dropped as a new one starts. Before 0.5.5 there was no limit
+at all, and on a host that had run for months they could be gigabytes.
 
 ### Cleaning up
 
-**The Docker build cache.** The installer already removes all of it but the package downloads after
-each build. This removes those too — always safe; the next upgrade downloads them again.
-
 ```bash
-sudo docker builder prune -af
+sudo velnox clean
 ```
 
-**Images left behind by earlier upgrades.** Each upgrade moves the `velnox-*:local` tags to new
-images and leaves the old ones untagged. This removes only untagged images; the running stack's are
-kept.
-
-```bash
-sudo docker image prune -f
-```
+After asking, this removes the Docker build cache, which the next upgrade downloads again; images
+left behind by earlier upgrades, but never one a container uses; system logs beyond 200 MB; and the
+package cache.
 
 **Container logs from before 0.5.5.** Upgrading removes them by itself: the change that caps them
 makes the next `docker compose up -d` recreate every container, and a container's logs go with it.
@@ -584,16 +560,6 @@ for troubleshooting, so read what you need first.
 
 ```bash
 sudo sh -c 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
-```
-
-**System logs and the package cache:**
-
-```bash
-sudo journalctl --vacuum-size=200M
-```
-
-```bash
-sudo apt-get clean
 ```
 
 **Old database backups** — see [Removing old backups](#removing-old-backups).
