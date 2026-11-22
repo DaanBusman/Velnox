@@ -58,6 +58,7 @@ export default async function JobsPage({ searchParams }: Props) {
         status={status}
         canSelftest={permissions.has('system.manage')}
         refreshSeconds={refresh}
+        renderedAt={new Date().toISOString()}
       />
     </>
   );

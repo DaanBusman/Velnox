@@ -36,7 +36,7 @@ export default async function AlertsPage() {
         <Notice tone="neutral">{t('alerts.derivedExplainer')}</Notice>
       </div>
 
-      <AlertTable alerts={alerts.data.alerts} />
+      <AlertTable alerts={alerts.data.alerts} renderedAt={new Date().toISOString()} />
     </>
   );
 }

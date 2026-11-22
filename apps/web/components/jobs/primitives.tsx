@@ -110,9 +110,17 @@ export const RETRYABLE_STATUSES: ReadonlySet<JobStatus> = new Set([
   'ROLLED_BACK',
 ]);
 
-/** Seconds between two instants, or null when the job has not started. */
-export function durationSeconds(startedAt: string | null, finishedAt: string | null): number | null {
+/**
+ * Seconds between two instants, or null when the job has not started. `now` is
+ * passed in because a running job's duration is rendered on the server and again
+ * while hydrating, and the two must agree.
+ */
+export function durationSeconds(
+  startedAt: string | null,
+  finishedAt: string | null,
+  now: number,
+): number | null {
   if (!startedAt) return null;
-  const end = finishedAt ? Date.parse(finishedAt) : Date.now();
+  const end = finishedAt ? Date.parse(finishedAt) : now;
   return Math.max(0, Math.round((end - Date.parse(startedAt)) / 1000));
 }

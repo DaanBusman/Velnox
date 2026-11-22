@@ -13,6 +13,7 @@ import {
 } from '@velnox/shared';
 import { apiGet, apiPost, type ApiFailure } from '@/lib/client-api';
 import { useApiError } from '@/lib/use-api-error';
+import { useClock } from '@/lib/use-clock';
 import { Button, FormError, TextInput } from '@/components/ui/form';
 import { Card, KeyValue, Mono, Notice, StatusBadge } from '@/components/ui/primitives';
 import {
@@ -47,12 +48,15 @@ export function JobDetail({
   canCancel,
   canApprove,
   canRetry,
+  renderedAt,
 }: {
   job: Job;
   logs: JobLogLine[];
   canCancel: boolean;
   canApprove: boolean;
   canRetry: boolean;
+  /** When the server rendered this page; see `useClock`. */
+  renderedAt: string;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -60,6 +64,7 @@ export function JobDetail({
   const typeLabel = useJobTypeLabel();
   const eventText = useEventText();
   const describeError = useApiError();
+  const now = useClock(renderedAt);
 
   const [events, setEvents] = useState<JobEventMessage[]>([]);
   const [liveStatus, setLiveStatus] = useState<JobStatus>(job.status);
@@ -180,7 +185,7 @@ export function JobDetail({
 
   const pendingApproval = job.approvals.find((approval) => approval.decision === null);
   const active = !isTerminal(liveStatus);
-  const seconds = durationSeconds(job.startedAt, job.finishedAt);
+  const seconds = durationSeconds(job.startedAt, job.finishedAt, now);
 
   async function act(key: string, path: string, body?: unknown) {
     setPending(key);

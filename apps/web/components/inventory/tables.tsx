@@ -64,9 +64,12 @@ const ROW = 'border-b border-line/70 align-middle hover:bg-surface-2/50';
 export function NodeTable({
   nodes,
   showCluster = true,
+  renderedAt,
 }: {
   nodes: NodeSummary[];
   showCluster?: boolean;
+  /** When the server read this list: the "now" its ages count to. */
+  renderedAt: string;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -178,7 +181,7 @@ export function NodeTable({
                     {node.state === 'ONLINE' ? (
                       formatUptime(node.uptimeSeconds)
                     ) : node.lastSeenAt ? (
-                      format.relativeTime(new Date(node.lastSeenAt))
+                      format.relativeTime(new Date(node.lastSeenAt), { now: new Date(renderedAt) })
                     ) : (
                       <Absent />
                     )}
@@ -816,7 +819,14 @@ export function InterfaceTable({
   );
 }
 
-export function AlertTable({ alerts }: { alerts: AlertRow[] }) {
+export function AlertTable({
+  alerts,
+  renderedAt,
+}: {
+  alerts: AlertRow[];
+  /** When the server read this list: the "now" its ages count to. */
+  renderedAt: string;
+}) {
   const t = useTranslations();
   const format = useFormatter();
 
@@ -889,7 +899,11 @@ export function AlertTable({ alerts }: { alerts: AlertRow[] }) {
                 </td>
                 <td className="px-3 py-2.5 text-ink-muted">{alert.tenantName}</td>
                 <td className="px-3 py-2.5 text-xs text-ink-muted">
-                  {alert.since ? format.relativeTime(new Date(alert.since)) : <Absent />}
+                  {alert.since ? (
+                    format.relativeTime(new Date(alert.since), { now: new Date(renderedAt) })
+                  ) : (
+                    <Absent />
+                  )}
                 </td>
               </tr>
             ))}

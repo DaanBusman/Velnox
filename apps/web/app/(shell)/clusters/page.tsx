@@ -59,6 +59,7 @@ export default async function ClustersPage() {
         sites={sites.ok ? sites.data.sites : []}
         canManage={permissions.has('clusters.manage')}
         refreshSeconds={refresh}
+        renderedAt={new Date().toISOString()}
       />
     </>
   );

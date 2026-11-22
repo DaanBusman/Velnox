@@ -50,6 +50,7 @@ export function ClusterDetail({
   canManage,
   canPull,
   refreshSeconds,
+  renderedAt,
 }: {
   cluster: ClusterSummary;
   nodes: NodeSummary[];
@@ -64,6 +65,8 @@ export function ClusterDetail({
   canPull: boolean;
   /** Seconds between automatic re-reads; 0 means the viewer turned it off. */
   refreshSeconds: number;
+  /** When the server read this page: the "now" the node table's ages count to. */
+  renderedAt: string;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -256,7 +259,7 @@ export function ClusterDetail({
         ))}
       </nav>
 
-      {tab === 'nodes' && <NodeTable nodes={nodes} showCluster={false} />}
+      {tab === 'nodes' && <NodeTable nodes={nodes} showCluster={false} renderedAt={renderedAt} />}
 
       {tab === 'guests' && (
         <WorkloadTable

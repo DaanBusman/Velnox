@@ -81,6 +81,7 @@ export default async function ClusterPage({ params }: Props) {
         canManage={permissions.has('clusters.manage')}
         canPull={permissions.has('clusters.manage') && permissions.has('library.manage')}
         refreshSeconds={refresh}
+        renderedAt={new Date().toISOString()}
       />
     </>
   );

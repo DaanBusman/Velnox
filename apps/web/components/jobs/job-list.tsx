@@ -31,11 +31,14 @@ export function JobList({
   status,
   canSelftest,
   refreshSeconds,
+  renderedAt,
 }: {
   jobs: JobSummary[];
   status: string | null;
   canSelftest: boolean;
   refreshSeconds: number;
+  /** When the server read this list: the "now" its ages and durations count to. */
+  renderedAt: string;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -109,7 +112,11 @@ export function JobList({
               </thead>
               <tbody>
                 {jobs.map((job) => {
-                  const seconds = durationSeconds(job.startedAt, job.finishedAt);
+                  const seconds = durationSeconds(
+                    job.startedAt,
+                    job.finishedAt,
+                    Date.parse(renderedAt),
+                  );
                   return (
                     <tr key={job.id} className="border-b border-line/70 align-middle hover:bg-surface-2/50">
                       <td className="px-4 py-2.5">
@@ -139,7 +146,7 @@ export function JobList({
                       {showTenant && <td className="px-3 py-2.5 text-ink-muted">{job.tenantName}</td>}
                       <td className="px-3 py-2.5 text-xs text-ink-muted">{job.createdBy?.email ?? '—'}</td>
                       <td className="px-3 py-2.5 text-xs text-ink-muted">
-                        {format.relativeTime(new Date(job.queuedAt))}
+                        {format.relativeTime(new Date(job.queuedAt), { now: new Date(renderedAt) })}
                       </td>
                       <td className="px-3 py-2.5 text-right text-xs tabular-nums text-ink-muted">
                         {seconds === null ? '—' : t('job.durationSeconds', { seconds })}

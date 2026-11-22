@@ -37,7 +37,7 @@ export default async function NodesPage() {
   return (
     <>
       <PageHeader title={t('nav.nodes')} description={t('inventory.nodesPageDescription')} />
-      <NodeTable nodes={nodes.data.nodes} />
+      <NodeTable nodes={nodes.data.nodes} renderedAt={new Date().toISOString()} />
     </>
   );
 }

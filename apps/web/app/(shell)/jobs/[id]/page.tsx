@@ -57,6 +57,7 @@ export default async function JobPage({ params }: Props) {
         canCancel={permissions.has('jobs.cancel')}
         canApprove={permissions.has('jobs.approve')}
         canRetry={permissions.has('system.manage')}
+        renderedAt={new Date().toISOString()}
       />
     </>
   );

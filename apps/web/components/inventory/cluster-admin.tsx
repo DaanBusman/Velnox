@@ -34,6 +34,7 @@ export function ClusterAdmin({
   sites,
   canManage,
   refreshSeconds,
+  renderedAt,
 }: {
   clusters: ClusterSummary[];
   tenants: TenantSummary[];
@@ -41,6 +42,8 @@ export function ClusterAdmin({
   canManage: boolean;
   /** Seconds between automatic re-reads; 0 means the viewer turned it off. */
   refreshSeconds: number;
+  /** When the server read this list: the "now" that "Last read" counts to. */
+  renderedAt: string;
 }) {
   const t = useTranslations();
   const format = useFormatter();
@@ -195,7 +198,9 @@ export function ClusterAdmin({
                     </td>
                     <td className="px-3 py-2.5 text-xs text-ink-muted">
                       {cluster.lastSeenAt ? (
-                        format.relativeTime(new Date(cluster.lastSeenAt))
+                        format.relativeTime(new Date(cluster.lastSeenAt), {
+                          now: new Date(renderedAt),
+                        })
                       ) : (
                         <span className="text-warn">{t('clusters.neverRead')}</span>
                       )}
