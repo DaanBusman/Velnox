@@ -9,7 +9,11 @@ import { useApiResource } from './use-api-resource';
 import { PanelError, PanelLoading } from './panel-state';
 import { CertificateChange } from './certificate-change';
 
-/** Below this, a certificate is close enough to expiry to say so loudly. */
+/**
+ * Below this, a certificate is close enough to expiry to say so loudly. Not for
+ * `internal`: Caddy's leaf lives 12 hours, so the API reports a failed renewal
+ * instead (`renewalOverdue`).
+ */
 const EXPIRY_WARNING_DAYS = 30;
 
 /**
@@ -39,7 +43,9 @@ export function CertificatePanel() {
   const cert = status.certificate;
   const days = cert?.daysRemaining ?? null;
   const expired = days !== null && days < 0;
-  const expiringSoon = days !== null && days >= 0 && days <= EXPIRY_WARNING_DAYS;
+  const expiringSoon =
+    status.mode !== 'internal' && days !== null && days >= 0 && days <= EXPIRY_WARNING_DAYS;
+  const overdueUntil = cert?.renewalOverdue ? cert.notAfter : null;
 
   const suffix = status.siteAddress.includes('.')
     ? status.siteAddress.split('.').slice(-2).join('.')
@@ -58,6 +64,17 @@ export function CertificatePanel() {
       {expiringSoon && (
         <Notice tone="warn" title={t('tls.expiringTitle', { days: days ?? 0 })}>
           {status.mode === 'acme' ? t('tls.expiringAcme') : t('tls.expiringManual')}
+        </Notice>
+      )}
+
+      {overdueUntil && (
+        <Notice tone="warn" title={t('tls.expiringInternalTitle')}>
+          {t('tls.expiringInternalBody', {
+            expires: format.dateTime(new Date(overdueUntil), {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
+          })}
         </Notice>
       )}
 

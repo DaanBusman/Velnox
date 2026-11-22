@@ -115,6 +115,11 @@ export interface TlsCertificateView {
   notAfter: string | null;
   /** Negative once it has expired. Null when the date could not be read. */
   daysRemaining: number | null;
+  /**
+   * Caddy's own short-lived certificate should have been replaced by now and
+   * was not. Always false for a certificate Caddy does not issue itself.
+   */
+  renewalOverdue: boolean;
   selfSigned: boolean;
   fingerprintSha256: string | null;
 }

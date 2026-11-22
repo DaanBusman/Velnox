@@ -24,6 +24,32 @@ const HANDSHAKE_TIMEOUT_MS = 4000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * How little of an internal certificate's lifetime may remain before renewal
+ * counts as failed.
+ *
+ * Caddy's internal leaf lives 12 hours, so a threshold in days would warn all
+ * the time. Caddy 2.11 starts renewing with a third of the lifetime left (four
+ * hours) and checks every ten minutes. A sixth (two hours) means it has been
+ * trying, or not trying, for two hours: no longer the normal renewal window.
+ */
+const INTERNAL_RENEWAL_OVERDUE_RATIO = 1 / 6;
+
+/** Has Caddy failed to replace its own certificate in time? Expired is reported separately. */
+export function isRenewalOverdue(
+  mode: TlsMode,
+  notBefore: Date,
+  notAfter: Date,
+  now: number = Date.now(),
+): boolean {
+  if (mode !== 'internal') return false;
+  const lifetime = notAfter.getTime() - notBefore.getTime();
+  // Also false for an unreadable date, where the difference is NaN.
+  if (!(lifetime > 0)) return false;
+  const remaining = notAfter.getTime() - now;
+  return remaining >= 0 && remaining < lifetime * INTERNAL_RENEWAL_OVERDUE_RATIO;
+}
+
 @Injectable()
 export class TlsService {
   constructor(
@@ -119,6 +145,7 @@ export class TlsService {
         notBefore: isoOrNull(certificate.valid_from),
         notAfter: validExpiry ? expiresAt.toISOString() : null,
         daysRemaining,
+        renewalOverdue: isRenewalOverdue(base.mode, new Date(certificate.valid_from), expiresAt),
         // Caddy's own CA names itself. Worth surfacing, because "why does my
         // browser warn" is the single most asked question about a new install.
         selfSigned: nameOf(certificate.issuer) === nameOf(certificate.subject),

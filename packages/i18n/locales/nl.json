@@ -1339,6 +1339,8 @@
     "expiredTitle": "Het certificaat is verlopen",
     "expires": "Verloopt",
     "expiringAcme": "Caddy vernieuwt automatisch, meestal 30 dagen voor het verloopt. Blijft deze waarschuwing staan, controleer dan of het adres nog publiek resolvet en poort 80 en 443 bereikbaar zijn.",
+    "expiringInternalBody": "Caddy geeft dit certificaat zelf uit en vervangt het normaal ruim voordat het verloopt, dus het vernieuwen lijkt te mislukken. Het verloopt op {expires}. Controleer het logboek van de Caddy-container.",
+    "expiringInternalTitle": "Caddy heeft het certificaat niet vernieuwd",
     "expiringManual": "Dit certificaat heb je zelf aangeleverd, dus er vernieuwt niets automatisch. Installeer de vervanger voordat het verloopt.",
     "expiringTitle": "{days, plural, one {Het certificaat verloopt over # dag} other {Het certificaat verloopt over # dagen}}",
     "fingerprint": "SHA-256-vingerafdruk",

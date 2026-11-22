@@ -1338,6 +1338,8 @@
     "expiredTitle": "The certificate has expired",
     "expires": "Expires",
     "expiringAcme": "Caddy renews automatically, usually 30 days before expiry. If this warning does not clear, check that the address still resolves publicly and ports 80 and 443 are reachable.",
+    "expiringInternalBody": "Caddy issues this certificate itself and normally replaces it well before it expires, so renewal appears to be failing. It expires on {expires}. Check the log of the Caddy container.",
+    "expiringInternalTitle": "Caddy has not renewed the certificate",
     "expiringManual": "This certificate was supplied by you, so nothing renews it automatically. Install the replacement before it expires.",
     "expiringTitle": "{days, plural, one {The certificate expires in # day} other {The certificate expires in # days}}",
     "fingerprint": "SHA-256 fingerprint",
