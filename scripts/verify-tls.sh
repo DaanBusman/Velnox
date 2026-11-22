@@ -132,7 +132,7 @@ served_issuer() {
 }
 fingerprint_of() { openssl x509 -in "$1" -noout -fingerprint -sha256 | sed 's/^[^=]*=//'; }
 
-# shellcheck disable=SC2329  # called by the EXIT trap below
+# shellcheck disable=SC2317,SC2329  # called by the EXIT trap below
 cleanup() {
   # Whatever happened, the installation serves the installer's certificate again.
   put_tls '{ mode: "installer" }' >/dev/null 2>&1

@@ -139,7 +139,7 @@ count() { # file type topic
   events "$1" "$2" | grep -c "\"topic\":\"$3\"" || true
 }
 
-# shellcheck disable=SC2329  # called by the EXIT trap below
+# shellcheck disable=SC2317,SC2329  # called by the EXIT trap below
 cleanup() {
   [[ -n "$CLUSTER_ID" ]] && call DELETE "/api/v1/clusters/${CLUSTER_ID}" >/dev/null 2>&1
   docker rm -f "$FIXTURE_NAME" "$BROWSER_NAME" >/dev/null 2>&1 || true

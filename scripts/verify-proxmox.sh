@@ -105,13 +105,17 @@ json_object() {
 
 WORK="$(mktemp -d)"
 STATUS_FILE="$WORK/status"
+# shellcheck disable=SC2317,SC2329  # called by the EXIT trap below
 cleanup() {
   docker rm -f "$FIXTURE_NAME" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
 trap cleanup EXIT
 
-NETWORK="$(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps --format '{{.Name}}' worker >/dev/null 2>&1 && docker network ls --format '{{.Name}}' | grep -m1 'egress' || true)"
+NETWORK=""
+if docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps --format '{{.Name}}' worker >/dev/null 2>&1; then
+  NETWORK="$(docker network ls --format '{{.Name}}' | grep -m1 'egress' || true)"
+fi
 
 if [[ -z "$NETWORK" ]]; then
   echo "Could not find the compose egress network. Is the stack running?" >&2

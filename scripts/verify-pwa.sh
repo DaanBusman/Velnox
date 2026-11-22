@@ -90,7 +90,7 @@ last_status() { cat "$STATUS_FILE"; }
 head_of() { curl --silent --insecure --max-time 30 --output /dev/null --write-out '%{http_code} %{content_type}' "${BASE}$1"; }
 header_of() { curl --silent --insecure --max-time 30 --dump-header - --output /dev/null "${BASE}$1" | tr -d '\r' | grep -i "^$2:" | head -1 | cut -d' ' -f2-; }
 
-# shellcheck disable=SC2329  # called by the EXIT trap below
+# shellcheck disable=SC2317,SC2329  # called by the EXIT trap below
 cleanup() {
   docker rm -f "$BROWSER_NAME" >/dev/null 2>&1 || true
   [[ -n "$USER_ID" ]] && psql_at "UPDATE users SET status = 'DISABLED' WHERE id = '${USER_ID}';" >/dev/null 2>&1

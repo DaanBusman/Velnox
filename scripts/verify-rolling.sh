@@ -138,7 +138,7 @@ login() { # jar label → status
   printf '%s' "$status"
 }
 
-# shellcheck disable=SC2329  # called by the EXIT trap below
+# shellcheck disable=SC2317,SC2329  # called by the EXIT trap below
 cleanup() {
   if ((FAIL > 0)); then
     info "Last lines from the fixture:"

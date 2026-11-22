@@ -90,7 +90,7 @@ else
 fi
 
 # Invoked indirectly, as `check expect_equals ...`.
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329  # run through check, below
 expect_equals() {
   local actual="$1" expected="$2"
   if [[ "$actual" == "$expected" ]]; then return 0; fi
@@ -98,7 +98,7 @@ expect_equals() {
   return 1
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329  # run through check, below
 expect_contains() {
   local haystack="$1" needle="$2"
   if [[ "$haystack" == *"$needle"* ]]; then return 0; fi
@@ -106,7 +106,7 @@ expect_contains() {
   return 1
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329  # run through check, below
 expect_not_contains() {
   local haystack="$1" needle="$2"
   # An absence check against nothing is not a pass, it is a check that did not
@@ -127,7 +127,7 @@ expect_not_contains() {
 # that silently returns nothing turns real failures into confusing ones and real
 # passes into lies. This costs nothing and removes a whole class of them.
 JSON_SELFTEST='{"a":"x","n":{"b":"y"},"list":[{"k":"first"},{"k":"second"},{"k":"third"}]}'
-# shellcheck disable=SC2329  # run through check, below
+# shellcheck disable=SC2317,SC2329  # run through check, below
 selftest_json() {
   local path="$1" expected="$2" actual
   actual="$(printf '%s' "$JSON_SELFTEST" | json "$path")"

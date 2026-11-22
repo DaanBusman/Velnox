@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2329  # helpers are called through wait_until and the EXIT trap
+# shellcheck disable=SC2317,SC2329  # helpers are called through wait_until and the EXIT trap
 #
 # Verify Phase 9A — the Ceph major upgrade — against a running stack.
 #
@@ -140,7 +140,7 @@ login() { # jar label → status
   printf '%s' "$status"
 }
 
-# shellcheck disable=SC2329  # called by the EXIT trap below
+# shellcheck disable=SC2317,SC2329  # called by the EXIT trap below
 cleanup() {
   if ((FAIL > 0)); then
     info "Last lines from the fixture:"
