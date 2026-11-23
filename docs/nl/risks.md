@@ -1,6 +1,6 @@
 # Velnox — Technisch risicoregister
 
-> **Vertaling.** Bron: [docs/risks.md](../risks.md) @ `366d091`.
+> **Vertaling.** Bron: [docs/risks.md](../risks.md) @ `339862f`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Status:** geschreven in fase 0, als de risico's waar het ontwerp een antwoord op moest hebben, en
