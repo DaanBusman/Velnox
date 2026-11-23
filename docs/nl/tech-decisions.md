@@ -47,10 +47,10 @@ laat de frontend dezelfde zod-contracten importeren).
 pagina's lezen de API vanuit Server Components over het interne Docker-netwerk.
 
 **Gewijzigd in fase 1 — geen proxyroute.** Het oorspronkelijke plan voegde Next route handlers toe die
-`/api/v1/*` proxyden. Caddy serveert de API al op dezelfde origin, en dát is wat CORS wegneemt en de
+`/api/v1/*` doorstuurden. Caddy serveert de API al op dezelfde origin, en dát is wat CORS wegneemt en de
 `HttpOnly`-cookie laat werken; bovendien was de API van de publieke origin houden nooit haalbaar,
 omdat machineclients API-tokens tegen een bereikbare API nodig hebben. De proxy zou een extra hop en
-een tweede code path zijn geweest zonder winst in veiligheid, dus is hij geschrapt. `lib/api.ts` is
+een tweede codepad zijn geweest zonder winst in veiligheid, dus is hij geschrapt. `lib/api.ts` is
 gemarkeerd als `server-only`, wat een onbedoelde import vanuit een Client Component tot een buildfout
 maakt.
 
@@ -141,7 +141,7 @@ behoudt intrekbaarheid. `JWT_SECRET` maakt bovendien al deel uit van de vereiste
 **Keuze:** AES-256-GCM DEK per secret, gewrapt door een KEK afgeleid van `MASTER_ENCRYPTION_KEY` via
 HKDF-SHA256, achter een `SecretStore`-interface.
 
-**Waarom:** rotatie van de hoofdsleutel herwrapt alleen DEK's. Een toekomstige Vault- of Azure Key
+**Waarom:** rotatie van de hoofdsleutel wrapt alleen DEK's opnieuw. Een toekomstige Vault- of Azure Key
 Vault-backend vervangt de wrap-stap zonder één aanroeppunt aan te raken. Secrets direct met de
 hoofdsleutel versleutelen zou rotatie tot een volledige herversleuteling van elke rij maken en het
 vertrouwensmodel vastleggen in code.
@@ -154,7 +154,7 @@ vertrouwensmodel vastleggen in code.
 de wachtrij zetten; uitvoeren kan het niet.
 
 **Waarom:** het verandert een hele klasse kwetsbaarheden (SSRF, command injection via een
-requestparameter, een autorisatiefout die remote root wordt) in een ontbrekend-code-path. Het betekent
+requestparameter, een autorisatiefout die remote root wordt) in een ontbrekend codepad. Het betekent
 ook dat een gecompromitteerd API-proces geen credentials kan ontsleutelen voor gebruik.
 
 **Prijs:** sommige leesoperaties die triviaal synchroon zouden zijn, worden jobs. Aanvaard; een
@@ -173,12 +173,12 @@ wat veel bruikbaarder is dan een shelltekst.
 
 ---
 
-## ADR-011 — Playbooks zijn data, geen code paths
+## ADR-011 — Playbooks zijn data, geen codepaden
 
 **Keuze:** upgrade-, update- en migratieworkflows zijn geversioneerde playbookdefinities, samengesteld
 uit geregistreerde stappen en guards.
 
-**Waarom:** de opdracht vereist expliciet dat de major-upgrade-engine generiek is (PVE 9 → volgende,
+**Waarom:** de opdracht vereist expliciet dat de engine voor grote upgrades generiek is (PVE 9 → volgende,
 PBS, Ceph). Een data-gedreven engine maakt de workflow bovendien *inspecteerbaar* — de UI kan het plan
 tonen vóór uitvoering, en tests kunnen op het plan controleren in plaats van op bijwerkingen.
 
@@ -217,7 +217,7 @@ voorwaarde niet vervuld worden, dan faalt `build.sh --target iso` met een duidel
 nooit een niet-opstartbaar bestand geproduceerd.
 
 **Alternatieven:** Packer met debian-installer preseed (haalbaar, voegt een tweede toolchain toe); een
-cloud image bouwen in plaats van een ISO (gepland als extra doel, niet als vervanging).
+cloud-image bouwen in plaats van een ISO (gepland als extra doel, niet als vervanging).
 
 ---
 
@@ -235,9 +235,9 @@ updates.
 
 ## ADR-016 — Ceph-upgrades zijn een apart playbook, samengesteld in het plan
 
-**Keuze:** Ceph major upgrades vallen binnen v1-scope, geïmplementeerd als eigen playbook op de
+**Keuze:** grote Ceph-upgrades vallen binnen v1-scope, geïmplementeerd als eigen playbook op de
 generieke engine. Een upgradeplan voor een Ceph-cluster is een **samenstelling**: het Ceph-playbook
-draait eerst volledig, daarna het PVE-major-upgrade-playbook.
+draait eerst volledig, daarna het playbook voor de grote PVE-upgrade.
 
 **Waarom geen fase binnen de PVE-upgrade:** de twee workflows hebben verschillende werkeenheden (Ceph
 herstart *daemons*, PVE upgradet *nodes*), verschillende gezondheidsmodellen (Ceph `HEALTH_OK` en
@@ -245,7 +245,7 @@ PG-status versus corosync-quorum) en verschillende faalwijzen. Ze samenvoegen le
 monolithische functie op die de opdracht verbiedt, en maakt "alleen Ceph upgraden" — een gangbare
 losstaande onderhoudstaak — onuitdrukbaar.
 
-**Waarom Ceph eerst:** een PVE major release levert een specifieke Ceph-release en ondersteunt de vorige
+**Waarom Ceph eerst:** een grote PVE-release levert een specifieke Ceph-release en ondersteunt de vorige
 niet, dus de Ceph-upgrade moet afgerond zijn terwijl het cluster nog op de huidige PVE- en
 Debian-release draait.
 
@@ -254,7 +254,7 @@ versiematrix-databestand, en de matrix wordt tijdens het opstellen van het plan 
 gecontroleerd. Onenigheid tussen draaiende release, doel en matrix weigert het plan in plaats van te
 gokken — dezelfde veilige houding als bij de `pve8to9`-parser.
 
-**Gevolg:** de genericiteit van de engine uit Phase 8 wordt bewezen door constructie, doordat twee zeer
+**Gevolg:** de generiekheid van de engine uit fase 8 wordt bewezen door constructie, doordat twee zeer
 verschillende workflows er ongewijzigd op draaien.
 
 ---
@@ -263,7 +263,7 @@ verschillende workflows er ongewijzigd op draaien.
 
 **Keuze:** TOTP (RFC 6238) plus Argon2id-gehashte eenmalige herstelcodes. Standaardbeleid `OPTIONAL`,
 met `REQUIRED_FOR_PRIVILEGED` en `REQUIRED` beschikbaar per installatie en per tenant. De UI beveelt
-aanmelden aan tijdens de installatie en markeert bevoorrechte accounts zonder MFA.
+MFA aan tijdens de installatie en markeert bevoorrechte accounts zonder MFA.
 
 **Waarom TOTP eerst:** het vereist geen hardware, werkt voor elke operator en — doorslaggevend — het
 werkt voor het **noodtoegangsaccount**, dat bruikbaar moet blijven wanneer SSO en het netwerk naar de
@@ -271,7 +271,7 @@ identity provider onbereikbaar zijn. Het platform-authenticatormodel van WebAuth
 account dat juist bedoeld is om vanaf een onverwachte machine tijdens een incident te werken.
 
 **Waarom niet standaard verplicht:** de eerste beheerder wordt door de installatiewizard aangemaakt
-vóórdat er een authenticator is aangemeld, en daar aanmelden afdwingen riskeert een operator buiten te
+vóórdat er een authenticator is ingesteld, en het instellen daar afdwingen riskeert een operator buiten te
 sluiten die nog geen herstelcodes heeft opgeslagen. `REQUIRED_FOR_PRIVILEGED` is één klik zodra de
 installatie draait, en dat is wat de documentatie aanbeveelt.
 
@@ -340,7 +340,7 @@ derden.
 
 **Gevolgen die technisch werk zijn, geen papierwerk:**
 - Naleving van artikel 13 is een productfunctie: `GET /api/v1/system/source` en een link onder
-  Instellingen → Over, beide aangestuurd door een buildvariabele `VELNOX_SOURCE_URL` en de ingesloten
+  **Broncode → Over**, beide aangestuurd door een buildvariabele `VELNOX_SOURCE_URL` en de ingesloten
   git-commit.
 - `THIRD-PARTY-NOTICES.md` wordt tijdens de build uit het lockfile gegenereerd en in elk artefact
   meegeleverd.
@@ -386,23 +386,23 @@ thuis in een codebase die het gebruikt.
 
 **Herziet ADR-009 (fase 2).**
 
-**Besluit:** De secret store van de API weigert elk credential te ontsleutelen waarvan de soort niet
+**Besluit:** De secret store van de API weigert elke credential te ontsleutelen waarvan de soort niet
 `TOTP_SEED` of `OIDC_CLIENT_SECRET` is. Die twee vormen het materiaal waarmee Velnox zijn eigen
 gebruikers authenticeert. Elke credential die bij beheerde infrastructuur hoort — Proxmox-wachtwoorden,
 SSH-sleutels, WinRM-credentials — blijft alleen leesbaar voor de worker. De beperking wordt per soort
-afgedwongen in `SecretStoreService`, werpt `ForbiddenCredentialKindError`, en kent geen vlag om hem
+afgedwongen in `SecretStoreService`, gooit `ForbiddenCredentialKindError`, en kent geen vlag om hem
 uit te zetten.
 
 **Waarom:** ADR-009 zegt dat een gecompromitteerd API-proces geen credentials kan ontsleutelen om te
 gebruiken. Het verifiëren van een TOTP-code heeft de seed nodig, in de API, op het aanmeldpad. Elke
-aanmelding via de taakwachtrij leiden om de sleutel van de worker te lenen zou een wachtrij-rondgang
+aanmelding via de jobwachtrij leiden om de sleutel van de worker te lenen zou een wachtrij-rondgang
 toevoegen aan de latency van inloggen, en zou de tweede factor achter precies het systeem plaatsen dat
 een beheerder met die tweede factor wil bereiken.
 
 Het alternatief — de API stilzwijgend alles laten lezen en ADR-009 als een streven behandelen — is hoe
 een grens verandert in een opmerking. Dus is de grens verplaatst naar waar hij daadwerkelijk te houden
 is, en afdwingbaar geworden in plaats van verklarend. De zin die ertoe doet is ongewijzigd: een
-gecompromitteerd API-proces kan nog steeds geen enkel klantcredential ontsleutelen.
+gecompromitteerd API-proces kan nog steeds geen enkele klantcredential ontsleutelen.
 
 **Kosten:** De API heeft de hoofdsleutel en kan de KEK afleiden, dus de beperking is een controle in
 code en niet het ontbreken van een mogelijkheid. Een fout met uitvoering van externe code in de API
@@ -463,14 +463,14 @@ een draaiende stack vast dat de gerapporteerde versie overeenkomt met de bron.
 
 ---
 
-## ADR-025 — De oprichtend beheerder kan niet uit zijn eigen installatie worden gesloten
+## ADR-025 — De oprichtende beheerder kan niet uit de eigen installatie worden gesloten
 
 **Besluit:** Het account dat de installatiewizard aanmaakt draagt `users.is_founding_administrator`.
 De roltoewijzingen ervan kunnen door niemand worden ingetrokken, ook niet door het account zelf, en
 het kan niet worden uitgeschakeld zolang geen ander ingeschakeld account `roles.manage` heeft. Een
 partiële unieke index staat hoogstens één zo'n account toe.
 
-**Waarom:** Omdat het alternatief zich heeft voorgedaan. Een beheerder kon zijn eigen laatste rol
+**Waarom:** Omdat het alternatief zich heeft voorgedaan. Een beheerder kon de eigen laatste rol
 intrekken, en op een installatie met één account — wat elke installatie op haar eerste dag is — haalde
 dat het laatste recht uit het systeem. Aanmelden werkte nog. Niets was toegestaan. De enige weg terug
 was een `psql`-prompt, in een product waarvan het hele uitgangspunt is dat beheerders die niet nodig
@@ -491,7 +491,7 @@ Dat staat in de interface bij het account vermeld in plaats van dat iemand het m
 alternatief, een product dat met één klik in zijn eigen UI onbruikbaar te maken is, is erger.
 
 Het herstel voor installaties die dit al hebben meegemaakt zit in de migratie zelf: die markeert de
-oprichtend beheerder en zet de toekenning terug als die ontbreekt. Daarmee krijgt een account rechten
+oprichtende beheerder en zet de toekenning terug als die ontbreekt. Daarmee krijgt een account rechten
 die het een moment eerder niet had, wat de argwaan verdient die het oproept — het dwingt de nieuwe
 invariant af op bestaande gegevens, het is geen achterdeur, en het verandert niets waar de toekenning
 er nog is.
@@ -516,7 +516,7 @@ document kan ze niet allebei bedienen zonder geen van beide te bedienen.
 
 De gids in dezelfde fase opleveren als de functie is het onderdeel dat verleidelijk is om over te
 slaan. Documentatie die een fase later wordt geschreven, wordt geschreven door iemand die
-reconstrueert wat hij deed, en zo komt het dat een gids een knop beschrijft die inmiddels anders
+reconstrueert wat er is gedaan, en zo komt het dat een gids een knop beschrijft die inmiddels anders
 heet. Documentatie die naar fase 15 wordt geschoven, arriveert na elk besluit dat ze had kunnen
 verbeteren.
 
@@ -725,7 +725,7 @@ een andere klant in een antwoord — de ergste fout die dit product kan hebben.
 elke query op een tenant-gebonden model zodat die het bereik van de aanroeper meedraagt, en een query
 die draait **zonder enig vastgesteld bereik gooit een fout** in plaats van alles terug te geven. Het
 bereik wordt door de auth-guard ingevuld zodra de principal bekend is; tot dat moment verkeert elk
-verzoek in de foutwerpende toestand.
+verzoek in de toestand waarin een query een fout gooit.
 
 `withSystemScope("reden")` is de enige weg eromheen. Het vereist een geschreven reden, is bewust goed
 doorzoekbaar, en heeft vier aanroepers — authenticatie (een account op e-mailadres vinden is juist
@@ -758,7 +758,7 @@ toets is ook de veilige.
 
 **Verder.** `@RequirePermission` zonder bereiksoplosser betekent stilzwijgend "een globaal recht of
 niets", omdat een leeg doel alleen op GLOBAL matcht. Elk beheer-endpoint was zo geschreven, waardoor
-een tenantbeheerder met `users.manage` op TENANT-bereik de accounts van zijn eigen tenant niet kon
+een tenantbeheerder met `users.manage` op TENANT-bereik de accounts van de eigen tenant niet kon
 beheren — onzichtbaar op een installatie met één tenant. `RequirePermissionSomewhere` is de oplossing
 voor endpoints waarvan het bereik een eigenschap is van een rij die nog niemand gelezen heeft: de
 guard weigert wie het recht nergens heeft, en de service toetst het precieze bereik zodra de rij
@@ -887,7 +887,7 @@ levenscyclus gemigreerd moet worden, uit gegevens waar beheerders al op waren ga
 **Vernieuwen**-knop doet diezelfde leesactie op verzoek. De knop **Nu uitlezen**, die een uitleesronde
 tegen Proxmox in de wachtrij zette, is weg.
 
-**Waarom die knop weg is.** Hij zag eruit als verversen en was dat niet. Hij zette een taak in de
+**Waarom die knop weg is.** Hij zag eruit als verversen en was dat niet. Hij zette een job in de
 wachtrij, kwam meteen terug, en liet een scherm achter dat er precies zo uitzag als een moment
 eerder — dus de voor de hand liggende lezing was dat er niets gebeurde, en de voor de hand liggende
 reactie was nog een keer drukken. Wat een beheerder van een knop op die plek meestal wil is het
@@ -904,7 +904,7 @@ echt verlies voor het geval "ik heb net de firewall gerepareerd en wil zien dat 
 is het terugdraaien waard als dat geval vaak blijkt voor te komen — als een duidelijk aparte actie,
 niet als een knop met het etiket van een verversing.
 
-**Waarom pollen, en waarom twee seconden.** Er is nog geen stream; het taaksysteem en zijn
+**Waarom pollen, en waarom twee seconden.** Er is nog geen stream; het jobsysteem en zijn
 voortgangskanaal komen in fase 5, en dit is wat het tot die tijd vervangt. Twee seconden is het
 tempo waar de eigenaar om vroeg. Elke tik is één herlezing van de pagina — voor de lijst één
 clusterquery per geopend tabblad — dus gratis is het niet, en in een verborgen tabblad loopt het
@@ -926,6 +926,10 @@ ontkoppelt alles eronder. Bij navigatie is dat zeldzaam genoeg om onzichtbaar te
 verversing per twee seconden houdt het op zeldzaam te zijn. Pauzeren waar het het meest pijn doet is
 niet hetzelfde als het oplossen.
 
+**Aangepast: Nu uitlezen is terug.** De clusterpagina heeft weer een knop **Nu uitlezen**, die een
+volledige uitleesronde in de wachtrij zet: de duidelijk aparte actie waar dit besluit om vroeg.
+**Vernieuwen** ernaast leest nog steeds alleen opnieuw wat Velnox al heeft.
+
 ---
 
 ## ADR-035 — Een job is eerst een rij, en een worker houdt hem vast met een lease
@@ -941,7 +945,7 @@ opnieuw gestart**.
 waarop een registratie dat niet mag. Een geleegde of opnieuw opgebouwde Redis verliest plaatsen in de
 wachtrij; hij mag niet de geschiedenis verliezen van wat er met het cluster van een klant is gedaan.
 Met de rij als registratie is het ergste geval van een verloren wachtrijregel een job die zichtbaar
-op *In wachtrij* blijft staan, en dat ziet een mens en kan hij oplossen.
+op *In wachtrij* blijft staan, en dat kan een mens zien en oplossen.
 
 **Wie een job waarheen mag verplaatsen.** Eigenaarschap is per status verdeeld, en dat is wat
 eenvoudige voorwaardelijke schrijfacties voldoende maakt:
@@ -976,8 +980,8 @@ andere leest de migratie om te controleren dat de lijst actieve statussen van de
 bepaalt welke jobs een gelijktijdigheidssleutel vasthouden — dezelfde lijst is.
 
 **Het vierogenprincipe gaat over goedkeuren, niet over afwijzen.** Een goedkeuringspunt dat een
-tweede persoon vereist, voorkomt dat de aanvrager zijn eigen wijziging goedkeurt. Het voorkomt niet
-dat hij hem afwijst: je eigen verzoek afwijzen is het intrekken, en dat kon hij toch al door te
+tweede persoon vereist, voorkomt dat de aanvrager de eigen wijziging goedkeurt. Het voorkomt niet
+dat diegene hem afwijst: je eigen verzoek afwijzen is het intrekken, en dat kon toch al door te
 annuleren. De eerste versie blokkeerde beide; `verify-jobs.sh` ving het.
 
 **De prijs.** Het duurt ongeveer een halve minuut voordat een verloren job wordt opgemerkt: de lease
@@ -1045,7 +1049,7 @@ keer dat Velnox iets verandert aan de infrastructuur van een klant.
 **Eén opslag, geen tenant.** `library_items` heeft geen tenantkolom en geen relatie met iets dat er
 een heeft. Een ISO van Windows Server is voor elke klant hetzelfde bestand, en een opslag per tenant
 zou het één keer per klant op dezelfde schijf bewaren. De bibliotheek lezen is `library.read`, dat
-elke rol heeft, omdat een tenant er vanaf Fase 5B uit kiest. Toevoegen en verwijderen is
+elke rol heeft, omdat een tenant er vanaf fase 5B uit kiest. Toevoegen en verwijderen is
 `library.manage`, alleen voor MSP-rollen: een klant die de bibliotheek vult, vult hem voor iedereen.
 Een bestand *op een cluster* zetten is helemaal geen bibliotheekrecht — het schrijft naar iemands
 infrastructuur, dus het is `clusters.manage` op dat cluster, gecontroleerd zodra het cluster bekend is.
@@ -1057,7 +1061,7 @@ daar geen mislukte upload maar een installatie die stilstaat. Beide worden getoe
 geschreven moet worden — een hervatte upload heeft al een deel geschreven — waarbij ruimte die aan
 lopende overdrachten is toegezegd eerst wordt afgetrokken, zodat twee uploads die elk passen hem
 samen niet kunnen overvullen. Een weigering zegt welke grens en welke getallen ("de bibliotheek
-bevat 95 van 100 GB"), want *schijf vol* vertelt een beheerder niets over wat hij moet veranderen.
+bevat 95 van 100 GB"), want *schijf vol* vertelt een beheerder niets over wat er moet veranderen.
 
 **Twee manieren erin.** Een URL, die de worker ophaalt, en een browserupload, die de API in stukken
 van 32 MiB ontvangt. Stukken zijn de prijs van een upload die een verbroken verbinding overleeft: elk
@@ -1175,12 +1179,12 @@ op elke node van elke klant, voor één functie).
 
 **Kosten.** Nog een set inloggegevens per cluster, en nog een set vingerafdrukken om te bevestigen en
 na een herinstallatie opnieuw te bevestigen. SSH is ook de eerste verbinding met een node die niet de
-Proxmox-API is, waar de rotatie van inloggegevens in Fase 10 op zal voortbouwen — de reden dat
-`nodes` sinds Fase 4 een kolom voor de hostsleutel had gereserveerd.
+Proxmox-API is, waar de rotatie van inloggegevens in fase 10 op zal voortbouwen — de reden dat
+`nodes` sinds fase 4 een kolom voor de hostsleutel had gereserveerd.
 
 ---
 
-## ADR-039 — Uitrol: antwoorden op een cd, één credential per geheim, een audited onthulling
+## ADR-039 — Uitrol: antwoorden op een cd, één credential per geheim, een vastgelegde onthulling
 
 **Besluit:** Een VM wordt vanuit een Autoconfig-template gebouwd door één job, `vm.provision`. De
 gast krijgt zijn configuratie op een kleine ISO die de job schrijft — `Autounattend.xml` voor Windows,
@@ -1198,7 +1202,7 @@ de hand liggende alternatief en viel af: alles voorbij de paar ingebouwde velden
 optioneel (ADR-038). De ISO wordt geschreven door een kleine ISO 9660-schrijver met Joliet-namen;
 `blkid`, `isoinfo` en de Linux-kernel lezen wat hij schrijft zoals bedoeld.
 
-**Linux vanuit cloud images, niet vanuit installers** — afgesproken met de eigenaar: in seconden
+**Linux vanuit cloud-images, niet vanuit installers** — afgesproken met de eigenaar: in seconden
 bruikbaar, elke keer gelijk. Wachtwoorden gaan naar cloud-init als SHA-512-crypt-hashes, nooit leesbaar;
 `user-data` wordt geschreven als JSON onder `#cloud-config`, wat YAML leest, zodat niets afhangt van
 zelfgemaakte quoting. `cloud-init schema` accepteert de uitvoer op de oudste en de nieuwste cloud-init
@@ -1233,7 +1237,7 @@ MSP horen niet via een gekopieerd template bij een klant terecht te komen. De wa
 worden bepaald door de worker (die kan de vaste van een template lezen), opgeslagen als
 `GUEST_CREDENTIALS`-credential voordat iets ze gebruikt, en dertig dagen na oplevering verwijderd.
 
-**De onthulling, en de aanvulling op ADR-009.** `GUEST_CREDENTIALS` is het enige soort naast de
+**De onthulling, en de aanvulling op ADR-009.** `GUEST_CREDENTIALS` is de enige soort naast de
 infrastructuur dat de API mag lezen, en alleen in `ProvisioningService.reveal`: `clusters.manage` op
 het cluster, vastgelegd in het auditlog voordat het antwoord vertrekt — weigeringen ook — en een
 antwoord met een vervaltijd waar de pagina zich aan houdt. Dat is de expliciete break-glass die de
@@ -1261,7 +1265,7 @@ bestand lezen is genoeg).
 **Kosten.** De antwoord-ISO bevat de omkeerbare wachtwoorden van unattend op de opslag van de node
 zolang de installatie loopt. De fixture bewijst de hele stroom maar installeert niets; of een echte
 Setup en een echte cloud-init accepteren wat ze krijgen, is bewezen door de tests van de generatoren en
-de eigen validators van de formaten, en staat bij de bekende hiaten tot het op een echt cluster is
+de eigen validators van de formaten, en staat bij de bekende beperkingen tot het op een echt cluster is
 gezien.
 
 **Aanvulling (0.5.12): aanbieden aan gekozen klanten, en een wachtwoord per klant.** Een MSP-template
@@ -1286,7 +1290,7 @@ het tenantfilter heeft alleen `hasSome` nodig.
 **Besluit:** Hoe lang de auditgebeurtenissen van een tenant bewaard blijven is een instelling per
 tenant (`tenants.audit_retention_days`), standaard voor altijd, anders één tot tien jaar, nooit korter
 dan één — de database weigert korter. Alleen MSP-medewerkers stellen het in: een beheerder van een
-klant die het verkort, verkort het verslag van wat hij zelf deed. De opruimtaak van de worker
+klant die het verkort, verkort het verslag van wat die beheerder zelf deed. De opruimtaak van de worker
 verwijdert oudere gebeurtenissen via één databasefunctie, `velnox_prune_audit_events`, de enige weg
 waarlangs de append-only-trigger een `DELETE` doorlaat; de functie weigert een grens jonger dan een
 jaar, en de opruimtaak legt elke verwijdering vast in het auditlog van dezelfde tenant
@@ -1294,7 +1298,7 @@ jaar, en de opruimtaak legt elke verwijdering vast in het auditlog van dezelfde 
 MSP-organisatie geldt ook voor gebeurtenissen die bij geen tenant horen.
 
 **Exporteren** streamt elke passende gebeurtenis, oudste eerst, als CSV of JSON Lines, met dezelfde
-reikwijdte als lezen — een klant krijgt zijn eigen tenant, wat hij ook vraagt — en wordt zelf
+reikwijdte als lezen — een klant krijgt de eigen tenant, wat er ook wordt gevraagd — en wordt zelf
 vastgelegd met zijn filters voordat het begint. Gepagineerd op `(at, id)`, zodat gebeurtenissen in
 dezelfde milliseconde niet worden overgeslagen. CSV-cellen die een spreadsheet als formule zou lezen
 krijgen een aanhalingsteken ervoor.
@@ -1355,7 +1359,7 @@ elke tenant van de eigen familie — de hoofd-tenant en zijn sub-tenants — en 
 meerdere sub-tenants van één klant zonder lid te zijn van de hoofd-tenant, en nooit van die van een
 andere klant. Het auditlog leest elke tenant waarin de lezer `audit.read` heeft, dus de beheerders
 van een hoofd-tenant lezen ook dat van zijn sub-tenants. Een klant ziet Tenants in de zijbalk alleen
-als hij meer dan één tenant bereikt.
+bij toegang tot meer dan één tenant.
 
 **Waarom rechten verbreden in plaats van de controles over niveaus te leren.** Elke controle in het
 product is `isAllowed` over een lijst toekenningen en elke query wordt gefilterd op een lijst tenants
@@ -1369,7 +1373,7 @@ een formulier.
 
 **Wat het nog niet doet.** Een Autoconfig-template dat aan een hoofd-tenant wordt aangeboden, wordt
 niet aan zijn sub-tenants aangeboden: vink die ook aan. Een lid van een sub-tenant met een zuster als
-thuistenant staat niet in de Gebruikers van die zuster. Beide staan bij de bekende hiaten.
+thuistenant staat niet in de Gebruikers van die zuster. Beide staan bij de bekende beperkingen.
 
 ---
 
@@ -1387,8 +1391,8 @@ op `system_settings` — en `support.manage`, alleen in handen van de MSP Super 
 dat. Het is een eigen recht, niet de rol van de Super Administrator, zodat het later aan een andere
 rol kan worden gegeven.
 
-**Waarom met de inventarisatie.** De inventarisatie heeft al een client voor het cluster, op de
-interval die de MSP koos; een tweede poller zou de verbindingen verdubbelen voor geschiedenis die
+**Waarom met de inventarisatie.** De inventarisatie heeft al een client voor het cluster, op het
+interval dat de MSP koos; een tweede poller zou de verbindingen verdubbelen voor geschiedenis die
 langzaam verandert. Een node waarvan de geschiedenis niet te lezen is, voegt een probleem aan de
 ronde toe en laat niets mislukken.
 
@@ -1399,7 +1403,7 @@ hetzelfde uit. Een eigen API-token, waar de documentatie al om vraagt, neemt dat
 
 **Waarom dertig dagen, en waarom alleen taken.** De grens van de eigenaar, voor geschiedenis die van
 Proxmox zelf is en op de node opnieuw te lezen valt. Jobs en inventarisatierondes zijn het verslag
-van Velnox en volgen hun eigen bewaartermijn, die er nog niet is (zie de bekende hiaten).
+van Velnox en volgen hun eigen bewaartermijn, die er nog niet is (zie de bekende beperkingen).
 
 ---
 
@@ -1431,7 +1435,7 @@ zonder eigen hulpmiddel, en het script wacht op de exitcode. Administrator blijf
 installatieprogramma's die een profiel nodig hebben.
 
 **Waarom per tenant, en gecontroleerd tegen de eigenaar.** De software van een tenant is vaak aan
-hem gelicentieerd. Anders zou een template het pakket van de ene klant naar de VM van een andere
+die tenant gelicentieerd. Anders zou een template het pakket van de ene klant naar de VM van een andere
 kunnen brengen; pakketten aan de eigenaar van het template binden maakt dat onmogelijk, en laat een
 MSP-template de pakketten van de MSP naar elke klant brengen zonder dat een klant ze kan opvragen of
 downloaden.
@@ -1440,7 +1444,7 @@ downloaden.
 installatieprogramma dat de VM zelf herstart, stopt de rest van de eerste aanmelding, en de bouw
 loopt in een time-out. Linux-templates hebben geen pakketten — die hebben al extra APT-pakketten. De
 pakketten van een hoofd-tenant worden niet aangeboden aan de templates van zijn sub-tenants. Zie de
-bekende hiaten.
+bekende beperkingen.
 
 ---
 
@@ -1540,7 +1544,7 @@ venster. De job controleert het venster na de goedkeuring en voordat hij iets wi
 iets te hebben gewijzigd.
 
 **Waarom quorum vóór een herstart.** Een herstart die het cluster quorum kost, stopt elke gast erop.
-De herstart wordt geweigerd als de nodes die al down zijn plus deze ⌊(n−1)/2⌋ zouden overschrijden —
+De herstart wordt geweigerd als de nodes die al offline zijn plus deze ⌊(n−1)/2⌋ zouden overschrijden —
 de centrale invariant waarop de rolling updates van fase 7 zijn gebouwd.
 
 **Niet gebouwd:** lijsten met toegestane en uitgesloten pakketten, en notificaties, uit het
@@ -1551,10 +1555,10 @@ ADR-048.
 
 ## ADR-048 — Rolling updates: gasten weggezet, groep voor groep, gestopt bij de eerste twijfel
 
-**Beslissing:** Een `cluster.rolling_update`-job werkt een cluster bij in groepen nodes. De groepen
+**Besluit:** Een `cluster.rolling_update`-job werkt een cluster bij in groepen nodes. De groepen
 komen van een planner (`packages/shared/src/rolling.ts`) die elke groep weigert die groter is dan
-⌊(n−1)/2⌋ bij *n* stemmende nodes, min wat al down is; één node is de standaard. Een preflight
-weigert een cluster dat al gedegradeerd is (een node offline, geen quorum, Ceph niet `HEALTH_OK`),
+⌊(n−1)/2⌋ bij *n* stemmende nodes, min wat al offline is; één node is de standaard. Een preflight
+weigert een cluster dat al verminderd draait (een node offline, geen quorum, Ceph niet `HEALTH_OK`),
 leest de configuratie van elke draaiende gast om te bepalen welke live kunnen verhuizen — een schijf
 op opslag die maar één node ziet, of een doorgegeven apparaat, kan dat niet — en weigert een groep
 waarvan de gasten niet passen in het geheugen dat de andere nodes vrij hebben. Per groep: evacuate
@@ -1589,7 +1593,7 @@ verplaatsen.
 
 ## ADR-049 — Plaatsing: regels die Velnox bewaakt, in Proxmox geschreven waar Proxmox ze kan bewaken
 
-**Beslissing:** De plaatsingsregels van een cluster — uit elkaar houden, bij elkaar houden, voorkeur
+**Besluit:** De plaatsingsregels van een cluster — uit elkaar houden, bij elkaar houden, voorkeur
 voor nodes (strikt of zacht) — staan in Velnox (`placement_rules`), noemen gasten bij hun VMID, en
 tellen alleen draaiende gasten. Eén pure module (`packages/shared/src/placement.ts`) beslist, voor de
 API, de worker en de tests gelijk: welke regels niet kloppen, of een gast naar een node mag, de
@@ -1599,9 +1603,9 @@ PVE 9 draaien, schrijft de worker elke regel als een van de HA-regels van Proxmo
 resource affinity, negatief of positief; node affinity, strikt of niet), leest hem terug, en schrijft
 hem opnieuw als hij in Proxmox gewijzigd of verwijderd is; een verwijderde regel wordt daar verwijderd
 voordat zijn rij verdwijnt. Correcties en balanceren zijn `cluster.placement`-jobs — controleren dat
-het cluster heel is, plannen vanuit Proxmox' eigen beeld, één gast tegelijk verplaatsen met de regels
+het cluster gezond is, plannen vanuit Proxmox' eigen beeld, één gast tegelijk verplaatsen met de regels
 vlak voor elke verplaatsing opnieuw getoetst, verifiëren — op de concurrency-sleutel van het cluster.
-Een instelling per cluster laat de worker ze zelf starten, nooit op een cluster dat niet heel is, nooit
+Een instelling per cluster laat de worker ze zelf starten, nooit op een cluster dat niet gezond is, nooit
 binnen een rustperiode na de vorige. De rolling update (ADR-048) kiest elk doel via dezelfde regels en
 weigert voordat hij begint als een gast nergens heen zou mogen.
 
@@ -1629,7 +1633,7 @@ verwijderd is, laat zijn regels in Proxmox achter).
 
 ## ADR-050 — De upgrade-engine: playbooks als data, één runner, samengestelde plannen van buitenaf gestuurd
 
-**Beslissing:** Een grote upgrade is een plan (`upgrade_plans`) dat draait op een playbook dat als data
+**Besluit:** Een grote upgrade is een plan (`upgrade_plans`) dat draait op een playbook dat als data
 is gedefinieerd in `packages/shared/src/upgrade.ts`: stappen in vaste fasen (discovery, preflight,
 herstel, hercontrole, upgrade, validatie, rapport), elk met een actie, eventueel één keer per doel,
 eventueel achter een guard — een voorwaarde over verzamelde feiten, als data, beoordeeld door één
@@ -1668,13 +1672,13 @@ strategie-instellingen buiten die van het playbook zelf, een herstelactie terugd
 
 ## ADR-051 — De Ceph-upgrade: een matrix als data, één daemon tegelijk, noout nooit achtergelaten
 
-**Beslissing:** Ceph-upgrades volgen een versiematrix in `packages/shared/src/ceph.ts` — Quincy →
+**Besluit:** Ceph-upgrades volgen een versiematrix in `packages/shared/src/ceph.ts` — Quincy →
 Reef, Reef → Squid, elk met de laagste versies die Proxmox vraagt en zijn repository — gedateerd en
 vastgelegd bij elk plan. Een plan wordt geweigerd als de release die draait, het doel en de matrix
 elkaar tegenspreken, met welke. Het playbook zet de repository om op elke node, zet `noout` aan,
 upgradet de pakketten op elke node, herstart dan elke daemon via de API van Proxmox in de volgorde van
-Ceph en wacht na elke tot Ceph heel is: gezond op `noout` en de nog niet verhoogde
-`require-osd-release` na, elke PG active+clean, volledig quorum. Waarschuwingen die een herstart even
+Ceph en wacht na elke tot Ceph gezond is, op `noout` en de nog niet verhoogde
+`require-osd-release` na, met elke PG active+clean en volledig quorum. Waarschuwingen die een herstart even
 veroorzaakt, worden afgewacht; een waarschuwing die Velnox niet kent, stopt de run.
 `require-osd-release` wordt pas verhoogd als elke OSD het doel draait. Het playbook noemt een
 opruimactie, gedraaid door de job als die mislukt of geannuleerd wordt en door de aansturing als een
@@ -1694,9 +1698,9 @@ doet het en zegt het bij het plan; RGW-daemons, die discovery niet leest; het de
 
 ---
 
-## ADR-052 — Proxmox VE 8 → 9: pve8to9 regel voor regel gelezen, verholpen waar het veilig is, een kanarie eerst
+## ADR-052 — Proxmox VE 8 → 9: pve8to9 regel voor regel gelezen, verholpen waar het veilig is, een canary eerst
 
-**Beslissing:** Het PVE-playbook draait `pve8to9 --full` op elke node en leest het met een
+**Besluit:** Het PVE-playbook draait `pve8to9 --full` op elke node en leest het met een
 geversioneerde parser, geschreven tegen `PVE/CLI/pve8to9.pm` (pve-manager `stable-8`): zijn
 voorvoegsels, zijn voortgangsregels zonder voorvoegsel, zijn sectiekoppen en samenvatting, en de
 vervolgregels van een bevinding — lege regels inbegrepen. Een regel die de parser niet kan plaatsen is
@@ -1706,7 +1710,7 @@ eigenaar op 11 oktober 2026: laag risico, omkeerbaar), de rest wacht op goedkeur
 wijziging. Elke herstelactie wordt bewezen door pve8to9 zelf. Dan node voor node: gasten weg binnen de
 plaatsingsregels, bronnen naar trixie, dist-upgrade, herstart met `noout` eromheen op een Ceph-cluster,
 validatie op PVE 9, zijn kernel en opnieuw pve8to9, gasten terug. De engine (ADR-050) krijgt één ding
-erbij: een kanariepoort, een goedkeuring alleen na de stappen van het eerste doel. Een PVE-plan op een
+erbij: een canary-poort, een goedkeuring alleen na de stappen van het eerste doel. Een PVE-plan op een
 Ceph-cluster dat niet op Squid staat, wordt geweigerd tenzij een Ceph-upgrade naar Squid eerst komt in
 hetzelfde samengestelde plan, en zijn preflight controleert Squid opnieuw als het draait.
 
@@ -1770,7 +1774,7 @@ vervangen.
 **Besluit:** De MSP maakt eigen rollen: per gebied van de catalogus *Geen*, *Kan alleen lezen* of *Kan
 wijzigen*, met elk wijzigrecht van een gebied apart. Het zijn installatiebrede rijen zoals de
 systeemrollen (`tenant_id` NULL, `is_system` false), zodat de sessie van een klant een rol kan zien die
-hij heeft. `customRoleProblems` bepaalt wat er in kan: nooit `system.manage` of `roles.manage`; niets
+zij heeft gekregen. `customRoleProblems` bepaalt wat er in kan: nooit `system.manage` of `roles.manage`; niets
 wat de maker niet op globaal niveau heeft; en voor een rol die klanten kunnen krijgen, niets wat de rol
 Tenant Administrator mist. "Kan wijzigen" neemt het leesrecht van het gebied mee. Een wijziging hoogt
 de tokenversie op van iedereen die de rol heeft; een rol in gebruik kan niet worden verwijderd, en niet
@@ -1877,7 +1881,7 @@ En de installer haalt PostgreSQL, Redis en Caddy nu bij elke run op: `docker com
 een ontbrekende image, dus tot nu toe hield een installatie door elke upgrade heen de patchreleases
 waarmee ze ooit was geïnstalleerd. Elk volgt nog steeds alleen zijn major-tag.
 
-**Wat zod 4 hier veranderde.** Een `.default()` wordt niet meer geparsed: `.default({})` op een object
+**Wat zod 4 hier veranderde.** Een `.default()` wordt niet meer geparseerd: `.default({})` op een object
 vulde vroeger de eigen defaults van dat object in, en geeft nu `{}` terug zoals het is. De zes plekken
 die daarop leunden gebruiken `.prefault()`, de naam die zod 4 aan het oude gedrag geeft. zod 4 past ook
 een default binnen een optioneel veld toe; daardoor zou een lege PATCH opgeslagen waarden met defaults
@@ -1910,7 +1914,7 @@ beveiligingsreleases verschenen die de auditdatabase niet meldde:
 - **Next.js 16.4.5** (3 november) sloot zeven advisories in 16.4.0–16.4.4. Zes vereisen iets dat Velnox
   niet gebruikt — Cache Components en `use cache`, Edge-routes, of externe afbeeldingen met een native
   SVG-decoder (de enige `next/image` hier is een lokaal bestand). De zevende vereist een route die een
-  opgehaalde `Response` ongewijzigd teruggeeft achter een HTTP/1.1-proxy die verzoeken pipelinet. Voor
+  opgehaalde `Response` ongewijzigd teruggeeft achter een HTTP/1.1-proxy die pipelining gebruikt. Voor
   zover na te gaan was, gold geen ervan; de update ging er toch in, naar **16.4.6**, binnen de major.
 - **Node.js 22.23.5** (11 november) loste elf CVE's op in de 22-lijn, de ernstige in Node's eigen
   HTTPS- en HTTP/2-servers. De servers van Velnox zijn gewoon HTTP achter Caddy, dat TLS afhandelt. Eén
@@ -1928,7 +1932,7 @@ nodig voor een beveiligingsfix.
 
 ## ADR-058 — Velnox als installeerbare webapp, niet als apart desktopprogramma
 
-**Beslissing:** Velnox installeert als app vanuit Edge of Chrome — een progressive web app: een
+**Besluit:** Velnox installeert als app vanuit Edge of Chrome — een progressive web app: een
 manifest en een service worker op de interface die er al is, en **Installeren als app** in het
 gebruikersmenu. Gevraagd was een Windows-programma dat over HTTPS met de server verbindt, de gegevens
 live toont, en de webserver ontziet als veel mensen Velnox tegelijk gebruiken.
@@ -2104,7 +2108,7 @@ herhaalpogingen de precieze reden over die van de check heen schrijven.
 proberen — alleen als de poort terugkomt, want een verkeerd wachtwoord dat elke twee minuten wordt
 geprobeerd is hoe een account geblokkeerd raakt. Een cluster dat zijn laatste ronde niet bereikte
 maar waarvan de poort toch antwoordt (een API die aanneemt en dan blijft hangen), wordt elke twee
-minuten opnieuw uitgelezen. Het geheugen van de checks is dat van het workerproces: een herstarte
+minuten opnieuw uitgelezen. Het geheugen van de checks is dat van het workerproces: een opnieuw gestarte
 worker leest elk mislukt cluster dat antwoordt één keer uit.
 
 **Bewezen** door `scripts/verify-proxmox.sh`, dat de fixture weghaalt en terugbrengt zonder op Nu
@@ -2112,13 +2116,13 @@ uitlezen te drukken, en door de tests van de worker voor elke overgang.
 
 ---
 
-## ADR-062 — Een wachtende taak meldt zich bij wie kan beslissen, en de melding beslist niets
+## ADR-062 — Een wachtende job meldt zich bij wie kan beslissen, en de melding beslist niets
 
-**Besluit (0.7.39).** Bereikt een taak een goedkeuringspoort, dan stuurt de worker een Web
+**Besluit (0.7.39).** Bereikt een job een goedkeuringspoort, dan stuurt de worker een Web
 Push-melding naar de browsers van de accounts die erover kunnen beslissen. De melding zegt alleen dat
-er een taak wacht. *Doorgaan* en *Annuleren* openen de pagina van de taak, waar de persoon, ingelogd,
+er een job wacht. *Doorgaan* en *Annuleren* openen de pagina van de job, waar de persoon, ingelogd,
 de exacte wijziging leest en op Goedkeuren of Afwijzen drukt. `JobsService.decide` blijft de enige
-manier waarop een taak verdergaat.
+manier waarop een job verdergaat.
 
 **Waarom geen SMS.** Web Push kost niets en vraagt geen telefoonnummer, simkaart, gateway of account
 bij een aanbieder.
@@ -2128,13 +2132,13 @@ die iemand kan hebben opgepakt. Goedkeuren vanuit de melding zou het inloggen, d
 wijzigingsset overslaan die iemand volgens ADR-050 moet zien.
 
 **Wat de installatie verlaat.** Het bericht is versleuteld voor de browser (RFC 8291), dus de
-pushdienst van de browsermaker vervoert het zonder het te kunnen lezen. Het bevat een taak-ID en een
+pushdienst van de browsermaker vervoert het zonder het te kunnen lezen. Het bevat een job-ID en een
 taal. Geen klant, cluster, node of wijziging. De pushdienst ziet wel dat deze server deze browser een
 melding stuurde, en wanneer.
 
 **Wie een melding krijgt.** Een actief account met zowel `jobs.approve` als het recht dat de poort
-noemt, bij de tenant van de taak: dezelfde twee controles als in `decide`. Bij vier-ogen niet degene
-die de taak aanvroeg.
+noemt, bij de tenant van de job: dezelfde twee controles als in `decide`. Bij het vierogenprincipe niet
+degene die de job aanvroeg.
 
 **Het adres is onbetrouwbaar.** Een browser levert de URL waar de worker naartoe post. Alleen de
 pushdiensten van Chrome, Edge, Firefox en Safari worden geaccepteerd, bij het opslaan en opnieuw bij

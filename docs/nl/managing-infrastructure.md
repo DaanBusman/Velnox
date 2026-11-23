@@ -26,9 +26,9 @@ cluster, en Velnox biedt aan [de twee registraties samen te voegen](#twee-regist
 
 ## Wat Velnox leest, en waar het niet aan komt
 
-In deze fase is Velnox **alleen-lezen op je infrastructuur**. Het maakt verbinding, vraagt Proxmox
-wat er staat, en legt dat vast. Het start, stopt, migreert, update of herconfigureert niets — dat
-komt in latere fasen, elk met een eigen goedkeuring en eigen waarborgen.
+De inventarisatie is **alleen-lezen op je infrastructuur**. Velnox maakt verbinding, vraagt Proxmox
+wat er staat, en legt dat vast. Iets wijzigen gebeurt alleen in een job, met eigen rechten en
+waarborgen.
 
 Wat het per cluster leest:
 
@@ -67,7 +67,7 @@ Maak `velnox@pve` aan, geef die `PVEAuditor` op `/` — en de rollen in
 [VM's bouwen vanuit templates](building-vms.md#wat-er-eerst-nodig-is) als hij moet schrijven — en
 maak het token daarop. Dan kan een
 Velnox-token niet verward worden met dat van een mens, raakt intrekken niets anders, en schrijft het
-Proxmox-tasklogboek leesacties toe aan iets met een naam.
+takenlogboek van Proxmox leesacties toe aan iets met een naam.
 
 ---
 
@@ -114,8 +114,7 @@ Precies dezelfde stappen. Eén node vormt geen cluster, en Velnox modelleert hem
 één — hij verschijnt met de aanduiding **Standalone node**, en wordt gerapporteerd als "geen quorum" in
 plaats van "quorum verloren".
 
-Alles daarachter behandelt hem identiek, en daarom is er geen apart scherm om een node toe te voegen,
-en komt dat er ook niet als de rolling updates landen.
+Alles daarachter behandelt hem identiek, en daarom is er geen apart scherm om een node toe te voegen.
 
 ---
 
@@ -130,7 +129,7 @@ Wat je wél kunt zien is welk token in gebruik is, zodat je weet wat je moet int
 **Verbinding** van het cluster toont het token-id en de vastgelegde vingerafdruk, nooit het geheim.
 
 **Waar verwijderen staat.** Onderaan de clusterpagina, onder welk tabblad je ook openhebt, bij **Dit
-cluster verwijderen**. De nodes en guests gaan mee. Een losse node verwijderen kan niet, en dat komt
+cluster verwijderen**. De nodes en gasten gaan mee. Een losse node verwijderen kan niet, en dat komt
 er ook niet: een node staat in de inventarisatie omdat het cluster hem meldt, dus de volgende
 uitleesronde zou hem gewoon terugbrengen.
 
@@ -147,12 +146,12 @@ wachtend op een goedkeuring — wordt met het verwijderen geannuleerd, en zijn g
 
 ## SSH: waarvoor het is, en het instellen
 
-De Proxmox-API dekt de inventarisatie, het uitlezen, VM's bouwen en guests verplaatsen. Wat hij niet
+De Proxmox-API dekt de inventarisatie, het uitlezen, VM's bouwen en gasten verplaatsen. Wat hij niet
 kan, doet Velnox via SSH naar elke node:
 
 | Wat | Via SSH | Het account heeft nodig |
 |---|---|---|
-| Een ISO of schijfimage van een node naar de bibliotheek kopiëren | SFTP, één bestand lezen | Leestoegang tot de opslagmap |
+| Een ISO of disk-image van een node naar de bibliotheek kopiëren | SFTP, één bestand lezen | Leestoegang tot de opslagmap |
 | Updates toepassen, rolling updates | Vijf vaste opdrachten — zie [Nodes bijwerken](updating-nodes.md#voordat-je-updates-kunt-toepassen-ssh) | root, of sudo voor de dist-upgrade en de autoremove |
 | Grote upgrades van Ceph en Proxmox VE | Vaste opdrachten per stap — zie [Grote upgrades](major-upgrades.md) | root |
 
@@ -188,9 +187,9 @@ Op de pagina van het cluster, tabblad **Verbinding**, kaart **SSH**, **SSH inste
      genoeg om dit één keer op een willekeurige node te draaien. Controleer met
      `ls -l /root/.ssh/authorized_keys`; is het geen link, draai het dan op elke node. Voor een ander
      account is het de `~/.ssh/authorized_keys` van dat account.
-   - **Gebruik een sleutelpaar dat je al hebt.** Plak de private sleutel, en de wachtwoordzin als hij
+   - **Gebruik een sleutelpaar dat je al hebt.** Plak de privésleutel, en de wachtwoordzin als hij
      er een heeft. De publieke helft moet al in de `authorized_keys` van het account staan.
-4. **Opslaan en de bevestigde nodes vertrouwen.** Velnox slaat de private sleutel versleuteld op en
+4. **Opslaan en de bevestigde nodes vertrouwen.** Velnox slaat de privésleutel versleuteld op en
    bewijst hem op elke bevestigde node. Weigert een node — meestal omdat de publieke sleutel er nog
    niet op staat — dan wordt er niets opgeslagen en blijft de vorige instelling, als die er was, zoals
    hij was. Een hier gemaakte sleutel blijft in het formulier tot je het sluit, dus zet de publieke
@@ -200,7 +199,7 @@ Op de pagina van het cluster, tabblad **Verbinding**, kaart **SSH**, **SSH inste
 
 Op dezelfde kaart **SSH**, als **Publieke sleutel** met **Kopiëren**, zolang SSH is ingesteld — voor
 een hier gemaakte sleutel en voor een geplakte. Het is de regel voor een node die later bij het
-cluster komt, of om terug te zetten na het herinstalleren van een node. De **private** sleutel wordt
+cluster komt, of om terug te zetten na het herinstalleren van een node. De **privésleutel** wordt
 nooit meer getoond, door geen enkel scherm en geen enkele API-aanroep.
 
 **Sleutel vervangen** doorloopt dezelfde stappen met een nieuwe sleutel; **SSH verwijderen** verwijdert
@@ -225,9 +224,9 @@ de pagina **Clusters** zegt dat, met **Samenvoegen tot één**.
 Het samenvoegen, in een venster boven de pagina:
 
 1. **Naam in Velnox** — voorgesteld als de naam die Proxmox het cluster geeft, `PVE-PROD`.
-2. **Houd de verbinding van** — de registratie waarvan het API-adres en token blijven. Die van de
+2. **Behoud de verbinding van** — de registratie waarvan het API-adres en token blijven. Die van de
    andere worden verwijderd.
-3. **Houd de SSH-instelling van** — alleen gevraagd als beide er een hebben.
+3. **Behoud de SSH-instelling van** — alleen gevraagd als beide er een hebben.
 
 **Wat er meegaat** van de registratie die verdwijnt: de SSH-instelling en vastgepinde hostsleutels,
 plaatsingsregels en -instellingen, het updatebeleid, upgradeplannen, VM-builds, bibliotheekbronnen,
@@ -304,7 +303,7 @@ Er zijn twee soorten uitlezen, en ze verschillen:
 - **Of het cluster überhaupt antwoordt** wordt elke twee seconden gevraagd, voor elk cluster, of er
   nu iemand kijkt of niet: de worker opent een TCP-verbinding naar de API-poort van het cluster en
   sluit die weer — geen inlog, geen verzoek, niets in de logs van de node. Een cluster dat als
-  mislukt staat en waarvan de poort weer antwoordt, wordt meteen uitgelezen, alsof u op **Nu
+  mislukt staat en waarvan de poort weer antwoordt, wordt meteen uitgelezen, alsof je op **Nu
   uitlezen** drukte. Een node die weer aangezet wordt, staat dus binnen enkele seconden nadat zijn
   API gestart is als verbonden, niet pas bij de volgende geplande ronde. Een verbonden cluster
   waarvan de poort twee keer achter elkaar niet antwoordt, wordt direct als mislukt gemarkeerd, met
@@ -324,9 +323,9 @@ Drie gedragingen zijn het weten waard, want die maken de inventarisatie betrouwb
 
 - **Een node die niet bereikbaar is kost je de rest niet.** De ronde loopt af, de andere nodes worden
   bijgewerkt, en de ronde wordt **Gedeeltelijk** genoemd met de node erbij. Een offline node blijft in
-  de inventarisatie staan — juist als een node uit ligt wil je hem zien.
+  de inventarisatie staan — juist als een node uitligt, wil je hem zien.
 - **Een mislukte ronde wist niets.** Kan Velnox het cluster helemaal niet bereiken, dan blijft de
-  vorige inventarisatie precies zoals hij was en wordt het cluster als falend gemarkeerd. Wat stopt
+  vorige inventarisatie precies zoals hij was en wordt het cluster als mislukt gemarkeerd. Wat stopt
   met bewegen is *laatst uitgelezen*, en daaraan zie je verouderd van actueel.
 - **Rijen houden hun identiteit.** Een node die er nog staat houdt dezelfde vermelding tussen rondes,
   zodat alles wat eraan gekoppeld is gekoppeld blijft.
@@ -336,12 +335,12 @@ Drie gedragingen zijn het weten waard, want die maken de inventarisatie betrouwb
 ## Meldingen
 
 **Meldingen** toont wat Velnox op dit moment ziet: een cluster dat het niet kan bereiken, een node
-offline, een cluster zonder quorum, nodes die het oneens zijn over hun versie, Ceph ongezond,
+offline, een cluster zonder quorum, nodes die het oneens zijn over hun versie, Ceph niet gezond,
 Ceph-daemons op verschillende releases, en elke Ceph-vlag die aanstaat.
 
 Ze worden bij elke keer openen uit de inventarisatie afgeleid. Een melding verdwijnt dus zodra de
 oorzaak weg is en kan nooit verouderd zijn — en er is geen bevestigen, geen onderdrukken en geen
-notificatie. Dat is met opzet en staat in [Bekende hiaten](known-gaps.md): een opgeslagen melding
+notificatie. Dat is met opzet en staat in [Bekende beperkingen](known-gaps.md): een opgeslagen melding
 heeft een levenscyclus nodig, en een half gebouwde levert een scherm vol alarmen op dat niemand leest.
 
 ### `noout`, in het bijzonder
@@ -358,8 +357,8 @@ altijd achter na onderhoud waarvan iemand is weggeroepen. Zet hem uit, tenzij er
 |---|---|
 | *… is niet bereikbaar* | De melding zegt op welke manier het misging, met wat je daarvoor controleert: *geen verbinding binnen de wachttijd* — een firewall die verkeer naar poort 8006 laat vallen, of de node staat uit; *verbinding geweigerd* — er luistert niets: `pveproxy` is gestopt, de poort klopt niet, of de node is nog aan het opstarten; *verbonden, maar Proxmox antwoordde niet op tijd* — de API hangt op de node: `systemctl status pveproxy pvedaemon pve-cluster`; *geen route naar de host*; *de naam is niet gevonden*. De worker is de enige service die naar buiten verbindt, dus test vanaf de Velnox-host en niet vanaf je eigen computer. |
 | *Dit lijkt geen Proxmox-API* | Juiste host, verkeerde poort — of een reverse proxy vóór Proxmox die antwoordt. |
-| *Vingerafdruk komt niet overeen* | Het certificaat van de node is gewijzigd. Dat gebeurt legitiem bij vernieuwing of het opnieuw opbouwen van een node — en het is ook precies hoe onderschepping eruitziet. Controleer `pvenode cert info` op de node, verwijder daarna het cluster en voeg het opnieuw toe met de nieuwe vingerafdruk. Velnox accepteert een nieuw certificaat niet stilletjes voor je. |
-| *Proxmox weigerde de credentials* | Het token is ingetrokken, of de privilege separation sluit uit wat Velnox leest. `PVEAuditor` op `/` is genoeg. |
+| *Het TLS-certificaat van … komt niet overeen met de vastgelegde vingerafdruk* | Het certificaat van de node is gewijzigd. Dat gebeurt legitiem bij vernieuwing of het opnieuw opbouwen van een node — en het is ook precies hoe onderschepping eruitziet. Controleer `pvenode cert info` op de node, verwijder daarna het cluster en voeg het opnieuw toe met de nieuwe vingerafdruk. Velnox accepteert een nieuw certificaat niet stilletjes voor je. |
+| *Het tokengeheim is ongeldig* | Het token is ingetrokken, of de privilege separation sluit uit wat Velnox leest. `PVEAuditor` op `/` is genoeg. |
 | Een ronde met **Gedeeltelijk** | Open **Uitleesrondes**. Elk probleem staat er met de bijbehorende node bij. |
 
 ---
@@ -368,5 +367,5 @@ altijd achter na onderhoud waarvan iemand is weggeroepen. Zet hem uit, tenzij er
 
 - [Je omgeving indelen](organising-your-fleet.md) — tenants, locaties en het beperken van een recht
 - [Gebruikers en toegang beheren](managing-access.md) — accounts, rollen, tweede factor, Entra ID SSO
-- [Bekende hiaten](known-gaps.md) — wat er op dit moment bewust ontbreekt
+- [Bekende beperkingen](known-gaps.md) — wat er op dit moment bewust ontbreekt
 - [Architectuur](architecture.md) — hoe het systeem in elkaar zit, en waarom

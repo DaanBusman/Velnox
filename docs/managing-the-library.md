@@ -156,8 +156,8 @@ Match User velnox-sftp
 in `/etc/ssh/sshd_config`, with read access to the storage directories — `/var/lib/vz/template/iso`
 and `/var/lib/vz/import` for the `local` storage.
 
-The same SSH set-up is what [applying updates](updating-nodes.md) uses, and that runs three fixed
-commands, one of them through sudo. An SFTP-only account keeps copying working and makes updates
+The same SSH set-up is what [applying updates](updating-nodes.md) uses, and that runs five fixed
+commands, two of them through sudo. An SFTP-only account keeps copying working and makes updates
 fail; [Updating nodes](updating-nodes.md#before-you-can-apply-updates-ssh) has an account that does
 both.
 
@@ -178,7 +178,7 @@ check as any other file coming in. Cancelled or failed, nothing is left in the l
 | What you see | What it means |
 |---|---|
 | *The library would grow past its limit* | The library's own size limit. Remove files, or raise `VELNOX_LIBRARY_MAX_GB`. |
-| *That would leave … below the minimum that must stay free* | The disk is nearly full. Free space on the host, or lower `VELNOX_LIBRARY_MIN_FREE_GB`. |
+| *With … GB of disk free, another … GB would go below the minimum …* | The disk is nearly full. Free space on the host, or lower `VELNOX_LIBRARY_MIN_FREE_GB`. |
 | *… is not what its name says* | The bytes do not match the extension. Usually an error page saved under an ISO's name — open the URL in a browser. |
 | *Velnox will not fetch from that address* | One of the refusals under [From a URL](#from-a-url). |
 | *… is already on that storage* | Delete it on the cluster first; Velnox does not overwrite. |

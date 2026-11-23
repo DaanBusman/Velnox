@@ -25,7 +25,7 @@ tenantfilter op elk tenant-gebonden model en **gooit een fout** wanneer er geen 
 CI-blokkerende testsuite die voor *elke* tenant-gebonden resource controleert dat een gebruiker van
 tenant A 403/404 krijgt bij lezen **en** schrijven van een object van tenant B — inclusief geneste
 routes, lijst-endpoints, filters, sorteringen en jobdoelen; (e) PostgreSQL RLS op de meest risicovolle
-tabellen als hardening in Phase 15.
+tabellen als hardening in fase 15.
 **Restrisico:** ruwe SQL in een toegestaan bestand blijft een gat. Elke uitzondering vereist review.
 
 ### R-02 · Secretlek via logs, joboutput of API-responses (5 × 3 = **15**)
@@ -34,7 +34,7 @@ Wachtwoorden belanden veel makkelijker dan mensen verwachten in `ps`-uitvoer, sh
 
 **Mitigatie:** secrets nooit als procesargument — `chpasswd` krijgt ze op stdin over het SSH-kanaal;
 getypeerde `JobEvent`-payloads in plaats van ruwe uitvoer; pino-redactie plus een waardevergelijkende
-sweep vóór elke log-, gebeurtenis- of auditinvoeging; de API heeft **geen code path** dat plat materiaal
+sweep vóór elke log-, gebeurtenis- of auditinvoeging; de API heeft **geen codepad** dat plat materiaal
 teruggeeft; een aparte test controleert dat de volledige gebeurtenisstroom, logs en API-responses van een
 rotatiejob geen enkele deeltekst van het gegenereerde wachtwoord bevatten.
 **Restrisico:** een externe bibliotheek die een verbindings-URL logt. Ondervangen door redactie bij de
@@ -51,15 +51,15 @@ niet eenmalig bij aanvang. `concurrency_key = cluster:<id>` met een partiële un
 gelijktijdige jobs op één cluster onmogelijk, ook over meerdere workers. Property-based tests over
 clustergroottes 1–15 controleren dat de invariant geldt voor elk schema dat de planner kan opleveren.
 
-### R-04 · Major upgrade maakt een node onbruikbaar (5 × 3 = **15**)
-PVE 8 → 9 overschrijdt een Debian-hoofdrelease. Een half voltooide `dist-upgrade`, een verkeerde
+### R-04 · Grote upgrade maakt een node onbruikbaar (5 × 3 = **15**)
+PVE 8 → 9 gaat over een grote Debian-release heen. Een half voltooide `dist-upgrade`, een verkeerde
 repository of een herstart in een kapotte kernel betekent een bezoek ter plaatse.
 
 **Mitigatie:** blokkades stoppen de uitvoering — Velnox gaat nooit "toch door"; niet-geparseerde
 `pve8to9`-uitvoer geldt als blokkade; één node upgraden en dan **expliciet laten bevestigen** voor de
 rest (de eerste node is standaard een canary); configuratiebestanden worden geback-upt vóór wijziging;
 annuleren breekt nooit een lopende `dist-upgrade` af; validatie na de upgrade moet slagen voordat de
-volgende node begint. Velnox kan een Debian-hoofdupgrade niet terugdraaien — dat staat in de UI vóór de
+volgende node begint. Velnox kan een grote Debian-upgrade niet terugdraaien — dat staat in de UI vóór de
 operator bevestigt, en een PBS- of hostback-up is een gedocumenteerde voorwaarde.
 **Restrisico:** werkelijk onherstelbare mislukkingen blijven mogelijk. Eerlijke documentatie in plaats
 van een valse belofte van terugdraaien.
@@ -72,7 +72,7 @@ Erger nog: het is een tijdlang stil, want PG's degraderen voordat ze onbeschikba
 
 **Mitigatie:** strikte daemonvolgorde (MON → MGR → OSD → MDS → RGW) met hervalidatie van de gezondheid
 tussen elke groep *en* elke node met OSD's, nooit een gezamenlijke herstart; `HEALTH_OK` plus alle PG's
-`active+clean` plus volledig MON-quorum verplicht vóór aanvang en doorlopend hercontroleerd; een
+`active+clean` plus volledig MON-quorum verplicht vóór aanvang en doorlopend opnieuw gecontroleerd; een
 capaciteitsguard die borgt dat het cluster één failure domain kan missen; een cluster met heterogene
 daemonversies is een blokkade en niet iets om te hervatten; onbekende `HEALTH_WARN`-statussen blokkeren
 in plaats van door te gaan.
@@ -88,11 +88,11 @@ veroorzaakt hem *eerder* dan een mens, omdat een gecrasht proces zijn opruiming 
 **Mitigatie:** het opruimen van de vlag is een gegarandeerde stap op elk uitgangspad — succes, falen en
 annulering — en geen stap in het gelukkige pad; bij het herstarten van de worker controleert de verzoener
 op vlaggen die door een weesjob zijn gezet en heft die op of escaleert; `ceph_flags` wordt bij elke
-discovery geïnventariseerd en gealarmeerd, ongeacht welk hulpmiddel de vlag zette, inclusief een mens op
+discovery geïnventariseerd en gemeld, ongeacht welk hulpmiddel de vlag zette, inclusief een mens op
 de commandoregel. Een test breekt de run halverwege af en controleert dat de vlag is opgeheven.
 
 ### R-05 · Verlies van `MASTER_ENCRYPTION_KEY` (5 × 2 = **10**, maar onherstelbaar)
-Zonder de hoofdsleutel is elk opgeslagen credential permanent onleesbaar.
+Zonder de hoofdsleutel is elke opgeslagen credential permanent onleesbaar.
 
 **Mitigatie:** de installer toont een nadrukkelijke waarschuwing en de locatie van de sleutel; de
 back-updocumentatie begint ermee; `/readyz` faalt direct bij een sleutel die bestaande rijen niet kan
@@ -174,11 +174,11 @@ worden); stappen zijn idempotent, zodat een operator veilig kan hervatten.
 | R-18 | Ontwikkeling op Windows, uitrol op Linux (regeleindes, rechten, padscheidingstekens). | 2×5=10 | `.gitattributes` die LF afdwingt voor shellscripts; alle shellscripts in CI gecontroleerd met shellcheck; containerbuilds zijn de waarheid voor alles wat padgevoelig is. |
 | R-19 | Tijdzoneafhandeling in onderhoudsvensters. | 3×3=9 | RRULE plus IANA-tijdzone opslaan; server-side evalueren in de eigen zone van het venster; nooit in die van de browser. |
 | R-20 | Groei van het auditlog versus onveranderlijkheid. | 2×4=8 | Alleen-toevoegen-trigger; bewaartermijn per tenant (standaard voor altijd, nooit korter dan een jaar) alleen verwijderd via één databasefunctie, elke verwijdering geaudit; export, met de handleiding die zegt eerst te exporteren (ADR-040). **Open:** de hashketen en een aparte opschoonrol zijn niet gebouwd — fase 15. |
-| R-21 | Toeleveringsketen (gecompromitteerde npm-afhankelijkheid) in een hulpmiddel dat root-credentials draagt. | 5×2=10 | Lockfile in versiebeheer; `pnpm audit` en een SCA-poort in CI; base images vastgezet op digest; minimaal afhankelijkhedenoppervlak in `packages/crypto` en `packages/remote-exec`; geen post-install scripts voor nieuwe afhankelijkheden zonder review. |
-| R-22 | **MFA sluit de laatste beheerder buiten.** `REQUIRED` aanzetten terwijl de enige Super Administrator geen of een verloren authenticator heeft, maakt de installatie onbeheerbaar. | 4×3=12 | Aanmelden moet met een werkende code bevestigd worden voordat een factor actief wordt, zodat een half afgeronde inrichting nooit de afgedwongen factor kan worden; herstelcodes worden bij het aanmelden gegenereerd en getoond, en het beleid kan pas naar `REQUIRED` tenzij minstens één Super Administrator een bevestigde factor **en** ongebruikte herstelcodes heeft; een gedocumenteerde offline resetprocedure via de database bestaat en wordt zelf geaudit. |
+| R-21 | Toeleveringsketen (gecompromitteerde npm-afhankelijkheid) in een hulpmiddel dat root-credentials draagt. | 5×2=10 | Lockfile in versiebeheer; `pnpm audit` en een SCA-poort in CI; base images vastgezet op digest; minimaal afhankelijkhedenoppervlak in `packages/crypto` en `apps/worker/src/remote`; geen post-install scripts voor nieuwe afhankelijkheden zonder review. |
+| R-22 | **MFA sluit de laatste beheerder buiten.** `REQUIRED` aanzetten terwijl de enige Super Administrator geen of een verloren authenticator heeft, maakt de installatie onbeheerbaar. | 4×3=12 | De inrichting moet met een werkende code bevestigd worden voordat een factor actief wordt, zodat een half afgeronde inrichting nooit de afgedwongen factor kan worden; herstelcodes worden bij de inrichting gegenereerd en getoond, en het beleid kan pas naar `REQUIRED` als minstens één Super Administrator een bevestigde factor **en** ongebruikte herstelcodes heeft; een gedocumenteerde offline resetprocedure via de database bestaat en wordt zelf geaudit. |
 | R-23 | **Vertaaldrift.** Nederlandse documenten verouderen stilletjes — erger dan ze niet hebben, omdat een lezer het niet kan zien. | 3×5=15 | Elk bestand in `docs/nl/` legt de git-hash vast van de Engelse bron waaruit het vertaald is; CI waarschuwt (blokkeert nooit) wanneer de Engelse tegenhanger is gewijzigd; de kop van elk Nederlands document vermeldt dat Engels leidend is. UI-teksten kennen een strengere regel: een ontbrekende of overtollige sleutel laat de build **falen**. |
-| R-24 | **Licentie van een afhankelijkheid niet compatibel met AGPLv3**, laat ontdekt, wat een herbouw van een UI- of cryptocomponent afdwingt. | 4×2=8 | Een licentiecontrole in CI bij elke toegevoegde afhankelijkheid vanaf Phase 1, geen audit in Phase 15; componentbibliotheek gekozen op een permissieve licentie met meegeleverde broncode (shadcn/ui, MIT); `THIRD-PARTY-NOTICES.md` bij de build uit het lockfile gegenereerd zodat het beeld nooit verouderd is. |
-| R-25 | **De Ceph/PVE-versiematrix veroudert** naarmate upstream-releases opschuiven, waardoor plannen onjuist worden in plaats van te weigeren. | 4×3=12 | De matrix is data, geversioneerd, en vastgelegd op elk plan (`version_matrix_id`) zodat oude rapporten interpreteerbaar blijven; ze wordt *bij het opstellen van het plan tegen het live cluster geverifieerd*, en onenigheid tussen draaiende release, doel en matrix weigert het plan onder vermelding van welke van de drie onverwacht is. Velnox gokt nooit over versiecompatibiliteit. |
+| R-24 | **Licentie van een afhankelijkheid niet compatibel met AGPLv3**, laat ontdekt, wat een herbouw van een UI- of cryptocomponent afdwingt. | 4×2=8 | Een licentiecontrole in CI bij elke toegevoegde afhankelijkheid vanaf fase 1, geen audit in fase 15; componentbibliotheek gekozen op een permissieve licentie met meegeleverde broncode (shadcn/ui, MIT); `THIRD-PARTY-NOTICES.md` bij de build uit het lockfile gegenereerd zodat het beeld nooit verouderd is. |
+| R-25 | **De Ceph/PVE-versiematrix veroudert** naarmate upstream-releases opschuiven, waardoor plannen onjuist worden in plaats van te weigeren. | 4×3=12 | De matrix is data, geversioneerd, en vastgelegd op elk plan zodat oude rapporten interpreteerbaar blijven; ze wordt *bij het opstellen van het plan tegen het live cluster geverifieerd*, en onenigheid tussen draaiende release, doel en matrix weigert het plan onder vermelding van welke van de drie onverwacht is. Velnox gokt nooit over versiecompatibiliteit. |
 
 ---
 
@@ -186,12 +186,12 @@ worden); stappen zijn idempotent, zodat een operator veilig kan hervatten.
 
 | # | Vraag | Beslissing | Effect |
 |---|---|---|---|
-| 1 | Ceph-upgrades | **In scope.** Apart playbook, samengesteld vóór de PVE major upgrade. | Nieuwe Phase 9A; Ceph-inventaris naar voren gehaald in Phase 4; nieuwe risico's R-04b, R-04c, R-25. |
-| 2 | MFA | **Optioneel maar aanbevolen.** TOTP + herstelcodes, drie beleidsniveaus, `OPTIONAL` als standaard. | Toegevoegd aan Phase 2; nieuw risico R-22. |
-| 3 | Air-gapped installatie | **Ja** — gebundelde images zijn het standaard tar-artefact, met een `--slim`-variant ernaast. | Acceptatie in Phase 14 omvat nu een installatie met uitgaand netwerk geblokkeerd. |
+| 1 | Ceph-upgrades | **In scope.** Apart playbook, samengesteld vóór de grote PVE-upgrade. | Nieuwe fase 9A; Ceph-inventaris naar voren gehaald in fase 4; nieuwe risico's R-04b, R-04c, R-25. |
+| 2 | MFA | **Optioneel maar aanbevolen.** TOTP + herstelcodes, drie beleidsniveaus, `OPTIONAL` als standaard. | Toegevoegd aan fase 2; nieuw risico R-22. |
+| 3 | Air-gapped installatie | **Ja** — gebundelde images zijn het standaard tar-artefact, met een `--slim`-variant ernaast. | Acceptatie in fase 14 omvat nu een installatie met uitgaand netwerk geblokkeerd. |
 | 4 | PBS | **Uitgesteld** tot na v1. Het framework blijft klaar voor een PBS-playbook. | Vastgelegd in known-gaps.md. |
-| 5 | Documentatietaal | **Engels + Nederlands**, met een vertaalklare woordenlijst. Engels is leidend. | Nieuwe `packages/i18n`, `docs/i18n.md`, `docs/nl/`; i18n verplaatst naar Phase 1; nieuw risico R-23. |
-| 6 | Licentie | **AGPLv3.** | Naleving van artikel 13 is een productfunctie in Phase 1; licentiepoort in CI; nieuw risico R-24; `TRADEMARK.md` scheidt merken van de licentie. |
+| 5 | Documentatietaal | **Engels + Nederlands**, met een vertaalklare woordenlijst. Engels is leidend. | Nieuwe `packages/i18n`, `docs/i18n.md`, `docs/nl/`; i18n verplaatst naar fase 1; nieuw risico R-23. |
+| 6 | Licentie | **AGPLv3.** | Naleving van artikel 13 is een productfunctie in fase 1; licentiepoort in CI; nieuw risico R-24; `TRADEMARK.md` scheidt merken van de licentie. |
 
 ## Nog openstaande vragen
 

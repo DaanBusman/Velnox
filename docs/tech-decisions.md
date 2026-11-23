@@ -329,7 +329,7 @@ that to be absorbed into closed products without the corrections flowing back, a
 logic in this domain damages third-party production infrastructure.
 
 **Consequences that are engineering work, not paperwork:**
-- §13 compliance is a product feature: `GET /api/v1/system/source` and a Settings → About link, both
+- §13 compliance is a product feature: `GET /api/v1/system/source` and a link under **Source code → About**, both
   driven by a build-time `VELNOX_SOURCE_URL` and the embedded git commit.
 - `THIRD-PARTY-NOTICES.md` is generated from the lockfile at build time and ships in every artifact.
 - Dependency licences must be AGPL-compatible; a CI licence check rejects incompatible additions.
@@ -420,7 +420,7 @@ looks like a downgrade and is not. Doing it at Phase 2 is as cheap as it will ev
 
 The scheme means the version answers "how far along is this", which for a product built to a
 published roadmap is the question people actually ask. Phase 9 is split into 9A and 9B; both are
-phase 9, so 9B ships as patches on minor 9.
+Phase $1, so 9B ships as patches on minor 9.
 
 The documentation set under `docs/` is converted to HTML at build time and bundled into the web
 image, and every page renders **"This Documentation applies to version VX.Y.Z"** (in Dutch,
@@ -494,7 +494,7 @@ serve both without serving neither.
 
 Shipping the guide in the same phase as the feature is the part that will be tempting to skip.
 Documentation written a phase later is written by someone reconstructing what they did, which is how
-a guide comes to describe a button that was renamed. Documentation deferred to phase 15 is
+a guide comes to describe a button that was renamed. Documentation deferred to Phase $15 is
 documentation that arrives after every decision it could have improved.
 
 **Cost:** Every feature phase is now larger by a guide in two languages, and there is one more thing
@@ -731,7 +731,7 @@ weakening.
 
 **Consequences.** Forgetting an authorization check no longer leaks data; it only fails to check
 whether the caller was allowed to ask. Raw SQL remains banned by ESLint with a documented allowlist,
-because it bypasses this layer entirely. PostgreSQL row-level security stays deferred to phase 15 as
+because it bypasses this layer entirely. PostgreSQL row-level security stays deferred to Phase $15 as
 a third layer, recorded in known-gaps.md rather than silently skipped.
 
 **Amended in Phase 5 — tables that reach a tenant through a relation.** The schema guard above only
@@ -862,7 +862,7 @@ that case turns out to be common — as a clearly separate action, not as a butt
 refresh.
 
 **Why polling, and why two seconds.** There is no stream yet; the job system and its progress
-channel arrive in phase 5, and this is what stands in until then. Two seconds is the cadence the
+channel arrive in Phase $1, and this is what stands in until then. Two seconds is the cadence the
 owner asked for. Each tick is one page re-read — for the list, one cluster query per open tab — so
 it is not free, and it does not run in a hidden tab: the interval stops on `visibilitychange` and
 refreshes once on the way back, because six forgotten tabs polling for a week is a cost nobody
@@ -879,6 +879,10 @@ That is a workaround as much as a preference, and the underlying problem is wort
 expired access token, or an API call that took longer than five seconds. Replacing the tree unmounts
 everything below it. On navigation that is rare enough to be invisible; at one refresh every two
 seconds it stops being rare. Pausing where it hurts most is not the same as fixing it.
+
+**Amended: Read now is back.** The cluster page has a **Read now** button again, which queues a full
+discovery run: the clearly separate action this entry called for. **Refresh** beside it still only
+re-reads what Velnox already holds.
 
 ---
 
@@ -1024,7 +1028,7 @@ dialled, so a name that answers differently a second time gains nothing. No http
 at most five redirects each judged afresh, no credentials in the URL, certificates verified with no
 switch to turn that off, and the byte limit enforced while bytes arrive. The address shown and logged
 has its query string removed, because signed download links carry their signature there — and once
-the download is over, successful or not, so does the stored one. The full address exists only for as
+the download is over, successful or not, the stored one loses it too. The full address exists only for as
 long as something needs to fetch from it.
 
 **The name says what it is; the bytes have to agree.** A file named `.iso` must carry an ISO 9660 or
@@ -1406,8 +1410,8 @@ commands over SSH — only `CommandSpec`s from a registry in the worker (`apps/w
 a fixed argv, whether it changes the node, whether it needs root, a timeout, and whether a cancelled
 job may interrupt it. The only value that varies is the node's name, checked against Proxmox's rule
 for one. Every command is sent as `[ "$(hostname -s)" = '<node>' ] || exit 97; [sudo -n] env LC_ALL=C …`:
-the guard refuses to run on a machine with another name, `sudo -n` is added for a privileged command
-when the account is not root and fails instead of prompting. The connection is the SFTP one: the
+the guard refuses to run on a machine with another name, and `sudo -n`, added for a privileged
+command when the account is not root, fails instead of prompting. The connection is the SFTP one: the
 confirmed host key or none, key authentication only. Phase 6 registers three commands: a simulated
 dist-upgrade, the dist-upgrade, and the reboot-required check.
 
@@ -1438,9 +1442,9 @@ simulated dist-upgrade over SSH that reads the security archive exactly, the dis
 output streamed into the job, a reboot when the reboot policy says so and quorum allows it — waiting
 for the node to return on its new kernel — and a verify that reads what is left. Its concurrency key
 is the cluster's, so one job changes a cluster at a time. A policy per cluster sets approval, reboot
-policy, a maintenance window and whether it updates by itself; windows are RFC 5545 rules evaluated
+policy, a maintenance window and whether it updates automatically; windows are RFC 5545 rules evaluated
 in their own time zone (`packages/shared/src/rrule.ts`, a supported subset, anything else refused).
-A scheduler in the worker starts, each minute, one update per cluster whose policy updates by itself
+A scheduler in the worker starts, each minute, one update per cluster whose policy updates automatically
 and whose window is open, for a node no policy has started an update for in this opening.
 
 **Why refuse outside a window instead of queueing.** A person pressing *Update* wants to know now
@@ -1451,7 +1455,7 @@ covers the "do it in the window" case by itself.
 job checks the window after approval and before it changes anything, and stops with nothing changed.
 
 **Why quorum before a reboot.** A reboot that costs the cluster quorum stops every guest on it. The
-reboot is refused when the nodes already down plus this one would exceed ⌊(n−1)/2⌋ — the central
+reboot is refused when the nodes already offline plus this one would exceed ⌊(n−1)/2⌋ — the central
 invariant Phase 7's rolling updates are built on.
 
 **Not built:** package allow- and deny-lists, and notifications, from the original design. Moving
@@ -1463,7 +1467,7 @@ guests off a node before its reboot is the rolling update of ADR-048.
 
 **Decision:** A `cluster.rolling_update` job updates a cluster in groups of nodes. The groups come
 from a planner (`packages/shared/src/rolling.ts`) that refuses any group larger than ⌊(n−1)/2⌋ for
-*n* voting nodes, less what is already down; one node is the default. A preflight refuses a cluster
+*n* voting nodes, less what is already offline; one node is the default. A preflight refuses a cluster
 already degraded (a node offline, no quorum, Ceph not `HEALTH_OK`), reads every running guest's
 configuration to tell which can move live — a disk on storage only one node sees, or a passed-through
 device, cannot — and refuses a group whose guests would not fit in the memory the other nodes have
@@ -1491,7 +1495,7 @@ messages of any failure.
 **Not built:** Proxmox's HA maintenance mode (`ha-manager crm-command node-maintenance`) and
 HA-managed guests, whose migration HA performs itself; the rolling update moves guests through the
 ordinary migration API. Placement rules (Phase 7B) are honoured by a hook in the target choice that
-Phase 7B fills. A policy that updates by itself still updates one node at a time, without moving
+Phase 7B fills. A policy that updates automatically still updates one node at a time, without moving
 guests.
 
 ---
@@ -1506,10 +1510,10 @@ without breaking another (hard rules first), and the one move that narrows the s
 On a cluster whose nodes all run PVE 9, the worker writes each rule as one of Proxmox's HA rules
 (`velnox-<id>`: resource affinity, negative or positive; node affinity, strict or not), reads it back,
 and writes it again when it was changed or removed in Proxmox; a removed rule is removed there before
-its row goes. Corrections and balancing are `cluster.placement` jobs — check that the cluster is whole,
+its row goes. Corrections and balancing are `cluster.placement` jobs — check that the cluster is healthy,
 plan from Proxmox's own view, move one guest at a time with the rules checked again just before each
-move, verify — on the cluster's concurrency key. A per-cluster setting lets the worker start them by
-itself, never on a cluster that is not healthy, never within a quiet period of the last. The rolling
+move, verify — on the cluster's concurrency key. A per-cluster setting lets the worker start them on
+its own, never on a cluster that is not healthy, never within a quiet period of the last. The rolling
 update (ADR-048) chooses every target through the same rules and refuses before it starts when a
 guest would have nowhere allowed to go.
 
@@ -1557,7 +1561,7 @@ steps keep the list fixed and the behaviour dynamic.
 **Why a composite is driven, not waited on.** A parent job waiting for its children would hold a
 worker slot for hours — with one slot, forever — and could not even queue a child, since both would
 want the cluster's key. A driver that looks every ten seconds needs neither, and survives a worker
-restart; it also sets a plan whose job ended without telling it.
+restart; it also updates a plan whose job ended without telling it.
 
 **Why self-test playbooks ship.** The engine's acceptance needs playbooks that exercise every path —
 automatic and approved remediation, a blocker, a failed target, a composite stopping — on any cluster,
@@ -1575,8 +1579,8 @@ Reef → Squid, each with the lowest versions Proxmox asks for and its repositor
 on every plan. A plan is refused when the release that runs, the target and the matrix disagree,
 naming which. The playbook switches the repository on every node, sets `noout`, upgrades packages on
 every node, then restarts each daemon through Proxmox's API in Ceph's order and waits, after every one,
-until Ceph is whole: health OK apart from `noout` and the not-yet-raised `require-osd-release`, every
-PG active+clean, full quorum. Warnings a restart causes for a moment are waited out; a warning Velnox
+until Ceph is healthy, apart from `noout` and the not-yet-raised `require-osd-release`, with every
+PG active+clean and full quorum. Warnings a restart causes for a moment are waited out; a warning Velnox
 does not know stops the run. `require-osd-release` is raised only when every OSD runs the target. The
 playbook names a cleanup, run by the job when it fails or is cancelled and by the driver when a
 worker died, that clears `noout` if Velnox set it — recorded before it is set.
@@ -1601,7 +1605,7 @@ format.
 parser written against `PVE/CLI/pve8to9.pm` (pve-manager `stable-8`): its prefixes, its unprefixed
 progress lines, its section headers and summary, and a finding's further lines — blank lines
 included. A line it cannot place is `UNKNOWN` and stops the upgrade. A classifier names each finding
-by its text and gives the ones Velnox can fix a remediation; the CPU microcode is fixed by itself
+by its text and gives the ones Velnox can fix a remediation; the CPU microcode is fixed automatically
 (asked for by the owner on 11 October 2026: low risk, reversible), the others wait for approval with
 the exact change. Each fix is proven by pve8to9 itself. Then node by node: guests moved away within
 the placement rules, sources to trixie, dist-upgrade, reboot with `noout` around it on a Ceph cluster,
@@ -1710,7 +1714,7 @@ Merging two registrations that are not one cluster would drop one from Velnox, s
 **Removing a cluster now removes its SSH key too.** It used to be left behind: a secret nobody owned.
 
 **Not built:** joining nodes in Proxmox; a second API address to fall back on when the kept one's
-node is down.
+node is offline.
 
 ## ADR-056 — A node without a subscription is moved to the no-subscription repositories
 
@@ -1814,8 +1818,8 @@ security fix.
 ## ADR-058 — Velnox as an installable web app, not a separate desktop program
 
 **Decision:** Velnox installs as an app from Edge or Chrome — a progressive web app: a manifest and a
-service worker on the interface it already has, and **Install as app** in the user menu. Asked for
-was a Windows program that would connect to the server over HTTPS, show its data live, and spare
+service worker on the interface it already has, and **Install as app** in the user menu. The request
+was for a Windows program that would connect to the server over HTTPS, show its data live, and spare
 the web server when many people use Velnox at once.
 
 **Why not a desktop program.** It would not spare the server. A program reads the same API and the
@@ -1845,7 +1849,7 @@ the guide says how, and that it is a decision. The menu says why when the browse
 
 **Proven** by `scripts/verify-pwa.sh`: a real headless Chromium in a container, reaching the stack's
 own `https://localhost`, driven over the DevTools protocol — Chromium's own installability check,
-the cache's contents after a user's screens, the button asking the browser's prompt, no network, and
+the cache's contents after a user's screens, the button opening the browser's prompt, no network, and
 signing out. Not proven there: the refusal on an untrusted certificate, and installing on a real
 Windows desktop.
 
@@ -1909,9 +1913,9 @@ seconds; and with the stream refused, the page back on its interval.
 ## ADR-060 — Velnox says when there is a newer version, and which fixes are critical
 
 **Decision:** the worker reads `release.json` from the repository's main branch every quarter of an hour
-(every six hours until 0.7.40, at the owner's request) — the newest version and its advisories — and the interface tells `system.manage` when it is newer,
+(every six hours until 0.7.40, at the owner's request) — the newest version and its advisories — and the interface tells whoever holds `system.manage` when it is newer,
 in red when an advisory that concerns the running version is critical. On by default; switched off
-in Server management. Reversing the decision recorded in the Updates panel until 0.7.21, at the
+in Server management. This reverses the decision the Updates panel recorded until 0.7.21, at the
 owner's request.
 
 **Why it was not done, and what answers that.** Two objections stood. *An installation without
@@ -1941,7 +1945,7 @@ management's information, and its people are who can act on it.
 
 ---
 
-## ADR-061 — Every cluster's port is asked every two seconds
+## ADR-061 — Every cluster's port is probed every two seconds
 
 **Decision:** the worker opens a TCP connection to each cluster's API port every two seconds and
 closes it again (0.7.23). A cluster marked as failing whose port answers is read at once; a

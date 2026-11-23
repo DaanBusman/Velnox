@@ -33,15 +33,15 @@ browser.
 ### Oudere jobs uit beeld
 
 De MSP Super Administrator kan afgeronde jobs na een aantal dagen verbergen voor iedereen zonder
-`jobs.history`. Op het scherm **Jobs** neemt de kaart **Oudere jobs** bovenaan het aantal dagen,
-van 1 tot 3650; laat het leeg, of kies **Weer elke job tonen**, om niets te verbergen. Dat is de
+`jobs.history`. Op het scherm **Jobs** vul je op de kaart **Oudere jobs** bovenaan het aantal dagen
+in, van 1 tot 3650; laat het leeg, of kies **Weer elke job tonen**, om niets te verbergen. Dat is de
 standaard.
 
 - Een job telt vanaf het moment dat hij **klaar** was. Een job die nog in de wachtrij staat, loopt of
   op goedkeuring wacht, wordt nooit verborgen, hoe oud ook.
 - **Er wordt niets verwijderd.** De job, zijn stappen en zijn uitvoer blijven in de database, voor de
   supportlogs van wie ze mag zien en voor iedereen met `jobs.history`.
-- Een verborgen job is overal verborgen: in de lijst, in **Lopende jobs**, in de placementgeschiedenis
+- Een verborgen job is overal verborgen: in de lijst, in **Lopende jobs**, in de plaatsingsgeschiedenis
   van een cluster en in een export van de supportlogs. Zijn adres geeft 'niet gevonden', net als een
   job van een andere klant.
 - Wie het treft, ziet boven de lijst een regel die zegt na hoeveel dagen jobs verborgen worden, zodat
@@ -115,7 +115,7 @@ Een afgeronde job kan niet meer geannuleerd worden.
 
 Sommige jobs stoppen bij een **goedkeuringspunt** vóór een stap die iets wijzigt, en wachten. De
 pagina van de job toont de reden, het recht dat nodig is, en de **wijzigingsset** — precies wat de
-stap gaat doen. **Goedkeuren** laat hem vanaf het goedkeuringspunt verder gaan; **Afwijzen** laat hem
+stap gaat doen. **Goedkeuren** laat hem vanaf het goedkeuringspunt verdergaan; **Afwijzen** laat hem
 mislukken, en niets na het goedkeuringspunt wordt uitgevoerd. Voeg in beide gevallen een toelichting
 toe als de volgende persoon wil weten waarom.
 
@@ -126,7 +126,7 @@ alleen om jobs goed te keuren.
 ### Vierogenprincipe
 
 Een goedkeuringspunt kan een **ander** persoon vereisen dan wie de job startte. Dan kan wie hem
-startte hem niet goedkeuren — het gaat erom dat niemand zijn eigen wijziging in zijn eentje
+startte hem niet goedkeuren — het gaat erom dat niemand een eigen wijziging alleen
 doordrukt — maar wel afwijzen, wat hetzelfde is als je eigen verzoek intrekken.
 
 ---

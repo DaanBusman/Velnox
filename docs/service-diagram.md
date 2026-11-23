@@ -157,7 +157,7 @@ sequenceDiagram
 ┌─ boundary 1: authentication + RBAC ──────────────────────┐
 │ caddy → web → api                                        │
 │ validates: session, permissions, scope, input schema     │
-│ CANNOT: decrypt secrets, reach a managed node            │
+│ CANNOT: decrypt infra secrets, reach a managed node      │
 └───────────────┬──────────────────────────────────────────┘
                 │ job record + queue message (no secrets in payload)
 ┌─ boundary 2: automation + secret use ────────────────────┐

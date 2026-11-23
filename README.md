@@ -270,7 +270,7 @@ Velnox is free software, licensed under the **GNU Affero General Public License,
 
 You may run it commercially, modify it and redistribute it. Because Velnox is accessed over a
 network, AGPL **section 13** applies: anyone using a *modified* version over a network must be
-offered that version's source. Velnox implements this in the product — **Settings → About** and
+offered that version's source. Velnox implements this in the product — **Source code → About** and
 `GET /api/v1/system/source` show the version, build commit and a source link, driven by the
 build-time `VELNOX_SOURCE_URL`. If you run a modified build, point that at your own source.
 

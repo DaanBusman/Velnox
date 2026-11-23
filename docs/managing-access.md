@@ -4,7 +4,7 @@
 task, written to be read while you are doing it.
 
 For what each role grants, see [Roles and permissions](permissions.md). For the reasoning behind
-these designs rather than the steps, see [Technical decisions](tech-decisions.md).
+these designs rather than the steps, see [Technology decisions](tech-decisions.md).
 
 Every task here needs a permission of its own; the page tells you which one when you lack it, rather
 than hiding the control and leaving you guessing.
@@ -20,7 +20,7 @@ than hiding the control and leaving you guessing.
 3. Fill in the name, the email address and an initial password of at least 12 characters.
 4. Save.
 
-Velnox sends no email, so there is no invitation link. You set the initial password and pass it on
+Velnox sends no invitations, so there is no invitation link. You set the initial password and pass it on
 yourself, through whatever channel you would use for any other credential — not the same email that
 carries the address of the installation.
 
@@ -50,8 +50,8 @@ Three rules apply, all of them enforced server-side:
 
 - **You cannot grant what you do not hold.** Granting a role covering a customer requires
   `roles.manage` covering that same customer, **and every permission in the role** there — so
-  delegating access can never widen it. An MSP Administrator cannot make anyone, itself included,
-  MSP Super Administrator.
+  delegating access can never widen it. An MSP Administrator cannot make anyone, themselves
+  included, MSP Super Administrator.
 - **A customer's account stays inside its own tenant.** Only accounts in your own MSP organisation
   may hold a grant pointing at somebody else's tenant.
 - **"Every tenant" needs a home in the MSP organisation**, and the option is not offered otherwise.
@@ -255,11 +255,10 @@ build rather than a sample, so an endpoint added later cannot quietly escape the
 
 [Roles and permissions](permissions.md) lists which permissions count as privileged.
 
-> **This build has no screen for changing the policy.** The enforcement is complete and tested; the
-> setting is a database column that defaults to `OPTIONAL`, and the settings screen that writes it
-> arrives with the rest of installation settings. Saying so is more useful than describing a button
-> that is not there. In the meantime the Users page names the privileged accounts without a second
-> factor, so the gap is visible even when the policy cannot yet be enforced for you.
+> **The installation-wide policy has no screen yet.** The enforcement is complete and tested. Per
+> tenant you set the policy under **Tenants → Details**; the value for the whole installation is a
+> database column that defaults to `OPTIONAL`. In the meantime the Users page names the privileged
+> accounts without a second factor, so the gap is visible.
 
 ---
 
@@ -316,8 +315,8 @@ not only what is loaded on screen — in the same scope as reading it. The downl
 to the audit log, with its filters. In the CSV, a value that a spreadsheet would read as a formula is
 prefixed with a quote mark, so a name chosen by someone else cannot run in yours.
 
-**How long it is kept** is set per tenant, by the MSP, under **Tenants** — *Keep the audit log*: for
-ever (the default), or one to ten years. Events older than that are removed by the worker, each
+**How long it is kept** is set per tenant, by the MSP, under **Tenants** — *Keep the audit log*:
+forever (the default), or one to ten years. Events older than that are removed by the worker, each
 removal recorded in the same tenant's log with how many and before when. Events that belong to no
 tenant follow the MSP organisation's period. Export what you need before shortening it.
 
@@ -397,4 +396,4 @@ Worth knowing when something is refused and you are trying to work out why.
 - [Organising your fleet](organising-your-fleet.md) — tenants, sites and scoping a grant
 - [Getting started](getting-started.md) — the first hour after installing
 - [Known gaps](known-gaps.md) — what is deliberately missing right now
-- [Technical decisions](tech-decisions.md) — why these designs, and what they cost
+- [Technology decisions](tech-decisions.md) — why these designs, and what they cost

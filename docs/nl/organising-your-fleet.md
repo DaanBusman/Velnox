@@ -16,8 +16,7 @@ elke rol precies toekent, zie [Rollen en rechten](permissions.md).
 Een **tenant** is één klantorganisatie. Elk account, elke locatie, elke credential en — vanaf fase 4
 — elk cluster hoort bij precies één tenant.
 
-Er is altijd één bijzondere tenant: **je eigen MSP-organisatie**, aangemaakt door de installatie­
-wizard. Die is overal gemarkeerd met `MSP`. Accounts daarin zijn de accounts die over klanten heen
+Er is altijd één bijzondere tenant: **je eigen MSP-organisatie**, aangemaakt door de installatiewizard. Die is overal gemarkeerd met `MSP`. Accounts daarin zijn de accounts die over klanten heen
 kunnen kijken; accounts in de tenant van een klant zien alleen die klant.
 
 Die grens is geen filter op een scherm. Hij wordt in de datalaag toegepast, onder elke bevraging die
@@ -32,7 +31,7 @@ stilletjes mee zou verhuizen.
 
 ---
 
-## Een klant-tenant aanmaken
+## Een klanttenant aanmaken
 
 Je hebt `tenants.manage` **op globaal bereik** nodig — in de praktijk MSP Super Administrator of MSP
 Administrator. Een recht dat één klant dekt geeft je niet de mogelijkheid een andere aan te maken, en
@@ -46,7 +45,7 @@ de weigering zegt dat ook.
 4. **Tenant toevoegen**.
 
 De tenant verschijnt meteen, zonder accounts en zonder locaties. Niemand kan zich erbij aanmelden tot
-je er een account aanmaakt — zie *Een account toevoegen* in
+je er een account aanmaakt — zie *Een account aanmaken* in
 [Gebruikers en toegang beheren](managing-access.md), waar je nu de tenant kunt kiezen.
 
 ### Tweefactorauthenticatie verplichten voor één klant
@@ -99,8 +98,8 @@ Je hebt `sites.manage` nodig, dekkend voor die tenant.
 2. **Locatie toevoegen**.
 3. Kies de **tenant**. Dat kan alleen nu: zodra de locatie bestaat, ligt dat vast.
 4. Geef hem een naam, en leg desgewenst vast waar hij staat en wie je erover belt. De contactpersoon
-   is een notitie voor wie dit tijdens een storing leest — Velnox verstuurt geen e-mail en gebruikt
-   hem nergens voor.
+   is een notitie voor wie dit tijdens een storing leest — Velnox gebruikt hem
+   nergens voor en mailt die persoon niet.
 5. **Locatie toevoegen**.
 
 ### Verwijderen
@@ -159,11 +158,11 @@ bereikt.
 
 Je hebt een engineer aangenomen die het Amsterdamse datacenter van één klant beheert en verder niets.
 
-1. Maak zijn account aan in **je eigen MSP-organisatie** — het is jouw medewerker, niet die van de
+1. Maak het account aan in **je eigen MSP-organisatie** — het is jouw medewerker, niet die van de
    klant.
 2. Ken **MSP Engineer** toe, geldend voor **Locatie: Amsterdam (Contoso Cloud)**.
 
-Hij kan die locatie nu zien en eraan werken. De overige locaties van Contoso, en elke andere klant,
+Die engineer kan de locatie nu zien en eraan werken. De overige locaties van Contoso, en elke andere klant,
 zijn niet alleen verborgen — de API weigert het verzoek, en de datalaag zou het er nog uitfilteren
 ook als dat niet zo was.
 

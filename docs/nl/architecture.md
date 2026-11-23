@@ -6,8 +6,11 @@
 > Velnox is een self-hosted MSP-beheerplatform voor Proxmox VE-omgevingen.
 > De naam en het logo van Velnox worden gebruikt door **The Velnox Foundation**. Er is geen merk geregistreerd of geclaimd.
 
-**Status:** Fase 1 geïmplementeerd. Secties over latere fasen blijven ontwerpvoorstellen; waar fase 1
-een keuze uit fase 0 heeft gewijzigd, staat dat ter plekke gemarkeerd als *Gewijzigd in fase 1*.
+**Status:** geschreven in fase 0 en aangepast waar dat staat aangegeven (*Gewijzigd in fase 1*). Dit
+is het ontwerp: waar de code een andere kant op ging, gelden de code en de besluiten in
+[tech-decisions.md](tech-decisions.md), en [de roadmap](roadmap.md) en de
+[bekende beperkingen](known-gaps.md) zeggen wat er vandaag gebouwd is. De pakketten `remote-exec` en
+`automation` uit §3 werden code binnen `apps/worker`; `providers-virt` wacht op fase 11 en 12.
 **Documentversie:** 0.2.0
 **Doelplatform:** Debian 12 (bookworm) / Debian 13 (trixie), x86_64, Docker + Docker Compose.
 
@@ -23,7 +26,7 @@ MSP. Die ene zin bepaalt elke architectuurkeuze:
 | Meerdere klanten op één installatie | Harde, server-side multi-tenancy; isolatie is een security boundary, geen UI-filter |
 | Handelingen op productie-hypervisors | Elke muterende actie is een auditbare, hervatbare, annuleerbare job — nooit een inline HTTP-handler |
 | Root-credentials van infrastructuur van derden | Envelope-versleutelde secret store met vervangbare backend; secrets bereiken nooit logs, joboutput of de browser |
-| Destructieve workflows (major upgrades, herstarts) | Data-gedreven playbooks met preflight → herstelactie → hercontrole → uitvoeren → valideren, en expliciete goedkeuringspunten |
+| Destructieve workflows (grote upgrades, herstarts) | Data-gedreven playbooks met preflight → herstelactie → hercontrole → uitvoeren → valideren, en expliciete goedkeuringspunten |
 | Levering als appliance | Reproduceerbare build-pipeline: dev compose → tar.gz-bundel → zelfuitpakkende installer → Debian ISO |
 | Leveranciers veranderen (VMware, Hyper-V, Vault, toekomstige PVE-versies) | Alles wat extern is zit achter een adapter-interface met een register |
 
@@ -37,7 +40,7 @@ MSP. Die ene zin bepaalt elke architectuurkeuze:
 - Velnox biedt in v1 **geen** selfserviceportaal voor eindklanten. Tenant-gebruikers zijn operators,
   geen eindklanten.
 
-**In scope per beslissing (2026-08-31):** Ceph major upgrades (§10.1), optionele maar aanbevolen
+**In scope per beslissing (2026-08-31):** grote Ceph-upgrades (§10.1), optionele maar aanbevolen
 tweefactorauthenticatie (§5), Engelse en Nederlandse lokalisatie met een vertaalklare woordenlijst
 ([i18n.md](i18n.md)), en air-gapped installatie vanaf een self-contained artifact (§13). Het project is
 gelicentieerd onder **AGPLv3**, wat een concrete producteis met zich meebrengt — zie §15.
@@ -89,7 +92,7 @@ Volledig servicediagram, poorten, health checks en afhankelijkheidsvolgorde:
 - **api** beheert HTTP, authenticatie/autorisatie, validatie en het *indienen* van jobs. Het praat
   nooit met een node, opent nooit een SSH-verbinding en voert nooit een shellcommando uit. Dit is een
   bewuste security boundary: een request handler kan niet tot remote execution verleid worden omdat er
-  geen code path naartoe bestaat.
+  geen codepad naartoe bestaat.
 - **worker** voert alle outbound automation uit. Het is de enige container waarin de Proxmox-, SSH- en
   WinRM-adapters geladen zijn, en de enige die credentials ontsleutelt voor gebruik.
 - **web** rendert server-side en houdt geen token vast. Caddy serveert de UI en de API op één origin,
@@ -115,11 +118,11 @@ velnox/
 │  ├─ worker/                  # NestJS standalone app, BullMQ processors
 │  │  └─ src/processors/       # discovery, inventory, update, rolling-update,
 │  │                           # major-upgrade, rotation, migration, scheduler
-│  └─ web/                     # Next.js App Router frontend + BFF-proxy
-│     ├─ app/(auth)/           # login, sso callback, installatiewizard
-│     ├─ app/(dashboard)/      # sidebar-shell en alle ingelogde routes
-│     ├─ components/           # ui/ (shadcn), data-table/, status/, forms/
-│     └─ lib/                  # api client, sessie, rechten-helpers
+│  └─ web/                     # Next.js App Router-frontend
+│     ├─ app/                  # sidebar-shell, dashboard, instellingen, placeholderroutes
+│     ├─ i18n/                 # next-intl-verzoekconfiguratie
+│     ├─ components/           # ui-primitieven, status, navigatie
+│     └─ lib/                  # server-only api client, navigatiemodel
 ├─ packages/
 │  ├─ db/                      # Prisma-schema, migraties, seed, tenancy-extensie
 │  ├─ shared/                  # zod-contracten, DTO's, rechtencatalogus, enums, fouten
@@ -135,8 +138,11 @@ velnox/
 │  ├─ caddy/                   # Caddyfile-templates
 │  └─ systemd/                 # velnox.service unit voor appliance-installaties
 ├─ scripts/
-│  ├─ build.sh  build-tar.sh  build-iso.sh  build-dev.sh
-│  └─ lib/                     # gedeelde shellfuncties (logging, preflight, docker-installatie)
+│  ├─ gen-env.sh               # genereert .env met sterke secrets, overschrijft nooit
+│  ├─ verify-stack.sh          # toetst de draaiende stack aan de acceptatiecriteria
+│  ├─ validate-glossary.mjs  validate-locales.mjs  check-licenses.mjs
+│  ├─ build.sh  build-tar.sh  build-iso.sh  build-dev.sh      (fase 14)
+│  └─ lib/                     # gedeelde shell- en scripthelpers
 ├─ iso/                        # live-build configuratie: hooks, preseed, pakketlijsten
 ├─ docs/                       # deze map
 ├─ install.sh
@@ -181,7 +187,7 @@ auditspoor, en de guard die een principal vaststelt. *Vergeten* van een autorisa
 daardoor niets; je moet er actief omheen werken.
 
 Het bereik wordt door de auth-guard ingevuld zodra de principal bekend is. Tot dat moment verkeert
-elk verzoek in de foutwerpende toestand, en dat is wat de gevaarlijke standaard "weigeren" maakt in
+elk verzoek in de toestand waarin een query een fout gooit, en dat is wat de gevaarlijke standaard "weigeren" maakt in
 plaats van "alle rijen". Wat het filter opheft is een **GLOBAL-recht**, niet lidmaatschap van de
 MSP-organisatie: een account dat in de MSP-tenant woont maar één klant kreeg toegewezen, bereikt
 precies die klant.
@@ -200,7 +206,7 @@ schrijfacties.
 **Ruwe SQL is verboden** in applicatiecode via een ESLint-regel (`no-restricted-properties` op
 `$queryRaw`/`$executeRaw`) met een gedocumenteerde uitzonderingslijst, omdat ruwe SQL laag 2 omzeilt.
 
-**Laag 3 (gepland, hardening in Phase 15):** PostgreSQL Row-Level Security op de meest risicovolle
+**Laag 3 (gepland, hardening in fase 15):** PostgreSQL Row-Level Security op de meest risicovolle
 tabellen (`credentials`, `nodes`, `vms`, `audit_events`, `jobs`), aangestuurd door
 `SET LOCAL velnox.tenant_ids` binnen een interactieve transactie. Uitgesteld omdat het elke query in
 een expliciete transactie dwingt en connection pooling compliceert; vastgelegd als bekende beperking in
@@ -220,7 +226,7 @@ plaats van stilzwijgend overgeslagen.
 | CSRF | Double-submit token in een niet-`HttpOnly`-cookie plus header `X-Velnox-CSRF`, verplicht bij elke niet-GET-request |
 | MFA | **Optioneel, aanbevolen, standaard uit.** TOTP (RFC 6238, 30 s, SHA-1 voor compatibiliteit met authenticator-apps, ±1 venster drift) plus 10 eenmalige herstelcodes, Argon2id-gehasht. De TOTP-seed staat in de credential store, nooit als platte kolom. WebAuthn is voorzien maar uitgesteld. |
 | MFA-beleid | Per installatie en per tenant: `OPTIONAL` (standaard) \| `REQUIRED_FOR_PRIVILEGED` \| `REQUIRED`. `REQUIRED_FOR_PRIVILEGED` geldt voor elke gebruiker met een `*.manage`-, `*.execute`- of `credentials.rotate`-recht op enig bereik — precies de accounts die klantinfrastructuur kunnen wijzigen. |
-| MFA-afdwinging | `sessions.mfa_satisfied_at`; een sessie die niet aan MFA voldeed bereikt alleen de aanmeldstroom en uitloggen. Afgedwongen door een globale guard, zodat een nieuw endpoint standaard gedekt is. |
+| MFA-afdwinging | `sessions.mfa_satisfied_at`; een sessie die niet aan MFA voldeed bereikt alleen het instellen van MFA en uitloggen. Afgedwongen door een globale guard, zodat een nieuw endpoint standaard gedekt is. |
 | Brute force | Limieten per account en per IP met exponentiële vertraging; blokkade is *zacht* (vertraging) om triviale account-DoS te voorkomen. MFA- en herstelcodepogingen hebben een eigen, strengere limiet. |
 | SSO | Microsoft Entra ID, OIDC authorization code + PKCE; `state`/`nonce` in Redis met TTL van 10 min |
 | Noodtoegang | Lokale beheerderslogin kan nooit door SSO-configuratie worden uitgeschakeld; volledig uitschakelen vereist minstens één andere MSP Super Administrator met een geverifieerd lokaal wachtwoord |
@@ -241,8 +247,8 @@ Rechten zijn tekstwaarden (`resource.action`), één keer gedefinieerd in
 seed-data en de UI.
 
 Rollen zijn **benoemde bundels rechten**. Systeemrollen (MSP Super Administrator, MSP Administrator,
-MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only) zijn geseed en
-onveranderlijk; eigen rollen per tenant komen uit dezelfde catalogus.
+MSP Engineer, MSP Read Only, Tenant Administrator, Tenant Operator, Tenant Read Only) komen uit de seed en
+zijn onveranderlijk; eigen rollen per tenant komen uit dezelfde catalogus.
 
 Autorisatie wordt beoordeeld op een **toekenning** = (rol, bereik):
 
@@ -277,13 +283,14 @@ MASTER_ENCRYPTION_KEY (32 bytes, base64, uit env of secret-bestand)
 ```
 
 Envelope-encryptie (in plaats van directe encryptie) is gekozen omdat rotatie van de hoofdsleutel dan
-alleen DEK's herwrapt — secretmateriaal hoeft nooit ontsleuteld en opnieuw versleuteld te worden — en
+alleen DEK's opnieuw wrapt — secretmateriaal hoeft nooit ontsleuteld en opnieuw versleuteld te worden — en
 omdat het een schone aansluiting geeft voor een toekomstige KMS die DEK's op afstand wrapt.
 
 `SecretStore` is een interface — `put`, `get`, `delete`, `rewrap` — met `DatabaseSecretStore` als
 v1-implementatie en `VaultSecretStore` / `AzureKeyVaultSecretStore` als gedocumenteerde toekomstige
-backends. **Alleen de worker roept ooit `get()` aan.** De API kan credentials aanmaken en ernaar
-verwijzen, maar heeft geen code path dat platte tekst teruggeeft.
+backends. **Alleen de worker ontsleutelt infrastructuurcredentials.** De API kan ze aanmaken en ernaar
+verwijzen en heeft geen codepad dat de platte tekst ervan teruggeeft; zelf leest ze alleen wat ze
+nodig heeft, zoals een TOTP-seed, en de vastgelegde onthulling van de wachtwoorden van een VM (ADR-039).
 
 ### Redactie
 
@@ -390,7 +397,7 @@ het beleid staat, een *andere* persoon dan degene die de job indiende.
 
 ---
 
-## 10. Major upgrade- en herstelactieframework
+## 10. Framework voor grote upgrades en herstelacties
 
 Zeven fasen, zoals gespecificeerd: Discovery → Preflight → Herstelplan → Hercontrole → Upgrade →
 Validatie na upgrade → Rapport.
@@ -431,20 +438,20 @@ geraakte bestanden bestaat en `validate()` het resultaat positief kan bevestigen
 alles wat opslag, netwerk of niet-Proxmox-pakketten raakt — stopt voor goedkeuring en toont de operator
 de exacte wijzigingsset. Elke herstelactie schrijft een auditgebeurtenis met de diff vóór en na.
 
-### 10.1 Ceph major upgrades
+### 10.1 Grote Ceph-upgrades
 
 Ceph-upgrades zijn **in scope voor v1** en vormen het tweede concrete playbook op de generieke engine —
-wat meteen het bewijs van genericiteit levert: dezelfde runner, hetzelfde stapregister en dezelfde
-guard-evaluator sturen zowel een Debian/PVE major upgrade als een Ceph-release-upgrade aan, zonder iets
+wat meteen het bewijs van generiekheid levert: dezelfde runner, hetzelfde stapregister en dezelfde
+guard-evaluator sturen zowel een grote Debian/PVE-upgrade als een Ceph-release-upgrade aan, zonder iets
 Ceph-specifieks in de engine zelf.
 
-**Waarom dit geen stap binnen de PVE-upgrade kan zijn.** Een Proxmox major upgrade overschrijdt een
-Debian-release; een Ceph-release-upgrade is een rollende herstart van daemons over het hele cluster. Ze
+**Waarom dit geen stap binnen de PVE-upgrade kan zijn.** Een grote Proxmox-upgrade gaat over een
+Debian-release heen; een Ceph-release-upgrade is een rollende herstart van daemons over het hele cluster. Ze
 hebben verschillende werkeenheden (node versus daemon), verschillende gezondheidsmodellen
 (corosync-quorum versus Ceph `HEALTH_OK` plus PG-status) en verschillende faalwijzen. Velnox modelleert
 ze als **afzonderlijke playbooks die een plan achtereenvolgens samenstelt.**
 
-**Volgorde.** Een PVE major release levert een specifieke Ceph-release en ondersteunt de vorige niet.
+**Volgorde.** Een grote PVE-release levert een specifieke Ceph-release en ondersteunt de vorige niet.
 Een upgradeplan voor een Ceph-cluster wordt daarom samengesteld als:
 
 ```
@@ -534,7 +541,7 @@ voor tabellen, detailpanelen en live jobstromen.
   > API van de publieke origin te houden. Dat bleek niets op te leveren: machineclients hebben hoe dan
   > ook API-tokens tegen een bereikbare API nodig (§5), dus de API is sowieso publiek, en Caddy maakt
   > hem al same-origin — en dát is wat CORS wegneemt en de sessiecookie `HttpOnly` houdt. De proxy zou
-  > een extra hop en een tweede code path zijn geweest zonder winst in veiligheid, dus is hij niet
+  > een extra hop en een tweede codepad zijn geweest zonder winst in veiligheid, dus is hij niet
   > gebouwd. Het pakket `server-only` bewaakt `lib/api.ts`, zodat het interne adres niet per ongeluk in
   > een Client Component kan belanden.
 - Rechten worden eenmaal per sessie in een context geladen; de UI *verbergt* wat een gebruiker niet mag,
@@ -580,7 +587,7 @@ Zes Compose-services: `caddy`, `web`, `api`, `worker`, `postgres`, `redis`. `api
 - Optionele `/metrics` in Prometheus-formaat: wachtrijdiepte, jobduur, API-latentie, foutpercentages van
   adapters. Standaard uit, aan te zetten via env.
 - Back-up: een gedocumenteerde procedure met `pg_dump` plus `.env`. **Het kwijtraken van
-  `MASTER_ENCRYPTION_KEY` maakt elk opgeslagen credential onherstelbaar** — nadrukkelijk vermeld in de
+  `MASTER_ENCRYPTION_KEY` maakt elke opgeslagen credential onherstelbaar** — nadrukkelijk vermeld in de
   installeruitvoer, de README en de back-updocumentatie.
 
 ---
@@ -614,7 +621,7 @@ iemand anders als gesloten gehoste dienst zou draaien, en de AGPL houdt verbeter
 Engels en Nederlands zitten in v1, gebouwd op een vaste woordenlijst (`packages/i18n/glossary.csv`),
 zodat een derde taal een datawijziging is in plaats van een codewijziging. De leidende regel —
 **geen enkele zichtbare tekst staat in applicatiecode** — moet vanaf de eerste commit gelden, en is
-daarom een architectuurbeperking en geen polijstpunt voor Phase 13. Auditgebeurtenissen,
+daarom een architectuurbeperking en geen polijstpunt voor fase 13. Auditgebeurtenissen,
 jobgebeurtenissen en logs blijven bewust Engels; het zijn forensische vastleggingen. Volledig ontwerp:
 [i18n.md](i18n.md).
 

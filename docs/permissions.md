@@ -195,7 +195,7 @@ granted today and guards nothing yet.
 **`credentials.read` does not read secret material.** It sees that a credential exists, what it is
 for and when it was last rotated. No permission grants reading the secret itself, because no
 endpoint returns it — infrastructure credentials are decrypted only inside the worker, at the moment
-they are used. See [Technical decisions](tech-decisions.md), ADR-009 and ADR-023.
+they are used. See [Technology decisions](tech-decisions.md), ADR-009 and ADR-023.
 
 ---
 
@@ -250,5 +250,5 @@ code disagree, which is worth seeing rather than hiding.
 
 - [Managing users and access](managing-access.md) — how to grant, revoke and disable
 - [Getting started](getting-started.md) — the first hour after installing
-- [Technical decisions](tech-decisions.md) — why the catalogue is frozen, and what that costs
+- [Technology decisions](tech-decisions.md) — why the catalogue is frozen, and what that costs
 - [Architecture](architecture.md) — where the permission check actually happens

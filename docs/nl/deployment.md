@@ -72,21 +72,21 @@ back-up.
 | SCSI-controller | `VirtIO SCSI single` |
 | Schijf | Bus `SCSI`, `Discard=on`, `IO thread=on`, cache `Default (no cache)`, SSD-emulatie aan bij flash eronder |
 | Netwerk | `VirtIO (paravirtualized)` |
-| Guest agent | Ingeschakeld — en installeer hem ook in de guest |
+| Guest agent | Ingeschakeld — en installeer hem ook in de gast |
 | Starten bij opstarten | Ja |
 
 ```bash
 sudo apt-get install -y qemu-guest-agent
 ```
 
-Installeren is alles wat u in de guest doet. Voer `systemctl enable qemu-guest-agent` **niet** uit:
+Installeren is alles wat je in de gast doet. Voer `systemctl enable qemu-guest-agent` **niet** uit:
 de unit wordt door udev gestart zodra de virtuele seriële poort verschijnt, en hem inschakelen levert
 een lap tekst op over een unit zonder installatieconfiguratie — dat is systemd die correct meldt dat
 het commando zinloos was, geen fout die je moet verhelpen.
 
 Wat wél telt is het vinkje **Guest agent** in de VM-opties hierboven. Dat toevoegen is een
 hardwarewijziging, dus een draaiende VM moet volledig worden gestopt en gestart — opnieuw opstarten
-vanuit de guest is niet genoeg. Controleren of het gelukt is:
+vanuit de gast is niet genoeg. Controleren of het gelukt is:
 
 ```bash
 systemctl is-active qemu-guest-agent && ls /dev/virtio-ports/
@@ -95,7 +95,7 @@ systemctl is-active qemu-guest-agent && ls /dev/virtio-ports/
 `active` plus een lijst met `org.qemu.guest_agent.0` betekent dat het werkt. Is de service inactief
 en bestaat dat pad niet, dan is de VM sinds het aanzetten van het vinkje niet uit en aan geweest.
 
-Back-uppen met Proxmox Backup Server in snapshot-modus met de guest agent ingeschakeld, zodat
+Maak back-ups met Proxmox Backup Server in snapshotmodus met de guest agent ingeschakeld, zodat
 `fsfreeze` eerst draait.
 
 ### VMware ESXi / vSphere
@@ -282,7 +282,7 @@ sudo velnox cert letsencrypt jij@example.com
 ```
 
 Het adres is het contact van het ACME-account. Hiervoor moet
-`VELNOX_SITE_ADDRESS` een naam zijn die publiek resolvet en deze host bereikt op poort 80 en 443.
+`VELNOX_SITE_ADDRESS` een naam zijn die via openbare DNS te vinden is en naar deze host wijst, bereikbaar op poort 80 en 443.
 Let's Encrypt geeft geen certificaten uit voor IP-adressen, en het commando weigert dat in plaats van
 Caddy stilletjes te laten falen.
 
@@ -336,7 +336,7 @@ niets onderbroken: de worker houdt geen verbinding via Caddy.
 ### Weten dat er een nieuwere versie is
 
 Elk kwartier leest de worker één bestand, `release.json` op de main-branch van de repository: de
-nieuwste versie, en de advisories — oplossingen waar een installatie niet op moet blijven zitten. Is
+nieuwste versie en de advisories, de oplossingen die een installatie snel moet krijgen. Is
 die versie nieuwer dan de draaiende, dan toont de zijbalk boven Serverbeheer **Velnox 0.7.x
 beschikbaar** aan iedereen met `system.manage`, of **Kritieke update: Velnox 0.7.x** in rood als een
 advisory die deze installatie raakt kritiek is. Dat opent **Serverbeheer → Updates**, met die advisories en de
@@ -346,7 +346,7 @@ procedure hieronder.
   instance-id, geen aantallen. GitHub ziet het adres waar het vandaan komt, zoals bij elke download.
 - **Geen internet:** het paneel zegt *Kon niet controleren* en waarom, nooit *Up-to-date*; de zijbalk
   toont niets. Een mislukte poging wacht net als een geslaagde een kwartier.
-- **Uitzetten:** *Controle uitzetten* in Serverbeheer → Updates (in de audit als
+- **Uitzetten:** *Controle uitzetten* in Serverbeheer → Updates (in het auditlog als
   `system.update_check_changed`). *Nu controleren* werkt ook als hij uitstaat.
 - **Een ander adres:** `VELNOX_UPDATE_MANIFEST_URL` in `.env` noemt een ander https-adres — een
   mirror binnen het beheernetwerk, of het eigen bestand van een fork. Het wordt direct gelezen, niet
@@ -383,7 +383,7 @@ opnieuw afgeleid, zodat een onbewaakte upgrade een hostnaam niet stilletjes teru
 IP-adres of een publiek vertrouwd certificaat vervangt door een zelfondertekend. Named volumes worden
 niet aangeraakt, dus de database en de wachtrij blijven intact.
 
-**Wat wél ververst wordt.** De build-commit, die de bronlink onder Instellingen → Over toont. Dat is
+**Wat wél ververst wordt.** De build-commit, die de bronlink onder **Broncode → Over** toont. Dat is
 buildinformatie en geen configuratie, dus die volgt altijd de code die werkelijk draait.
 En de software eronder: de Node.js-basisimage van Velnox' eigen images, en de images van PostgreSQL,
 Redis en Caddy, elk opnieuw opgehaald op de nieuwste release van de major waarop ze vastliggen
@@ -432,7 +432,7 @@ database zoals hij was en wordt er niets teruggedraaid.
 
 ### Meerdere machines gelijk houden
 
-De commit onder Instellingen → Over is de exacte broncode van de draaiende build, dus die naast elkaar
+De commit onder **Broncode → Over** is de exacte broncode van de draaiende build, dus die naast elkaar
 leggen laat zien welke installaties achterlopen. Voor een groep hosts draai je op elke machine
 `sudo velnox update`; dat op een machine draaien die al actueel is doet geen kwaad en kost ongeveer
 een minuut.
@@ -441,7 +441,7 @@ een minuut.
 
 ### De schijf van de ISO-bibliotheek
 
-ISO's en cloud images staan in een eigen Docker-volume, `velnox_library`. Een named volume heeft geen
+ISO's en cloud-images staan in een eigen Docker-volume, `velnox_library`. Een named volume heeft geen
 quotum, dus Velnox handhaaft zelf twee grenzen, ingesteld in `.env`:
 
 | Instelling | Standaard | Betekenis |
@@ -493,8 +493,8 @@ Test het herstel voordat je erop vertrouwt.
 ergens vandaan en kan opnieuw worden opgehaald of geüpload. Wat de bibliotheek bevat staat in de
 database, dus een herstelde database zonder het volume toont bestanden die er niet zijn; de worker
 merkt dat binnen een kwartier en zet ze op *Mislukt*, met als reden dat het bestand weg is, en ze
-verwijderen op het scherm **ISO-bibliotheek** ruimt ze op. Is opnieuw ophalen voor jou duur, back-up
-het volume dan ook:
+verwijderen op het scherm **ISO-bibliotheek** ruimt ze op. Is opnieuw ophalen voor jou duur, maak dan
+ook een back-up van het volume:
 
 ```bash
 sudo velnox backup library
@@ -627,8 +627,9 @@ De API en de UI worden op één origin achter Caddy geserveerd, met HSTS, CSP en
 hardening headers. PostgreSQL en Redis zijn van buitenaf onbereikbaar. Alleen de worker-container
 heeft een netwerkroute naar de infrastructuur die Velnox beheert.
 
-**Deze build kent nog geen authenticatie** — elke pagina en elk endpoint staat open. Rol hem uit op
-een beheernetwerk achter een firewall, en nergens waar onvertrouwde mensen bij kunnen.
+Elke pagina en elk eindpunt vereist een sessie, op de bewust openbare na zoals de health checks. Rol
+Velnox toch uit op een beheernetwerk achter een firewall: het beheert de infrastructuur van je
+klanten, en hoort niet bereikbaar te zijn voor onvertrouwde mensen.
 
 ---
 

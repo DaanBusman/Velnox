@@ -4,7 +4,7 @@
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Eén plek voor de installers en disk-images waar je clusters mee worden gebouwd.** De bibliotheek
-staat op de Velnox-host en bevat ISO's en cloud images voor alle klanten tegelijk. Van daaruit wordt
+staat op de Velnox-host en bevat ISO's en cloud-images voor alle klanten tegelijk. Van daaruit wordt
 een bestand in één stap naar de opslag van elk cluster gekopieerd, en een bestand dat al op een
 cluster staat kan ernaar terug worden gekopieerd.
 
@@ -18,8 +18,8 @@ werkt, staat in ADR-037 en ADR-038 in [Technologiekeuzes](tech-decisions.md). Vo
 
 | Soort | Bestandsnamen | Gebruikt voor |
 |---|---|---|
-| **ISO** | `.iso` | Installers — vooral Windows, waarvoor geen cloud image bestaat. |
-| **Disk-image** | `.qcow2`, `.raw`, `.img` | Cloud images voor Linux — de `.img`-bestanden van Ubuntu zijn van binnen qcow2. |
+| **ISO** | `.iso` | Installers — vooral Windows, waarvoor geen cloud-image bestaat. |
+| **Disk-image** | `.qcow2`, `.raw`, `.img` | Cloud-images voor Linux — de `.img`-bestanden van Ubuntu zijn vanbinnen qcow2. |
 
 Bestandsnamen houden zich aan de tekens die Proxmox laat staan: letters, cijfers, punten, streepjes en
 underscores. Twee bestanden waarvan de namen alleen in hoofdletters verschillen kunnen niet allebei in
@@ -171,8 +171,8 @@ Match User velnox-sftp
 in `/etc/ssh/sshd_config`, met leestoegang tot de opslagmappen — `/var/lib/vz/template/iso` en
 `/var/lib/vz/import` voor de opslag `local`.
 
-Dezelfde SSH-instelling gebruikt [updates toepassen](updating-nodes.md), en dat voert drie vaste
-opdrachten uit, één ervan via sudo. Een account dat alleen SFTP mag houdt het kopiëren werkend en
+Dezelfde SSH-instelling gebruikt [updates toepassen](updating-nodes.md), en dat voert vijf vaste
+opdrachten uit, twee ervan via sudo. Een account dat alleen SFTP mag houdt het kopiëren werkend en
 laat updates mislukken; [Nodes bijwerken](updating-nodes.md#voordat-je-updates-kunt-toepassen-ssh)
 heeft een account dat beide doet.
 
@@ -194,7 +194,7 @@ achter in de bibliotheek.
 | Wat je ziet | Wat het betekent |
 |---|---|
 | *De bibliotheek zou over haar limiet … gaan* | De eigen omvangsgrens van de bibliotheek. Verwijder bestanden, of verhoog `VELNOX_LIBRARY_MAX_GB`. |
-| *Dan blijft er … minder over dan het minimum* | De schijf is bijna vol. Maak ruimte vrij op de host, of verlaag `VELNOX_LIBRARY_MIN_FREE_GB`. |
+| *Met … GB vrije schijfruimte zou nog eens … GB onder het minimum …* | De schijf is bijna vol. Maak ruimte vrij op de host, of verlaag `VELNOX_LIBRARY_MIN_FREE_GB`. |
 | *… is niet wat de naam zegt* | De bytes passen niet bij de extensie. Meestal een foutpagina onder de naam van een ISO — open de URL in een browser. |
 | *Velnox haalt niets op van dat adres* | Een van de weigeringen onder [Vanaf een URL](#vanaf-een-url). |
 | *… staat al op die opslag* | Verwijder het eerst op het cluster; Velnox overschrijft niet. |

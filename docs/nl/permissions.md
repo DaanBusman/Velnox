@@ -47,11 +47,11 @@ Een toekenning op `TENANT` dekt elke locatie, elk cluster en elke node in die te
 op `CLUSTER` dekt alleen dat cluster.
 
 **`GLOBAL` is alleen toekenbaar aan leden van de MSP-hoofdtenant** — je eigen organisatie. De
-beheerder van een klant kan geen globale toekenning hebben, welke rol hij ook krijgt.
+beheerder van een klant kan geen globale toekenning hebben, welke rol die ook krijgt.
 
 **Een toekenning op `TENANT` op een hoofd-tenant dekt ook zijn sub-tenants** (fase 5C). Een
 toekenning op een sub-tenant dekt alleen die sub-tenant. Zie *Hoofd-tenants en sub-tenants* in
-[Je omgeving inrichten](organising-your-fleet.md).
+[Je omgeving indelen](organising-your-fleet.md).
 
 ---
 
@@ -176,8 +176,8 @@ vandaag toekenbaar en bewaakt nog niets.
 | `updates.manage` | Updatebeleid en onderhoudsvensters instellen: wat zichzelf bijwerkt, wanneer, met of zonder goedkeuring | 6 |
 | `placement.read` | De plaatsingsregels van een cluster zien, of ze kloppen, en de plaatsingsinstellingen | 7B |
 | `placement.manage` | Plaatsingsregels schrijven — in de HA-regels van Proxmox op PVE 9 — en Velnox draaiende gasten laten verplaatsen om ze na te leven of het geheugen te spreiden, zelfstandig als dat mag | 7B |
-| `upgrades.read` | Plannen en gereedheid voor major upgrades zien | 8 |
-| `upgrades.execute` | Een major upgrade uitvoeren tegen echte infrastructuur | 8 |
+| `upgrades.read` | Plannen en gereedheid voor grote upgrades zien | 8 |
+| `upgrades.execute` | Een grote upgrade uitvoeren tegen echte infrastructuur | 8 |
 | `automation.read` | Schema's en automatiseringsregels zien | 8 |
 | `automation.manage` | Schema's en automatiseringsregels aanmaken en wijzigen | 8 |
 | `credentials.read` | Zien dát een credential bestaat, en de metadata ervan | 4 |
@@ -201,15 +201,15 @@ vandaag toekenbaar en bewaakt nog niets.
 het is en wanneer het voor het laatst is geroteerd. Geen enkel recht geeft toegang tot het geheim
 zelf, omdat geen enkel eindpunt het teruggeeft — infrastructuurcredentials worden alleen binnen de
 worker ontsleuteld, op het moment dat ze worden gebruikt. Zie
-[Technische besluiten](tech-decisions.md), ADR-009 en ADR-023.
+[Technologiekeuzes](tech-decisions.md), ADR-009 en ADR-023.
 
 ---
 
 ## Bevoorrechte rechten en tweefactorauthenticatie
 
 Deze tweeëntwintig rechten laten een principal de infrastructuur van een klant of de beveiligingshouding
-van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor meervoudige
-authenticatie op uitkomt:
+van de installatie wijzigen. Ze zijn waar het beleid `REQUIRED_FOR_PRIVILEGED` voor
+tweefactorauthenticatie op uitkomt:
 
 `tenants.manage` · `sites.manage` · `users.manage` · `users.reset_mfa` · `users.reset_mfa_msp` ·
 `roles.manage` · `clusters.manage` · `nodes.manage` · `workloads.provision` · `library.manage` ·
@@ -260,5 +260,5 @@ zijn, en dat is het zien waard in plaats van het verbergen.
 
 - [Gebruikers en toegang beheren](managing-access.md) — toekennen, intrekken en uitschakelen
 - [Aan de slag](getting-started.md) — het eerste uur na de installatie
-- [Technische besluiten](tech-decisions.md) — waarom de catalogus bevroren is, en wat dat kost
+- [Technologiekeuzes](tech-decisions.md) — waarom de catalogus bevroren is, en wat dat kost
 - [Architectuur](architecture.md) — waar de rechtencontrole daadwerkelijk plaatsvindt

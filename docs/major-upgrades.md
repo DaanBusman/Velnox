@@ -101,8 +101,8 @@ prepared. `noout` already set is a warning: Velnox leaves it as it found it.
    old release.
 4. **restart** and **settle**, daemon by daemon, in Ceph's order — monitors, managers, OSDs, MDS:
    each restarted through Proxmox, proven to run the new release, and Ceph read again until it is
-   whole — healthy apart from `noout` and the warning that `require-osd-release` is not raised yet —
-   before the next. A warning Velnox does not know stops the run at once; one a restart causes for a
+   healthy, apart from `noout` and the warning that `require-osd-release` is not raised yet, before
+   the next. A warning Velnox does not know stops the run at once; one a restart causes for a
    moment, such as a monitor out of quorum, is waited out, up to the settle time (ten minutes by
    default).
 5. **require-release** — `ceph osd require-osd-release` raised to the target, only once every OSD
@@ -163,7 +163,7 @@ harmless. What Velnox does about the findings:
 
 | pve8to9 says | Velnox |
 |---|---|
-| The matching CPU microcode package could not be found | **Fixes it by itself:** enables Debian's `non-free-firmware` component on the Debian sources (keeping the old file) reads the node's CPU vendor from `/proc/cpuinfo` first and installs the package for it — `intel-microcode` for Intel, `amd64-microcode` for AMD. When pve8to9 names another package, or the CPU is neither, it stops with nothing installed and says why. Low risk, and it can be undone. |
+| The matching CPU microcode package could not be found | **Fixes it by itself:** enables Debian's `non-free-firmware` component on the Debian sources (keeping the old file), reads the node's CPU vendor from `/proc/cpuinfo` first and installs the package for it — `intel-microcode` for Intel, `amd64-microcode` for AMD. When pve8to9 names another package, or the CPU is neither, it stops with nothing installed and says why. Low risk, and it can be undone. |
 | Deprecated config `/etc/sysctl.conf` contains settings | After approval, moves every setting to `/etc/sysctl.d/99-velnox-from-sysctl-conf.conf` and comments it where it was. The approval shows both files line by line. |
 | systemd-boot meta-package installed | After approval, removes `systemd-boot` (`systemd-boot-efi` and `systemd-boot-tools` stay). |
 | grub-efi-amd64 meta-package not installed | After approval, installs it. |
@@ -195,7 +195,7 @@ anything that still stops the upgrade ends the run before any node is touched.
    here: its Ceph is on Squid already, by the rule above.
 3. **packages** — `apt-get update` and the dist-upgrade, keeping the node's own configuration files.
 4. **reboot** — with Ceph's `noout` set around it, and only while the cluster keeps quorum.
-5. **validate** — the node back on Proxmox VE 9 and its new kernel, Ceph whole, `noout` cleared,
+5. **validate** — the node back on Proxmox VE 9 and its new kernel, Ceph healthy, `noout` cleared,
    and pve8to9 again with nothing that stops.
 6. **return** — the guests moved back, those shut down started again.
 
@@ -235,14 +235,14 @@ when the plan is made.
 
 | What you see | What it means |
 |---|---|
-| *A condition for this step does not hold: …* | A guard — for example, a node offline. Make the cluster whole, then make a new plan. |
+| *A condition for this step does not hold: …* | A guard — for example, a node offline. Make the cluster healthy, then create a new plan. |
 | *… still stop the upgrade* | A blocker or an unrecognised line is open after remediation. The plan says which. |
 | *… remediation … failed* | A remediation could not be applied, or did not fix its check. The job's output says why. |
 | *The upgrade of … failed* | A target's upgrade or its validation failed. The targets before it are done. |
-| *Only a plan that has not run yet can be started or removed* | Make a new plan. |
+| *Only a plan that has not run yet can be started or removed* | Create a new plan. |
 | *There is no playbook …, or it is not offered to you* | Self-tests need `system.manage`. |
 | *The running release, the target and the version matrix disagree* | The refusal names which; see [the version matrix](#the-version-matrix). |
 | *This upgrade does not apply: every node already runs Proxmox VE 9* | There is nothing to upgrade. To read versions again first, rediscover the cluster. |
-| *Ceph runs …, and Proxmox VE 9 needs Squid* | Make the plan with **Upgrade Ceph to Squid first**. |
+| *Ceph runs …, and Proxmox VE 9 needs Squid* | Create the plan with **Upgrade Ceph to Squid first**. |
 | *Ceph is not healthy: …* | After a daemon's restart Ceph did not come back healthy within the settle time, or showed a warning Velnox does not know. `noout` has been cleared. |
 | *apt.update ended with exit code 100* | `apt-get update` failed on the node. The technical detail carries apt's first `E:` line, and the job's output all of apt's — a repository without a Release file, a 401, a name that does not resolve. |

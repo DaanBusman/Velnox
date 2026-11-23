@@ -1,7 +1,7 @@
 # Placement
 
 **Which guests of a cluster are kept apart or together, which nodes a guest belongs on, and how
-Velnox keeps it so.** A rule is set once and stays true: Velnox reports when it is not met, can move
+Velnox enforces that.** A rule is set once and stays true: Velnox reports when it is not met, can move
 guests to meet it, keeps it while a rolling update empties a node, and on Proxmox VE 9 writes it into
 Proxmox's own HA rules so it holds while Velnox is not running.
 
@@ -20,7 +20,7 @@ see ADR-049 in [Technology decisions](tech-decisions.md).
 - **Keep together** — these guests always run on the same node. For guests that talk to each other
   all the time.
 - **Prefer nodes** — these guests run on the nodes chosen. **Only these nodes** makes it strict:
-  a guest is never put anywhere else, even when none of them can take it. Off, a guest goes
+  a guest is never put anywhere else, even when none of them can take it. With it off, a guest goes
   elsewhere when it has to and comes back when it can.
 
 A rule names guests, by their VMID, and only running guests count: a stopped guest is nowhere, so it
@@ -65,7 +65,7 @@ cannot be met — no node with room, a guest that cannot move live — is said i
 
 The job, step by step:
 
-1. **check** — the cluster is whole: quorate, every node online, Ceph `HEALTH_OK`. Placement moves
+1. **check** — the cluster is healthy: it has quorum, every node is online, Ceph `HEALTH_OK`. Placement moves
    nothing on a cluster that is not.
 2. **plan** — from what Proxmox says now, not the inventory: the moves, and what cannot be met.
 3. **move** — each move in turn, checked against the rules again just before it.
@@ -76,17 +76,17 @@ The job, step by step:
 
 ## Balancing
 
-**Balance now** moves at most one guest: the smallest guest on the node using the most of its memory
-that, moved to a quieter node, narrows the difference between the busiest and the quietest — never
-against a rule, never to a node a soft preference ranks lower. It moves nothing while the difference
+**Balance now** moves at most one guest. On the node using the largest share of its memory, Velnox
+picks the smallest guest that, moved to a quieter node, narrows the difference between the busiest
+and the quietest node — never against a rule, never to a node a soft preference ranks lower. It moves nothing while the difference
 is within the threshold. Balancing is by memory, which is what decides whether a guest fits; CPU use
 changes from one minute to the next.
 
 ---
 
-## Keeping it so
+## Enforce automatically
 
-Under **Keeping it so**, both off until you turn them on:
+Under **Enforce automatically**, both off until you turn them on:
 
 - **Correct by itself** — when the inventory shows a rule not met, Velnox starts a correction.
 - **Balance memory by itself** — when the busiest node uses more of its memory than the quietest by
@@ -114,8 +114,8 @@ would now break a rule; the job says where it stays.
 |---|---|
 | *The cluster has no guest or node …* | The rule names a VMID or node the inventory does not have. Discover the cluster again if it is new. |
 | *… guests cannot be kept apart on … nodes* | More guests than nodes. Split the rule. |
-| *The same guests are kept the other way by rule …* | Two rules contradict each other. Change or switch off one. |
-| *The cluster is not healthy …* | A node is offline, quorum is lost, or Ceph is unhealthy. Nothing is moved until it is whole. |
+| *Rule … does the opposite with the same guests* | Two rules contradict each other. Change or switch off one. |
+| *The cluster is not healthy …* | A node is offline, quorum is lost, or Ceph is unhealthy. Nothing is moved until it is healthy again. |
 | *Some placement rules are still not met …* | No node with the room, or a guest that cannot move live (a disk on a node's own storage, a device passed through). |
 | *Not in Proxmox* on a rule | Proxmox refused the rule; the reason is under it. On a cluster mid-upgrade, the rule is kept by Velnox until every node runs PVE 9. |
-| *No node may take … while its own is emptied* | A rolling update would have to break a rule. Change the rule for the update, or stop the guest. |
+| *No node may take … while its own node is being emptied* | A rolling update would have to break a rule. Change the rule for the update, or stop the guest. |

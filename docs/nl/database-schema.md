@@ -1,4 +1,4 @@
-# Velnox — Voorstel databaseschema
+# Velnox — Databaseschema
 
 > **Vertaling.** Bron: [docs/database-schema.md](../database-schema.md) @ `366d091`.
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
@@ -95,9 +95,9 @@ wordt door de installatiewizard aangemaakt en kan nooit worden verwijderd.
 | slug | text | uniek **binnen de tenant**, niet globaal |
 | description | text null | |
 | locality, country, timezone | text null | waar hij staat; vrije tekst, voor wie dit tijdens een storing leest |
-| contact_name, contact_email, contact_phone | text null | een notitie — Velnox verstuurt geen e-mail |
+| contact_name, contact_email, contact_phone | text null | een notitie — Velnox mailt er niet naartoe |
 
-**Geland in fase 3.** De slug is per tenant omdat twee klanten allebei redelijkerwijs een locatie
+**Gebouwd in fase 3.** De slug is per tenant omdat twee klanten allebei redelijkerwijs een locatie
 `hq` kunnen hebben. De tenant ligt bewust vast: een locatie verplaatsen zou elk recht dat eraan hangt
 — en vanaf fase 4 elk cluster eronder — naar een andere klant verhuizen zonder dat iemand daartoe
 besloten heeft.
@@ -132,7 +132,7 @@ created_ip`
 
 De TOTP-seed is **geen kolom** — het is een verwijzing naar de credential store, versleuteld zoals elk
 ander secret. Een factor is pas bruikbaar zodra `confirmed_at` gezet is, wat vereist dat de gebruiker
-tijdens het aanmelden een werkende code aantoont; dat voorkomt buitensluiting door een half afgeronde
+tijdens het instellen een werkende code aantoont; dat voorkomt buitensluiting door een half afgeronde
 inrichting. Een partiële unieke index houdt één bevestigde TOTP-factor per gebruiker aan.
 `kind = WEBAUTHN` is gereserveerd en niet geïmplementeerd in v1.
 
@@ -166,17 +166,18 @@ geverifieerd e-mailadres wanneer de provider daarvoor is geconfigureerd.
 mfa_satisfied_at, expires_at, revoked_at, revoked_reason`
 
 Een sessie met een lege `mfa_satisfied_at` bereikt, wanneer het geldende beleid MFA vereist, alleen de
-aanmeld- en uitlogendpoints — afgedwongen door een globale guard, zodat nieuwe endpoints standaard
+instel- en uitlogendpoints — afgedwongen door een globale guard, zodat nieuwe endpoints standaard
 gedekt zijn. Refresh-rotatie maakt een kindrij; het aanbieden van een reeds geroteerd token trekt de
 hele `family_id` in (hergebruikdetectie).
 
-### `api_tokens`
+### `api_tokens` (ontworpen, niet gebouwd)
 `id, tenant_id, user_id, name, token_hash, prefix, scopes (permission[]), scope_type, scope_id,
 expires_at, last_used_at, revoked_at`
 
 ### `roles`
-`id, key, name, description, is_system (bool), tenant_id (leeg = globale systeemrol)`
-Systeemrollen zijn geseed en onveranderlijk. Eigen rollen per tenant dragen een `tenant_id`.
+`id, key, name, description, is_system (bool), msp_only (bool), tenant_id (leeg = hele installatie)`
+Systeemrollen komen uit de seed en zijn onveranderlijk. Aangepaste rollen (ADR-054) maakt de MSP, en
+ook die gelden voor de hele installatie: `tenant_id` leeg, `is_system` false.
 
 ### `role_permissions`
 `role_id, permission` — `permission` is een tekstwaarde die tegen de vaste catalogus in
@@ -199,10 +200,9 @@ trigger.
 
 ## 4. Proxmox-inventaris
 
-**Geland in fase 4.** Wat volgt is wat er bestaat, met één bewuste beperking: kolommen die bij latere
-fasen horen — updateclassificatie, herstart-vereist, onderhoudsmodus, credentials per node,
-inventarisatiemomentopnamen — zitten **nog niet** in het schema. Een kolom die altijd null is, is een
-kolom die uitgelegd moet worden, en elk ervan komt met de fase die hem vult.
+**Gebouwd in fase 4.** Wat volgt is wat er bestaat. Kolommen voor later werk komen met de fase die ze
+vult, want een kolom die altijd null is, moet uitgelegd worden: de updatekolommen kwamen met fase 6.
+Onderhoudsmodus, credentials per node en momentopnamen van de inventaris zijn niet gebouwd.
 
 `discovery_runs` is toegevoegd en staat niet in de schets uit fase 0: "wanneer werkte dit voor het
 laatst" en "waarop strandde het" zijn de twee vragen die een beheerder stelt over verouderde
@@ -227,7 +227,7 @@ helft van de sleutel in `authorized_keys`-vorm, door de worker uit de private sl
 de interface hem opnieuw kan tonen.
 
 `ceph_flags` is operationeel van belang: een cluster waar `noout` na afgebroken onderhoud is blijven
-staan, is een stille tijdbom, en wordt daarom geïnventariseerd, in de UI getoond en gealarmeerd.
+staan, is een stille tijdbom, en wordt daarom geïnventariseerd, in de UI getoond en gemeld.
 
 Een standalone node wordt gemodelleerd als een cluster van één. Daarmee blijft elk vervolgpad — rolling
 updates, upgradeplannen, guards — uniform in plaats van te vertakken op "is dit standalone".
@@ -235,15 +235,16 @@ updates, upgradeplannen, guards — uniform in plaats van te vertakken op "is di
 ### `nodes`
 | Groep | Kolommen |
 |---|---|
-| identiteit | `id, tenant_id, site_id, cluster_id, hostname, fqdn, address, api_port, ssh_port` |
-| verbinding | `api_credential_id, ssh_credential_id, tls_fingerprint_sha256, tls_verify_mode, ssh_host_key_fingerprint` |
-| versie | `pve_version, pve_release, kernel_version, debian_release, subscription_status, repository_status jsonb` |
-| gezondheid | `status (ONLINE|OFFLINE|UNKNOWN|MAINTENANCE), health, uptime_seconds, last_seen_at` |
-| capaciteit | `cpu_sockets, cpu_cores, cpu_model, cpu_usage_pct, mem_total_bytes, mem_used_bytes, disk_total_bytes, disk_used_bytes` |
-| updates | `updates_available_count, security_updates_count, kernel_update_pending, reboot_required, last_update_check_at` |
-| vlaggen | `maintenance_mode, managed (bool), notes` |
+| identiteit | `id, tenant_id, cluster_id, name, node_id, address` |
+| versie | `pve_version, kernel_version, running_kernel, subscription_status, subscription_level, repositories jsonb` |
+| gezondheid | `state, health, problems jsonb, uptime_seconds, last_seen_at` |
+| capaciteit | `cpu_count, cpu_model, cpu_usage, memory_total_bytes, memory_used_bytes, rootfs_total_bytes, rootfs_used_bytes` |
+| updates | `updates_available, updates_security, updates_kernel, updates_proxmox, updates_checked_at, reboot_required, reboot_required_reason` |
+| SSH | `ssh_host_key_fingerprint, ssh_host_key_type` |
 
-`tls_verify_mode` is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. Er bestaat geen waarde `INSECURE`.
+De API-verbinding hoort bij het cluster, dus `tls_verify_mode` staat op `clusters`, met de vingerafdruk
+en de credential. De waarde is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. Er bestaat geen waarde
+`INSECURE`.
 
 `ssh_host_key_fingerprint` en `ssh_host_key_type`, gereserveerd sinds fase 4, worden in fase 5A
 gevuld: de hostsleutel die een beheerder bevestigde, in de `SHA256:`-vorm van OpenSSH. Met een node
@@ -277,7 +278,7 @@ last_seen_at`
 > `/containers` als afzonderlijke gefilterde resources, zodat het externe contract overeenkomt met de
 > opdracht. Eén woord en het worden twee tabellen.
 
-### `inventory_snapshots`
+### `inventory_snapshots` (ontworpen, niet gebouwd)
 `id, tenant_id, cluster_id, node_id, taken_at, payload jsonb, job_id`
 Ruwe momentopname, bewaard met instelbare houdbaarheid. Gebruikt voor de voor/na-rapportage van upgrades
 en om parsing te onderzoeken zonder de node van een klant opnieuw te bevragen.
@@ -304,7 +305,7 @@ Geversioneerd zodat rotatie crashbestendig is (zie de rotatievolgorde in
 [architecture.md](architecture.md#rotatievolgorde-crashbestendig)). Precies één `ACTIVE`-versie per
 credential, afgedwongen door een partiële unieke index.
 
-### `rotation_policies`
+### `rotation_policies` (ontworpen, niet gebouwd)
 `id, tenant_id, name, scope_type, scope_id, enabled, interval_days, password_length, password_charset,
 maintenance_window_id, retain_superseded_days, notify_targets jsonb`
 
@@ -451,7 +452,6 @@ op `(tenant_id, lower(filename))` onder pakketten die niet FAILED zijn. `setting
 Windows-template noemt ze op id; niets in het schema verbindt die twee, dus de API controleert het.
 
 ### `provisionings`
-`id, tenant_id, template_id### `provisionings`
 `id, tenant_id, template_id, template_name, family, template_snapshot jsonb, cluster_id,
 cluster_name, node, disk_storage, media_storage, bridge, vlan, hostname, network jsonb, vmid, state
 (QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED), job_id, addresses text[], requested_by_id,
@@ -548,7 +548,7 @@ Een `COMPOSITE`-plan heeft geen playbook (`upgrade_plans_playbook`) en kindplann
 `sequence` — zo wordt een PVE 8 → 9-upgrade van een Ceph-cluster uitgedrukt: kind 1 het `CEPH`-plan,
 kind 2 het `PVE_MAJOR`-plan. Een kindplan upgradet het cluster van zijn ouder (trigger). `facts` is wat
 discovery verzamelde en wat acties tussen stappen bewaren; `report` bevat het rapport en zijn Markdown.
-Ontworpen en nog niet gebouwd: `version_matrix_id` (fase 9A), `strategy`, `scheduled_for`,
+Ontworpen en niet gebouwd: `version_matrix_id`, `strategy`, `scheduled_for`,
 `approved_by`.
 
 ### `upgrade_targets`
@@ -581,6 +581,8 @@ niet gebouwd.
 ---
 
 ## 9. Migraties
+
+Ontworpen voor fase 11 en 12; geen van deze tabellen bestaat al.
 
 ### `migration_sources`
 `id, tenant_id, site_id, kind (VMWARE_VCENTER|VMWARE_ESXI|HYPERV), name, address, port, credential_id,
@@ -631,11 +633,11 @@ ADR-043). Uniek op `(cluster_id, upid)`; bij elke inventarisatie opnieuw uitgele
 geschreven. De worker verwijdert taken ouder dan `system_settings.support_log_retention_days` (1–30,
 standaard 30, afgedwongen door `system_settings_support_retention_range`).
 
-### `alerts`
+### `alerts` (ontworpen, niet gebouwd)
 `id, tenant_id, severity, kind, resource_type, resource_id, title, detail, status (OPEN|ACKNOWLEDGED|
 RESOLVED|SUPPRESSED), first_seen_at, last_seen_at, count, acknowledged_by, resolved_at, dedup_key`
 
-### `notifications` / `notification_channels`
+### `notifications` / `notification_channels` (ontworpen, niet gebouwd)
 Kanaal: `id, tenant_id, kind (EMAIL|WEBHOOK|TEAMS), config jsonb, enabled, secret_ref`.
 Notificatie: afleverpogingen, status, laatste fout.
 
@@ -680,11 +682,11 @@ wordt alleen geaccepteerd voor een bekende pushdienst en wordt nooit gelogd.
 
 | Constraint | Doel |
 |---|---|
-| `UNIQUE (kind) WHERE kind = 'MSP_ROOT'` op `tenants` | precies één hoofdtenant |
+| `UNIQUE (kind) WHERE kind = 'MSP_ROOT'` op `tenants` | precies één MSP-hoofdtenant |
 | `UNIQUE (credential_id) WHERE status = 'ACTIVE'` op `credential_secrets` | één actieve secretversie |
 | `UNIQUE (concurrency_key) WHERE status IN (QUEUED,PREFLIGHT,RUNNING,VALIDATING)` op `jobs` | nooit twee muterende jobs op één cluster |
 | `UNIQUE (provider_id, subject)` op `user_identities` | geen kaping van een OIDC-identiteit |
-| `UNIQUE (user_id) WHERE kind='TOTP' AND confirmed_at IS NOT NULL AND disabled_at IS NULL` op `user_mfa_factors` | één actieve TOTP-factor per gebruiker; een onbevestigde aanmelding kan een werkende nooit overschaduwen |
+| `UNIQUE (user_id) WHERE kind='TOTP' AND confirmed_at IS NOT NULL AND disabled_at IS NULL` op `user_mfa_factors` | één actieve TOTP-factor per gebruiker; een onbevestigde inrichting kan een werkende nooit overschaduwen |
 | `UNIQUE (cluster_id, daemon_id)` op `ceph_daemons` | daemonidentiteit blijft stabiel over discoveries |
 | `CHECK ((target_kind='NODE') = (node_id IS NOT NULL))` op `upgrade_targets` | een doel is een node of een daemon, nooit beide of geen van beide |
 | samengestelde index met `(tenant_id, …)` voorop op **elke** tenant-gebonden tabel | het tenantfilter is altijd door een index gedekt, zodat het verplichte filter niets kost |

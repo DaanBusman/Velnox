@@ -68,29 +68,29 @@ tot één klant worden beperkt, behalve door waar hij wordt toegekend. Zie ADR-0
 
 ### Een wachtwoord zelf wijzigen kan niet
 Een beheerder stelt het eerste wachtwoord van een account in en geeft dat buitenom door, omdat
-Velnox geen e-mail verstuurt. Het account kan het daarna niet zelf wijzigen vanuit de interface:
+Velnox geen uitnodigingen verstuurt. Het account kan het daarna niet zelf wijzigen vanuit de interface:
 `changePassword` bestaat in de service, dwingt de sterkte-eis af en trekt elke andere sessie in,
 maar heeft nog geen endpoint.
 
 ### Gebruik van een herstelcode wordt gelogd, niet gemeld
 Het gebruik van een herstelcode wordt naar het auditspoor geschreven en uitgestuurd als
 `warn`-gebeurtenis met een vaste naam (`auth.mfa.recovery_code_used`), waarop de logpijplijn van een
-beheerder vandaag kan alarmeren. Velnox heeft nog geen eigen meldingsafhandeling — geen e-mail, geen
+beheerder vandaag kan alarmeren. Velnox bezorgt deze gebeurtenis niet zelf — geen mail, geen push, geen
 webhook — dus het woord "gemeld" uit de roadmap wordt op dit moment ingevuld door het logboek, niet
 doordat Velnox iemand benadert.
 
 ### De SSRF-bescherming bij discovery heeft een gat voor DNS-rebinding
 Voordat de API een discovery-document ophaalt, vereist zij HTTPS, weigert zij redirects, en zoekt
 zij de hostnaam op om te controleren dat het geen privé-, loopback-, link-local- of
-cloud-metadata-adres is. Een naam die tussen die controle en het ophalen anders resolvet, zou er
-doorheen glippen. Dat goed dichtzetten vereist een agent die aan het gecontroleerde adres is
+cloud-metadata-adres is. Een naam die tussen die controle en het ophalen naar een ander adres gaat
+wijzen, zou erdoorheen glippen. Dat goed dichtzetten vereist een agent die aan het gecontroleerde adres is
 vastgezet. Het endpoint is beperkt tot `system.manage`, het hoogste recht dat het product kent, en
 de controle stopt elke rechttoe-rechtaan poging — waaronder `169.254.169.254` en interne
 containernamen, beide geverifieerd.
 
 ### Er is geen sessieoverzicht en geen "overal afmelden"
 Sessies roteren correct en een hergebruikt refresh-token trekt de hele familie in, maar een
-gebruiker kan zijn actieve sessies niet zien of beëindigen vanuit de interface. Een
+gebruiker kan de eigen actieve sessies niet zien of beëindigen vanuit de interface. Een
 wachtwoordwijziging trekt al elke sessie in als neveneffect.
 
 ### De backend-image draagt zijn buildafhankelijkheden mee
@@ -118,13 +118,13 @@ image die wordt uitgeleverd is altijd de standalone-versie.
 ### Meldingen hebben geen levenscyclus
 Het meldingenscherm toont condities die bij elke keer openen uit de inventarisatie worden berekend.
 Dat is het geheel: geen bevestigen, geen onderdrukken, geen historie en geen notificatie — geen
-e-mail, geen webhook, niets dat je bereikt wanneer je niet naar het scherm kijkt.
+mail, geen push, geen webhook, niets dat je bereikt wanneer je niet naar het scherm kijkt.
 
 Bewust, en met opzet de kleinere helft van het probleem. Een opgeslagen melding heeft
 gemeld / bevestigd / opgelost / opnieuw gemeld nodig, en een half gebouwde levenscyclus levert een
 scherm vol verouderde alarmen op dat niemand leest — erger dan een scherm dat er eerlijk over is dat
-het alleen weet wat er nú waar is. Ze bezorgen vereist een notificatiekanaal. Mail bestaat sinds fase 5B, maar alleen voor VM's die
-klaar zijn; meldingen gebruiken het nog niet.
+het alleen weet wat er nú waar is. Ze bezorgen vereist een notificatiekanaal. Mail bestaat sinds fase 5B voor VM's die klaar zijn, en
+push sinds 0.7.39 voor goedkeuringen (ADR-062); meldingen gebruiken geen van beide nog.
 
 ### Uitrol is bewezen tegen de fixture, nog niet tegen een echt cluster
 `verify-provisioning.sh` doorloopt de hele stroom tegen de fixture-Proxmox: templates, de weigeringen,
@@ -135,7 +135,7 @@ annulering opgeruimd. De fixture installeert niets. Dit is dus **nog niet gezien
 - Windows Setup die onbeheerd draait vanuit het antwoordbestand — inclusief de Enter bij de
   UEFI-opstartvraag, VirtIO-drivers die tijdens Setup laden, de editie gekozen op naam, en een VM die
   bij activering om een productcode vraagt als er geen was opgegeven.
-- cloud-init dat een echt cloud image configureert: sleutels die bij de eerste start werken en
+- cloud-init dat een echt cloud-image configureert: sleutels die bij de eerste start werken en
   aanmelden met wachtwoord dat wordt geweigerd, de mirror, het wisselbestand. De uitvoer doorstaat de
   eigen schemacontrole van cloud-init; dat is niet hetzelfde.
 - De Proxmox-aanroepen die de fixture op zijn eigen manier beantwoordt: `import-from` bij het maken,
@@ -160,8 +160,8 @@ Daarna worden ze verwijderd. De termijn is vast; er is nog geen instelling. Niet
 
 ### Mail is gewone SMTP, alleen bewezen tegen de mailsink van de fixture
 STARTTLS en TLS gaan via nodemailer met certificaatcontrole, maar het harnas test alleen een
-onversleutelde sink. Er is één melding — een VM is klaar — en nog geen voor meldingen uit de
-inventarisatie.
+onversleutelde sink. Naast de testmail verstuurt Velnox één mail — een VM is klaar — en nog niets voor meldingen uit
+de inventarisatie.
 
 ### De versleuteling van het installatieverslag grijpt in pdfkit in
 Revisie 6 wordt gezet door te herschrijven wat pdfkit voorbereidde, dus pdfkit staat vast op 0.20.2;
@@ -176,7 +176,7 @@ opgeeft (dat het terughalen daarna via SFTP opent; de fixture beeldt het af op z
 drie volgen de gepubliceerde API van Proxmox; geen ervan is tegen een echte node uitgevoerd.
 
 ### Disk-images vragen een Proxmox met `import`-inhoud
-Cloud images gaan als `import`-inhoud op een opslag, een type dat Proxmox VE 8.2 introduceerde en dat
+Cloud-images gaan als `import`-inhoud op een opslag, een type dat Proxmox VE 8.2 introduceerde en dat
 op een opslag aan moet staan. Een cluster op een oudere release, of zonder opslag die `import`
 accepteert, krijgt geen opslag aangeboden voor een disk-image. ISO's hebben er geen last van.
 
@@ -235,7 +235,8 @@ mislukken die na een uur nog loopt, met dezelfde reden `job.worker_lost`.
 ### De jobs die er zijn
 De vijf van de bibliotheek — ophalen, een upload controleren, naar een cluster kopiëren, van een
 cluster kopiëren, op een cluster verwijderen —, een VM bouwen (fase 5B), een installatiepakket
-controleren (fase 5C) en een node bijwerken (fase 6). `system.selftest` raakt niets aan en bestaat om
+controleren (fase 5C), een node bijwerken (fase 6), een rolling update (fase 7), plaatsing (fase 7B)
+en een upgradeplan uitvoeren (fase 8 tot en met 9B). `system.selftest` raakt niets aan en bestaat om
 het mechanisme te bewijzen.
 
 ### Jobgeschiedenis wordt voor altijd bewaard
@@ -252,12 +253,12 @@ verloopt en een verzoening het merkt — gemeten op 33–34 seconden. Tot die ti
 ### Sub-tenants: twee randen
 Een Autoconfig-template dat aan gekozen klanten wordt aangeboden, wordt aan precies de aangevinkte
 tenants aangeboden: een hoofd-tenant aanvinken biedt het niet aan zijn sub-tenants aan. En iemand die
-via een rol lid is van een sub-tenant, met zijn account thuis in een zuster, staat niet in de lijst
-Gebruikers van die sub-tenant — zijn rol staat op zijn account, onder de zuster. Zie ADR-042.
+via een rol lid is van een sub-tenant, met het account thuis in een zuster-tenant, staat niet in de
+lijst Gebruikers van die sub-tenant — de rol staat op het account, onder de zuster-tenant. Zie ADR-042.
 
 ### Updates: bewezen tegen de fixture, één node tegelijk
 Classificatie, toepassen, de herstart en het wachten erop, vensters, goedkeuring en de planner van
-het beleid zijn bewezen tegen de bedrijfsmodus van de fixture, waarvan SSH de drie opdrachten van
+het beleid zijn bewezen tegen de bedrijfsmodus van de fixture, waarvan SSH de opdrachten van
 Velnox beantwoordt zoals apt zou doen — nog niet tegen een echte node, waar ook de sudoers-regel in
 [Nodes bijwerken](updating-nodes.md) bevestiging nodig heeft. De beveiligingstelling van de
 inventarisatie komt uit wat de API van Proxmox meldt en kan een beveiligingsupdate missen; de
@@ -286,15 +287,15 @@ ADR-049.
 ### Grote upgrades: een engine, bewezen door haar zelftests
 De engine — playbooks, guards, controles per run, automatisch en goedgekeurd herstel, de poort, stappen
 doel voor doel, samengestelde plannen en rapporten — is bewezen met haar zelftest-playbooks, die niets
-buiten Velnox veranderen. Er is nog geen playbook voor Ceph of Proxmox VE (fase 9A en 9B), dus geen
-plan upgradet iets echts. Een plan kan niet voor later worden ingepland, een herstelactie kan niet
-worden teruggedraaid, en er is nog geen versiematrix. Discovery benoemt Ceph-daemons nu zoals Ceph dat
+buiten Velnox veranderen; de playbooks voor Ceph en Proxmox VE daarop hebben hieronder elk een eigen
+kopje. Een plan kan niet voor later worden ingepland, en een herstelactie kan niet worden
+teruggedraaid. Discovery benoemt Ceph-daemons nu zoals Ceph dat
 doet (`mon.pve1`, `mgr.pve1`): een monitor en een manager op één host deelden eerder een naam, en een
 van beide verdween uit de inventaris. Zie ADR-050.
 
 ### Ceph-upgrades: bewezen tegen de fixture, nog niet op een echt cluster
 Het Ceph-playbook is bewezen tegen het model van Ceph in de fixture — geïnstalleerde en draaiende
-versies, herstarts die het even degraderen, `noout`, `require-osd-release` — nog niet tegen een echt
+versies, herstarts die het even verminderd laten draaien, `noout`, `require-osd-release` — nog niet tegen een echt
 cluster, waar herstarts langer duren en waarschuwingen kunnen voorkomen die het model nooit toont (die
 stoppen de run, zoals het hoort). Velnox brengt CephFS voor de upgrade niet terug tot één actieve MDS:
 de beheerder doet dat en zegt het bij het plan. RGW-daemons worden niet ontdekt, dus niet herstart. De
@@ -340,7 +341,7 @@ Elke modus wordt gewisseld en teruggelezen via een echte handshake, en ACME is b
 de testserver van Let's Encrypt — nog niet tegen Let's Encrypt op een publieke host. Alleen HTTP-01,
 zoals Caddy standaard doet: geen DNS-01, dus een host die op poort 80 niet bereikbaar is, kan Let's
 Encrypt niet gebruiken. Een geüpload certificaat wordt niet vernieuwd, en het verlopen wordt getoond,
-niet gealarmeerd. De API-container bevat nu de sleutel die Caddy leest en kan Caddy herladen via zijn
+niet gemeld. De API-container bevat nu de sleutel die Caddy leest en kan Caddy herladen via zijn
 socket. Zie ADR-045.
 
 ### Installatiepakketten: bewezen tegen de fixture, en vier randen
@@ -383,7 +384,7 @@ waarschuwt, het blokkeert niet.
 - **Er ging niets via SSH naar een node.** SSH bestaat nu, per cluster en optioneel, alleen voor
   leesacties via SFTP, met de hostsleutel van elke node bevestigd voordat er iets aan wordt aangeboden
   (ADR-038).
-- **Velnox kon niets op een cluster zetten.** Het kopieert ISO's en cloud images naar opslag, en
+- **Velnox kon niets op een cluster zetten.** Het kopieert ISO's en cloud-images naar opslag, en
   verwijdert ze, als jobs die niets achterlaten als ze worden geannuleerd.
 
 ### Opgelost in fase 5
@@ -435,7 +436,7 @@ Dit zijn beslissingen, geen omissies. Ze vallen buiten scope tenzij de opdrachtg
 | PBS | Proxmox Backup Server als volwaardige inventaris | **Uitgesteld per beslissing (2026-08-31).** Het upgradeframework accepteert een PBS-playbook, en `upgrade_plans.kind` kent al de waarde `PBS`, maar er komt in v1 geen PBS-inventaris of -playbook. |
 | Agent | Software op beheerde nodes installeren | Velnox is agentloos. Dat kost weerbaarheid tegen verbroken SSH-sessies (R-16) en is een bewuste afweging. |
 | Portaal | Selfservice voor eindklanten | Tenant-gebruikers zijn in v1 operators, geen eindklanten. |
-| Terugdraaien | Een voltooide Debian-hoofdupgrade terugdraaien | Technisch niet betrouwbaar mogelijk. Velnox meldt dit vóór de operator bevestigt en vereist een gedocumenteerde back-up als voorwaarde. |
+| Terugdraaien | Een voltooide grote Debian-upgrade terugdraaien | Technisch niet betrouwbaar mogelijk. Velnox meldt dit vóór de operator bevestigt en vereist een gedocumenteerde back-up als voorwaarde. |
 
 ---
 
@@ -444,25 +445,25 @@ Dit zijn beslissingen, geen omissies. Ze vallen buiten scope tenzij de opdrachtg
 Deze worden nu al gemarkeerd zodat niemand later verrast wordt. Elk wordt in de eigen fase opnieuw bekeken
 en precies gemaakt.
 
-### Hyper-V schijfoverdracht — *met handmatige stap* (Phase 12)
+### Hyper-V schijfoverdracht — *met handmatige stap* (fase 12)
 Discovery, compatibiliteitsbeoordeling en planning zijn geautomatiseerd. De VHDX-overdrachtsstap vereist
 netwerkpaden (SMB of SSH van de appliance naar de Hyper-V-host of diens opslag) die veel omgevingen niet
 verlenen. In v1 is die stap in de UI gelabeld als handmatige tussenkomst en meldt hij pas succes nadat
 Velnox het resulterende bestand zelf heeft geverifieerd — nooit uit zichzelf.
 
-### VMware-overdracht — *afhankelijk van de PVE-doelversie* (Phase 11)
+### VMware-overdracht — *afhankelijk van de PVE-doelversie* (fase 11)
 Velnox orkestreert de eigen ESXi-import storage van Proxmox VE, beschikbaar vanaf PVE 8.2. Op oudere
 clusters levert Velnox discovery, compatibiliteitsbeoordeling en een gedocumenteerde handmatige procedure —
 en zegt dat in de UI in plaats van een besturingselement aan te bieden dat niet kan werken.
 
-### ISO-bouw — *alleen op een Linux-host* (Phase 14)
+### ISO-bouw — *alleen op een Linux-host* (fase 14)
 `live-build` vereist loop devices en verhoogde rechten. ISO-bouwen werkt niet op Docker Desktop voor
 Windows of macOS. `build.sh --target iso` controleert vooraf en faalt met een duidelijke melding in plaats
 van een niet-opstartbaar plaatsvervangend bestand te maken. De tar.gz- en zelfuitpakkende-installerdoelen
 kennen die beperking niet.
 
-### PostgreSQL Row-Level Security — *uitgesteld naar Phase 15*
-Tenant-isolatie in Phase 3–14 wordt afgedwongen door de Prisma-tenancy-extensie plus RBAC-guards plus
+### PostgreSQL Row-Level Security — *uitgesteld naar fase 15*
+Tenant-isolatie in fase 3–14 wordt afgedwongen door de Prisma-tenancy-extensie plus RBAC-guards plus
 CI-blokkerende cross-tenant tests. RLS is een vierde laag, uitgesteld omdat het elke query in een expliciete
 transactie dwingt. Hier vastgelegd in plaats van stilzwijgend overgeslagen.
 
@@ -472,15 +473,15 @@ geleverd. HashiCorp Vault- en Azure Key Vault-backends zijn voorzien maar niet g
 `MASTER_ENCRYPTION_KEY` een enkel faalpunt is (R-05).
 
 ### Tweefactorauthenticatie — *alleen TOTP; WebAuthn uitgesteld*
-**Nu in scope (2026-08-31): optioneel maar aanbevolen.** TOTP met herstelcodes wordt in Phase 2 geleverd,
+**Nu in scope (2026-08-31): optioneel maar aanbevolen.** TOTP met herstelcodes wordt in fase 2 geleverd,
 met de beleidsniveaus `OPTIONAL` / `REQUIRED_FOR_PRIVILEGED` / `REQUIRED` en `OPTIONAL` als standaard.
 WebAuthn/passkeys zijn **niet** geïmplementeerd — `user_mfa_factors.kind` reserveert de waarde. TOTP is
 eerst gekozen omdat het de factor is die nog werkt voor een noodtoegangsaccount op een onverwachte machine
 tijdens een incident.
 
 ### Ceph — *upgrades in scope; automatisch herstel niet*
-**Nu in scope (2026-08-31):** Ceph-inventaris (Phase 4) en Ceph major upgrades als eigen playbook,
-samengesteld vóór de PVE-upgrade (Phase 9A). Wat Velnox **niet** doet: een beschadigd Ceph-cluster
+**Nu in scope (2026-08-31):** Ceph-inventaris (fase 4) en grote Ceph-upgrades als eigen playbook,
+samengesteld vóór de PVE-upgrade (fase 9A). Wat Velnox **niet** doet: een beschadigd Ceph-cluster
 repareren. Keert de gezondheid niet terug, dan stopt de uitvoering en wordt er gerapporteerd — er wordt geen
 automatisch herstel geprobeerd, omdat dat expertwerk is waarbij een verkeerde automatische actie de zaak
 verergert.
@@ -493,14 +494,14 @@ vermeldt de bron-commit waaruit het vertaald is, zodat een lezer dat kan zien. V
 strengere regel: een ontbrekende of overtollige sleutel laat de build **falen**.
 
 ### Bronaanbod uit AGPL artikel 13 — *afhankelijk van de operator*
-Velnox levert het mechanisme (`GET /api/v1/system/source`, Instellingen → Over, `VELNOX_SOURCE_URL`, de
+Velnox levert het mechanisme (`GET /api/v1/system/source`, **Broncode → Over**, `VELNOX_SOURCE_URL`, de
 ingesloten build-commit). Een operator die een **aangepaste** build draait moet die variabele naar de eigen
 bijbehorende broncode laten wijzen. Velnox kan niet verifiëren dat dat gebeurd is — geen enkele software
 kan dat. De verplichting is van hen; het mechanisme is van ons.
 
-### Subtenants — *schema is voorbereid, niet geïmplementeerd*
-`tenants.parent_tenant_id` bestaat zodat hiërarchische tenants mogelijk blijven, maar v1 ondersteunt precies
-één niveau klanttenants onder de MSP-hoofdtenant.
+### Sub-tenants — *één niveau onder een hoofd-tenant*
+Sinds fase 5C is een klanttenant een hoofd-tenant of een sub-tenant daarvan (`tenants.parent_tenant_id`,
+ADR-042). De database weigert een diepere hiërarchie.
 
 ---
 

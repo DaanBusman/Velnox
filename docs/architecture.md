@@ -3,8 +3,11 @@
 > Velnox is a self-hosted MSP management platform for Proxmox VE fleets.
 > The Velnox name and logo are used by **The Velnox Foundation**. No trademark is registered or claimed.
 
-**Status:** Phase 1 implemented. Sections describing later phases remain design proposals; where
-Phase 1 changed a Phase 0 decision, the change is marked *Amended in Phase 1* in place.
+**Status:** written in Phase 0 and amended where marked (*Amended in Phase 1*). This is the design:
+where the code went another way, the code and the decisions in [tech-decisions.md](tech-decisions.md)
+win, and [the roadmap](roadmap.md) and [known gaps](known-gaps.md) say what is built today. The
+packages `remote-exec` and `automation` in §3 became code inside `apps/worker`; `providers-virt`
+awaits Phases 11 and 12.
 **Document version:** 0.2.0
 **Target platform:** Debian 12 (bookworm) / Debian 13 (trixie), x86_64, Docker + Docker Compose.
 
@@ -171,7 +174,7 @@ interface RequestContext {
 asks the `AuthorizationService` whether any grant covers that permission at or above that scope.
 Denials are audited.
 
-**Layer 2 — mandatory query scoping.** *(Landed in phase 3.)* A Prisma client extension intercepts
+**Layer 2 — mandatory query scoping.** *(Landed in Phase $1.)* A Prisma client extension intercepts
 every query against a tenant-scoped model and injects the caller's scope. It **throws** at runtime if
 a tenant-scoped model is queried with no scope resolved, unless the caller opted in via an explicit,
 grep-able `withSystemScope("why")` wrapper — which takes a written reason and has four callers:
@@ -276,8 +279,9 @@ clean seam for a future KMS that wraps DEKs remotely.
 
 `SecretStore` is an interface — `put`, `get`, `delete`, `rewrap` — with `DatabaseSecretStore` as
 the v1 implementation and `VaultSecretStore` / `AzureKeyVaultSecretStore` as documented future
-backends. **Only the worker ever calls `get()`.** The API can create and reference credentials but
-has no code path that returns plaintext material.
+backends. **Only the worker decrypts infrastructure credentials.** The API can create and reference them and
+has no code path that returns their plaintext; what it reads itself is limited to what it needs,
+such as a TOTP seed, and the audited reveal of a VM's passwords (ADR-039).
 
 ### Redaction
 

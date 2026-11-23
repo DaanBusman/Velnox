@@ -23,9 +23,8 @@ there, and Velnox offers to [merge the two registrations](#merging-two-registrat
 
 ## What Velnox reads, and what it does not touch
 
-In this phase Velnox is **read-only against your infrastructure**. It connects, asks Proxmox what is
-there, and writes it down. It does not start, stop, migrate, update or reconfigure anything — those
-arrive in later phases, each with its own approval and its own guards.
+Discovery is **read-only against your infrastructure**. Velnox connects, asks Proxmox what is there,
+and writes it down. Changing anything happens only in a job, with its own permissions and guards.
 
 What it reads, per cluster:
 
@@ -107,8 +106,7 @@ consequences are larger.
 Exactly the same flow. A single node has no cluster, and Velnox models it as a cluster of one — it
 appears marked **Standalone**, and it is reported as having no quorum rather than as having lost it.
 
-Everything downstream treats it identically, which is why there is no separate "add a node" screen
-and why there will not be one when rolling updates arrive.
+Everything downstream treats it identically, which is why there is no separate "add a node" screen.
 
 ---
 
@@ -251,7 +249,7 @@ waiting for the schedule, and opens **Discovery runs** to show it. Pressed while
 going, it says so and queues nothing. **Refresh** beside it only re-reads what Velnox already has; it
 does not reach Proxmox.
 
-**Nodes**, **Virtual Machines** and **Containers** are the same data across every cluster you can
+**Nodes**, **Virtual machines** and **Containers** are the same data across every cluster you can
 see, for when the question is "where is the disk" rather than "how is this cluster".
 
 **Storage** and **Networks** are shown one cluster at a time, within one tenant — the MSP
@@ -341,8 +339,8 @@ maintenance somebody was called away from. Clear it unless maintenance is runnin
 |---|---|
 | *… could not be reached* | The message says which way it failed, with what to check for that one: *no connection within the time limit* — a firewall dropping traffic to port 8006, or the node is off; *connection refused* — nothing listens: `pveproxy` stopped, the wrong port, or a node still starting up; *connected, but Proxmox did not answer in time* — the API is stuck on the node: `systemctl status pveproxy pvedaemon pve-cluster`; *no route to the host*; *the name did not resolve*. The worker is the only service that connects outward, so test from the Velnox host, not from your own machine. |
 | *That does not look like a Proxmox API* | Right host, wrong port — or a reverse proxy in front of Proxmox answering instead. |
-| *Certificate fingerprint mismatch* | The node's certificate changed. That happens legitimately when it is renewed or the node is rebuilt — and it is also exactly what an interception looks like. Check `pvenode cert info` on the node, then remove the cluster and add it again with the new fingerprint. Velnox will not quietly accept a new certificate for you. |
-| *Proxmox refused the credentials* | The token was revoked, or its privilege separation excludes what Velnox reads. `PVEAuditor` on `/` is enough. |
+| *The TLS certificate of … does not match the pinned fingerprint* | The node's certificate changed. That happens legitimately when it is renewed or the node is rebuilt — and it is also exactly what an interception looks like. Check `pvenode cert info` on the node, then remove the cluster and add it again with the new fingerprint. Velnox will not quietly accept a new certificate for you. |
+| *Invalid token secret* | The token was revoked, or its privilege separation excludes what Velnox reads. `PVEAuditor` on `/` is enough. |
 | A run marked **Partial** | Open **Discovery runs**. Every problem is listed with the node it belongs to. |
 
 ---

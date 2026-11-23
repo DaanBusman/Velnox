@@ -48,7 +48,7 @@ create an account there — see *Add an account* in
 
 ### Require two-factor authentication for one customer
 
-Each tenant carries its own multi-factor policy, and the effective policy for an account is **the
+Each tenant carries its own two-factor policy, and the effective policy for an account is **the
 stricter of the installation's and its tenant's**. A customer whose contract demands it can be set
 to `Required for everyone` without changing anything for anyone else, and the installation-wide
 setting can never be loosened by a tenant.
@@ -96,7 +96,7 @@ You need `sites.manage` covering that tenant.
 2. **Add site**.
 3. Choose the **tenant**. This is the only moment you can: it is fixed once the site exists.
 4. Name it, and optionally record where it is and who to call about it. The contact is a note for
-   whoever reads it during an incident — Velnox sends no mail and will not use it.
+   whoever reads it during an incident — Velnox does not use it and does not mail that person.
 5. **Add site**.
 
 ### Removing one

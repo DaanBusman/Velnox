@@ -5,11 +5,11 @@
 
 **Een template zegt wat een VM moet zijn; Velnox bouwt hem en ziet de installatie tot het eind.**
 Windows installeert zichzelf vanaf zijn ISO met een antwoordbestand dat Velnox schrijft; Linux start
-vanuit een cloud image en configureert zichzelf bij de eerste start. Niemand drukt op een toets, en
+vanuit een cloud-image en configureert zichzelf bij de eerste start. Niemand drukt op een toets, en
 wie erom vroeg krijgt een mail als hij klaar is.
 
 Wie wat mag, staat in [Rollen en rechten](permissions.md). Waarom het werkt zoals het werkt, staat in
-ADR-039 in [Technologiekeuzes](tech-decisions.md). De installers en cloud images komen uit
+ADR-039 in [Technologiekeuzes](tech-decisions.md). De installers en cloud-images komen uit
 [de ISO-bibliotheek](managing-the-library.md).
 
 ---
@@ -19,10 +19,10 @@ ADR-039 in [Technologiekeuzes](tech-decisions.md). De installers en cloud images
 - **De bestanden in de bibliotheek.** Een Windows-ISO. De ISO met VirtIO-drivers (`virtio-win.iso`,
   van het Fedora-project) is nodig als het template VirtIO of de guest agent gebruikt, maar met
   *VirtIO-ISO: Ja* haalt de eerste VM hem in de bibliotheek op als hij er niet is. Voor
-  Linux een cloud image: Ubuntu's `*-server-cloudimg-amd64.img` of Debians
+  Linux een cloud-image: Ubuntu's `*-server-cloudimg-amd64.img` of Debians
   `*-genericcloud-amd64.qcow2`.
 - **Opslag op de node** die `images` accepteert voor de schijven van de VM, en een die `iso` — en voor
-  Linux `import` — accepteert voor de installer, het cloud image en de antwoord-cd. De opslag `local`
+  Linux `import` — accepteert voor de installer, het cloud-image en de antwoord-cd. De opslag `local`
   accepteert `iso`; `import` moet daar worden aangezet onder *Datacenter → Storage* (Proxmox VE 8.2 of
   nieuwer).
 - **Meer dan lezen voor het Proxmox-token.** Een VM bouwen schrijft naar het cluster. Het token heeft,
@@ -50,7 +50,7 @@ ADR-039 in [Technologiekeuzes](tech-decisions.md). De installers en cloud images
 - Een **template van een klant** is alleen van die klant. Geen andere klant ziet het.
 
 Een template zien is het niet wijzigen. Een klant kan bouwen vanuit een MSP-template, en het
-**Klonen** om een eigen te maken die hij kan wijzigen; de kopie volgt het origineel daarna niet.
+**Klonen** om een eigen template te maken dat de klant kan wijzigen; de kopie volgt het origineel daarna niet.
 
 Templates wijzigen vraagt `autoconfig.manage` — op de MSP voor MSP-templates, op de tenant voor de
 eigen templates van een klant.
@@ -148,9 +148,8 @@ Een pakket dat een template nog uitvoert, kan niet worden verwijderd; haal het e
 templates. VM's die het al installeerden houden het.
 
 ### Linux
-### Linux
 
-- **Cloud image** en **distributie**.
+- **Cloud-image** en **distributie**.
 - **Pakketmirror.** Aangeraden is het CDN van Debian (`deb.debian.org`) of de lijst van Ubuntu die op
   locatie kiest — nooit standaard één vaste server, want een vaste mirror is een single point of
   failure. Een nationale mirror wordt als keuze aangeboden; een APT-proxy kan worden ingesteld.
@@ -189,7 +188,7 @@ installeert, een melding terwijl mail niet is ingesteld.
 Daarna loopt het als een job die je kunt volgen en annuleren:
 
 1. **Controle** dat de node online is en de opslag en bridge zijn wat het formulier zei.
-2. **Media** — de installer of het cloud image wordt uit de bibliotheek naar de node gekopieerd als het
+2. **Media** — de installer of het cloud-image wordt uit de bibliotheek naar de node gekopieerd als het
    er nog niet staat. Het blijft staan voor de volgende VM.
 3. **Aanmaken** van de VM, met de hardware van het template.
 4. **Antwoorden** — de wachtwoorden worden bepaald, het antwoordbestand wordt geschreven voor de

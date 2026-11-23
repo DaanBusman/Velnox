@@ -11,13 +11,13 @@ gasten van elke node vóór zijn herstart en zet ze daarna terug. Naar een nieuw
 Ceph, of Proxmox VE 8 naar 9 — is een [grote upgrade](major-upgrades.md).
 
 Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-046,
-ADR-047 en ADR-048 in [Technische beslissingen](tech-decisions.md).
+ADR-047 en ADR-048 in [Technologiekeuzes](tech-decisions.md).
 
 ---
 
 ## Wat Velnox uitleest
 
-**Bewerkingen → Updates & upgrades**, tabblad **Nodes**. Elke inventarisatie leest per online node
+**Beheer → Updates & upgrades**, tabblad **Nodes**. Elke inventarisatie leest per online node
 wat apt zou installeren en welke kernels geïnstalleerd zijn:
 
 - **Beveiliging** — updates uit het beveiligingsarchief van Debian. De inventarisatie leest dit uit
@@ -35,7 +35,7 @@ Proxmox.
 **Wat apt weet, is zo oud als zijn laatste `apt-get update`.** Op een Proxmox-node is dat de
 dagelijkse timer `pve-daily-update`, dus een oplossing die vanochtend uitkwam staat pas morgen in de
 lijst. **Vernieuwen**, naast de clusterkeuze, voert via de API van Proxmox `apt-get update` uit op
-elke online node — van het gekozen cluster, of van elk cluster dat u mag bijwerken — net als de knop
+elke online node — van het gekozen cluster, of van elk cluster dat je mag bijwerken — net als de knop
 Refresh in het Updates-paneel van Proxmox zelf, en leest het cluster daarna opnieuw uit. De lijst
 werkt zichzelf bij zodra die ronde klaar is, meestal binnen een minuut; de ronde staat onder
 **Uitleesrondes** van het cluster, met elke node waarvan de lijsten niet vernieuwd konden worden
@@ -76,7 +76,7 @@ velnox ALL=(root) NOPASSWD: /usr/bin/env LC_ALL\=C DEBIAN_FRONTEND\=noninteracti
 velnox ALL=(root) NOPASSWD: /usr/bin/env LC_ALL\=C DEBIAN_FRONTEND\=noninteractive apt-get -y -o Dpkg\:\:Options\:\:\=--force-confdef -o Dpkg\:\:Options\:\:\=--force-confold autoremove
 ```
 
-sudoers wil `:`, `=` en `,` in de argumenten van een opdracht ge-escaped met een backslash, zoals
+sudoers wil dat `:`, `=` en `,` in de argumenten van een opdracht een backslash ervoor krijgen, zoals
 hierboven; controleer het bestand met `visudo -cf /etc/sudoers.d/velnox`. Velnox zet `sudo -n` voor
 die twee opdrachten als het account geen root is, en faalt in plaats van te wachten als sudo om een
 wachtwoord zou vragen. Een account dat beperkt is tot SFTP (`ForceCommand internal-sftp`) houdt het
@@ -143,8 +143,6 @@ De job, stap voor stap:
 Er wijzigt maar één job tegelijk een cluster: een update wacht achter elke andere job op hetzelfde
 cluster.
 
-
-
 ### Verwijderen wat niet meer nodig is: apt autoremove
 
 Updates laten pakketten achter waar niets meer van afhangt, vooral oude kernels, en op een kleine
@@ -173,7 +171,7 @@ uitkomst.
 ## Een heel cluster bijwerken: rolling update
 
 Kies een cluster op het tabblad **Nodes**. De kaart **… node voor node bijwerken** toont het plan:
-welke nodes samen down gaan, in welke volgorde, en de draaiende gasten die elk zou verplaatsen. Ze
+welke nodes samen offline gaan, in welke volgorde, en de draaiende gasten die elk zou verplaatsen. Ze
 waarschuwt als de andere nodes het geheugen voor de gasten van een node niet hebben, en zegt waarom
 als een run niet kan beginnen.
 
@@ -187,13 +185,13 @@ als een run niet kan beginnen.
   weigert de run en noemt ze; **Afsluiten voor de herstart van zijn node, daarna starten** doet
   precies dat.
 - **Minuten om te stabiliseren** — hoe lang een node, het cluster en Ceph mogen doen om na een
-  herstart weer heel te zijn voordat de run stopt. Standaard tien.
+  herstart weer gezond te zijn voordat de run stopt. Standaard tien.
 - **Gasten daarna terugzetten** — standaard aan. Uit blijven ze waar ze heen verplaatst zijn en
   zegt de job waar dat is.
 
 De job, stap voor stap:
 
-1. **preflight** — weigert een cluster dat al gedegradeerd is: een node offline, geen quorum, Ceph
+1. **preflight** — weigert een cluster dat al verminderd draait: een node offline, geen quorum, Ceph
    niet `HEALTH_OK`. Ze leest de configuratie van elke draaiende gast uit Proxmox om te bepalen
    welke kunnen verhuizen, en controleert dat de gasten van elke groep passen in het geheugen dat
    de andere nodes vrij hebben. Weigert ze, dan is er nog niets veranderd.
@@ -286,12 +284,12 @@ of een grote upgrade voor het plan en het rapport.
 | *… eindigde met exitcode 126* | Het account mag geen opdrachten uitvoeren — meestal een account dat alleen SFTP mag. Zie [het account](#voordat-je-updates-kunt-toepassen-ssh). |
 | *… eindigde met exitcode 1* van `sudo` | sudo vroeg om een wachtwoord, of staat precies die opdracht niet toe. Controleer `/etc/sudoers.d/velnox`. |
 | *apt.dist_upgrade … eindigde met exitcode 100* | apt of dpkg mislukte. De uitvoer van de job bevat de eigen woorden van apt; los het op de node op (`dpkg --configure -a`) en werk daarna opnieuw bij. |
-| *De machine die voor … werd bereikt heet niet …* | SSH bereikte een machine met een andere naam. Controleer het adres van de node en de SSH-instelling. |
-| *Het cluster zou geen quorum houden* | Een andere node is down. De updates zijn geïnstalleerd; de herstart is niet gedaan. Breng de andere node terug en werk dan opnieuw bij met herstart. |
-| *… kwam niet binnen 20 minuten terug* | Kijk naar de console van de node. |
+| *The machine reached for … is not called …* | SSH bereikte een machine met een andere naam. Controleer het adres van de node en de SSH-instelling. |
+| *Het cluster zou geen quorum houden* | Een andere node is offline. De updates zijn geïnstalleerd; de herstart is niet gedaan. Breng de andere node terug en werk dan opnieuw bij met herstart. |
+| *… kwam niet binnen 20 minuten na de herstart terug* | Kijk naar de console van de node. |
 | De herstart blijft nodig na een herstart | De node startte een oudere kernel; controleer zijn opstartvolgorde (`proxmox-boot-tool kernel list`). |
-| *Het cluster is gedegradeerd …* | Een node is offline, het cluster heeft geen quorum of Ceph is niet gezond. Een rolling update begint pas als het heel is. |
+| *Het cluster draait verminderd …* | Een node is offline, het cluster heeft geen quorum of Ceph is niet gezond. Een rolling update begint pas als het weer gezond is. |
 | *Deze draaiende gasten kunnen niet live verhuizen …* | Hun schijf staat op de eigen opslag van een node, of er is een apparaat doorgegeven. Verplaats of stop ze, of kies ervoor ze af te sluiten voor de herstart. |
-| *Terwijl … down is, hebben zijn gasten … GB nodig* | De andere nodes hebben dat geheugen niet vrij. Stop gasten die je kunt missen, of voeg geheugen toe. |
-| *… kwam na de update niet heel terug* | De node kwam terug, maar het cluster of Ceph was niet op tijd heel. De job noemt wat er mis was en welke gasten niet teruggezet zijn. |
+| *Terwijl … offline is, hebben zijn gasten … GB nodig* | De andere nodes hebben dat geheugen niet vrij. Stop gasten die je kunt missen, of voeg geheugen toe. |
+| *… kwam na de update niet gezond terug* | De node kwam terug, maar het cluster of Ceph was niet op tijd gezond. De job noemt wat er mis was en welke gasten niet teruggezet zijn. |
 | *De update van … is klaar, maar apt autoremove is niet afgerond* | Het zou een kernel in gebruik of een deel van Proxmox hebben verwijderd, of apt faalde, of sudo staat het niet toe. De update blijft staan. Lees de uitvoer van de job en bekijk de node voordat je met de hand iets verwijdert. |

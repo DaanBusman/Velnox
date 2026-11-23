@@ -72,20 +72,20 @@ daarna permanent gesloten is. Rechtencatalogus, rollen, roltoekenningen, `Reques
 Auditgebeurtenissen voor authenticatieacties. Entra ID OIDC-voorbereiding: configuratiemodel,
 discovery-validatie, "verbinding testen", inlogknop achter een feature flag.
 
-**MFA (optioneel, aanbevolen):** TOTP-aanmelding met bevestigen-voor-activeren, Argon2id-gehashte
+**MFA (optioneel, aanbevolen):** TOTP-inrichting met bevestigen-voor-activeren, Argon2id-gehashte
 eenmalige herstelcodes die één keer getoond worden, `sessions.mfa_satisfied_at` afgedwongen door een
 globale guard, en het beleid `OPTIONAL` / `REQUIRED_FOR_PRIVILEGED` / `REQUIRED` op installatie- en
-tenantniveau. De installatiewizard en de gebruikerslijst bevelen aanmelding voor bevoorrechte accounts
+tenantniveau. De installatiewizard en de gebruikerslijst bevelen MFA voor bevoorrechte accounts
 actief aan.
 
 **Acceptatie:** een verse installatie toont de wizard, weigert een zwak wachtwoord, maakt precies één
 beheerder aan en geeft 409 bij een tweede poging; nergens bestaan standaardcredentials; in- en uitloggen
 werken; een verlopen access token wordt transparant ververst; een hergebruikt refresh token beëindigt de
 sessiefamilie; een gebruiker zonder recht krijgt 403 en de weigering wordt geaudit; de testsuite voor de
-rechtenmatrix slaagt. MFA: aanmelden kan niet worden afgerond zonder geldige code; een sessie die niet aan
-een vereist beleid voldeed bereikt alleen aanmelden en uitloggen, geverifieerd tegen **elk** bestaand
+rechtenmatrix slaagt. MFA: de inrichting kan niet worden afgerond zonder geldige code; een sessie die niet aan
+een vereist beleid voldeed bereikt alleen de MFA-inrichting en uitloggen, geverifieerd tegen **elk** bestaand
 endpoint in plaats van een steekproef; een herstelcode werkt precies één keer en het gebruik wordt geaudit
-en gealarmeerd; de TOTP-seed wordt via de credential store opgeslagen en komt in geen enkele API-respons,
+en gemeld; de TOTP-seed wordt via de credential store opgeslagen en komt in geen enkele API-respons,
 logregel of auditrecord voor.
 
 ## Phase 3 — Multi-tenancy · **L** · ✅ afgerond
@@ -119,7 +119,7 @@ certificaat-pinning wordt afgedwongen en een afwijking faalt gesloten; node- en 
 zich en verversen volgens planning; PVE-versie en gezondheid zijn zichtbaar in de UI; credentials worden
 versleuteld opgeslagen en geen endpoint geeft plat materiaal terug; discovery van een onbereikbare node
 levert een vastgelegde fout op, geen stil succes. Ceph: daemons, versies en PG-status worden ontdekt en
-getoond; een cluster waarop `noout` is blijven staan wordt getoond en gealarmeerd; een cluster zonder Ceph
+getoond; een cluster waarop `noout` is blijven staan wordt getoond en gemeld; een cluster zonder Ceph
 toont helemaal geen Ceph-onderdelen in plaats van lege tegels.
 
 ## Phase 5 — Jobsysteem · **L** · ✅ afgerond
@@ -139,7 +139,7 @@ kunnen niet gelijktijdig draaien; elke ongeldige toestandsovergang gooit een fou
 Aangevraagd door de eigenaar op 27-09-2026, ingepland direct na fase 5 omdat elke handeling erin een
 overdracht van meerdere gigabytes is — precies waar het jobsysteem voor bestaat.
 
-Een centrale opslag op de Velnox-host voor ISO's en — sinds fase 5B voor Linux op cloud images
+Een centrale opslag op de Velnox-host voor ISO's en — sinds fase 5B voor Linux op cloud-images
 uitkwam — cloud-schijfimages, met drie bewegingen: een ISO naar de opslag van een cluster
 duwen, er een van een cluster naar de bibliotheek halen, en er een op een cluster verwijderen. Overal
 vriendelijke namen — `Windows11_25H2_Dutch` leest als "Windows 11 Version 25H2 Dutch" of "… Nederlands"
@@ -154,7 +154,7 @@ bij aankomst gecontroleerd; terughalen **alleen via SFTP**, per cluster ingestel
 worden bevestigd zoals een TLS-vingerafdruk — gekozen met de eigenaar, omdat de API van Proxmox geen
 aanroep heeft die een bestand teruggeeft; verwijderen op het cluster; en een tabblad **ISO's en
 images** per cluster. Bewezen tegen de fixture, nog niet tegen een echt cluster — zie
-[Bekende hiaten](known-gaps.md).
+[Bekende beperkingen](known-gaps.md).
 
 **Besluiten die met de eigenaar zijn genomen voordat er iets gebouwd is:**
 
@@ -184,10 +184,10 @@ privé gehouden zoals hieronder; elk geheim een eigen versleutelde credential; V
 die de media naar de node kopieert, een Autounattend.xml of een cloud-init-seed op een kleine cd zet,
 wacht tot de guest agent meldt dat de installatie klaar is, en bij een mislukking de VM vernietigt;
 een vastgelegde onthulling; mail die eerst wordt bewezen en dan aangezet; een installatieverslag
-versleuteld met AES-256 revisie 6. `verify-provisioning.sh` bewijst 89 controles tegen de fixture.
+versleuteld met AES-256 revisie 6. `verify-provisioning.sh` bewijst het tegen de fixture.
 **Niet als afgerond gemarkeerd** omdat de acceptatie hieronder spreekt van een gast die installeert
 zonder toetsaanslag en van gedrag bij de eerste start, en de fixture installeert niets — zie
-[Bekende hiaten](known-gaps.md).
+[Bekende beperkingen](known-gaps.md).
 
 Aangevraagd door de eigenaar op 27-09-2026. Ingepland na fase 5 (jobs) en 5A (de ISO-bibliotheek),
 omdat uitrollen een job is en de eerste stap ervan "staat de ISO op die node" is.
@@ -250,28 +250,28 @@ unattended-upgrades.
 
 **Besloten met de eigenaar op 27-09-2026:**
 
-- **Linux wordt uitgerold vanaf cloud images, niet vanaf een installatie-ISO.** cloud-init stuurt geen
+- **Linux wordt uitgerold vanaf cloud-images, niet vanaf een installatie-ISO.** cloud-init stuurt geen
   ISO-installatie — de installer van Ubuntu neemt `autoinstall` en die van Debian `preseed` — en de
-  eigenaar liet de keuze aan de bouwer. Cloud images winnen op elk punt dat hier telt: Proxmox
+  eigenaar liet de keuze aan de bouwer. Cloud-images winnen op elk punt dat hier telt: Proxmox
   ondersteunt ze rechtstreeks (`qm importdisk`, `--ciuser`, `--sshkeys`, `--ipconfig0`,
   `--cicustom`), een VM is binnen seconden bruikbaar in plaats van na een installatieronde, en het
   resultaat is elke keer identiek omdat er niets vragen beantwoordt. Het gevolg voor fase 5A: **de
-  bibliotheek bevat cloud images naast ISO's**, en "staat hij op de node" betekent voor Linux het
+  bibliotheek bevat cloud-images naast ISO's**, en "staat hij op de node" betekent voor Linux het
   schijfimage en voor Windows de ISO. Windows blijft ISO plus Autounattend.xml, want Microsoft levert
-  geen cloud image.
+  geen cloud-image.
 - **Een sudo-gebruiker met een sleutel is de standaard; root-login is een optie, uit tenzij gekozen.**
   Extra accounts zijn sudo-gerechtigde gebruikers, geen extra roots.
 - **SSH-toegang is een schakelaar op de template**, standaard aan: `openssh-server` geïnstalleerd en
   ingeschakeld, SSH-sleutels geplaatst voor elk account, wachtwoordauthenticatie uit tenzij de
   template die aanzet, en — waar het image een firewall meelevert — poort 22 daarvoor open. De meeste
-  cloud images hebben de server al; de schakelaar maakt dat een garantie in plaats van een aanname
+  cloud-images hebben de server al; de schakelaar maakt dat een garantie in plaats van een aanname
   over het image.
 
 ### Bericht en installatieverklaring
 
-Hiervan bestaat nog niets: er is geen maildienst, geen notificatiesysteem en geen PDF-generatie in het
-product. Fase 13 noemt notificaties als UI-afwerking, en dat is niet hetzelfde als bezorging. Deze
-fase draagt dus een eerste keer: SMTP-configuratie, een notificatiekanaal per ontvanger, en een
+Hiervan bestond nog niets toen de fase werd gepland: het product had geen maildienst, geen
+notificatiesysteem en geen PDF-generatie. Fase 13 noemt notificaties als UI-afwerking, en dat is niet
+hetzelfde als bezorging. Deze fase droeg dus een eerste keer: SMTP-configuratie, een notificatiekanaal per ontvanger, en een
 PDF-renderer.
 
 **De inloggegevens in die PDF zijn het deel om te besluiten, niet om stil te implementeren.** De eigen
@@ -320,7 +320,7 @@ bouwen zodra updates en upgrades tegen de clusters van klanten draaien.
   één hoofd-tenant, gekozen bij het aanmaken. Alleen de MSP maakt en beheert tenants. Rollen in een
   hoofd-tenant gelden ook in zijn sub-tenants. Een gebruiker kan lid zijn van meerdere sub-tenants
   zonder lid te zijn van hun hoofd-tenant, maar alleen van sub-tenants onder dezelfde hoofd-tenant.
-  Een klant ziet **Tenants** alleen als hij bij een hoofd-tenant hoort met sub-tenants die hij mag
+  Een klant ziet **Tenants** alleen bij een hoofd-tenant met sub-tenants die de klant mag
   zien. Het tenantfilter, elke lijst, de reikwijdte van het auditlog en het isolatieharnas volgen.
 - **Certificaten vanuit de interface.** Het eigen certificaat van Caddy, Let's Encrypt met
   automatische verlenging (HTTP-01), of een geüpload certificaat met sleutel, gekozen in Serverbeheer
@@ -416,7 +416,7 @@ wordt gemeld en, als dat mag, gecorrigeerd met een migratiejob; op PVE 9 staat d
 HA-regels van Proxmox en overleeft hij het stoppen van Velnox; balanceren verplaatst niets zolang een
 cluster verminderd draait.
 
-## Phase 8 — Framework voor major upgrades (generiek) · **L** · gebouwd, nog niet afgerond
+## Phase 8 — Framework voor grote upgrades (generiek) · **L** · gebouwd, nog niet afgerond
 
 **Zoals gebouwd** (0.5.29, ADR-050): playbooks als data met fasen, stappen per doel en guards; één
 runner op het jobsysteem, met voorwaardelijke stappen en goedkeuringen waarvan de wijzigingsset bij
@@ -433,16 +433,16 @@ herstelactie-plugins met planning van de wijzigingsset, goedkeuringsroutering en
 Rapportgeneratie.
 
 **Samengestelde plannen:** `upgrade_plans.kind` met ouder/kind-volgorde, en `upgrade_targets` die zowel een
-node als een Ceph-daemon kunnen aanwijzen — het structurele werk dat Phase 9A en 9B laat samenstellen.
+node als een Ceph-daemon kunnen aanwijzen — het structurele werk dat fase 9A en 9B laat samenstellen.
 
 **Acceptatie:** een playbook is als data gedefinieerd en wordt door de generieke runner uitgevoerd;
 herstelactie-metadata stuurt de keuze tussen automatisch en goedkeuring; een samengesteld plan voert twee
 kindplannen op volgorde uit en stopt de ouder wanneer een kind faalt; rapporten renderen voor zowel
-node-gerichte als daemon-gerichte uitvoeringen. De genericiteitsclaim wordt hier niet beweerd — die wordt
+node-gerichte als daemon-gerichte uitvoeringen. Dat de engine generiek is, wordt hier niet beweerd — dat wordt
 *bewezen* in 9A en 9B, die twee structureel verschillende workflows op deze engine draaien zonder haar te
 wijzigen.
 
-## Phase 9A — Ceph major upgrade-workflow · **L** · gebouwd, nog niet afgerond
+## Phase 9A — Workflow voor grote Ceph-upgrades · **L** · gebouwd, nog niet afgerond
 
 **Zoals gebouwd** (0.5.30, ADR-051): de versiematrix (Quincy → Reef, Reef → Squid) als gedateerde data,
 vastgelegd bij elk plan; plannen geweigerd met of de draaiende release, het doel of de matrix
@@ -476,7 +476,7 @@ zelf geïnstalleerd (zoals de eigenaar vroeg), sysctl, systemd-boot, GRUB, LVM-a
 bookworm-updates verholpen na een goedkeuring die de exacte wijziging toont, elk bewezen door opnieuw
 pve8to9; schijfruimte, cgroup v1-containers, GlusterFS en dergelijke blokkeren. Dan node voor node —
 gasten weg, trixie-bronnen, dist-upgrade, herstart met noout, validatie, gasten terug — met de eerste
-node als kanarie waarna de run wacht. Een Ceph-cluster upgradet eerst Ceph naar Squid, in hetzelfde
+node als canary, waarna de run wacht. Een Ceph-cluster upgradet eerst Ceph naar Squid, in hetzelfde
 samengestelde plan. `scripts/verify-pve9.sh` bewijst het tegen de fixture. **Nog niet:** een echt
 cluster, en pve8to9-uitvoer van een echt cluster voor de referentiebestanden.
 
@@ -587,7 +587,7 @@ geen zichtbare tekst buiten de taalcatalogi; elke term uit de woordenlijst wordt
 
 Toegevoegd op verzoek van de eigenaar op 21 november 2026, als een van de laatste twee fasen vóór de
 uitrol. Dan bestaat elk scherm, dus wordt elk scherm één keer netjes gemaakt in plaats van na elke
-fase opnieuw. Phase 13 voegt toe wat de interface mist; deze fase loopt alles na vanuit iemand die
+fase opnieuw. Fase 13 voegt toe wat de interface mist; deze fase loopt alles na vanuit iemand die
 Velnox gebruikt zonder Proxmox-beheerder te zijn:
 
 - gewone woorden waar een technische term voor die persoon niets toevoegt;
@@ -622,13 +622,13 @@ interface; doc-sync slaagt voor beide talen.
 
 ## Onderbouwing van de opleveringsvolgorde
 
-Phase 2–3 gaan vooraf aan al het Proxmox-werk omdat tenancy en RBAC grenzen zijn die pijnlijk zijn om
-achteraf in te bouwen — elke latere tabel en elk later endpoint erft ze. Lokalisatie landt in Phase 1 om
+fase 2–3 gaan vooraf aan al het Proxmox-werk omdat tenancy en RBAC grenzen zijn die pijnlijk zijn om
+achteraf in te bouwen — elke latere tabel en elk later endpoint erft ze. Lokalisatie landt in fase 1 om
 dezelfde reden: teksten externaliseren is aan het begin bijna gratis en op elk later moment duur.
 
-Phase 5 (jobs) gaat vooraf aan updates en upgrades omdat beide jobs zijn; ze eerder bouwen zou betekenen
-dat de toestandsmachine twee keer gebouwd wordt. Phase 8 (generiek framework) gaat vooraf aan 9A en 9B,
-zodat genericiteit door constructie bewezen wordt — twee structureel verschillende workflows op één
+Fase 5 (jobs) gaat vooraf aan updates en upgrades omdat beide jobs zijn; ze eerder bouwen zou betekenen
+dat de toestandsmachine twee keer gebouwd wordt. Fase 8 (generiek framework) gaat vooraf aan 9A en 9B,
+zodat generiekheid door constructie bewezen wordt — twee structureel verschillende workflows op één
 ongewijzigde engine — in plaats van achteraf beweerd.
 
 **Fase 5C vóór fase 6** (toegevoegd op 5 oktober 2026): de tenant-hiërarchie verandert de
@@ -647,18 +647,18 @@ net zoals hij in 5B geen onbeheerde installatie kon bewijzen. Wat het combineren
 6–7 en 8–9B bijna geen code delen tot 9B 9A samenstelt, zodat de twee ketens naast elkaar gebouwd en
 los bewezen kunnen worden.
 
-**9A (Ceph) vóór 9B (PVE 8→9)** volgt de werkelijke beperking: een PVE major release levert een specifieke
+**9A (Ceph) vóór 9B (PVE 8→9)** volgt de werkelijke beperking: een grote PVE-release levert een specifieke
 Ceph-release en ondersteunt de vorige niet, dus Ceph moet geüpgraded worden terwijl het cluster nog op de
 huidige PVE- en Debian-release draait. Ze in die volgorde bouwen betekent bovendien dat 9B 9A kan
 samenstellen in plaats van andersom.
 
-De installer landt in Phase 14 omdat die verpakt wat er is — maar de compose-stack uit Phase 1 is
+De installer landt in fase 14 omdat die verpakt wat er is — maar de compose-stack uit fase 1 is
 doorlopend te draaien, zodat er nooit een periode is waarin het product niet gestart kan worden.
 
 **15A en 15B als laatste, vóór de uitrol** (besluit van de eigenaar, 21 november 2026): schermen
 netjes maken en handleidingen herschrijven terwijl er nog functies bijkomen, zou betekenen dat beide
 twee keer moeten. De interface komt eerst, omdat de documentatie haar beschrijft. Beide vallen met
-een letter onder Phase 15, zoals 9A en 9B onder 9, dus de versie eindigt nog steeds op `0.15.x` en
+een letter onder fase 15, zoals 9A en 9B onder 9, dus de versie eindigt nog steeds op `0.15.x` en
 1.0.0 blijft daarna één bewuste stap.
 
 ## Doorlopend werk in elke fase
@@ -669,7 +669,7 @@ elke nieuwe resource; **elke nieuwe zichtbare tekst in dezelfde commit toegevoeg
 iets onvolledig wordt opgeleverd.
 
 **Een fase als afgerond markeren is wat de versie verzet.** De markering `✅ complete` op de
-koppen hierboven wordt gelezen door `scripts/version.mjs`: onder 1.0.0 is het minor-nummer het
+koppen van de Engelse roadmap wordt gelezen door `scripts/version.mjs`: onder 1.0.0 is het minor-nummer het
 fasenummer, dus fase N afronden is wat het product `0.N.0` maakt. `pnpm run validate:version` faalt
 wanneer de twee het oneens zijn, en `version:phase` weigert vooruit te lopen op dit bestand. Markeer
 het hier, in de wijziging die de fase afmaakt.
@@ -689,7 +689,7 @@ referentiedocumenten, die uitleggen hoe het systeem in elkaar zit; zie ADR-026 i
 | 5 | Jobs volgen, annuleren en goedkeuren |
 | 5C | Sub-tenants en wie wat ziet; certificaten vanuit de interface; supportlogs exporteren; software na een installatie |
 | 6 | Updates beoordelen en toepassen |
-| 7–9 | Een rolling update uitvoeren; een major upgrade uitvoeren; de workflows voor Ceph en PVE 8 → 9 |
+| 7–9 | Een rolling update uitvoeren; een grote upgrade uitvoeren; de workflows voor Ceph en PVE 8 → 9 |
 | 10 | Een rotatiebeleid instellen; noodtoegang tot een wachtwoord |
 | 11–12 | Een VMware- of Hyper-V-migratie analyseren en uitvoeren |
 

@@ -51,7 +51,7 @@ graph TB
   API -->|"OIDC code + PKCE"| ENTRA
 ```
 
-**Uitgaandeverkeersregel:** alleen `worker` opent verbindingen naar beheerde infrastructuur. `api`
+**Regel voor uitgaand verkeer:** alleen `worker` opent verbindingen naar beheerde infrastructuur. `api`
 bereikt precies één extern endpoint — de OIDC-provider — en uitsluitend tijdens een inlogstroom.
 
 ---
@@ -159,7 +159,7 @@ sequenceDiagram
 ┌─ grens 1: authenticatie + RBAC ──────────────────────────┐
 │ caddy → web → api                                        │
 │ valideert: sessie, rechten, bereik, invoerschema         │
-│ KAN NIET: secrets ontsleutelen, een beheerde node bereiken│
+│ KAN NIET: infra-secrets ontsleutelen, een node bereiken  │
 └───────────────┬──────────────────────────────────────────┘
                 │ jobrecord + wachtrijbericht (geen secrets in de payload)
 ┌─ grens 2: automatisering + secretgebruik ────────────────┐

@@ -4,13 +4,13 @@
 > **Engels is leidend.** Bij verschil tussen deze tekst en de Engelse versie geldt de Engelse tekst.
 
 **Welke gasten van een cluster uit elkaar of bij elkaar worden gehouden, op welke nodes een gast
-hoort, en hoe Velnox dat zo houdt.** Een regel stel je één keer in en blijft waar: Velnox meldt
+hoort, en hoe Velnox dat handhaaft.** Een regel stel je één keer in en blijft waar: Velnox meldt
 wanneer hij niet klopt, kan gasten verplaatsen om hem na te leven, houdt hem aan terwijl een rolling
 update een node leegmaakt, en schrijft hem op Proxmox VE 9 in de eigen HA-regels van Proxmox, zodat
 hij blijft gelden terwijl Velnox niet draait.
 
 Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-049 in
-[Technische beslissingen](tech-decisions.md).
+[Technologiekeuzes](tech-decisions.md).
 
 ---
 
@@ -24,8 +24,8 @@ Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo we
 - **Bij elkaar houden** — deze gasten draaien altijd op dezelfde node. Voor gasten die voortdurend
   met elkaar praten.
 - **Voorkeur voor nodes** — deze gasten draaien op de gekozen nodes. **Alleen deze nodes** maakt het
-  strikt: een gast komt nooit ergens anders, ook niet als geen van die nodes hem kan hebben. Uit gaat
-  een gast elders heen als het moet, en komt terug als het kan.
+  strikt: een gast komt nooit ergens anders, ook niet als geen van die nodes hem kan opnemen. Staat dit
+  uit, dan gaat een gast elders heen als het moet, en komt hij terug als het kan.
 
 Een regel noemt gasten, bij hun VMID, en alleen draaiende gasten tellen: een gestopte gast staat
 nergens, dus breekt geen regel. Dezelfde twee gasten kunnen niet door de ene regel uit elkaar en door
@@ -73,7 +73,7 @@ verhuizen — staat in de job, met naam.
 
 De job, stap voor stap:
 
-1. **check** — het cluster is heel: quorum, elke node online, Ceph `HEALTH_OK`. Plaatsing verplaatst
+1. **check** — het cluster is gezond: quorum, elke node online, Ceph `HEALTH_OK`. Plaatsing verplaatst
    niets op een cluster dat dat niet is.
 2. **plan** — uit wat Proxmox nu zegt, niet uit de inventaris: de verplaatsingen, en wat niet kan.
 3. **move** — elke verplaatsing om de beurt, vlak ervoor opnieuw aan de regels getoetst.
@@ -85,17 +85,17 @@ De job, stap voor stap:
 
 ## Balanceren
 
-**Nu balanceren** verplaatst hoogstens één gast: de kleinste gast op de node die het meeste van zijn
-geheugen gebruikt die, verplaatst naar een rustigere node, het verschil tussen de drukste en de
-rustigste kleiner maakt — nooit tegen een regel in, nooit naar een node die een zachte voorkeur lager
-rangschikt. Zolang het verschil binnen de drempel blijft, verplaatst het niets. Balanceren gaat op
+**Nu balanceren** verplaatst hoogstens één gast. Op de node die het grootste deel van zijn geheugen
+gebruikt, kiest Velnox de kleinste gast die, verplaatst naar een rustigere node, het verschil tussen
+de drukste en de rustigste node kleiner maakt — nooit tegen een regel in, nooit naar een node die een
+zachte voorkeur lager rangschikt. Zolang het verschil binnen de drempel blijft, verplaatst het niets. Balanceren gaat op
 geheugen, want dat bepaalt of een gast past; CPU-gebruik verandert van minuut tot minuut.
 
 ---
 
-## Zo houden
+## Automatisch handhaven
 
-Onder **Zo houden**, allebei uit tot je ze aanzet:
+Onder **Automatisch handhaven**, allebei uit tot je ze aanzet:
 
 - **Zelf corrigeren** — als de inventaris een regel laat zien die niet klopt, start Velnox een
   correctie.
@@ -125,8 +125,8 @@ blijft.
 |---|---|
 | *Het cluster heeft geen gast of node …* | De regel noemt een VMID of node die de inventaris niet heeft. Inventariseer het cluster opnieuw als het nieuw is. |
 | *… gasten kunnen niet uit elkaar worden gehouden op … nodes* | Meer gasten dan nodes. Splits de regel. |
-| *Dezelfde gasten worden andersom gehouden door regel …* | Twee regels spreken elkaar tegen. Wijzig er een of zet er een uit. |
-| *Het cluster is niet gezond …* | Een node is offline, het quorum is weg, of Ceph is niet gezond. Er wordt niets verplaatst tot het heel is. |
+| *Regel … doet met dezelfde gasten het tegenovergestelde* | Twee regels spreken elkaar tegen. Wijzig er een of zet er een uit. |
+| *Het cluster is niet gezond …* | Een node is offline, het quorum is weg, of Ceph is niet gezond. Er wordt niets verplaatst tot het weer gezond is. |
 | *Sommige plaatsingsregels kloppen nog niet …* | Geen node met de ruimte, of een gast die niet live kan verhuizen (een schijf op de eigen opslag van een node, een doorgegeven apparaat). |
 | *Niet in Proxmox* bij een regel | Proxmox weigerde de regel; de reden staat eronder. Op een cluster dat midden in een upgrade zit, bewaakt Velnox de regel tot elke node PVE 9 draait. |
 | *Geen node mag … hebben terwijl zijn eigen node wordt leeggemaakt* | Een rolling update zou een regel moeten breken. Wijzig de regel voor de update, of stop de gast. |

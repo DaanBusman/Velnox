@@ -328,7 +328,7 @@ the worker holds no connection through Caddy.
 ### Knowing that there is a newer version
 
 Every quarter of an hour the worker reads one file, `release.json` on the repository's main branch: the
-newest version, and the advisories — fixes an installation should not sit on. When the version is
+newest version, and the advisories, the fixes an installation should get soon. When the version is
 newer than the one running, the sidebar shows **Velnox 0.7.x available** above Server management to
 anyone with `system.manage`, or **Critical update: Velnox 0.7.x** in red when an advisory that
 concerns this installation is critical. It opens **Server management → Updates**, which lists those advisories
@@ -374,7 +374,7 @@ TLS mode and ports are read from your existing configuration rather than re-deri
 upgrade cannot silently move a hostname back to an IP address or replace a publicly trusted
 certificate with a self-signed one. Named volumes are untouched, so the database and queue survive.
 
-**What it refreshes.** The build commit, which the source link under Settings → About reports. That is
+**What it refreshes.** The build commit, which the source link under **Source code → About** reports. That is
 build metadata rather than configuration, so it always follows the code that is actually running.
 And the software underneath: the Node.js base image of Velnox's own images, and the PostgreSQL, Redis
 and Caddy images, each fetched again at the latest release of the major it is pinned to
@@ -422,7 +422,7 @@ stays as it was and nothing is rolled back.
 
 ### Keeping several machines in step
 
-The commit shown under Settings → About is the exact source of the running build, so comparing that
+The commit shown under **Source code → About** is the exact source of the running build, so comparing that
 across installations tells you which are behind. To upgrade a fleet, run `sudo velnox update` on
 each host; running it on a machine that is already current is harmless and takes about a minute.
 
@@ -611,8 +611,9 @@ The API and the UI are served on one origin behind Caddy, with HSTS, CSP and the
 headers. PostgreSQL and Redis are unreachable from outside. Only the worker container has a network
 route to the infrastructure Velnox manages.
 
-**This build has no authentication yet** — every page and endpoint is open. Deploy it on a management
-network behind a firewall, not anywhere untrusted people can reach it.
+Every page and endpoint needs a session, apart from the deliberately public ones such as the health
+checks. Deploy Velnox on a management network behind a firewall all the same: it manages your
+customers' infrastructure, and untrusted people should not be able to reach it.
 
 ---
 

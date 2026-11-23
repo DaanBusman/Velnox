@@ -1,4 +1,4 @@
-# Velnox — Database Schema Proposal
+# Velnox — Database Schema
 
 **Status:** designed in Phase 0, and extended as each phase landed its tables — the sections below say
 which phase built what. PostgreSQL 16, Prisma migrations.
@@ -92,11 +92,11 @@ created by the setup wizard and can never be deleted.
 | slug | text | unique **within the tenant**, not globally |
 | description | text null | |
 | locality, country, timezone | text null | where it is; free text, for a person reading an incident |
-| contact_name, contact_email, contact_phone | text null | a note — Velnox sends no mail |
+| contact_name, contact_email, contact_phone | text null | a note — Velnox does not mail it |
 
-**Landed in phase 3.** The slug is per tenant because two customers may both reasonably have a site
+**Landed in Phase $1.** The slug is per tenant because two customers may both reasonably have a site
 called `hq`. The tenant is deliberately immutable: moving a site would move every grant scoped to it,
-and — from phase 4 — every cluster beneath it, into another customer without anyone deciding to.
+and — from Phase $1 — every cluster beneath it, into another customer without anyone deciding to.
 
 Two triggers on `role_assignments` arrived with this table, because `scope_id` is polymorphic and no
 foreign key can cover it:
@@ -164,13 +164,14 @@ enrolment and logout endpoints — enforced by a global guard, so new endpoints 
 Refresh rotation creates a child row; presenting an already-rotated token revokes the whole
 `family_id` (reuse detection).
 
-### `api_tokens`
+### `api_tokens` (designed, not built)
 `id, tenant_id, user_id, name, token_hash, prefix, scopes (permission[]), scope_type, scope_id,
 expires_at, last_used_at, revoked_at`
 
 ### `roles`
-`id, key, name, description, is_system (bool), tenant_id (null = global/system role)`
-System roles are seeded and immutable. Tenant-defined custom roles carry a `tenant_id`.
+`id, key, name, description, is_system (bool), msp_only (bool), tenant_id (null = installation-wide)`
+System roles are seeded and immutable. Custom roles (ADR-054) are made by the MSP and are
+installation-wide too: `tenant_id` null, `is_system` false.
 
 ### `role_permissions`
 `role_id, permission` — `permission` is a text value validated against the frozen catalogue in
@@ -193,12 +194,12 @@ trigger.
 
 ## 4. Proxmox inventory
 
-**Landed in phase 4.** What follows is what exists, with one deliberate narrowing: columns that
-belong to later phases — update classification, reboot-required, maintenance mode, per-node
-credentials, inventory snapshots — are **not** in the schema yet. A column that is always null is a
-column that has to be explained, and each of them arrives with the phase that fills it.
+**Landed in Phase 4.** What follows is what exists. Columns for later work arrive with the phase that
+fills them, because a column that is always null is a column that has to be explained: the update
+columns came with Phase 6. Maintenance mode, per-node credentials and inventory snapshots are not
+built.
 
-`discovery_runs` was added and is not in the phase 0 sketch: "when did this last work" and "what did
+`discovery_runs` was added and is not in the Phase $1 sketch: "when did this last work" and "what did
 it fail on" are the two questions an operator asks about stale inventory, and neither is answerable
 from the inventory itself.
 
@@ -229,15 +230,15 @@ updates, upgrade plans, guards — uniform instead of branching on "is this stan
 ### `nodes`
 | Group | Columns |
 |---|---|
-| identity | `id, tenant_id, site_id, cluster_id, hostname, fqdn, address, api_port, ssh_port` |
-| connection | `api_credential_id, ssh_credential_id, tls_fingerprint_sha256, tls_verify_mode, ssh_host_key_fingerprint` |
-| version | `pve_version, pve_release, kernel_version, debian_release, subscription_status, repository_status jsonb` |
-| health | `status (ONLINE|OFFLINE|UNKNOWN|MAINTENANCE), health, uptime_seconds, last_seen_at` |
-| capacity | `cpu_sockets, cpu_cores, cpu_model, cpu_usage_pct, mem_total_bytes, mem_used_bytes, disk_total_bytes, disk_used_bytes` |
-| updates | `updates_available_count, security_updates_count, kernel_update_pending, reboot_required, last_update_check_at` |
-| flags | `maintenance_mode, managed (bool), notes` |
+| identity | `id, tenant_id, cluster_id, name, node_id, address` |
+| version | `pve_version, kernel_version, running_kernel, subscription_status, subscription_level, repositories jsonb` |
+| health | `state, health, problems jsonb, uptime_seconds, last_seen_at` |
+| capacity | `cpu_count, cpu_model, cpu_usage, memory_total_bytes, memory_used_bytes, rootfs_total_bytes, rootfs_used_bytes` |
+| updates | `updates_available, updates_security, updates_kernel, updates_proxmox, updates_checked_at, reboot_required, reboot_required_reason` |
+| SSH | `ssh_host_key_fingerprint, ssh_host_key_type` |
 
-`tls_verify_mode` is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. There is no `INSECURE` value.
+The API connection is the cluster's, so `tls_verify_mode` is on `clusters`, with the fingerprint and
+the credential. It is `PINNED_FINGERPRINT` \| `CA_BUNDLE` \| `SYSTEM`. There is no `INSECURE` value.
 
 `ssh_host_key_fingerprint` and `ssh_host_key_type`, reserved since Phase 4, are filled in Phase 5A:
 the host key an operator confirmed, in OpenSSH's `SHA256:` form. A node without one is never
@@ -272,7 +273,7 @@ uptime_seconds, last_seen_at`
 > separate filtered resources, so the external contract matches the brief. Say the word and this
 > becomes two tables.
 
-### `inventory_snapshots`
+### `inventory_snapshots` (designed, not built)
 `id, tenant_id, cluster_id, node_id, taken_at, payload jsonb, job_id`
 Point-in-time raw capture, retained with a configurable TTL. Used for upgrade before/after reports
 and for debugging discovery parsing without re-querying a customer's node.
@@ -299,7 +300,7 @@ Versioned so rotation is crash-safe (see the rotation ordering in
 [architecture.md](architecture.md#rotation-ordering-crash-safe)). Exactly one `ACTIVE` version per
 credential, enforced by a partial unique index.
 
-### `rotation_policies`
+### `rotation_policies` (designed, not built)
 `id, tenant_id, name, scope_type, scope_id, enabled, interval_days, password_length,
 password_charset, maintenance_window_id, retain_superseded_days, notify_targets jsonb`
 
@@ -440,7 +441,6 @@ packages that are not FAILED. A Windows template's `settings.packages` lists the
 the schema ties the two, so the API checks it.
 
 ### `provisionings`
-`id, tenant_id, template_id### `provisionings`
 `id, tenant_id, template_id, template_name, family, template_snapshot jsonb, cluster_id,
 cluster_name, node, disk_storage, media_storage, bridge, vlan, hostname, network jsonb, vmid, state
 (QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED), job_id, addresses text[], requested_by_id,
@@ -533,8 +533,8 @@ created_by_label, created_at, updated_at, started_at, finished_at`
 A `COMPOSITE` plan has no playbook (`upgrade_plans_playbook`) and child plans ordered by `sequence` —
 how a Ceph-backed PVE 8 → 9 upgrade is expressed: child 1 the `CEPH` plan, child 2 the `PVE_MAJOR`
 plan. A child plan upgrades its parent's cluster (trigger). `facts` is what discovery collected and
-what actions keep between steps; `report` holds the report and its Markdown. Designed and not yet
-built: `version_matrix_id` (Phase 9A), `strategy`, `scheduled_for`, `approved_by`.
+what actions keep between steps; `report` holds the report and its Markdown. Designed and not
+built: `version_matrix_id`, `strategy`, `scheduled_for`, `approved_by`.
 
 ### `upgrade_targets`
 `id, tenant_id, plan_id, target_kind (NODE|CEPH_DAEMON), node_id, ceph_daemon_id, label,
@@ -564,6 +564,8 @@ that what was approved is what ran. `backup_ref` and rolling back are not built.
 ---
 
 ## 9. Migrations
+
+Designed for Phases 11 and 12; none of these tables exists yet.
 
 ### `migration_sources`
 `id, tenant_id, site_id, kind (VMWARE_VCENTER|VMWARE_ESXI|HYPERV), name, address, port,
@@ -613,12 +615,12 @@ cluster, whatever is written. The worker removes tasks older than
 `system_settings.support_log_retention_days` (1–30, default 30, enforced by
 `system_settings_support_retention_range`).
 
-### `alerts`
+### `alerts` (designed, not built)
 `id, tenant_id, severity, kind, resource_type, resource_id, title, detail, status
 (OPEN|ACKNOWLEDGED|RESOLVED|SUPPRESSED), first_seen_at, last_seen_at, count, acknowledged_by,
 resolved_at, dedup_key`
 
-### `notifications` / `notification_channels`
+### `notifications` / `notification_channels` (designed, not built)
 Channel: `id, tenant_id, kind (EMAIL|WEBHOOK|TEAMS), config jsonb, enabled, secret_ref`.
 Notification: delivery attempts, status, last error.
 

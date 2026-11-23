@@ -172,7 +172,7 @@ private as below; every secret its own encrypted credential; VMs built by one jo
 media to the node, writes an Autounattend.xml or a cloud-init seed onto a small CD, waits for the
 guest agent to report the install finished, and on failure destroys the VM; an audited reveal; mail
 proven before it is switched on; an installation record encrypted with AES-256 revision 6.
-`verify-provisioning.sh` proves 89 checks against the fixture. **Not marked complete** because the
+`verify-provisioning.sh` proves it against the fixture. **Not marked complete** because the
 acceptance below speaks of a guest installing without a keypress and of first-boot behaviour, and
 the fixture installs nothing — see [Known gaps](known-gaps.md).
 
@@ -249,9 +249,9 @@ unattended-upgrades.
 
 ### Notification and the installation record
 
-None of this exists yet: there is no mail transport, no notification system and no PDF generation in
-the product. Phase 13 lists notifications as UI polish, which is not the same thing as delivery.
-So this phase carries a first: SMTP configuration, a notification channel per recipient, and a PDF
+None of this existed when the phase was planned: the product had no mail transport, no notification
+system and no PDF generation. Phase 13 lists notifications as UI polish, which is not the same thing
+as delivery. So this phase carried a first: SMTP configuration, a notification channel per recipient, and a PDF
 renderer.
 
 **The credentials in that PDF are the part to decide, not to implement quietly.** Velnox's own rules
@@ -400,7 +400,7 @@ Re-check → Upgrade → Validation → Report). Upgrade plans and targets. Reme
 and registry with `ChangeSet` planning, approval routing and rollback. Report generation.
 
 **Composite plans:** `upgrade_plans.kind` with parent/child ordering, and `upgrade_targets` able to
-address either a node or a Ceph daemon — the structural work that lets Phase 9A and 9B compose.
+address either a node or a Ceph daemon — the structural work that lets Phases 9A and 9B compose.
 
 **Acceptance:** a playbook is defined as data and executed by the generic runner; remediation
 metadata drives automatic-vs-approval routing; a composite plan sequences two child plans and stops
@@ -441,7 +441,7 @@ an unknown one a blocker; findings classified, the CPU microcode installed by Ve
 the owner asked), sysctl, systemd-boot, GRUB, LVM autoactivation and bookworm updates fixed after an
 approval showing the exact change, each proven by pve8to9 again; disk space, cgroup v1 containers,
 GlusterFS and the like blocking. Then node by node — guests away, trixie sources, dist-upgrade, reboot
-with noout, validation, guests back — with the first node a canary the run waits after. A Ceph
+with noout, validation, guests back — with the first node a canary, after which the run waits. A Ceph
 cluster upgrades Ceph to Squid first, in the same composite. `scripts/verify-pve9.sh` proves it
 against the fixture. **Not yet:** a real cluster, and pve8to9 output captured from one for the golden
 files.

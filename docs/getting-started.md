@@ -73,7 +73,7 @@ You are asked for:
 |---|---|
 | Organisation name | Your own MSP. It names the root tenant and appears in the interface. |
 | Your name | Shown on audit events, so "who did this" is a person rather than an email address. |
-| Email address | Your sign-in name. Velnox sends no email; this is an identifier. |
+| Email address | Your sign-in name, and where Velnox can mail you once outgoing mail is set up. |
 | Password | At least 12 characters. The same rule applies to every account afterwards. |
 
 Submitting it creates, in one database transaction: the MSP root tenant, the system roles, and your
@@ -134,7 +134,7 @@ Working today:
 | **Tenants**, **Sites** | Your customers and their locations — see [Organising your fleet](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtual machines**, **Containers**, **Storage**, **Networks** | The Proxmox inventory, read on a schedule — see [Adding clusters and reading the inventory](managing-infrastructure.md) |
 | **ISO library** | Installers and cloud images on the Velnox host, copied onto any cluster — see [The ISO library](managing-the-library.md) |
-| **Virtual Machines → New VM**, **Autoconfig** | VMs built unattended from templates, and the templates — see [Building VMs from templates](building-vms.md) |
+| **Virtual machines → New VM**, **Autoconfig** | VMs built unattended from templates, and the templates — see [Building VMs from templates](building-vms.md) |
 | **Alerts** | Conditions computed from the inventory: offline nodes, stale reads, Ceph flags |
 | **Jobs** | Work in progress and its history, live — see [Watching, cancelling and approving jobs](working-with-jobs.md) |
 | **Users** | Accounts, roles, enabling and disabling — see [Managing users and access](managing-access.md) |
@@ -154,9 +154,8 @@ sidebar, and closes back onto it. It groups everything about the Velnox server i
 the infrastructure it manages, and it appears only for an MSP Super Administrator — every panel in
 it needs `system.manage`.
 
-Waiting on a later phase: tenants and sites (phase 3); clusters, nodes, virtual machines,
-containers, storage and networks (phase 4); jobs (phase 5); updates (phase 6); major upgrades
-(phase 8); migrations (phase 11). [Roadmap](roadmap.md) has the full order and what each phase
+Waiting on a later phase: credential rotation (phase 10) and the VMware and Hyper-V migration
+assistants (phases 11 and 12). [Roadmap](roadmap.md) has the full order and what each phase
 delivers.
 
 ---
@@ -232,11 +231,10 @@ cannot be a release apart. If a page ever shows a version differing from the one
 
 Being direct about this is more useful than a feature list.
 
-**Velnox reads your Proxmox infrastructure, and changes it in three ways: it copies ISOs and disk
-images onto a cluster's storage, it builds new VMs from templates, and it applies updates to a node —
-one node at a time, rebooting it when asked.** Existing guests are inventoried, but nothing is
-stopped, migrated or reconfigured; moving guests off a node before its reboot is Phase 7's rolling
-update.
+**Velnox changes your Proxmox infrastructure only through jobs someone with the permission started,
+or a policy they set allowed:** files on a cluster's storage, new VMs, packages and reboots, where
+guests run, and the release a cluster runs. Signing in with Microsoft Entra ID is configuration only,
+and credential rotation and the migration assistants do not exist yet.
 
 [Roadmap](roadmap.md) lists what each phase adds; [Known gaps](known-gaps.md) is the honest list of
 what is deliberately missing or unfinished right now.

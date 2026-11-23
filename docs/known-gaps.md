@@ -56,18 +56,18 @@ ADR-055.
 
 ### Only the MSP makes roles
 Custom roles are made by the MSP and are installation-wide: a customer's Tenant Administrator can
-grant one inside its own tenant, but not make one. A custom role cannot be limited to one customer
+grant one inside their own tenant, but not make one. A custom role cannot be limited to one customer
 except by where it is granted. See ADR-054.
 
 ### There is no self-service password change
 An administrator sets an account's initial password and passes it on out of band, because Velnox
-sends no email. The account cannot then change it from the interface: `changePassword` exists in the
+sends no invitations. The account cannot then change it from the interface: `changePassword` exists in the
 service, enforces the strength rule and revokes every other session, but has no endpoint yet.
 
 ### Recovery-code use is logged, not alerted
 Using a recovery code is written to the audit trail and emitted as a `warn`-level event with a
 stable name (`auth.mfa.recovery_code_used`), which an operator's log pipeline can alert on today.
-Velnox has no alert delivery of its own yet — no email, no webhook — so the roadmap's word
+Velnox does not deliver this event itself — no mail, no push, no webhook — so the roadmap's word
 "alerted" is currently satisfied by the log, not by Velnox contacting anyone.
 
 ### The SSRF guard on discovery has a DNS-rebinding gap
@@ -105,14 +105,14 @@ the standalone one.
 
 ### Alerts have no lifecycle
 The alerts screen shows conditions computed from the inventory each time it is opened. That is the
-whole of it: there is no acknowledgement, no silencing, no history and no notification — no email, no
-webhook, nothing that reaches you when you are not looking at the screen.
+whole of it: there is no acknowledgement, no silencing, no history and no notification — no mail, no
+push, no webhook, nothing that reaches you when you are not looking at the screen.
 
 Deliberate, and the smaller half of the problem on purpose. A stored alert needs raised /
 acknowledged / resolved / re-raised, and a half-built lifecycle produces a screen full of stale
 alarms nobody reads, which is worse than a screen that is honest about only knowing what is true now.
-Delivering them needs a notification channel. Mail exists since Phase 5B, but only for VMs that are
-ready; alerts do not use it yet.
+Delivering them needs a notification channel. Mail exists since Phase 5B for VMs that are ready, and
+push since 0.7.39 for approvals (ADR-062); alerts use neither yet.
 
 ### Provisioning is proven against the fixture, not yet a real cluster
 `verify-provisioning.sh` drives the whole flow against the fixture Proxmox: templates, the refusals,
@@ -145,7 +145,7 @@ Then they are deleted. The period is fixed; there is no setting yet. Nothing cha
 
 ### Mail is plain SMTP, proven only against the fixture's sink
 STARTTLS and TLS go through nodemailer with certificate checking, but the harness tests only an
-unencrypted sink. There is one notification — a VM is ready — and none for alerts yet.
+unencrypted sink. Apart from the test mail, Velnox mails one thing — a VM is ready — and nothing for alerts yet.
 
 ### The installation record's encryption reaches into pdfkit
 Revision 6 is set by rewriting what pdfkit prepared, so pdfkit is pinned to 0.20.2; a newer one has
@@ -213,7 +213,8 @@ the same `job.worker_lost` reason.
 
 ### The jobs there are
 The library's five — fetch, check an upload, copy to a cluster, copy from one, delete on one —,
-building a VM (Phase 5B), checking an installer package (Phase 5C) and updating a node (Phase 6).
+building a VM (Phase 5B), checking an installer package (Phase 5C), updating a node (Phase 6), a
+rolling update (Phase 7), placement (Phase 7B) and running an upgrade plan (Phases 8 to 9B).
 `system.selftest` touches nothing and exists to prove the machinery.
 
 ### Job history is kept forever
@@ -235,7 +236,7 @@ list — their role is on their account, under the sibling. See ADR-042.
 
 ### Updates: proven against the fixture, one node at a time
 Classification, applying, the reboot and its wait, windows, approval and the policy scheduler are
-proven against the fixture's operations mode, whose SSH answers Velnox's three commands the way apt
+proven against the fixture's operations mode, whose SSH answers Velnox's commands the way apt
 would — not yet against a real node, where the sudoers line in [Updating nodes](updating-nodes.md)
 also wants confirming. Discovery's security count comes from what Proxmox's API reports and can miss
 a security update; the update job reads it exactly from `apt-get -s`. A single-node update's reboot
@@ -262,9 +263,8 @@ HA rules from a cluster that was removed from Velnox. See ADR-049.
 ### Major upgrades: an engine, proven by its self-tests
 The engine — playbooks, guards, checks per run, automatic and approved remediation, the gate,
 target-by-target steps, composites and reports — is proven with its self-test playbooks, which change
-nothing outside Velnox. There is no Ceph or Proxmox VE playbook yet (Phases 9A and 9B), so no plan
-upgrades anything real. A plan cannot be scheduled for later, a remediation cannot be rolled back, and
-there is no version matrix yet. Discovery now names Ceph daemons as Ceph does (`mon.pve1`, `mgr.pve1`):
+nothing outside Velnox; the Ceph and Proxmox VE playbooks on it have their own entries below. A plan
+cannot be scheduled for later, and a remediation cannot be rolled back. Discovery now names Ceph daemons as Ceph does (`mon.pve1`, `mgr.pve1`):
 a monitor and a manager on one host used to share a name, and one of them was lost from the
 inventory. See ADR-050.
 
@@ -454,14 +454,14 @@ source commit it was translated from, so a reader can tell. UI strings are held 
 a missing or extra locale key **fails** the build.
 
 ### AGPL §13 source offer — *depends on the operator*
-Velnox ships the mechanism (`GET /api/v1/system/source`, Settings → About, `VELNOX_SOURCE_URL`,
+Velnox ships the mechanism (`GET /api/v1/system/source`, **Source code → About**, `VELNOX_SOURCE_URL`,
 embedded build commit). An operator running a **modified** build must point that variable at their
 own Corresponding Source. Velnox cannot verify that they did — no software can. The obligation is
 theirs; the mechanism is ours.
 
-### Sub-tenants — *schema-ready, not implemented*
-`tenants.parent_tenant_id` exists so hierarchical tenants remain possible, but v1 supports exactly
-one level of customer tenants beneath the MSP root.
+### Sub-tenants — *one level below a main tenant*
+Since Phase 5C a customer tenant is a main tenant or a sub-tenant of one (`tenants.parent_tenant_id`,
+ADR-042). The database refuses a deeper hierarchy.
 
 ---
 

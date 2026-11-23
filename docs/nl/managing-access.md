@@ -7,7 +7,7 @@
 geschreven om te lezen terwijl je hem uitvoert.
 
 Voor wat elke rol toekent, zie [Rollen en rechten](permissions.md). Voor de overwegingen achter deze
-keuzes in plaats van de stappen, zie [Technische besluiten](tech-decisions.md).
+keuzes in plaats van de stappen, zie [Technologiekeuzes](tech-decisions.md).
 
 Elke taak hier vereist een eigen recht; de pagina noemt welk recht dat is wanneer je het mist, in
 plaats van de knop te verbergen en je te laten raden.
@@ -19,12 +19,12 @@ plaats van de knop te verbergen en je te laten raden.
 **Je hebt nodig:** `users.manage` — MSP Super Administrator, MSP Administrator of Tenant
 Administrator.
 
-1. Ga naar **Gebruikers** onder Beheer.
+1. Ga naar **Gebruikers** onder Administratie.
 2. Kies **Account toevoegen**.
 3. Vul de naam, het e-mailadres en een beginwachtwoord van minimaal 12 tekens in.
 4. Opslaan.
 
-Velnox verstuurt geen e-mail, dus er is geen uitnodigingslink. Je stelt het beginwachtwoord zelf in
+Velnox verstuurt geen uitnodigingen, dus er is geen uitnodigingslink. Je stelt het beginwachtwoord zelf in
 en geeft het zelf door, via het kanaal dat je voor elke andere credential zou gebruiken — niet via
 dezelfde e-mail die het adres van de installatie bevat.
 
@@ -32,8 +32,8 @@ Het nieuwe account kan zich direct aanmelden en kan **niets**: een account zonde
 geauthenticeerd maar niet geautoriseerd. Geef het hierna een rol.
 
 > Deze build kent geen zelfbediening voor het wijzigen van een wachtwoord en geen reset door een
-> beheerder. Dat staat vastgelegd in [Bekende hiaten](known-gaps.md) in plaats van dat je het moet
-> ontdekken. Tot dat er is, is het wachtwoord van een account het wachtwoord waarmee het is
+> beheerder. Dat staat vastgelegd in [Bekende beperkingen](known-gaps.md) in plaats van dat je het moet
+> ontdekken. Tot die er zijn, is het wachtwoord van een account het wachtwoord waarmee het is
 > aangemaakt.
 
 ---
@@ -79,7 +79,7 @@ gebruikersbeheer, het is *het volledige* identiteitsbeheer, en dat blijkt niet u
 
 - Iemand die het landschap beheert maar geen mensen hoort te beheren: **MSP Engineer**.
 - Iemand die mensen én het landschap beheert maar niet de installatie zelf: **MSP Administrator**.
-- Iemand die moet kunnen kijken en nooit aanraken — een auditor, een nieuwe collega in zijn eerste
+- Iemand die moet kunnen kijken en nooit aanraken — een auditor, een nieuwe collega in de eerste
   week: **MSP Read Only**.
 - Houd **MSP Super Administrator** voor de accounts die installatiebrede instellingen echt nodig
   hebben. Het is de enige rol met `system.manage`.
@@ -122,8 +122,8 @@ het auditlog. De zeven systeemrollen kunnen niet worden gewijzigd: die verandere
 
 Gebruik **Intrekken** naast de rol op het account.
 
-Bij de oprichtend beheerder ontbreekt die knop, omdat het antwoord nee zou zijn. Zie
-[De oprichtend beheerder](#de-oprichtend-beheerder) hieronder.
+Bij de oprichtende beheerder ontbreekt die knop, omdat het antwoord nee zou zijn. Zie
+[De oprichtende beheerder](#de-oprichtende-beheerder) hieronder.
 
 Een rol intrekken meldt het account niet af. Het verandert wat het eerstvolgende verzoek mag doen, en
 dat is wat telt; een sessie zonder rechten kan de afmeldknop bereiken en verder niets.
@@ -144,9 +144,9 @@ toewijsbaar.
 
 ---
 
-## De oprichtend beheerder
+## De oprichtende beheerder
 
-Het account dat de installatiewizard aanmaakt is gemarkeerd als oprichtend beheerder, en Velnox
+Het account dat de installatiewizard aanmaakt is gemarkeerd als oprichtende beheerder, en Velnox
 behandelt het op precies twee punten anders:
 
 - **De rollen ervan kunnen niet worden ingetrokken.** Niet door een andere beheerder, en niet door
@@ -171,7 +171,7 @@ persoon zit is een single point of failure, wat de software ook toestaat.
 
 **Je hebt nodig:** een account. Dit is persoonlijk en vereist geen recht.
 
-1. Ga naar **Beveiliging** onder Beheer.
+1. Ga naar **Beveiliging** onder Administratie.
 2. Kies **Tweefactorauthenticatie instellen**.
 3. Scan de QR-code met een authenticator-app, of typ het getoonde geheim met de hand over.
 4. Voer één code uit de app in.
@@ -182,8 +182,8 @@ worden voordat ze bewezen is, sluit je buiten je eigen account met een geheim da
 opgeslagen.
 
 **De herstelcodes worden eenmalig getoond.** Ze worden op dezelfde manier gehasht als wachtwoorden,
-dus Velnox kan ze niet nog eens tonen — het heeft ze niet. Bewaar ze ergens die niet de machine is
-waarop Velnox draait en niet de telefoon met de authenticator. Raak je ze kwijt, dan kun je op
+dus Velnox kan ze niet nog eens tonen — het heeft ze niet. Bewaar ze niet op de machine waarop
+Velnox draait en niet op de telefoon met de authenticator. Raak je ze kwijt, dan kun je op
 dezelfde pagina een nieuwe set genereren zolang je nog bent aangemeld; de oude set werkt niet meer
 vanaf het moment dat de nieuwe is gemaakt.
 
@@ -202,7 +202,7 @@ Ga daarna naar **Beveiliging**, zet tweefactorauthenticatie uit, en stel hem opn
 nieuwe apparaat. Genereer meteen een nieuwe set herstelcodes.
 
 > Gebruik van een herstelcode wordt gelogd maar nog nergens buiten het auditlog gemeld. Dat staat in
-> [Bekende hiaten](known-gaps.md). Tot dat er is, is het auditlog de plek om te kijken.
+> [Bekende beperkingen](known-gaps.md). Tot die er is, is het auditlog de plek om te kijken.
 
 ---
 
@@ -221,7 +221,7 @@ De instelling van het account wordt verwijderd, de ongebruikte herstelcodes word
 sessies worden ingetrokken. Bij de eerstvolgende aanmelding kan het account opnieuw instellen. Aan
 het wachtwoord en de rollen verandert niets.
 
-De handeling wordt onder een eigen actie naar het auditlog geschreven, apart van iemand die zijn
+De handeling wordt onder een eigen actie naar het auditlog geschreven, apart van iemand die de
 eigen tweede factor uitzet, zodat een auditor de twee kan onderscheiden zonder te moeten afleiden.
 
 ### Wie wie mag resetten
@@ -233,15 +233,15 @@ eigen tweede factor uitzet, zodat een auditor de twee kan onderscheiden zonder t
 | MSP Engineer | ja | nee | **nee** |
 | Alle anderen | nee | nee | **nee** |
 
-**Niemand kan zijn eigen tweede factor resetten.** Een Super Administrator niet, de oprichtend
+**Niemand kan de eigen tweede factor resetten.** Een Super Administrator niet, de oprichtende
 beheerder niet. Gebruik daarvoor **Beveiliging**, waar om een code uit je authenticator wordt
 gevraagd — die vraag bewijst dat je de factor nog hebt, en dat is precies waarom zelfbediening
-veilig is. Een beheerder die zijn eigen tweede factor kon wissen, zou elke bevoorrechte tweede
+veilig is. Een beheerder die de eigen tweede factor kon wissen, zou elke bevoorrechte tweede
 factor verwijderbaar maken met het bijbehorende wachtwoord, en dat komt neer op er geen hebben.
 
 Ben jij dus degene die het apparaat kwijt is, dan moet een ander het voor je doen. Op een
 installatie met één beheerder is die ander er niet, wat nog een reden is om vroeg een tweede
-beheerder aan te maken — zie [De oprichtend beheerder](#de-oprichtend-beheerder).
+beheerder aan te maken — zie [De oprichtende beheerder](#de-oprichtende-beheerder).
 
 **Waarom een engineer het wel voor een klant mag en niet voor een collega.** Een account in je eigen
 organisatie kan bij elke klant die je beheert. De tweede factor daarvan verwijderen is een grotere
@@ -267,11 +267,10 @@ kan ontsnappen.
 
 [Rollen en rechten](permissions.md) noemt welke rechten als bevoorrecht gelden.
 
-> **Deze build heeft geen scherm om het beleid te wijzigen.** De handhaving is compleet en getest;
-> de instelling is een databasekolom die standaard op `OPTIONAL` staat, en het instellingenscherm dat
-> hem schrijft komt met de rest van de installatie-instellingen. Dat zeggen is nuttiger dan een knop
-> beschrijven die er niet is. Ondertussen noemt de pagina Gebruikers de bevoorrechte accounts zonder
-> tweede factor, zodat het risico zichtbaar is ook al kun je het beleid nog niet afdwingen.
+> **Het beleid voor de hele installatie heeft nog geen scherm.** De handhaving is compleet en getest.
+> Per tenant stel je het beleid in onder **Tenants → Details**; de waarde voor de hele installatie is
+> een databasekolom die standaard op `OPTIONAL` staat. Ondertussen noemt de pagina Gebruikers de bevoorrechte accounts zonder
+> tweede factor, zodat het risico zichtbaar is.
 
 ---
 
@@ -312,7 +311,7 @@ achter dat de configuratie fout is, en niet bij iemands eerste aanmelding.
 > verbindingstest zijn compleet; de callback die een Microsoft-identiteit in een Velnox-sessie
 > omzet, is dat niet. De aanmeldpagina biedt de knop niet aan, dus niets hiervan kan je laten
 > stranden — maar zet lokale wachtwoorden niet buiten gebruik op grond van een geslaagde
-> verbindingstest. Zie [Bekende hiaten](known-gaps.md).
+> verbindingstest. Zie [Bekende beperkingen](known-gaps.md).
 
 ---
 
@@ -418,5 +417,5 @@ Nuttig om te weten wanneer iets wordt geweigerd en je probeert te achterhalen wa
 - [Rollen en rechten](permissions.md) — de volledige matrix van wat elke rol toekent
 - [Je omgeving indelen](organising-your-fleet.md) — tenants, locaties en het beperken van een recht
 - [Aan de slag](getting-started.md) — het eerste uur na de installatie
-- [Bekende hiaten](known-gaps.md) — wat er op dit moment bewust ontbreekt
-- [Technische besluiten](tech-decisions.md) — waarom deze keuzes, en wat ze kosten
+- [Bekende beperkingen](known-gaps.md) — wat er op dit moment bewust ontbreekt
+- [Technologiekeuzes](tech-decisions.md) — waarom deze keuzes, en wat ze kosten

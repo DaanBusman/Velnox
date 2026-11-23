@@ -22,7 +22,7 @@ would install and which kernels are installed:
   which names the archive exactly, and says so in its output.
 - **Kernel** — a new kernel, which only takes effect after a reboot.
 - **Proxmox** — Proxmox's own packages: `pve-*`, `proxmox-*`, `qemu-server`, Ceph, ZFS and the like.
-- **Reboot due** — a newer kernel is installed than the one running, or the node itself says so
+- **Reboot required** — a newer kernel is installed than the one running, or the node itself says so
   (`/var/run/reboot-required`). The reason is shown on the node's row.
 
 **Packages** lists them, security updates first. Nothing here needs SSH; it is the Proxmox API.
@@ -169,7 +169,7 @@ other nodes would not have the memory for a node's guests, and says why when a r
   `local-lvm`, a ZFS pool only that node has) or a device passed through (`hostpci`, `usb`) cannot
   move to another node while it runs. **Do not start** refuses the run and names them; **Shut it
   down for its node's reboot, start it after** does exactly that.
-- **Minutes to settle** — how long a node, the cluster and Ceph may take to be whole again after a
+- **Minutes to settle** — how long a node, the cluster and Ceph may take to be healthy again after a
   reboot before the run stops. Ten by default.
 - **Move guests back afterwards** — on by default. Off, they stay where they were moved to and the
   job lists where that is.
@@ -265,10 +265,10 @@ for its plan and report.
 | *apt.dist_upgrade … ended with exit code 100* | apt or dpkg failed. The job's output has apt's own words; fix it on the node (`dpkg --configure -a`), then update again. |
 | *The machine reached for … is not called …* | SSH reached a machine with another name. Check the node's address and the SSH set-up. |
 | *The cluster would not keep quorum* | Another node is down. The updates are installed; the reboot was not done. Bring the other node back, then update again with a reboot. |
-| *… did not come back within 20 minutes* | Look at the node's console. |
+| *… did not come back within 20 minutes after the reboot* | Look at the node's console. |
 | The reboot stays due after a reboot | The node booted an older kernel; check its boot order (`proxmox-boot-tool kernel list`). |
-| *The cluster is degraded …* | A node is offline, the cluster has no quorum or Ceph is not healthy. A rolling update does not start until it is whole. |
+| *The cluster is degraded …* | A node is offline, the cluster has no quorum or Ceph is not healthy. A rolling update does not start until it is healthy again. |
 | *These running guests cannot be moved live …* | Their disk is on a node's own storage, or a device is passed through. Move or stop them, or choose to shut them down for the reboot. |
 | *While … is down its guests need … GB* | The other nodes do not have the memory free. Stop guests you can spare, or add memory. |
-| *… did not come back healthy after its update* | The node came back but the cluster or Ceph was not whole in time. The job names what was wrong and the guests not returned. |
+| *… did not come back healthy after its update* | The node came back but the cluster or Ceph was not healthy in time. The job names what was wrong and the guests not returned. |
 | *The update of … is done, but apt autoremove did not complete* | It would have removed a kernel in use or part of Proxmox, or apt failed, or sudo does not allow it. The update stands. Read the job's output and look at the node before removing anything by hand. |

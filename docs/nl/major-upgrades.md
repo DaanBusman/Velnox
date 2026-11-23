@@ -9,7 +9,7 @@ rapport erna.** Een plan draait één playbook — een Ceph-upgrade, een Proxmox
 hieronder. De eigen zelftests van de engine, die niets buiten Velnox veranderen, zijn er ook.
 
 Voor wie wat mag, zie [Rollen en rechten](permissions.md). Voor waarom het zo werkt, zie ADR-050 in
-[Technische beslissingen](tech-decisions.md).
+[Technologiekeuzes](tech-decisions.md).
 
 ---
 
@@ -20,7 +20,7 @@ plan**: een cluster, een playbook en een naam. De doelen komen uit de inventaris
 gemaakt, in de volgorde waarin ze geüpgraded worden: nodes op naam; Ceph-daemons in de eigen
 volgorde van Ceph — monitors, dan managers, OSD's, MDS en RGW.
 
-Een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden. Eenmaal gestart kan het niet
+Een plan dat nog niet heeft gedraaid, kan worden gestart of verwijderd. Eenmaal gestart kan het niet
 opnieuw gestart of verwijderd worden: zijn vastlegging en zijn rapport blijven. Een afgerond plan
 verhuist van dit tabblad naar **Geschiedenis**, waar het met zijn rapport te openen is.
 
@@ -107,8 +107,8 @@ zoals het was.
 3. **packages** — `apt-get update` en de dist-upgrade op elke node. De daemons blijven de oude release
    draaien.
 4. **restart** en **settle**, daemon voor daemon, in de volgorde van Ceph — monitors, managers, OSD's,
-   MDS: elk herstart via Proxmox, bewezen op de nieuwe release, en Ceph opnieuw gelezen tot het heel
-   is — gezond op `noout` na en de waarschuwing dat `require-osd-release` nog niet verhoogd is —
+   MDS: elk herstart via Proxmox, bewezen op de nieuwe release, en Ceph opnieuw gelezen tot het gezond
+   is, afgezien van `noout` en de waarschuwing dat `require-osd-release` nog niet verhoogd is,
    voordat de volgende begint. Een waarschuwing die Velnox niet kent, stopt de run meteen; een die een
    herstart even veroorzaakt, zoals een monitor buiten quorum, wordt afgewacht, tot de
    stabilisatietijd (standaard tien minuten).
@@ -175,7 +175,7 @@ de upgrade tegen: hij wordt nooit onschuldig verondersteld. Wat Velnox met de be
 
 | pve8to9 zegt | Velnox |
 |---|---|
-| Het passende CPU-microcodepakket is niet gevonden | **Verhelpt het zelf:** zet het onderdeel `non-free-firmware` van Debian aan op de Debian-bronnen (het oude bestand blijft bewaard) leest eerst de CPU-fabrikant van de node uit `/proc/cpuinfo` en installeert het pakket daarvoor — `intel-microcode` voor Intel, `amd64-microcode` voor AMD. Noemt pve8to9 een ander pakket, of is de CPU geen van beide, dan stopt het zonder iets te installeren en zegt waarom. Laag risico, en ongedaan te maken. |
+| Het passende CPU-microcodepakket is niet gevonden | **Verhelpt het zelf:** zet het onderdeel `non-free-firmware` van Debian aan op de Debian-bronnen (het oude bestand blijft bewaard), leest eerst de CPU-fabrikant van de node uit `/proc/cpuinfo` en installeert het pakket daarvoor — `intel-microcode` voor Intel, `amd64-microcode` voor AMD. Noemt pve8to9 een ander pakket, of is de CPU geen van beide, dan stopt het zonder iets te installeren en zegt waarom. Laag risico, en ongedaan te maken. |
 | Verouderde config `/etc/sysctl.conf` bevat instellingen | Na goedkeuring: elke instelling naar `/etc/sysctl.d/99-velnox-from-sysctl-conf.conf`, en uitgecommentarieerd waar ze stond. De goedkeuring toont beide bestanden regel voor regel. |
 | Meta-pakket systemd-boot geïnstalleerd | Na goedkeuring: `systemd-boot` verwijderd (`systemd-boot-efi` en `systemd-boot-tools` blijven). |
 | Meta-pakket grub-efi-amd64 niet geïnstalleerd | Na goedkeuring: geïnstalleerd. |
@@ -211,11 +211,11 @@ aangeraakt.
 3. **packages** — `apt-get update` en de dist-upgrade, met behoud van de eigen configuratiebestanden
    van de node.
 4. **reboot** — met `noout` van Ceph eromheen, en alleen zolang het cluster quorum houdt.
-5. **validate** — de node terug op Proxmox VE 9 en zijn nieuwe kernel, Ceph heel, `noout` uitgezet, en
+5. **validate** — de node terug op Proxmox VE 9 en zijn nieuwe kernel, Ceph gezond, `noout` uitgezet, en
    opnieuw pve8to9 zonder iets dat tegenhoudt.
 6. **return** — de gasten teruggezet, de afgesloten gasten weer gestart.
 
-**De eerste node is een kanarie.** Daarna wacht de run op iemand met `upgrades.execute` en
+**De eerste node is een canary.** Daarna wacht de run op iemand met `upgrades.execute` en
 `jobs.approve`, en toont wat de node was en nu is, voordat de tweede node begint.
 
 Aan het eind draait elke node Proxmox VE 9, en zet Proxmox HA-groepen zelf om naar HA-regels. Het
@@ -252,14 +252,14 @@ doel dat mislukt — gekozen als het plan wordt gemaakt.
 
 | Wat je ziet | Wat het betekent |
 |---|---|
-| *Een voorwaarde voor deze stap klopt niet: …* | Een guard — bijvoorbeeld een node die offline is. Maak het cluster heel en maak dan een nieuw plan. |
-| *… houden de upgrade nog tegen* | Na herstel staat er nog een blokkade of een onbekende regel open. Het plan zegt welke. |
+| *Een voorwaarde voor deze stap klopt niet: …* | Een guard — bijvoorbeeld een node die offline is. Maak het cluster gezond en maak dan een nieuw plan. |
+| *… still stop the upgrade* | Na herstel staat er nog een blokkade of een onbekende regel open. Het plan zegt welke. |
 | *… herstelactie … is mislukt* | Een herstelactie kon niet worden toegepast, of verhielp haar controle niet. De uitvoer van de job zegt waarom. |
 | *De upgrade van … is mislukt* | De upgrade of de validatie van een doel mislukte. De doelen ervoor zijn klaar. |
-| *Alleen een plan dat nog niet gedraaid heeft, kan gestart of verwijderd worden* | Maak een nieuw plan. |
+| *Alleen een plan dat nog niet heeft gedraaid, kan worden gestart of verwijderd* | Maak een nieuw plan. |
 | *Er is geen playbook …, of het wordt jou niet aangeboden* | Zelftests vragen `system.manage`. |
 | *De draaiende release, het doel en de versiematrix spreken elkaar tegen* | De weigering noemt welke; zie [de versiematrix](#de-versiematrix). |
-| *Deze upgrade is niet van toepassing: elke node draait al Proxmox VE 9* | Er valt niets te upgraden. Wil je de versies eerst opnieuw laten lezen, ontdek het cluster dan opnieuw. |
+| *Deze upgrade is niet van toepassing: elke node draait al Proxmox VE 9* | Er valt niets te upgraden. Wil je de versies eerst opnieuw laten lezen, inventariseer het cluster dan opnieuw. |
 | *Ceph draait …, en Proxmox VE 9 vraagt Squid* | Maak het plan met **Eerst Ceph naar Squid upgraden**. |
 | *Ceph is niet gezond: …* | Na de herstart van een daemon kwam Ceph niet binnen de stabilisatietijd gezond terug, of toonde een waarschuwing die Velnox niet kent. `noout` is uitgezet. |
-| *apt.update eindigde met exitcode 100* | `apt-get update` mislukte op de node. Het technisch detail bevat de eerste `E:`-regel van apt, en de uitvoer van de job alles van apt — een repository zonder Release-bestand, een 401, een naam die niet resolvet. |
+| *apt.update eindigde met exitcode 100* | `apt-get update` mislukte op de node. Het technisch detail bevat de eerste `E:`-regel van apt, en de uitvoer van de job alles van apt — een repository zonder Release-bestand, een 401, een naam die niet wordt gevonden. |

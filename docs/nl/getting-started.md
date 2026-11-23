@@ -38,8 +38,8 @@ sudo apt-get update && sudo apt-get install -y git && sudo git clone https://git
 ```
 
 Het installatieprogramma stelt twee vragen — het adres, en of je een zelfondertekend of een publiek
-vertrouwd certificaat wilt — en bouwt en start daarna alles. Vijf tot tien minuten, grotendeels
-opgaand aan het bouwen van images.
+vertrouwd certificaat wilt — en bouwt en start daarna alles. Dat duurt vijf tot tien minuten,
+grotendeels voor het bouwen van de images.
 
 De bouwstap toont de eigen voortgang van BuildKit in plaats van een spinner, zodat je ziet welke
 image wordt gebouwd en wat die doet. Regels dragen de service waar ze bij horen — `[api ...]` voor
@@ -56,7 +56,7 @@ eerst opent. Dat hoort zo en is geen teken dat er iets misging: het certificaat 
 de eigen certificaatautoriteit van de installatie, waar je browser nog nooit van heeft gehoord.
 
 Aan die keuze zit je niet vast. Een draaiende installatie kan op elk moment overstappen op een
-Let's Encrypt-certificaat, of er een krijgen die je al hebt — zie
+Let's Encrypt-certificaat, of een certificaat gebruiken dat je al hebt — zie
 [Certificaten](deployment.md#certificaten), en **Serverbeheer → Certificaat** in het product voor wat
 er op dit moment geserveerd wordt.
 
@@ -75,30 +75,30 @@ Er wordt gevraagd om:
 
 | Veld | Waar het voor dient |
 |---|---|
-| Organisatienaam | Je eigen MSP. Het benoemt de hoofdtenant en verschijnt in de interface. |
+| Organisatienaam | Je eigen MSP. Dit wordt de naam van de MSP-hoofdtenant en verschijnt in de interface. |
 | Je naam | Getoond bij auditgebeurtenissen, zodat "wie heeft dit gedaan" een persoon is en geen e-mailadres. |
-| E-mailadres | Je aanmeldnaam. Velnox verstuurt geen e-mail; dit is een identificatie. |
+| E-mailadres | Je aanmeldnaam, en het adres waarop Velnox je kan mailen zodra uitgaande mail is ingesteld. |
 | Wachtwoord | Minimaal 12 tekens. Dezelfde regel geldt daarna voor elk account. |
 
 Verzenden maakt in één databasetransactie aan: de MSP-hoofdtenant, de systeemrollen, en jouw account
 met **MSP Super Administrator** op globaal bereik. Mislukt een onderdeel, dan is er niets gebeurd —
 je kunt niet met een half geïnitialiseerde installatie eindigen.
 
-Een tweede poging tot de wizard levert een foutmelding op in plaats van nog een beheerder.
+Een tweede poging met de wizard levert een foutmelding op in plaats van nog een beheerder.
 
 ### Jouw account is blijvend bijzonder
 
-Het account dat de wizard aanmaakt is de **oprichtend beheerder**. De rollen ervan kunnen door
+Het account dat de wizard aanmaakt is de **oprichtende beheerder**. De rollen ervan kunnen door
 niemand worden ingetrokken, ook niet door het account zelf, en het kan niet worden uitgeschakeld
 zolang geen ander ingeschakeld account de installatie kan beheren.
 
-Dit bestaat omdat het alternatief zich heeft voorgedaan. Een beheerder kon zijn eigen laatste rol
+Dit bestaat omdat het alternatief zich heeft voorgedaan. Een beheerder kon de eigen laatste rol
 intrekken, en op een installatie met één account — wat elke installatie op haar eerste dag is —
 haalde dat het laatste recht uit het systeem. Aanmelden werkte nog. Niets was toegestaan. De enige
 weg terug was een databaseprompt, in een product waarvan het hele uitgangspunt is dat beheerders die
 niet nodig zouden moeten hebben.
 
-De prijs is echt en het is eerlijk hem te noemen: één account in je installatie is blijvend
+Dat heeft een prijs: één account in je installatie is blijvend
 bevoorrecht, dus het wachtwoord en de tweede factor ervan wegen zwaarder dan die van elk ander
 account. Geef het een sterk wachtwoord en zet er tweefactorauthenticatie op voordat je iets anders
 doet.
@@ -110,13 +110,12 @@ doet.
 Doe dit nu en niet later, terwijl er precies één account is en je een collega niet kunt buitensluiten
 door te experimenteren.
 
-Ga naar **Beveiliging** onder Beheer. Bij het instellen verschijnt een QR-code, wordt om één code
+Ga naar **Beveiliging** onder Administratie. Bij het instellen verschijnt een QR-code, wordt om één code
 uit je authenticator-app gevraagd om te bewijzen dat het werkt voordat er iets wordt aangezet, en
 worden daarna tien eenmalig bruikbare herstelcodes getoond.
 
-De herstelcodes worden **eenmalig** getoond. Bewaar ze ergens die niet de machine is waarop Velnox
-draait en niet de telefoon met de authenticator — anders raak je met één apparaat beide helften
-kwijt. [Gebruikers en toegang beheren](managing-access.md) beschrijft wat je doet als iemand zijn
+De herstelcodes worden **eenmalig** getoond. Bewaar ze niet op de machine waarop Velnox draait en
+niet op de telefoon met de authenticator — anders raak je met één apparaat beide helften kwijt. [Gebruikers en toegang beheren](managing-access.md) beschrijft wat je doet als iemand de
 authenticator tóch kwijtraakt.
 
 ---
@@ -138,8 +137,8 @@ Werkt vandaag:
 | **Dashboard** | Wat je kunt zien in één oogopslag: wat aandacht vraagt, jobresultaten over 14 dagen, capaciteit per cluster en updatestatus |
 | **Tenants**, **Locaties** | Je klanten en hun locaties — zie [Je omgeving indelen](organising-your-fleet.md) |
 | **Clusters**, **Nodes**, **Virtuele machines**, **Containers**, **Opslag**, **Netwerken** | De Proxmox-inventarisatie, volgens schema uitgelezen — zie [Clusters toevoegen en de inventarisatie lezen](managing-infrastructure.md) |
-| **Virtuele machines → Nieuwe VM**, **Autoconfig** | VM’s die onbeheerd vanuit templates worden gebouwd, en de templates — zie [VM's bouwen vanuit templates](building-vms.md) |
-| **ISO-bibliotheek** | Installers en cloud images op de Velnox-host, naar elk cluster te kopiëren — zie [De ISO-bibliotheek](managing-the-library.md) |
+| **Virtuele machines → Nieuwe VM**, **Autoconfig** | VM's die onbeheerd vanuit templates worden gebouwd, en de templates — zie [VM's bouwen vanuit templates](building-vms.md) |
+| **ISO-bibliotheek** | Installers en cloud-images op de Velnox-host, naar elk cluster te kopiëren — zie [De ISO-bibliotheek](managing-the-library.md) |
 | **Meldingen** | Condities berekend uit de inventarisatie: offline nodes, verouderde uitlezingen, Ceph-vlaggen |
 | **Jobs** | Werk dat loopt en zijn geschiedenis, live — zie [Jobs volgen, annuleren en goedkeuren](working-with-jobs.md) |
 | **Gebruikers** | Accounts, rollen, in- en uitschakelen — zie [Gebruikers en toegang beheren](managing-access.md) |
@@ -159,9 +158,8 @@ zijbalk, en sluit daar weer op terug. Het groepeert alles over de Velnox-server 
 infrastructuur die ermee beheerd wordt, en het verschijnt alleen voor een MSP Super Administrator —
 elk onderdeel erin vereist `system.manage`.
 
-Wacht op een latere fase: tenants en locaties (fase 3); clusters, nodes, virtuele machines,
-containers, opslag en netwerken (fase 4); jobs (fase 5); updates (fase 6); major upgrades (fase 8);
-migraties (fase 11). [Roadmap](roadmap.md) bevat de volledige volgorde en wat elke fase oplevert.
+Wacht op een latere fase: credentialrotatie (fase 10) en de migratieassistenten voor VMware en
+Hyper-V (fase 11 en 12). [Roadmap](roadmap.md) bevat de volledige volgorde en wat elke fase oplevert.
 
 ---
 
@@ -237,15 +235,15 @@ laten lezen.
 
 ## Wat er nog niet is
 
-Hier direct over zijn is nuttiger dan een functielijst.
+Hierover duidelijk zijn is nuttiger dan een functielijst.
 
-**Velnox leest je Proxmox-infrastructuur, en wijzigt die op drie manieren: het kopieert ISO's en
-disk-images naar de opslag van een cluster, het bouwt nieuwe VM's vanuit templates, en het past
-updates toe op een node — één node tegelijk, en herstart hem als daarom gevraagd wordt.** Bestaande
-gasten worden geïnventariseerd, maar er wordt niets gestopt, gemigreerd of geherconfigureerd; gasten
-van een node verplaatsen vóór zijn herstart is de rolling update van fase 7.
+**Velnox wijzigt je Proxmox-infrastructuur alleen via jobs die iemand met het recht daarvoor startte,
+of die een beleid van zo iemand toeliet:** bestanden op de opslag van een cluster, nieuwe VM's,
+pakketten en herstarts, waar gasten draaien, en de release die een cluster draait. Aanmelden met
+Microsoft Entra ID is alleen configuratie, en credentialrotatie en de migratieassistenten zijn er
+nog niet.
 
-[Roadmap](roadmap.md) noemt wat elke fase toevoegt; [Bekende hiaten](known-gaps.md) is de eerlijke
+[Roadmap](roadmap.md) noemt wat elke fase toevoegt; [Bekende beperkingen](known-gaps.md) is de eerlijke
 lijst van wat er op dit moment bewust ontbreekt of onaf is.
 
 ---
@@ -256,7 +254,7 @@ lijst van wat er op dit moment bewust ontbreekt of onaf is.
 - [Rollen en rechten](permissions.md) — wat elke rol volledig toekent
 - [Je omgeving indelen](organising-your-fleet.md) — tenants, locaties en het beperken van een recht
 - [Clusters toevoegen](managing-infrastructure.md) — Proxmox onder beheer brengen, en de inventarisatie
-- [De ISO-bibliotheek](managing-the-library.md) — ISO's en cloud images, en ze naar clusters kopiëren
+- [De ISO-bibliotheek](managing-the-library.md) — ISO's en cloud-images, en ze naar clusters kopiëren
 - [VM's bouwen](building-vms.md) — templates, onbeheerde installaties, en de wachtwoorden daarna
 - [Werken met jobs](working-with-jobs.md) — het werk van Velnox volgen, annuleren en goedkeuren
 - [Deployment](deployment.md) — vereisten, upgrades, back-up, diagnose
