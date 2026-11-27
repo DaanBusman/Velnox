@@ -25,7 +25,7 @@ ESLint-configuratie, één lockfile en één `pnpm build` die incrementeel gecac
 
 ## ADR-002 — NestJS voor de backend
 
-**Keuze:** NestJS 11 op Node 22 LTS.
+**Keuze:** NestJS 12 op Node 22 LTS (11 tot en met 0.7.46; zie ADR-057).
 
 **Waarom:** de eisenlijst is in feite een opsomming van NestJS-sterktes — guards voor RBAC,
 interceptors voor audit en redactie, modules voor servicegrenzen, DI voor de adapterregisters,
@@ -1955,6 +1955,50 @@ Nieuwe majors sinds de vorige controle blijven om dezelfde redenen tegengehouden
 `eslint-plugin-react-hooks` 7 gaan mee met ESLint 10, en `@types/supertest` 7 is testtooling die een
 eigen wijziging verdient.
 
+**De majors, 27 november 2026 (0.7.43–0.7.47).** Op verzoek van de eigenaar zijn de majors uit de
+tabel hierboven toch meegenomen, één groep per commit, elk door de hele reeks van CI in een
+Linux-container, en het resultaat nog eens in een verse:
+
+- **ESLint 10**, met `@eslint/js` 10, `eslint-config-prettier` 10 en `eslint-plugin-react-hooks` 7.
+  react-hooks 7 voegt de regels van de React Compiler toe; Velnox gebruikt de compiler niet, dus die
+  blijven uit, en de twee klassieke regels houden hun niveau (`rules-of-hooks` een fout,
+  `exhaustive-deps` een waarschuwing). De nieuwe aanbevolen regels van ESLint 10 vonden vier
+  variabelen die een waarde kregen die niets las, en één fout die zonder zijn oorzaak opnieuw werd
+  gegooid. Een vijfde melding is een parameter die alleen een decorator leest, wat de regel niet
+  ziet; die is ter plekke gemarkeerd.
+- **pino 10, ioredis 6, BullMQ 6.** Er hoefde geen broncode te veranderen.
+- **TypeScript 6.0.** Dat markeert de moduleresolutie Node10 als verouderd, dus de basisconfiguratie
+  gebruikt `NodeNext`. De uitvoer blijft CommonJS, omdat geen pakket `"type": "module"` declareert.
+  De standaardwaarde van `types` is nu leeg, dus de basis noemt die van Node.
+- **NestJS 12**, met `@nestjs/swagger` 12 en `@types/supertest` 7. NestJS 12 komt alleen nog als
+  ES-modules; de API en de worker, nog steeds CommonJS, laden het via `require(esm)` van Node 22. De
+  override voor multer is weg, omdat `@nestjs/platform-express` 12 zelf de gerepareerde 2.5.0
+  vastzet. js-yaml blijft op 5.4.x, nu alleen nog als de licentiekwestie hierboven: swagger 12 zet
+  5.5 vast.
+
+Ze zijn gedraaid, niet alleen gecompileerd. Op een aparte stack met eigen volumes, images en poorten,
+en een nagebootste Proxmox, slaagden de eigen controles van de stack: 35 op de stack, 44 op jobs
+(inclusief een worker die midden in een job wordt gestopt), 89 op Proxmox, 65 op tenantscheiding, 40
+op de wijzigingsstroom met Chromium, en 27 op het auditlog. Eén bevinding was niet nieuw: een API die
+stopt terwijl er een wijzigingsstroom openstaat, eindigt niet binnen de stoptijd van Docker en wordt
+afgebroken. NestJS 11 (0.7.42) doet hetzelfde; de browser maakt in beide gevallen opnieuw verbinding.
+
+**Nog steeds tegengehouden.**
+
+| Tegengehouden | Reden |
+|---|---|
+| Prisma 7 | Een licentievraag. `prisma` 7 hangt af van `@prisma/studio-core`, en daarmee van `elkjs`, onder EPL-2.0; zijn eigen `build/studio.js` bundelt dezelfde code. EPL-2.0 is alleen verenigbaar met de GPL als de auteur de vermelding uit Exhibit A toevoegt, en elkjs heeft dat niet gedaan. De upgrade zelf is klaar en doorstaat de rest van CI, maar of die licentie erin mag, beslist de eigenaar; dat is geen bijwerking van een update. |
+| TypeScript 7 | typescript-eslint 8 vraagt om TypeScript onder 6.1, en `@nestjs/swagger` 12 om 5 of 6 |
+| `@types/node` 26 | De types volgen de runtime, en dat is Node 22 |
+| Node.js 22 zelf | Maintenance-LTS tot 30 april 2027; de stap naar 24 of 26 is gepland werk |
+
+**Eén les.** pnpm 12 installeert geen versie die minder dan een dag oud is (`minimumReleaseAge`). De
+ESLint-commit nam eslint 10.16.0 en eslint-config-prettier 10.1.9 op de dag dat ze uitkwamen. De
+werkcontainer had ze al, dus daar slaagde alles, maar een verse bevroren installatie weigerde de
+lockfile. 0.7.46 ging terug naar 10.15.0 en 10.1.8. De reeks van CI begint precies daarom met een
+bevroren installatie, en het aanbod van pnpm om een uitzondering aan `pnpm-workspace.yaml` toe te
+voegen is afgeslagen.
+
 ---
 
 ## ADR-058 — Velnox als installeerbare webapp, niet als apart desktopprogramma
@@ -2187,13 +2231,14 @@ crypto, en het uitgewerkte voorbeeld uit RFC 8291 is hun test.
 |---|---|
 | Node.js | 22 LTS |
 | pnpm | 12.x (fase 0 noemde 9.x; zie ADR-029 voor de stap 10 → 12) |
-| NestJS | 11.x |
+| NestJS | 12.x (ADR-057) |
 | Next.js | 16.x |
 | React | 19.x |
 | Tailwind CSS | 4.x |
 | PostgreSQL | 16 |
 | Redis | 7.x |
-| Prisma | 6.x |
+| Prisma | 6.x (7 tegengehouden; ADR-057) |
+| TypeScript | 6.x (ADR-057) |
 | zod | 4.x (ADR-057) |
 | Caddy | 2.x |
 | Debian base image | bookworm-slim |

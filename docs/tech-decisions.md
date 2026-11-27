@@ -22,7 +22,7 @@ config, one lockfile, and one `pnpm build` that is incrementally cached.
 
 ## ADR-002 — NestJS for the backend
 
-**Decision:** NestJS 11 on Node 22 LTS.
+**Decision:** NestJS 12 on Node 22 LTS (11 until 0.7.46; see ADR-057).
 
 **Why:** The requirement list is essentially a list of NestJS strengths — guards for RBAC,
 interceptors for audit and redaction, modules for service boundaries, DI for the adapter registries,
@@ -1839,6 +1839,47 @@ New majors since the last check are held for the same reasons as the table: `@ne
 goes with NestJS 12, `eslint-config-prettier` 10 and `eslint-plugin-react-hooks` 7 go with ESLint 10,
 and `@types/supertest` 7 is test tooling that deserves its own change.
 
+**The majors, 27 November 2026 (0.7.43–0.7.47).** At the owner's word the majors in the table
+above were taken after all, one group per commit, each through CI's whole sequence in a Linux
+container, and the result again in a fresh one:
+
+- **ESLint 10**, with `@eslint/js` 10, `eslint-config-prettier` 10 and `eslint-plugin-react-hooks` 7.
+  react-hooks 7 adds the React Compiler's rules; Velnox does not use the compiler, so they stay off,
+  and the two classic rules keep their levels (`rules-of-hooks` an error, `exhaustive-deps` a
+  warning). ESLint 10's new recommended rules found four variables given a value nothing read, and
+  one error rethrown without its cause. A fifth report is a parameter read only by a decorator, which
+  the rule cannot see; it is marked where it occurs.
+- **pino 10, ioredis 6, BullMQ 6.** No source change was needed.
+- **TypeScript 6.0.** It deprecates the Node10 module resolution, so the base configuration uses
+  `NodeNext`. The output stays CommonJS, because no package declares `"type": "module"`. Its
+  default `types` is now empty, so the base names Node's.
+- **NestJS 12**, with `@nestjs/swagger` 12 and `@types/supertest` 7. NestJS 12 ships as ES modules
+  only; the API and the worker, still CommonJS, load it through Node 22's `require(esm)`. The multer
+  override is gone, because `@nestjs/platform-express` 12 pins the fixed 2.5.0 itself. js-yaml stays
+  on 5.4.x, now purely as the licence hold above: swagger 12 pins 5.5.
+
+They were run, not only compiled. On a separate stack with its own volumes, images and ports, and
+a fixture Proxmox, the stack's own checks passed: 35 on the stack, 44 on jobs (a worker killed
+mid-job included), 89 on Proxmox, 65 on tenant isolation, 40 on the change stream with Chromium, and
+27 on the audit log. One finding was not new: an API stopped while a change stream is open does
+not end within Docker's stop window and is killed. NestJS 11 (0.7.42) behaves the same; the
+browser reconnects either way.
+
+**Still held.**
+
+| Held | Reason |
+|---|---|
+| Prisma 7 | A licence question. `prisma` 7 depends on `@prisma/studio-core`, and through it on `elkjs`, under EPL-2.0; its own `build/studio.js` bundles the same code. EPL-2.0 is compatible with the GPL only when the author adds its Exhibit A notice, and elkjs has not. The upgrade itself is done and passes the rest of CI, but whether that licence may go in is the owner's call, not a side effect of an update. |
+| TypeScript 7 | typescript-eslint 8 asks for TypeScript below 6.1, and `@nestjs/swagger` 12 for 5 or 6 |
+| `@types/node` 26 | The types follow the runtime, which is Node 22 |
+| Node.js 22 itself | Maintenance LTS until 30 April 2027; moving to 24 or 26 is planned work |
+
+**One lesson.** pnpm 12 does not install a version less than a day old (`minimumReleaseAge`). The
+ESLint commit took eslint 10.16.0 and eslint-config-prettier 10.1.9 on the day they came out. The
+work container already had them, so everything passed there, but a fresh frozen install refused
+the lockfile. 0.7.46 went back to 10.15.0 and 10.1.8. CI's sequence starts with a frozen install
+for exactly that reason, and pnpm's offer to add an exception to `pnpm-workspace.yaml` was declined.
+
 ---
 
 ## ADR-058 — Velnox as an installable web app, not a separate desktop program
@@ -2050,13 +2091,14 @@ RFC 8291's worked example is their test.
 |---|---|
 | Node.js | 22 LTS |
 | pnpm | 12.x (Phase 0 said 9.x; see ADR-029 for the 10 → 12 move) |
-| NestJS | 11.x |
+| NestJS | 12.x (ADR-057) |
 | Next.js | 16.x |
 | React | 19.x |
 | Tailwind CSS | 4.x |
 | PostgreSQL | 16 |
 | Redis | 7.x |
-| Prisma | 6.x |
+| Prisma | 6.x (7 held; ADR-057) |
+| TypeScript | 6.x (ADR-057) |
 | zod | 4.x (ADR-057) |
 | Caddy | 2.x |
 | Debian base image | bookworm-slim |

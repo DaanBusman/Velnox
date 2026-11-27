@@ -232,7 +232,7 @@ Still to be written, each by the phase that needs it: `security.md`, `rbac.md`, 
 | Layer | Choice |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 |
-| Backend | NestJS 11 on Node 22, REST + OpenAPI |
+| Backend | NestJS 12 on Node 22, REST + OpenAPI |
 | Worker | BullMQ, no listening port |
 | Database | PostgreSQL 16 + Prisma |
 | Queue / cache | Redis 7 |
