@@ -1,6 +1,6 @@
 {
   "name": "@velnox/worker",
-  "version": "0.7.44",
+  "version": "0.7.45",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox worker. The only service that performs outbound automation and decrypts credentials.",
@@ -37,7 +37,7 @@
     "@types/pdfkit": "^0.17.7",
     "@types/ssh2": "^1.15.6",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vitest": "^5.1.2"
   }
 }
