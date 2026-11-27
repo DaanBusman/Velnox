@@ -1,6 +1,6 @@
 {
   "name": "@velnox/worker",
-  "version": "0.7.45",
+  "version": "0.7.46",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox worker. The only service that performs outbound automation and decrypts credentials.",
@@ -15,8 +15,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nestjs/common": "^11.2.12",
-    "@nestjs/core": "^11.2.12",
+    "@nestjs/common": "^12.6.3",
+    "@nestjs/core": "^12.6.3",
     "@velnox/config": "workspace:*",
     "@velnox/crypto": "workspace:*",
     "@velnox/db": "workspace:*",
