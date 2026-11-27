@@ -1,6 +1,6 @@
 {
   "name": "@velnox/api",
-  "version": "0.7.43",
+  "version": "0.7.44",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox HTTP API. Owns authentication, authorization and job submission; performs no outbound automation.",
@@ -23,10 +23,10 @@
     "@velnox/db": "workspace:*",
     "@velnox/i18n": "workspace:*",
     "@velnox/shared": "workspace:*",
-    "bullmq": "^5.81.6",
+    "bullmq": "^6.7.10",
     "cookie-parser": "^1.4.7",
-    "ioredis": "^5.11.1",
-    "pino": "^9.14.0",
+    "ioredis": "^6.1.0",
+    "pino": "^10.4.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.7"
