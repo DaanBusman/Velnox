@@ -149,7 +149,7 @@ export async function sweepLibrary(
       ['packages-partial', new Set(['RECEIVING', 'VERIFYING']), packageRows],
       ['packages', new Set(['READY']), packageRows],
     ] as const) {
-      let names: string[] = [];
+      let names: string[];
       try {
         names = await readdir(join(paths.root, dir));
       } catch {

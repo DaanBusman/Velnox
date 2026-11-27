@@ -7,6 +7,7 @@ import { RequirePermissionSomewhere } from '../../common/auth.guard';
 import { zodQuery } from '../../common/zod-validation.pipe';
 import { InventoryReadService } from './inventory-read.service';
 
+// eslint-disable-next-line no-useless-assignment -- used by @Param() below; the rule does not see parameter decorators
 const uuidParam = new ParseUUIDPipe({ version: '4' });
 
 const nodeListSchema = z.object({

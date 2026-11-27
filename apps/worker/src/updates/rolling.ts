@@ -540,7 +540,7 @@ export function rollingUpdatePlaybook(
         run: async (context) => {
           const pve = await connect();
           const deadline = Date.now() + params.settleMinutes * 60_000;
-          let problem = '';
+          let problem: string;
           for (;;) {
             problem = '';
             const resources = await pve.clusterResources().catch(() => [] as ClusterResource[]);

@@ -683,7 +683,7 @@ export async function discoverCluster(client: ProxmoxClient): Promise<Discovered
 
 /** Null when this cluster has no Ceph, which is an answer rather than a failure. */
 export async function discoverCeph(client: ProxmoxClient): Promise<DiscoveredCeph | null> {
-  let status: CephStatus | null = null;
+  let status: CephStatus | null;
   try {
     status = await client.cephStatus();
   } catch {

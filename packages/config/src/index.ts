@@ -34,6 +34,7 @@ export function readEnv(name: string, env: NodeJS.ProcessEnv = process.env): str
     } catch (err) {
       throw new Error(
         `${name}_FILE points at ${filePath}, which could not be read: ${(err as Error).message}`,
+        { cause: err },
       );
     }
   }

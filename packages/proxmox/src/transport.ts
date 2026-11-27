@@ -377,7 +377,7 @@ export function rawRequest(
        * certificate here is also what keeps `certificate` populated on a reused
        * connection, which the probe depends on.
        */
-      let alreadyShookHands = false;
+      let alreadyShookHands: boolean;
       try {
         // A socket mid-handshake answers with an empty object; a completed one
         // answers with the certificate. A plain socket has no such method at

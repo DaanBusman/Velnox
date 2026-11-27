@@ -94,8 +94,13 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    // The two rules react-hooks has always had. Version 7's recommended set adds
+    // the React Compiler's rules (purity, refs, setState in effects); Velnox does
+    // not use the compiler, and meeting them means reworking about twenty
+    // components, which is a change of its own (ADR-057).
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 
