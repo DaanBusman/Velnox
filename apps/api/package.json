@@ -1,6 +1,6 @@
 {
   "name": "@velnox/api",
-  "version": "0.7.41",
+  "version": "0.7.42",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Velnox HTTP API. Owns authentication, authorization and job submission; performs no outbound automation.",
@@ -14,16 +14,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nestjs/common": "^11.2.10",
-    "@nestjs/core": "^11.2.10",
-    "@nestjs/platform-express": "^11.2.10",
+    "@nestjs/common": "^11.2.12",
+    "@nestjs/core": "^11.2.12",
+    "@nestjs/platform-express": "^11.2.12",
     "@nestjs/swagger": "^11.4.8",
     "@velnox/config": "workspace:*",
     "@velnox/crypto": "workspace:*",
     "@velnox/db": "workspace:*",
     "@velnox/i18n": "workspace:*",
     "@velnox/shared": "workspace:*",
-    "bullmq": "^5.81.5",
+    "bullmq": "^5.81.6",
     "cookie-parser": "^1.4.7",
     "ioredis": "^5.11.1",
     "pino": "^9.14.0",
@@ -34,11 +34,11 @@
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
-    "@types/node": "^22.20.5",
+    "@types/node": "^22.20.7",
     "@types/supertest": "^6.0.3",
     "supertest": "^7.3.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.2"
   }
 }

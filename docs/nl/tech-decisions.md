@@ -707,6 +707,12 @@ was twee dagen oud en de `latest` van het register). Eerst in een Linux-containe
 voordat `pnpm update -r` iets anders verplaatste. De reeks van CI draaide in een schone container op
 12.21.0, en beide images bouwen ermee.
 
+**Herzien, 12.21.0 → 12.23.0** (27 november 2026, samen met de dependencycontrole in ADR-057; 12.23.0
+was vijf dagen oud en de `latest` van het register). Weer eerst `--lockfile-only`, in een
+Linux-container: pnpm's beschrijving van zichzelf verschoof met 75 regels erbij en 65 eraf voordat
+`pnpm update -r` iets anders verplaatste. De reeks van CI draaide in een schone container op 12.23.0,
+beide images bouwen ermee, en `pnpm --version` antwoordt in beide 12.23.0 onder `--network none`.
+
 **De algemene les, en de reden dat dit is opgeschreven:** een vastgelegd hulpmiddel dat al een tijd
 niet is herzien is geen stabiele afhankelijkheid, het is een uitgestelde migratie. Vier gedragingen
 veranderden onder een veld dat eruitziet als een versienummer, en drie ervan zouden zich als een
@@ -1927,6 +1933,27 @@ Al het andere binnen zijn major ging mee met `pnpm update -r`: NestJS 11.2.10, n
 next-intl 4.15, Tailwind 4.3.5, vitest 5.1, prettier 3.10 en meer, en pnpm zelf naar 12.21.0
 (ADR-029). De majors in de tabel hierboven blijven om dezelfde redenen tegengehouden; geen ervan is
 nodig voor een beveiligingsfix.
+
+**Opnieuw gecontroleerd, 27 november 2026 (0.7.42).** `pnpm audit` meldt geen enkele advisory. Omdat
+de auditdatabase de vorige keer twee beveiligingsreleases miste, is ook elke npm-advisory die GitHub
+sinds 14 november publiceerde naast elk pakket in de lockfile gelegd. Acht betreffen pakketten die
+Velnox installeert, en alle acht waren in de geïnstalleerde versies al opgelost: zeven in Next.js,
+opgelost in 16.4.5, en één in `effect`, opgelost door de override. Node.js 22.23.5 is nog steeds de
+nieuwste 22, en de GitHub Actions staan op hun huidige majors.
+
+Al het andere binnen zijn major ging mee met `pnpm update -r`: NestJS 11.2.12, BullMQ 5.81.6,
+next-intl 4.16, marked 18.3, nodemailer 10.6.1, typescript-eslint 8.74, vitest 5.1.2, en pnpm zelf
+naar 12.23.0 (ADR-029). pdfkit, exact vastgezet omdat het installatierapport in zijn binnenkant
+ingrijpt (ADR-039), ging van 0.20.2 naar 0.21.0, met fontkit 3 en een nieuwe png-js en hun
+beveiligingsfixes. Het rapport gebruikt alleen standaardlettertypen en geen afbeeldingen, dus die
+fixes gelden hier niet; de stap voorkomt dat de vastgezette versie veroudert. De versleuteling met
+revisie 6 is daarna opnieuw gecontroleerd, door de test en door qpdf: dat leest de versleuteling als
+revisie 6, opent het rapport met het wachtwoord en weigert een verkeerd wachtwoord.
+
+Nieuwe majors sinds de vorige controle blijven om dezelfde redenen tegengehouden als in de tabel:
+`@nestjs/swagger` 12 gaat mee met NestJS 12, `eslint-config-prettier` 10 en
+`eslint-plugin-react-hooks` 7 gaan mee met ESLint 10, en `@types/supertest` 7 is testtooling die een
+eigen wijziging verdient.
 
 ---
 

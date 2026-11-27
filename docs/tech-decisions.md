@@ -673,6 +673,12 @@ first, so pnpm's description of itself moved on its own — 71 lines added and 6
 `pnpm update -r` moved anything else. CI's sequence ran in a clean container on 12.21.0, and both
 images build on it.
 
+**Amended, 12.21.0 → 12.23.0** (27 November 2026, with the dependency check in ADR-057; 12.23.0 was
+five days old and the registry's `latest`). Again `--lockfile-only` first, in a Linux container:
+pnpm's description of itself moved by 75 lines added and 65 removed before `pnpm update -r` moved
+anything else. CI's sequence ran in a clean container on 12.23.0, both images build on it, and
+`pnpm --version` answers 12.23.0 in both under `--network none`.
+
 **The general lesson, which is the reason this is written down:** a pinned tool that has not been
 revisited in a while is not a stable dependency, it is a deferred migration. Four behaviours changed
 under a field that looks like a version number, and three of them would have surfaced as a broken
@@ -1812,6 +1818,26 @@ Everything else inside its major moved with `pnpm update -r`: NestJS 11.2.10, no
 next-intl 4.15, Tailwind 4.3.5, vitest 5.1, prettier 3.10 and others, and pnpm itself to 12.21.0
 (ADR-029). The majors in the table above are held for the same reasons; none of them is needed for a
 security fix.
+
+**Checked again, 27 November 2026 (0.7.42).** `pnpm audit` reports no advisory at all. Because the
+audit database missed two security releases last time, every npm advisory GitHub published since
+14 November was also compared with every package in the lockfile. Eight concern packages Velnox
+installs, and all eight were already fixed in the installed versions: seven in Next.js, fixed in
+16.4.5, and one in `effect`, fixed by the override. Node.js 22.23.5 is still the newest 22, and the
+GitHub Actions are on their current majors.
+
+Everything inside its major moved with `pnpm update -r`: NestJS 11.2.12, BullMQ 5.81.6, next-intl
+4.16, marked 18.3, nodemailer 10.6.1, typescript-eslint 8.74, vitest 5.1.2, and pnpm itself to
+12.23.0 (ADR-029). pdfkit, pinned exactly because the installation record reaches into it (ADR-039),
+moved from 0.20.2 to 0.21.0, which brings fontkit 3 and a new png-js with their security fixes. The
+record uses only standard fonts and no images, so those fixes do not apply here; the move keeps the
+pin from going stale. The record's revision 6 encryption was checked again after it, by the test
+and by qpdf: it reads the encryption as revision 6, opens the record with its password, and refuses
+a wrong one.
+
+New majors since the last check are held for the same reasons as the table: `@nestjs/swagger` 12
+goes with NestJS 12, `eslint-config-prettier` 10 and `eslint-plugin-react-hooks` 7 go with ESLint 10,
+and `@types/supertest` 7 is test tooling that deserves its own change.
 
 ---
 
